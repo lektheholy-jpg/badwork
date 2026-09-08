@@ -15,6 +15,8 @@ function navigate(route) {
 
   if (route === 'dashboard') renderDashboard();
   else if (route === 'courses') renderCoursesList();
+  else if (route === 'structure-page') renderStructurePage();
+  else if (route === 'scores-page') renderScoresPage();
   else if (route === 'settings') renderSettings();
 }
 
