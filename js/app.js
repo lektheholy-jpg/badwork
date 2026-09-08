@@ -12,6 +12,7 @@ function navigate(route) {
   AppState.currentRoute = route;
   AppState.currentCourseId = null;
   setActiveNav(route);
+  closeMobileNav();
 
   if (route === 'dashboard') renderDashboard();
   else if (route === 'courses') renderCoursesList();
@@ -34,7 +35,7 @@ function renderSettings() {
         </div>
       </div>
       <div style="font-size:13px; color:var(--ink-soft);">
-        ข้อมูลรายวิชา นักเรียน และคะแนนของคุณจะถูกเก็บแยกจากครูคนอื่นโดยอัตโนมัติ ผ่านบัญชี Google ของคุณ
+        ข้อมูลรายวิชา ห้องเรียน นักเรียน และคะแนนของคุณจะถูกเก็บแยกจากครูคนอื่นโดยอัตโนมัติ ผ่านบัญชี Google ของคุณ
       </div>
     </div>
   `;
@@ -43,3 +44,6 @@ function renderSettings() {
 document.querySelectorAll('.nav-item[data-route]').forEach(el => {
   el.addEventListener('click', () => navigate(el.dataset.route));
 });
+
+document.getElementById('hamburger-btn')?.addEventListener('click', toggleMobileNav);
+document.getElementById('nav-overlay')?.addEventListener('click', closeMobileNav);

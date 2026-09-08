@@ -1,25 +1,29 @@
 // ==========================================================================
-// Students: list, manual add, CSV / paste import
+// Students: list, manual add, CSV / paste import — scoped to one ห้อง (section)
 // ==========================================================================
 
-async function renderStudentsTab(container, course) {
+function sectionRef(uid, courseId, sectionId) {
+  return db.collection('users').doc(uid).collection('courses').doc(courseId)
+    .collection('sections').doc(sectionId);
+}
+
+async function renderStudentsTab(container, course, section) {
   container.innerHTML = `<div class="empty-state">กำลังโหลด...</div>`;
   const uid = AppState.user.uid;
-  const snap = await db.collection('users').doc(uid).collection('courses').doc(course.id)
-    .collection('students').orderBy('no', 'asc').get();
+  const snap = await sectionRef(uid, course.id, section.id).collection('students').orderBy('no', 'asc').get();
   const students = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
   container.innerHTML = `
     <div class="toolbar">
       <div class="toolbar-left">
-        <span style="font-size:13px; color:var(--ink-soft);">นักเรียนทั้งหมด ${students.length} คน</span>
+        <span style="font-size:13px; color:var(--ink-soft);">ห้อง ${escapeHtml(section.room)} • นักเรียนทั้งหมด ${students.length} คน</span>
       </div>
       <div style="display:flex; gap:8px;">
         <button class="btn btn-ghost btn-sm" id="add-one-btn">+ เพิ่มทีละคน</button>
         <button class="btn btn-primary btn-sm" id="import-btn">นำเข้ารายชื่อ</button>
       </div>
     </div>
-    ${students.length === 0 ? `<div class="card"><div class="empty-state"><div class="icon">👨‍🎓</div>ยังไม่มีนักเรียนในรายวิชานี้</div></div>` : `
+    ${students.length === 0 ? `<div class="card"><div class="empty-state"><div class="icon">👨‍🎓</div>ยังไม่มีนักเรียนในห้องนี้</div></div>` : `
       <div class="sheet-wrap">
         <table class="sheet">
           <thead><tr><th>เลขที่</th><th>รหัสนักเรียน</th><th>ชื่อ</th><th>นามสกุล</th><th></th></tr></thead>
@@ -39,23 +43,22 @@ async function renderStudentsTab(container, course) {
     `}
   `;
 
-  document.getElementById('add-one-btn').addEventListener('click', () => openAddOneStudentModal(course));
-  document.getElementById('import-btn').addEventListener('click', () => openImportStudentsModal(course));
+  document.getElementById('add-one-btn').addEventListener('click', () => openAddOneStudentModal(course, section));
+  document.getElementById('import-btn').addEventListener('click', () => openImportStudentsModal(course, section));
   container.querySelectorAll('.del-student').forEach(btn => {
     btn.addEventListener('click', async (e) => {
       const row = e.target.closest('tr');
-      if (!confirm('ลบนักเรียนคนนี้ออกจากรายวิชา?')) return;
-      await db.collection('users').doc(AppState.user.uid).collection('courses').doc(course.id)
-        .collection('students').doc(row.dataset.id).delete();
-      renderStudentsTab(container, course);
+      if (!confirm('ลบนักเรียนคนนี้ออกจากห้อง?')) return;
+      await sectionRef(uid, course.id, section.id).collection('students').doc(row.dataset.id).delete();
+      renderStudentsTab(container, course, section);
     });
   });
 }
 
-function openAddOneStudentModal(course) {
+function openAddOneStudentModal(course, section) {
   openModal(`
     <h2>เพิ่มนักเรียน</h2>
-    <div class="modal-sub">เพิ่มนักเรียนทีละคน</div>
+    <div class="modal-sub">เพิ่มนักเรียนทีละคน — ห้อง ${escapeHtml(section.room)}</div>
     <div class="field-row">
       <div class="field"><label>เลขที่</label><input id="s-no" placeholder="1"></div>
       <div class="field"><label>รหัสนักเรียน</label><input id="s-code" placeholder="16001"></div>
@@ -73,23 +76,23 @@ function openAddOneStudentModal(course) {
   document.getElementById('submit-add-student').addEventListener('click', async () => {
     const first = document.getElementById('s-first').value.trim();
     if (!first) { showToast('กรุณากรอกชื่อ'); return; }
-    await db.collection('users').doc(AppState.user.uid).collection('courses').doc(course.id)
-      .collection('students').add({
-        no: document.getElementById('s-no').value.trim(),
-        code: document.getElementById('s-code').value.trim(),
-        firstName: first,
-        lastName: document.getElementById('s-last').value.trim(),
-      });
+    const uid = AppState.user.uid;
+    await sectionRef(uid, course.id, section.id).collection('students').add({
+      no: document.getElementById('s-no').value.trim(),
+      code: document.getElementById('s-code').value.trim(),
+      firstName: first,
+      lastName: document.getElementById('s-last').value.trim(),
+    });
     closeModal();
     showToast('เพิ่มนักเรียนสำเร็จ');
-    renderStudentsTab(document.getElementById('course-tab-body'), course);
+    renderStudentsTab(document.getElementById('course-tab-body'), course, section);
   });
 }
 
-function openImportStudentsModal(course) {
+function openImportStudentsModal(course, section) {
   openModal(`
     <h2>นำเข้ารายชื่อนักเรียน</h2>
-    <div class="modal-sub">วางข้อมูลจาก Excel/CSV รูปแบบ: เลขที่, รหัสนักเรียน, ชื่อ, นามสกุล (คั่นด้วย comma หรือ tab)</div>
+    <div class="modal-sub">ห้อง ${escapeHtml(section.room)} — วางข้อมูลจาก Excel/CSV รูปแบบ: เลขที่, รหัสนักเรียน, ชื่อ, นามสกุล (คั่นด้วย comma หรือ tab)</div>
     <div class="field">
       <textarea id="import-text" rows="8" placeholder="1,16001,สมชาย,ใจดี&#10;2,16002,สมหญิง,รักเรียน"></textarea>
     </div>
@@ -130,8 +133,9 @@ function openImportStudentsModal(course) {
   });
 
   document.getElementById('confirm-import-btn').addEventListener('click', async () => {
+    const uid = AppState.user.uid;
     const batch = db.batch();
-    const colRef = db.collection('users').doc(AppState.user.uid).collection('courses').doc(course.id).collection('students');
+    const colRef = sectionRef(uid, course.id, section.id).collection('students');
     parsedRows.forEach(r => {
       const ref = colRef.doc();
       batch.set(ref, r);
@@ -139,6 +143,6 @@ function openImportStudentsModal(course) {
     await batch.commit();
     closeModal();
     showToast(`นำเข้านักเรียน ${parsedRows.length} คนสำเร็จ`);
-    renderStudentsTab(document.getElementById('course-tab-body'), course);
+    renderStudentsTab(document.getElementById('course-tab-body'), course, section);
   });
 }

@@ -1,54 +1,109 @@
 // ==========================================================================
-// Courses: list, create, detail shell (tabs)
+// Courses: list, create (with room/section picker), detail shell (tabs)
 // ==========================================================================
 
 function openCreateCourseModal() {
   openModal(`
     <h2>สร้างรายวิชา</h2>
-    <div class="modal-sub">กรอกข้อมูลพื้นฐานของรายวิชา แก้ไขภายหลังได้</div>
+    <div class="modal-sub">กรอกข้อมูลพื้นฐานของรายวิชา — ตั้งครั้งเดียว ใช้ได้ทุกห้อง แก้ไขภายหลังได้</div>
     <div class="field-row">
       <div class="field"><label>รหัสวิชา</label><input id="f-code" placeholder="เช่น ว33101"></div>
       <div class="field"><label>ชื่อวิชา</label><input id="f-name" placeholder="เช่น วิทยาการคำนวณ"></div>
     </div>
     <div class="field-row">
       <div class="field"><label>ระดับชั้น</label><input id="f-level" placeholder="เช่น ม.6"></div>
-      <div class="field"><label>ห้อง</label><input id="f-room" placeholder="เช่น 1"></div>
+      <div class="field"><label>สีประจำวิชา</label><input id="f-color" type="color" value="#6B7A4F" style="height:38px; padding:3px;"></div>
     </div>
     <div class="field-row">
       <div class="field"><label>ภาคเรียน</label><input id="f-semester" placeholder="1"></div>
       <div class="field"><label>ปีการศึกษา</label><input id="f-year" placeholder="2569"></div>
     </div>
-    <div class="field-row">
-      <div class="field"><label>หน่วยกิต</label><input id="f-credit" placeholder="1.0"></div>
-      <div class="field"><label>สีประจำวิชา</label><input id="f-color" type="color" value="#0E7C86" style="height:38px; padding:3px;"></div>
+    <div class="field"><label>หน่วยกิต</label><input id="f-credit" placeholder="1.0"></div>
+
+    <div class="field">
+      <label>ห้องที่สอน</label>
+      <div class="room-mode-toggle">
+        <button type="button" class="room-mode-btn active" data-mode="count">ระบุจำนวนห้อง</button>
+        <button type="button" class="room-mode-btn" data-mode="list">พิมพ์เลขห้องเอง</button>
+      </div>
+      <div id="room-mode-count">
+        <input id="f-room-count" type="number" min="1" value="1" placeholder="เช่น 5">
+        <div class="field-hint">ระบบจะสร้างห้อง 1, 2, 3 ... ให้อัตโนมัติตามจำนวนที่ใส่</div>
+      </div>
+      <div id="room-mode-list" class="hidden">
+        <input id="f-room-list" placeholder="เช่น 1,2,3 หรือ 1-5 หรือ ม.6/1, ม.6/2">
+        <div class="field-hint">คั่นด้วยจุลภาค (,) ใช้เครื่องหมาย - เพื่อระบุช่วงได้ เช่น 1-6</div>
+      </div>
     </div>
+
     <div class="modal-actions">
       <button class="btn btn-ghost" id="cancel-create">ยกเลิก</button>
       <button class="btn btn-primary" id="submit-create">สร้างรายวิชา</button>
     </div>
   `);
+
+  const modeCountBtn = document.querySelector('.room-mode-btn[data-mode="count"]');
+  const modeListBtn = document.querySelector('.room-mode-btn[data-mode="list"]');
+  let roomMode = 'count';
+  modeCountBtn.addEventListener('click', () => {
+    roomMode = 'count';
+    modeCountBtn.classList.add('active'); modeListBtn.classList.remove('active');
+    document.getElementById('room-mode-count').classList.remove('hidden');
+    document.getElementById('room-mode-list').classList.add('hidden');
+  });
+  modeListBtn.addEventListener('click', () => {
+    roomMode = 'list';
+    modeListBtn.classList.add('active'); modeCountBtn.classList.remove('active');
+    document.getElementById('room-mode-list').classList.remove('hidden');
+    document.getElementById('room-mode-count').classList.add('hidden');
+  });
+
   document.getElementById('cancel-create').addEventListener('click', closeModal);
   document.getElementById('submit-create').addEventListener('click', async () => {
     const name = document.getElementById('f-name').value.trim();
     if (!name) { showToast('กรุณากรอกชื่อวิชา'); return; }
+
+    let rooms = [];
+    if (roomMode === 'count') {
+      const n = Math.max(1, Number(document.getElementById('f-room-count').value) || 1);
+      rooms = Array.from({ length: n }, (_, i) => String(i + 1));
+    } else {
+      rooms = parseRoomList(document.getElementById('f-room-list').value);
+      if (rooms.length === 0) { showToast('กรุณาใส่เลขห้องอย่างน้อย 1 ห้อง'); return; }
+    }
+
+    const submitBtn = document.getElementById('submit-create');
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'กำลังสร้าง...';
+
     const uid = AppState.user.uid;
     const data = {
       code: document.getElementById('f-code').value.trim(),
       name,
       level: document.getElementById('f-level').value.trim(),
-      room: document.getElementById('f-room').value.trim(),
       semester: document.getElementById('f-semester').value.trim(),
       year: document.getElementById('f-year').value.trim(),
       credit: document.getElementById('f-credit').value.trim(),
       color: document.getElementById('f-color').value,
+      roomCount: rooms.length,
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
     };
-    const ref = await db.collection('users').doc(uid).collection('courses').add(data);
-    // สร้างเกณฑ์เกรดเริ่มต้น
-    await ref.collection('settings').doc('grading').set({ scale: DEFAULT_GRADE_SCALE });
+    const courseRef = await db.collection('users').doc(uid).collection('courses').add(data);
+
+    // สร้างเกณฑ์เกรดเริ่มต้น (ใช้ร่วมกันทุกห้องในวิชานี้)
+    await courseRef.collection('settings').doc('grading').set({ scale: DEFAULT_GRADE_SCALE });
+
+    // สร้างห้องเรียนทั้งหมดในครั้งเดียว (โครงสร้างคะแนนตั้งครั้งเดียว ใช้ร่วมกันทุกห้อง)
+    const batch = db.batch();
+    rooms.forEach((room, idx) => {
+      const secRef = courseRef.collection('sections').doc();
+      batch.set(secRef, { room, order: idx, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+    });
+    await batch.commit();
+
     closeModal();
-    showToast('สร้างรายวิชาสำเร็จ');
-    openCourse(ref.id);
+    showToast(`สร้างรายวิชาสำเร็จ (${rooms.length} ห้อง)`);
+    openCourse(courseRef.id);
   });
 }
 
@@ -71,10 +126,10 @@ async function renderCoursesList() {
       <div class="course-list">
         ${courses.map(c => `
           <div class="course-row" data-course-id="${c.id}">
-            <div class="course-dot" style="background:${c.color || '#0E7C86'}"></div>
+            <div class="course-dot" style="background:${c.color || '#6B7A4F'}"></div>
             <div class="info">
               <div class="name">${escapeHtml(c.name)}</div>
-              <div class="meta">${escapeHtml(c.code || '')} • ${escapeHtml(c.level || '')}${c.room ? '/' + escapeHtml(c.room) : ''} • ภาคเรียน ${escapeHtml(c.semester || '-')}/${escapeHtml(c.year || '-')}</div>
+              <div class="meta">${escapeHtml(c.code || '')} • ${escapeHtml(c.level || '')} • ${c.roomCount || 0} ห้อง • ภาคเรียน ${escapeHtml(c.semester || '-')}/${escapeHtml(c.year || '-')}</div>
             </div>
             <button class="btn btn-ghost btn-sm">เปิดรายวิชา</button>
           </div>
@@ -91,9 +146,16 @@ async function renderCoursesList() {
 function openCourse(courseId) {
   AppState.currentRoute = 'course';
   AppState.currentCourseId = courseId;
+  AppState.currentSectionId = null;
   AppState.currentTab = 'overview';
   setActiveNav(null);
   renderCourseShell();
+}
+
+async function loadSections(uid, courseId) {
+  const snap = await db.collection('users').doc(uid).collection('courses').doc(courseId)
+    .collection('sections').orderBy('order', 'asc').get();
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
 }
 
 async function renderCourseShell() {
@@ -104,6 +166,13 @@ async function renderCourseShell() {
   const course = { id: courseDoc.id, ...courseDoc.data() };
   AppState.currentCourse = course;
 
+  const sections = await loadSections(uid, courseId);
+  AppState.sections = sections;
+  if (!AppState.currentSectionId || !sections.some(s => s.id === AppState.currentSectionId)) {
+    AppState.currentSectionId = sections[0]?.id || null;
+  }
+  const section = sections.find(s => s.id === AppState.currentSectionId) || null;
+
   const tabs = [
     { id: 'overview', label: 'ภาพรวม' },
     { id: 'students', label: 'นักเรียน' },
@@ -111,14 +180,29 @@ async function renderCourseShell() {
     { id: 'scores', label: 'บันทึกคะแนน' },
     { id: 'report', label: 'รายงาน' },
   ];
+  // แท็บที่ต้องผูกกับ "ห้อง" ที่เลือกอยู่ (นักเรียน/คะแนน/รายงานแยกตามห้อง)
+  const sectionScopedTabs = new Set(['students', 'scores', 'report']);
 
   const view = document.getElementById('view');
   view.innerHTML = `
     <div class="crumb"><a href="#" id="back-to-courses" style="text-decoration:none; color:inherit;">รายวิชาของฉัน</a> / <b>${escapeHtml(course.name)}</b></div>
     <div class="page-header">
       <h1>${escapeHtml(course.code ? course.code + ' • ' : '')}${escapeHtml(course.name)}</h1>
-      <div class="sub">${escapeHtml(course.level || '')}${course.room ? '/' + escapeHtml(course.room) : ''} • ภาคเรียน ${escapeHtml(course.semester || '-')}/${escapeHtml(course.year || '-')}</div>
+      <div class="sub">${escapeHtml(course.level || '')} • ภาคเรียน ${escapeHtml(course.semester || '-')}/${escapeHtml(course.year || '-')} • ${sections.length} ห้อง</div>
     </div>
+
+    ${sections.length > 0 ? `
+      <div class="room-pills" id="room-pills">
+        ${sections.map(s => `<button class="room-pill ${s.id === AppState.currentSectionId ? 'active' : ''}" data-section-id="${s.id}">ห้อง ${escapeHtml(s.room)}</button>`).join('')}
+        <button class="room-pill room-pill-add" id="add-room-btn">+ เพิ่มห้อง</button>
+      </div>
+    ` : `
+      <div class="card card-pad" style="margin-bottom:16px; display:flex; align-items:center; justify-content:space-between;">
+        <div class="empty-state" style="padding:0; text-align:left;">ยังไม่มีห้องเรียนในวิชานี้</div>
+        <button class="btn btn-primary btn-sm" id="add-room-btn">+ เพิ่มห้อง</button>
+      </div>
+    `}
+
     <div class="tabs">
       ${tabs.map(t => `<div class="tab ${AppState.currentTab === t.id ? 'active' : ''}" data-tab="${t.id}">${t.label}</div>`).join('')}
     </div>
@@ -126,6 +210,13 @@ async function renderCourseShell() {
   `;
 
   document.getElementById('back-to-courses').addEventListener('click', (e) => { e.preventDefault(); navigate('courses'); });
+  document.getElementById('add-room-btn').addEventListener('click', () => openAddRoomModal(course));
+  view.querySelectorAll('.room-pill[data-section-id]').forEach(p => {
+    p.addEventListener('click', () => {
+      AppState.currentSectionId = p.dataset.sectionId;
+      renderCourseShell();
+    });
+  });
   view.querySelectorAll('.tab').forEach(t => {
     t.addEventListener('click', () => {
       AppState.currentTab = t.dataset.tab;
@@ -134,35 +225,92 @@ async function renderCourseShell() {
   });
 
   const body = document.getElementById('course-tab-body');
-  if (AppState.currentTab === 'overview') renderCourseOverview(body, course);
-  else if (AppState.currentTab === 'students') renderStudentsTab(body, course);
+  if (sectionScopedTabs.has(AppState.currentTab) && !section) {
+    body.innerHTML = `<div class="card"><div class="empty-state"><div class="icon">🏫</div>กรุณาเพิ่มห้องเรียนก่อน เพื่อเริ่มเพิ่มนักเรียนและบันทึกคะแนน</div></div>`;
+    return;
+  }
+
+  if (AppState.currentTab === 'overview') renderCourseOverview(body, course, sections);
+  else if (AppState.currentTab === 'students') renderStudentsTab(body, course, section);
   else if (AppState.currentTab === 'structure') renderStructureTab(body, course);
-  else if (AppState.currentTab === 'scores') renderScoresTab(body, course);
-  else if (AppState.currentTab === 'report') renderReportTab(body, course);
+  else if (AppState.currentTab === 'scores') renderScoresTab(body, course, section);
+  else if (AppState.currentTab === 'report') renderReportTab(body, course, section);
 }
 
-async function renderCourseOverview(container, course) {
+function openAddRoomModal(course) {
+  openModal(`
+    <h2>เพิ่มห้องเรียน</h2>
+    <div class="modal-sub">เพิ่มห้องใหม่ให้วิชา ${escapeHtml(course.name)} — ใช้โครงสร้างคะแนนเดียวกับห้องอื่น</div>
+    <div class="field"><label>เลขห้อง</label><input id="new-room-input" placeholder="เช่น 4 หรือ ม.6/4"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="cancel-add-room">ยกเลิก</button>
+      <button class="btn btn-primary" id="submit-add-room">เพิ่มห้อง</button>
+    </div>
+  `);
+  document.getElementById('cancel-add-room').addEventListener('click', closeModal);
+  document.getElementById('submit-add-room').addEventListener('click', async () => {
+    const room = document.getElementById('new-room-input').value.trim();
+    if (!room) { showToast('กรุณาใส่เลขห้อง'); return; }
+    const uid = AppState.user.uid;
+    const courseRef = db.collection('users').doc(uid).collection('courses').doc(course.id);
+    await courseRef.collection('sections').add({
+      room, order: AppState.sections.length, createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    });
+    await courseRef.update({ roomCount: firebase.firestore.FieldValue.increment(1) });
+    closeModal();
+    showToast('เพิ่มห้องสำเร็จ');
+    renderCourseShell();
+  });
+}
+
+async function renderCourseOverview(container, course, sections) {
   const uid = AppState.user.uid;
   const base = db.collection('users').doc(uid).collection('courses').doc(course.id);
-  const [studentsSnap, assessSnap, scoresSnap] = await Promise.all([
-    base.collection('students').get(),
+
+  const [assessSnap, perSection] = await Promise.all([
     base.collection('assessments').get(),
-    base.collection('scores').get(),
+    Promise.all(sections.map(async (s) => {
+      const secBase = base.collection('sections').doc(s.id);
+      const [studentsSnap, scoresSnap] = await Promise.all([
+        secBase.collection('students').get(),
+        secBase.collection('scores').get(),
+      ]);
+      const progress = studentsSnap.size > 0 ? Math.round((scoresSnap.size / studentsSnap.size) * 100) : 0;
+      return { ...s, studentCount: studentsSnap.size, progress };
+    })),
   ]);
-  const progress = studentsSnap.size > 0 ? Math.round((scoresSnap.size / studentsSnap.size) * 100) : 0;
+
+  const totalStudents = perSection.reduce((s, x) => s + x.studentCount, 0);
+  const avgProgress = perSection.length ? Math.round(perSection.reduce((s, x) => s + x.progress, 0) / perSection.length) : 0;
 
   container.innerHTML = `
     <div class="stat-row">
-      <div class="stat-card"><div class="label">จำนวนนักเรียน</div><div class="value">${studentsSnap.size}</div></div>
+      <div class="stat-card"><div class="label">จำนวนห้อง</div><div class="value">${sections.length}</div></div>
+      <div class="stat-card"><div class="label">นักเรียนทั้งหมด</div><div class="value">${totalStudents}</div></div>
       <div class="stat-card"><div class="label">รายการคะแนนที่กำหนด</div><div class="value">${assessSnap.size}</div></div>
-      <div class="stat-card"><div class="label">ความคืบหน้าการบันทึกคะแนน</div><div class="value">${progress}%</div></div>
     </div>
+    ${sections.length > 0 ? `
+      <div class="card" style="margin-bottom:16px;">
+        <div class="struct-panel-header">ความคืบหน้ารายห้อง</div>
+        <div class="card-pad" style="display:flex; flex-direction:column; gap:10px;">
+          ${perSection.map(s => `
+            <div style="display:flex; align-items:center; gap:12px;">
+              <div style="width:70px; font-weight:600; font-size:13.5px;">ห้อง ${escapeHtml(s.room)}</div>
+              <div style="width:80px; font-size:12.5px; color:var(--ink-soft);">${s.studentCount} คน</div>
+              <div class="progress-bar" style="flex:1; width:auto;"><div class="fill" style="width:${s.progress}%"></div></div>
+              <div class="progress-pct">${s.progress}%</div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    ` : ''}
     <div class="card card-pad">
       <h2 style="font-size:14.5px; margin-bottom:10px;">ขั้นตอนถัดไป</h2>
       <div style="display:flex; flex-direction:column; gap:8px; font-size:13.5px; color:var(--ink-soft);">
-        <div>1. เพิ่มรายชื่อนักเรียน ${studentsSnap.size > 0 ? '✅' : '— ยังไม่มีนักเรียน'}</div>
-        <div>2. กำหนดโครงสร้างคะแนน ${assessSnap.size > 0 ? '✅' : '— ยังไม่ได้กำหนด'}</div>
-        <div>3. บันทึกคะแนน ${progress > 0 ? `— บันทึกแล้ว ${progress}%` : '— ยังไม่เริ่มบันทึก'}</div>
+        <div>1. เพิ่มห้องเรียน ${sections.length > 0 ? '✅' : '— ยังไม่มีห้อง'}</div>
+        <div>2. เพิ่มรายชื่อนักเรียนแต่ละห้อง ${totalStudents > 0 ? '✅' : '— ยังไม่มีนักเรียน'}</div>
+        <div>3. กำหนดโครงสร้างคะแนน (ใช้ร่วมกันทุกห้อง) ${assessSnap.size > 0 ? '✅' : '— ยังไม่ได้กำหนด'}</div>
+        <div>4. บันทึกคะแนน ${avgProgress > 0 ? `— บันทึกแล้วเฉลี่ย ${avgProgress}%` : '— ยังไม่เริ่มบันทึก'}</div>
       </div>
     </div>
   `;

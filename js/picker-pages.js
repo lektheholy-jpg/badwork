@@ -15,12 +15,26 @@ function courseSelectorHtml(courses, selectedId, selectId) {
     return `<div class="card"><div class="empty-state"><div class="icon">📚</div>ยังไม่มีรายวิชา กรุณาสร้างรายวิชาก่อน</div></div>`;
   }
   return `
-    <div class="card card-pad" style="margin-bottom:18px; display:flex; align-items:center; gap:12px;">
-      <div style="font-size:13px; font-weight:600; color:var(--ink-soft); white-space:nowrap;">เลือกรายวิชา</div>
-      <select id="${selectId}" style="flex:1; max-width:420px; padding:9px 11px; border:1px solid var(--border); border-radius:6px; font-size:14px; font-family:inherit;">
-        ${courses.map(c => `<option value="${c.id}" ${c.id === selectedId ? 'selected' : ''}>${escapeHtml(c.code ? c.code + ' - ' : '')}${escapeHtml(c.name)}${c.level ? ' (' + escapeHtml(c.level) + (c.room ? '/' + escapeHtml(c.room) : '') + ')' : ''}</option>`).join('')}
+    <div class="card card-pad picker-bar">
+      <div class="picker-label">เลือกรายวิชา</div>
+      <select id="${selectId}" class="picker-select">
+        ${courses.map(c => `<option value="${c.id}" ${c.id === selectedId ? 'selected' : ''}>${escapeHtml(c.code ? c.code + ' - ' : '')}${escapeHtml(c.name)}${c.level ? ' (' + escapeHtml(c.level) + ')' : ''}</option>`).join('')}
       </select>
-      <span style="font-size:12.5px; color:var(--ink-soft);">ภาคเรียน ${escapeHtml(courses.find(c => c.id === selectedId)?.semester || '-')}/${escapeHtml(courses.find(c => c.id === selectedId)?.year || '-')}</span>
+      <span class="picker-note">ภาคเรียน ${escapeHtml(courses.find(c => c.id === selectedId)?.semester || '-')}/${escapeHtml(courses.find(c => c.id === selectedId)?.year || '-')}</span>
+    </div>
+  `;
+}
+
+function roomSelectorHtml(sections, selectedId, selectId) {
+  if (sections.length === 0) {
+    return `<div class="card"><div class="empty-state"><div class="icon">🏫</div>วิชานี้ยังไม่มีห้องเรียน กรุณาเพิ่มห้องในหน้ารายวิชาก่อน</div></div>`;
+  }
+  return `
+    <div class="card card-pad picker-bar">
+      <div class="picker-label">เลือกห้อง</div>
+      <select id="${selectId}" class="picker-select picker-select-sm">
+        ${sections.map(s => `<option value="${s.id}" ${s.id === selectedId ? 'selected' : ''}>ห้อง ${escapeHtml(s.room)}</option>`).join('')}
+      </select>
     </div>
   `;
 }
@@ -36,7 +50,7 @@ async function renderStructurePage() {
   view.innerHTML = `
     <div class="page-header">
       <h1>⚙️ ตั้งค่าโครงสร้างวิชา</h1>
-      <div class="sub">กำหนดสัดส่วนคะแนน + รายการคะแนนเก็บประจำรายวิชา</div>
+      <div class="sub">กำหนดสัดส่วนคะแนน + รายการคะแนนเก็บ — ตั้งครั้งเดียว ใช้ร่วมกันทุกห้องของวิชานี้</div>
     </div>
     ${courseSelectorHtml(courses, selectedId, 'structure-course-select')}
     <div id="structure-page-body"></div>
@@ -67,6 +81,7 @@ async function renderScoresPage() {
       <div class="sub">บันทึกคะแนนรายบุคคลแบบตาราง พร้อมคำนวณรวมและเกรดอัตโนมัติ</div>
     </div>
     ${courseSelectorHtml(courses, selectedId, 'scores-course-select')}
+    <div id="scores-room-selector"></div>
     <div id="scores-page-body"></div>
   `;
 
@@ -74,9 +89,26 @@ async function renderScoresPage() {
   const sel = document.getElementById('scores-course-select');
   sel.addEventListener('change', () => {
     AppState.scoresPageCourseId = sel.value;
+    AppState.scoresPageSectionId = null;
     renderScoresPage();
   });
 
   const course = courses.find(c => c.id === selectedId);
-  renderScoresTab(document.getElementById('scores-page-body'), course);
+  const uid = AppState.user.uid;
+  const sections = await loadSections(uid, course.id);
+  const selectedSectionId = AppState.scoresPageSectionId && sections.some(s => s.id === AppState.scoresPageSectionId)
+    ? AppState.scoresPageSectionId : (sections[0]?.id || null);
+  AppState.scoresPageSectionId = selectedSectionId;
+
+  document.getElementById('scores-room-selector').innerHTML = roomSelectorHtml(sections, selectedSectionId, 'scores-room-select');
+  if (!selectedSectionId) return;
+
+  const roomSel = document.getElementById('scores-room-select');
+  roomSel.addEventListener('change', () => {
+    AppState.scoresPageSectionId = roomSel.value;
+    renderScoresPage();
+  });
+
+  const section = sections.find(s => s.id === selectedSectionId);
+  renderScoresTab(document.getElementById('scores-page-body'), course, section);
 }

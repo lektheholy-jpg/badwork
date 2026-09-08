@@ -3,10 +3,14 @@
 // ==========================================================================
 
 const AppState = {
-  user: null,          // firebase user object
+  user: null,            // firebase user object
   currentRoute: 'dashboard',
   currentCourseId: null,
-  courses: [],          // cache รายวิชาทั้งหมดของครู
+  currentCourse: null,
+  currentSectionId: null,
+  currentTab: 'overview',
+  courses: [],            // cache รายวิชาทั้งหมดของครู
+  sections: [],            // cache ห้องของวิชาที่เปิดอยู่
 };
 
 document.getElementById('google-signin-btn').addEventListener('click', async () => {
@@ -20,6 +24,7 @@ document.getElementById('google-signin-btn').addEventListener('click', async () 
 
 document.getElementById('logout-btn').addEventListener('click', async () => {
   await auth.signOut();
+  closeMobileNav();
 });
 
 auth.onAuthStateChanged(async (user) => {

@@ -16,11 +16,22 @@ async function renderDashboard() {
 
   for (const doc of coursesSnap.docs) {
     const c = { id: doc.id, ...doc.data() };
-    const studentsSnap = await db.collection('users').doc(uid).collection('courses').doc(c.id).collection('students').get();
-    const scoresSnap = await db.collection('users').doc(uid).collection('courses').doc(c.id).collection('scores').get();
-    c.studentCount = studentsSnap.size;
-    c.progress = studentsSnap.size > 0 ? Math.round((scoresSnap.size / studentsSnap.size) * 100) : 0;
-    totalStudents += c.studentCount;
+    const sections = await loadSections(uid, c.id);
+    let studentCount = 0;
+    let progressSum = 0;
+    for (const s of sections) {
+      const secBase = db.collection('users').doc(uid).collection('courses').doc(c.id).collection('sections').doc(s.id);
+      const [studentsSnap, scoresSnap] = await Promise.all([
+        secBase.collection('students').get(),
+        secBase.collection('scores').get(),
+      ]);
+      studentCount += studentsSnap.size;
+      progressSum += studentsSnap.size > 0 ? Math.round((scoresSnap.size / studentsSnap.size) * 100) : 0;
+    }
+    c.studentCount = studentCount;
+    c.roomCount = sections.length;
+    c.progress = sections.length > 0 ? Math.round(progressSum / sections.length) : 0;
+    totalStudents += studentCount;
     totalProgressSum += c.progress;
     courses.push(c);
   }
@@ -56,10 +67,10 @@ async function renderDashboard() {
       <div class="course-list">
         ${courses.map(c => `
           <div class="course-row" data-course-id="${c.id}">
-            <div class="course-dot" style="background:${c.color || '#0E7C86'}"></div>
+            <div class="course-dot" style="background:${c.color || '#6B7A4F'}"></div>
             <div class="info">
               <div class="name">${escapeHtml(c.name)}</div>
-              <div class="meta">${escapeHtml(c.level || '')}${c.room ? '/' + escapeHtml(c.room) : ''} • ${c.studentCount} คน</div>
+              <div class="meta">${escapeHtml(c.level || '')} • ${c.roomCount} ห้อง • ${c.studentCount} คน</div>
             </div>
             <div class="progress-bar"><div class="fill" style="width:${c.progress}%"></div></div>
             <div class="progress-pct">${c.progress}%</div>

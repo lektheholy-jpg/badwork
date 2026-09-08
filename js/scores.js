@@ -1,17 +1,20 @@
 // ==========================================================================
 // Score entry: spreadsheet-style grid, grouped columns, autosave
+// โครงสร้างคะแนน (assessments) ใช้ร่วมกันทุกห้องของวิชานี้
+// นักเรียน/คะแนนจริง แยกตามห้อง (section)
 // ==========================================================================
 
-async function renderScoresTab(container, course) {
+async function renderScoresTab(container, course, section) {
   container.innerHTML = `<div class="empty-state">กำลังโหลด...</div>`;
   const uid = AppState.user.uid;
-  const base = db.collection('users').doc(uid).collection('courses').doc(course.id);
+  const courseBase = db.collection('users').doc(uid).collection('courses').doc(course.id);
+  const secBase = sectionRef(uid, course.id, section.id);
 
   const [studentsSnap, assessSnap, scoresSnap, gradingDoc] = await Promise.all([
-    base.collection('students').orderBy('no', 'asc').get(),
-    base.collection('assessments').orderBy('order', 'asc').get(),
-    base.collection('scores').get(),
-    base.collection('settings').doc('grading').get(),
+    secBase.collection('students').orderBy('no', 'asc').get(),
+    courseBase.collection('assessments').orderBy('order', 'asc').get(),
+    secBase.collection('scores').get(),
+    courseBase.collection('settings').doc('grading').get(),
   ]);
 
   const students = studentsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -27,17 +30,18 @@ async function renderScoresTab(container, course) {
   const maxTotal = assessments.reduce((s, a) => s + (Number(a.max) || 0), 0);
 
   if (assessments.length === 0) {
-    container.innerHTML = `<div class="card"><div class="empty-state"><div class="icon">🧮</div>กรุณากำหนดโครงสร้างคะแนนก่อนเริ่มบันทึกคะแนน</div></div>`;
+    container.innerHTML = `<div class="card"><div class="empty-state"><div class="icon">🧮</div>กรุณากำหนดโครงสร้างคะแนนของวิชานี้ก่อนเริ่มบันทึกคะแนน</div></div>`;
     return;
   }
   if (students.length === 0) {
-    container.innerHTML = `<div class="card"><div class="empty-state"><div class="icon">👨‍🎓</div>กรุณาเพิ่มรายชื่อนักเรียนก่อนเริ่มบันทึกคะแนน</div></div>`;
+    container.innerHTML = `<div class="card"><div class="empty-state"><div class="icon">👨‍🎓</div>กรุณาเพิ่มรายชื่อนักเรียนในห้อง ${escapeHtml(section.room)} ก่อนเริ่มบันทึกคะแนน</div></div>`;
     return;
   }
 
   container.innerHTML = `
     <div class="toolbar">
       <div class="toolbar-left">
+        <span style="font-size:13px; color:var(--ink-soft); font-weight:600;">ห้อง ${escapeHtml(section.room)}</span>
         <div class="search-box"><input id="student-search" placeholder="ค้นหานักเรียน..."></div>
       </div>
       <div class="save-status" id="save-status"><span class="dot"></span> บันทึกอัตโนมัติแล้ว</div>
@@ -74,7 +78,7 @@ async function renderScoresTab(container, course) {
     });
   }, 150));
 
-  wireScoreInputs(container, course, students, collectItems, midItems, finalItems, scores, collectMax, maxTotal, gradeScale);
+  wireScoreInputs(container, course, section, students, collectItems, midItems, finalItems, scores, collectMax, maxTotal, gradeScale);
 }
 
 function renderScoreRow(student, collectItems, midItems, finalItems, studentScores, collectMax, maxTotal, gradeScale) {
@@ -106,9 +110,9 @@ function renderScoreRow(student, collectItems, midItems, finalItems, studentScor
   `;
 }
 
-function wireScoreInputs(container, course, students, collectItems, midItems, finalItems, scores, collectMax, maxTotal, gradeScale) {
+function wireScoreInputs(container, course, section, students, collectItems, midItems, finalItems, scores, collectMax, maxTotal, gradeScale) {
   const uid = AppState.user.uid;
-  const base = db.collection('users').doc(uid).collection('courses').doc(course.id);
+  const base = sectionRef(uid, course.id, section.id);
   const statusEl = document.getElementById('save-status');
 
   const saveCell = debounce(async (studentId, assessmentId, value) => {

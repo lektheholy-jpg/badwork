@@ -1,17 +1,18 @@
 // ==========================================================================
-// Report: summary stats, grade distribution, export
+// Report: summary stats, grade distribution, export — scoped to one ห้อง
 // ==========================================================================
 
-async function renderReportTab(container, course) {
+async function renderReportTab(container, course, section) {
   container.innerHTML = `<div class="empty-state">กำลังโหลด...</div>`;
   const uid = AppState.user.uid;
-  const base = db.collection('users').doc(uid).collection('courses').doc(course.id);
+  const courseBase = db.collection('users').doc(uid).collection('courses').doc(course.id);
+  const secBase = sectionRef(uid, course.id, section.id);
 
   const [studentsSnap, assessSnap, scoresSnap, gradingDoc] = await Promise.all([
-    base.collection('students').orderBy('no', 'asc').get(),
-    base.collection('assessments').orderBy('order', 'asc').get(),
-    base.collection('scores').get(),
-    base.collection('settings').doc('grading').get(),
+    secBase.collection('students').orderBy('no', 'asc').get(),
+    courseBase.collection('assessments').orderBy('order', 'asc').get(),
+    secBase.collection('scores').get(),
+    courseBase.collection('settings').doc('grading').get(),
   ]);
   const students = studentsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
   const assessments = assessSnap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -38,6 +39,7 @@ async function renderReportTab(container, course) {
   const maxCount = Math.max(1, ...Object.values(gradeCounts));
 
   container.innerHTML = `
+    <div style="font-size:13px; color:var(--ink-soft); font-weight:600; margin-bottom:10px;">ห้อง ${escapeHtml(section.room)}</div>
     <div class="stat-row">
       <div class="stat-card"><div class="label">คะแนนเฉลี่ย</div><div class="value">${avg.toFixed(1)}</div></div>
       <div class="stat-card"><div class="label">คะแนนสูงสุด</div><div class="value">${max}</div></div>
@@ -73,19 +75,19 @@ async function renderReportTab(container, course) {
       const total = assessments.reduce((sum, a) => sum + (Number(sc[a.id]) || 0), 0);
       return [s.no, s.code, s.firstName, s.lastName, ...assessments.map(a => sc[a.id] ?? ''), total, calcGrade(total, gradeScale)];
     });
-    downloadCsv(`คะแนน-${course.name}.csv`, [header, ...rows]);
+    downloadCsv(`คะแนน-${course.name}-ห้อง${section.room}.csv`, [header, ...rows]);
     showToast('ส่งออกไฟล์ CSV สำเร็จ');
   });
 
-  document.getElementById('edit-grade-scale').addEventListener('click', () => openGradeScaleModal(course, gradeScale));
+  document.getElementById('edit-grade-scale').addEventListener('click', () => openGradeScaleModal(course, section, gradeScale));
 }
 
-function openGradeScaleModal(course, scale) {
+function openGradeScaleModal(course, section, scale) {
   let rows = scale.map(r => ({ ...r }));
   function draw() {
     openModal(`
       <h2>ตั้งเกณฑ์เกรด</h2>
-      <div class="modal-sub">กำหนดเกรดและคะแนนขั้นต่ำของแต่ละเกรดเอง</div>
+      <div class="modal-sub">กำหนดเกรดและคะแนนขั้นต่ำของแต่ละเกรด — ใช้ร่วมกันทุกห้องในวิชานี้</div>
       <div style="display:flex; flex-direction:column; gap:8px; margin-bottom:14px;" id="scale-rows">
         ${rows.map((r, idx) => `
           <div style="display:flex; gap:8px; align-items:center;">
@@ -112,7 +114,7 @@ function openGradeScaleModal(course, scale) {
         .collection('settings').doc('grading').set({ scale: rows });
       closeModal();
       showToast('บันทึกเกณฑ์เกรดสำเร็จ');
-      renderReportTab(document.getElementById('course-tab-body'), course);
+      renderReportTab(document.getElementById('course-tab-body'), course, section);
     });
   }
   draw();
