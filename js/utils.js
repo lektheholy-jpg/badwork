@@ -1,0 +1,84 @@
+// ==========================================================================
+// Utils: toast, modal, csv parsing, debounce, grade calculation
+// ==========================================================================
+
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+function openModal(html) {
+  const root = document.getElementById('modal-root');
+  root.innerHTML = `<div class="modal-backdrop" id="modal-backdrop"><div class="modal">${html}</div></div>`;
+  document.getElementById('modal-backdrop').addEventListener('click', (e) => {
+    if (e.target.id === 'modal-backdrop') closeModal();
+  });
+}
+function closeModal() {
+  document.getElementById('modal-root').innerHTML = '';
+}
+
+function debounce(fn, ms) {
+  let t;
+  return (...args) => {
+    clearTimeout(t);
+    t = setTimeout(() => fn(...args), ms);
+  };
+}
+
+function escapeHtml(str) {
+  return String(str ?? '').replace(/[&<>"']/g, (c) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
+}
+
+// แยกข้อความ CSV หรือข้อความที่ copy มาจาก Excel (คั่นด้วย comma หรือ tab)
+function parseDelimitedText(text) {
+  const lines = text.trim().split(/\r?\n/).filter(l => l.trim().length > 0);
+  return lines.map(line => {
+    const delim = line.includes('\t') ? '\t' : ',';
+    return line.split(delim).map(c => c.trim());
+  });
+}
+
+// เกณฑ์เกรดเริ่มต้น (ครูปรับเองได้ในหน้าตั้งค่ารายวิชา)
+const DEFAULT_GRADE_SCALE = [
+  { grade: '4.0', min: 80 },
+  { grade: '3.5', min: 75 },
+  { grade: '3.0', min: 70 },
+  { grade: '2.5', min: 65 },
+  { grade: '2.0', min: 60 },
+  { grade: '1.5', min: 55 },
+  { grade: '1.0', min: 50 },
+  { grade: '0', min: 0 },
+];
+
+function calcGrade(total, scale) {
+  const s = (scale && scale.length ? scale : DEFAULT_GRADE_SCALE)
+    .slice()
+    .sort((a, b) => b.min - a.min);
+  for (const row of s) {
+    if (total >= row.min) return row.grade;
+  }
+  return s.length ? s[s.length - 1].grade : '0';
+}
+
+function downloadCsv(filename, rows) {
+  const csv = rows.map(r => r.map(cell => {
+    const v = String(cell ?? '');
+    return /[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
+  }).join(',')).join('\r\n');
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function uid4() {
+  return Math.random().toString(36).slice(2, 6) + Date.now().toString(36).slice(-4);
+}
