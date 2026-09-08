@@ -1,5 +1,5 @@
 // ==========================================================================
-// Score entry: spreadsheet-style grid with autosave
+// Score entry: spreadsheet-style grid, grouped columns, autosave
 // ==========================================================================
 
 async function renderScoresTab(container, course) {
@@ -20,6 +20,12 @@ async function renderScoresTab(container, course) {
   scoresSnap.docs.forEach(d => { scores[d.id] = d.data(); });
   const gradeScale = gradingDoc.exists ? gradingDoc.data().scale : DEFAULT_GRADE_SCALE;
 
+  const collectItems = assessments.filter(a => a.category === 'collect');
+  const midItems = assessments.filter(a => a.category === 'midterm');
+  const finalItems = assessments.filter(a => a.category === 'final');
+  const collectMax = collectItems.reduce((s, a) => s + (Number(a.max) || 0), 0);
+  const maxTotal = assessments.reduce((s, a) => s + (Number(a.max) || 0), 0);
+
   if (assessments.length === 0) {
     container.innerHTML = `<div class="card"><div class="empty-state"><div class="icon">🧮</div>กรุณากำหนดโครงสร้างคะแนนก่อนเริ่มบันทึกคะแนน</div></div>`;
     return;
@@ -28,8 +34,6 @@ async function renderScoresTab(container, course) {
     container.innerHTML = `<div class="card"><div class="empty-state"><div class="icon">👨‍🎓</div>กรุณาเพิ่มรายชื่อนักเรียนก่อนเริ่มบันทึกคะแนน</div></div>`;
     return;
   }
-
-  const maxTotal = assessments.reduce((s, a) => s + (Number(a.max) || 0), 0);
 
   container.innerHTML = `
     <div class="toolbar">
@@ -42,21 +46,26 @@ async function renderScoresTab(container, course) {
       <table class="sheet" id="score-sheet">
         <thead>
           <tr>
-            <th>เลขที่</th>
-            <th>นักเรียน</th>
-            ${assessments.map(a => `<th title="${CATEGORY_LABELS[a.category] || ''}">${escapeHtml(a.name)}<br><span style="font-weight:400;">/${a.max}</span></th>`).join('')}
-            <th>รวม</th>
-            <th>เกรด</th>
+            <th rowspan="2">เลขที่</th>
+            <th rowspan="2">นักเรียน</th>
+            ${collectItems.length ? `<th class="grp-label grp-collect" colspan="${collectItems.length}">คะแนนเก็บ</th>` : ''}
+            <th rowspan="2" class="grp-collect-total">รวมเก็บ<br><span style="font-weight:400;">/${collectMax}</span></th>
+            ${midItems.map(a => `<th rowspan="2" class="grp-mid">${escapeHtml(a.name)}<br><span style="font-weight:400;">/${a.max}</span></th>`).join('')}
+            ${finalItems.map(a => `<th rowspan="2" class="grp-final">${escapeHtml(a.name)}<br><span style="font-weight:400;">/${a.max}</span></th>`).join('')}
+            <th rowspan="2">รวม<br><span style="font-weight:400;">/${maxTotal}</span></th>
+            <th rowspan="2">เกรด</th>
+          </tr>
+          <tr>
+            ${collectItems.map(a => `<th class="grp-collect">${escapeHtml(a.name)}<br><span style="font-weight:400;">/${a.max}</span></th>`).join('')}
           </tr>
         </thead>
         <tbody id="score-tbody">
-          ${students.map(s => renderScoreRow(s, assessments, scores[s.id] || {}, maxTotal, gradeScale)).join('')}
+          ${students.map(s => renderScoreRow(s, collectItems, midItems, finalItems, scores[s.id] || {}, collectMax, maxTotal, gradeScale)).join('')}
         </tbody>
       </table>
     </div>
   `;
 
-  // search filter
   document.getElementById('student-search').addEventListener('input', debounce((e) => {
     const q = e.target.value.trim().toLowerCase();
     document.querySelectorAll('#score-tbody tr').forEach(row => {
@@ -65,31 +74,39 @@ async function renderScoresTab(container, course) {
     });
   }, 150));
 
-  wireScoreInputs(container, course, students, assessments, scores, maxTotal, gradeScale);
+  wireScoreInputs(container, course, students, collectItems, midItems, finalItems, scores, collectMax, maxTotal, gradeScale);
 }
 
-function renderScoreRow(student, assessments, studentScores, maxTotal, gradeScale) {
-  const total = assessments.reduce((s, a) => s + (Number(studentScores[a.id]) || 0), 0);
+function renderScoreRow(student, collectItems, midItems, finalItems, studentScores, collectMax, maxTotal, gradeScale) {
+  const collectSum = collectItems.reduce((s, a) => s + (Number(studentScores[a.id]) || 0), 0);
+  const midSum = midItems.reduce((s, a) => s + (Number(studentScores[a.id]) || 0), 0);
+  const finalSum = finalItems.reduce((s, a) => s + (Number(studentScores[a.id]) || 0), 0);
+  const total = collectSum + midSum + finalSum;
   const grade = calcGrade(total, gradeScale);
   const searchText = `${student.no} ${student.code} ${student.firstName} ${student.lastName}`.toLowerCase();
+
+  const cellFor = (a) => `
+    <td class="grp-${a.category === 'collect' ? 'collect' : a.category === 'midterm' ? 'mid' : 'final'}" data-assessment-id="${a.id}">
+      <input class="score-input" type="number" min="0" max="${a.max}"
+             value="${studentScores[a.id] ?? ''}"
+             data-student-id="${student.id}" data-assessment-id="${a.id}" data-max="${a.max}">
+    </td>`;
+
   return `
     <tr data-student-id="${student.id}" data-searchtext="${escapeHtml(searchText)}">
       <td class="name-cell">${escapeHtml(student.no)}</td>
-      <td class="name-cell">${escapeHtml(student.firstName)} ${escapeHtml(student.lastName)}</td>
-      ${assessments.map(a => `
-        <td data-assessment-id="${a.id}">
-          <input class="score-input" type="number" min="0" max="${a.max}"
-                 value="${studentScores[a.id] ?? ''}"
-                 data-student-id="${student.id}" data-assessment-id="${a.id}" data-max="${a.max}">
-        </td>
-      `).join('')}
+      <td class="name-cell">${escapeHtml(student.firstName)} ${escapeHtml(student.lastName)}<div class="name-sub">${escapeHtml(student.code || '')}</div></td>
+      ${collectItems.map(cellFor).join('')}
+      <td class="total-cell grp-collect-total" data-collect-for="${student.id}">${collectSum}</td>
+      ${midItems.map(cellFor).join('')}
+      ${finalItems.map(cellFor).join('')}
       <td class="total-cell" data-total-for="${student.id}">${total}/${maxTotal}</td>
       <td class="total-cell" data-grade-for="${student.id}"><span class="badge badge-neutral">${grade}</span></td>
     </tr>
   `;
 }
 
-function wireScoreInputs(container, course, students, assessments, scores, maxTotal, gradeScale) {
+function wireScoreInputs(container, course, students, collectItems, midItems, finalItems, scores, collectMax, maxTotal, gradeScale) {
   const uid = AppState.user.uid;
   const base = db.collection('users').doc(uid).collection('courses').doc(course.id);
   const statusEl = document.getElementById('save-status');
@@ -109,8 +126,13 @@ function wireScoreInputs(container, course, students, assessments, scores, maxTo
 
   function recalcRow(studentId) {
     const row = container.querySelector(`tr[data-student-id="${studentId}"]`);
-    let total = 0;
-    row.querySelectorAll('.score-input').forEach(inp => { total += Number(inp.value) || 0; });
+    let collectSum = 0, total = 0;
+    row.querySelectorAll('.score-input').forEach(inp => {
+      const val = Number(inp.value) || 0;
+      total += val;
+      if (collectItems.some(a => a.id === inp.dataset.assessmentId)) collectSum += val;
+    });
+    row.querySelector(`[data-collect-for="${studentId}"]`).textContent = collectSum;
     row.querySelector(`[data-total-for="${studentId}"]`).textContent = `${total}/${maxTotal}`;
     const grade = calcGrade(total, gradeScale);
     row.querySelector(`[data-grade-for="${studentId}"]`).innerHTML = `<span class="badge badge-neutral">${grade}</span>`;
@@ -118,7 +140,7 @@ function wireScoreInputs(container, course, students, assessments, scores, maxTo
 
   const inputs = [...container.querySelectorAll('.score-input')];
 
-  inputs.forEach((inp, idx) => {
+  inputs.forEach((inp) => {
     inp.addEventListener('input', () => {
       const max = Number(inp.dataset.max);
       const val = Number(inp.value);
@@ -128,38 +150,33 @@ function wireScoreInputs(container, course, students, assessments, scores, maxTo
     });
 
     inp.addEventListener('keydown', (e) => {
-      // Tab / Enter navigation between cells, like a spreadsheet
       const row = inp.closest('tr');
       const cellsInRow = [...row.querySelectorAll('.score-input')];
       const colIndex = cellsInRow.indexOf(inp);
+      const rows = () => [...container.querySelectorAll('#score-tbody tr')].filter(r => r.style.display !== 'none');
 
       if (e.key === 'Enter') {
         e.preventDefault();
-        const rows = [...container.querySelectorAll('#score-tbody tr')].filter(r => r.style.display !== 'none');
-        const rowIndex = rows.indexOf(row);
-        const nextRow = rows[rowIndex + 1];
-        if (nextRow) nextRow.querySelectorAll('.score-input')[colIndex]?.focus();
+        const rs = rows(); const rowIndex = rs.indexOf(row);
+        rs[rowIndex + 1]?.querySelectorAll('.score-input')[colIndex]?.focus();
       } else if (e.key === 'ArrowRight' && inp.selectionStart === inp.value.length) {
         cellsInRow[colIndex + 1]?.focus();
       } else if (e.key === 'ArrowLeft' && inp.selectionStart === 0) {
         cellsInRow[colIndex - 1]?.focus();
       } else if (e.key === 'ArrowDown') {
         e.preventDefault();
-        const rows = [...container.querySelectorAll('#score-tbody tr')].filter(r => r.style.display !== 'none');
-        const rowIndex = rows.indexOf(row);
-        rows[rowIndex + 1]?.querySelectorAll('.score-input')[colIndex]?.focus();
+        const rs = rows(); const rowIndex = rs.indexOf(row);
+        rs[rowIndex + 1]?.querySelectorAll('.score-input')[colIndex]?.focus();
       } else if (e.key === 'ArrowUp') {
         e.preventDefault();
-        const rows = [...container.querySelectorAll('#score-tbody tr')].filter(r => r.style.display !== 'none');
-        const rowIndex = rows.indexOf(row);
-        rows[rowIndex - 1]?.querySelectorAll('.score-input')[colIndex]?.focus();
+        const rs = rows(); const rowIndex = rs.indexOf(row);
+        rs[rowIndex - 1]?.querySelectorAll('.score-input')[colIndex]?.focus();
       }
     });
 
-    // paste หลายช่องพร้อมกัน (วางจาก Excel)
     inp.addEventListener('paste', (e) => {
       const text = (e.clipboardData || window.clipboardData).getData('text');
-      if (!text.includes('\t') && !text.includes('\n')) return; // ปล่อยให้ paste ปกติถ้าเป็นค่าเดียว
+      if (!text.includes('\t') && !text.includes('\n')) return;
       e.preventDefault();
       const grid = parseDelimitedText(text);
       const row = inp.closest('tr');
