@@ -9,9 +9,11 @@ service cloud.firestore {
       match /courses/{courseId} {
         allow read, write: if request.auth != null && request.auth.uid == uid;
 
-        // ครอบคลุมทุก subcollection ใต้รายวิชา (students, assessments, scores, settings, ...)
-        // ใช้ wildcard แบบ recursive กันลืมเพิ่ม match ทุกครั้งที่มี collection ใหม่
-        match /{subcollection}/{docId} {
+        // ครอบคลุมทุก subcollection ใต้รายวิชา แบบ "recursive" จริง ๆ (ลึกกี่ชั้นก็ได้)
+        // เช่น courses/{id}/sections/{id}/students/{id}, courses/{id}/sections/{id}/scores/{id}
+        // เดิมใช้ match /{subcollection}/{docId} ซึ่งลึกได้แค่ 1 ชั้น ทำให้ sections/{id}/students/{id}
+        // (ลึก 2 ชั้นจาก courses) ไม่เข้าเงื่อนไข เกิด "Missing or insufficient permissions"
+        match /{document=**} {
           allow read, write: if request.auth != null && request.auth.uid == uid;
         }
       }

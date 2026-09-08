@@ -2,7 +2,7 @@
 // Courses: list, create (with room/section picker), detail shell (tabs)
 // ==========================================================================
 
-function openCreateCourseModal() {
+function openCreateCourseModal(onCreated) {
   openModal(`
     <h2>สร้างรายวิชา</h2>
     <div class="modal-sub">กรอกข้อมูลพื้นฐานของรายวิชา — ตั้งครั้งเดียว ใช้ได้ทุกห้อง แก้ไขภายหลังได้</div>
@@ -103,7 +103,8 @@ function openCreateCourseModal() {
 
     closeModal();
     showToast(`สร้างรายวิชาสำเร็จ (${rooms.length} ห้อง)`);
-    openCourse(courseRef.id);
+    if (onCreated) onCreated(courseRef.id);
+    else openCourse(courseRef.id);
   });
 }
 
@@ -115,14 +116,16 @@ async function renderCoursesList() {
   const courses = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
   view.innerHTML = `
-    <div class="page-header" style="display:flex; align-items:center; justify-content:space-between;">
-      <div>
-        <h1>รายวิชาของฉัน</h1>
-        <div class="sub">รายวิชาทั้งหมดที่คุณสอนในปีการศึกษานี้</div>
-      </div>
-      <button class="btn btn-primary" id="new-course-btn">+ สร้างรายวิชา</button>
+    <div class="page-header">
+      <h1>รายวิชาของฉัน</h1>
+      <div class="sub">รายวิชาทั้งหมดที่คุณสอนในปีการศึกษานี้ — สร้าง/ลบรายวิชาและห้องเรียนได้ที่หน้า ⚙️ ตั้งค่าโครงสร้างวิชา</div>
     </div>
-    ${courses.length === 0 ? `<div class="card"><div class="empty-state"><div class="icon">📚</div>ยังไม่มีรายวิชา</div></div>` : `
+    ${courses.length === 0 ? `
+      <div class="card"><div class="empty-state">
+        <div class="icon">📚</div>
+        <div>ยังไม่มีรายวิชา ไปที่หน้า ⚙️ ตั้งค่าโครงสร้างวิชา เพื่อสร้างรายวิชาแรกของคุณ</div>
+      </div></div>
+    ` : `
       <div class="course-list">
         ${courses.map(c => `
           <div class="course-row" data-course-id="${c.id}">
@@ -131,23 +134,14 @@ async function renderCoursesList() {
               <div class="name">${escapeHtml(c.name)}</div>
               <div class="meta">${escapeHtml(c.code || '')} • ${escapeHtml(c.level || '')} • ${c.roomCount || 0} ห้อง • ภาคเรียน ${escapeHtml(c.semester || '-')}/${escapeHtml(c.year || '-')}</div>
             </div>
-            <button class="btn btn-danger-ghost btn-sm del-course-btn" data-course-id="${c.id}" data-course-name="${escapeHtml(c.name)}" title="ลบรายวิชา">ลบ</button>
             <button class="btn btn-ghost btn-sm">เปิดรายวิชา</button>
           </div>
         `).join('')}
       </div>
     `}
   `;
-  document.getElementById('new-course-btn').addEventListener('click', openCreateCourseModal);
   view.querySelectorAll('.course-row').forEach(row => {
     row.addEventListener('click', () => openCourse(row.dataset.courseId));
-  });
-  view.querySelectorAll('.del-course-btn').forEach(btn => {
-    btn.addEventListener('click', async (e) => {
-      e.stopPropagation();
-      await confirmDeleteCourse({ id: btn.dataset.courseId, name: btn.dataset.courseName });
-      renderCoursesList();
-    });
   });
 }
 
@@ -199,24 +193,15 @@ async function renderCourseShell() {
       <div class="sub">${escapeHtml(course.level || '')} • ภาคเรียน ${escapeHtml(course.semester || '-')}/${escapeHtml(course.year || '-')} • ${sections.length} ห้อง</div>
     </div>
 
-    <div class="page-actions">
-      <button class="btn btn-danger-ghost btn-sm" id="delete-course-btn">🗑️ ลบรายวิชานี้</button>
-    </div>
-
     ${sections.length > 0 ? `
       <div class="room-pills" id="room-pills">
         ${sections.map(s => `
-          <div class="room-pill-wrap">
-            <button class="room-pill ${s.id === AppState.currentSectionId ? 'active' : ''}" data-section-id="${s.id}">ห้อง ${escapeHtml(s.room)}</button>
-            <button class="room-pill-del" data-section-id="${s.id}" data-room-label="${escapeHtml(s.room)}" title="ลบห้องนี้">×</button>
-          </div>
+          <button class="room-pill ${s.id === AppState.currentSectionId ? 'active' : ''}" data-section-id="${s.id}" style="padding:7px 14px;">ห้อง ${escapeHtml(s.room)}</button>
         `).join('')}
-        <button class="room-pill room-pill-add" id="add-room-btn">+ เพิ่มห้อง</button>
       </div>
     ` : `
-      <div class="card card-pad" style="margin-bottom:16px; display:flex; align-items:center; justify-content:space-between;">
-        <div class="empty-state" style="padding:0; text-align:left;">ยังไม่มีห้องเรียนในวิชานี้</div>
-        <button class="btn btn-primary btn-sm" id="add-room-btn">+ เพิ่มห้อง</button>
+      <div class="card card-pad" style="margin-bottom:16px;">
+        <div class="empty-state" style="padding:0; text-align:left;">ยังไม่มีห้องเรียนในวิชานี้ — ไปเพิ่มห้องได้ที่หน้า ⚙️ ตั้งค่าโครงสร้างวิชา</div>
       </div>
     `}
 
@@ -227,18 +212,10 @@ async function renderCourseShell() {
   `;
 
   document.getElementById('back-to-courses').addEventListener('click', (e) => { e.preventDefault(); navigate('courses'); });
-  document.getElementById('add-room-btn').addEventListener('click', () => openAddRoomModal(course));
-  document.getElementById('delete-course-btn').addEventListener('click', () => confirmDeleteCourse(course));
   view.querySelectorAll('.room-pill[data-section-id]').forEach(p => {
     p.addEventListener('click', () => {
       AppState.currentSectionId = p.dataset.sectionId;
       renderCourseShell();
-    });
-  });
-  view.querySelectorAll('.room-pill-del').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      confirmDeleteSection(course, btn.dataset.sectionId, btn.dataset.roomLabel);
     });
   });
   view.querySelectorAll('.tab').forEach(t => {
@@ -261,7 +238,7 @@ async function renderCourseShell() {
   else if (AppState.currentTab === 'report') renderReportTab(body, course, section);
 }
 
-function openAddRoomModal(course) {
+function openAddRoomModal(course, onDone) {
   openModal(`
     <h2>เพิ่มห้องเรียน</h2>
     <div class="modal-sub">เพิ่มห้องใหม่ให้วิชา ${escapeHtml(course.name)} — ใช้โครงสร้างคะแนนเดียวกับห้องอื่น</div>
@@ -283,11 +260,12 @@ function openAddRoomModal(course) {
     await courseRef.update({ roomCount: firebase.firestore.FieldValue.increment(1) });
     closeModal();
     showToast('เพิ่มห้องสำเร็จ');
-    renderCourseShell();
+    if (onDone) onDone();
+    else renderCourseShell();
   });
 }
 
-async function confirmDeleteSection(course, sectionId, roomLabel) {
+async function confirmDeleteSection(course, sectionId, roomLabel, onDone) {
   if (AppState.sections.length <= 1) {
     if (!confirm(`ห้อง ${roomLabel} เป็นห้องเดียวที่เหลืออยู่ในวิชานี้ ต้องการลบหรือไม่? (นักเรียนและคะแนนในห้องนี้จะหายไปด้วย)`)) return;
   } else {
@@ -305,10 +283,11 @@ async function confirmDeleteSection(course, sectionId, roomLabel) {
 
   if (AppState.currentSectionId === sectionId) AppState.currentSectionId = null;
   showToast('ลบห้องสำเร็จ');
-  renderCourseShell();
+  if (onDone) onDone();
+  else renderCourseShell();
 }
 
-async function confirmDeleteCourse(course) {
+async function confirmDeleteCourse(course, onDone) {
   const step1 = confirm(`ลบรายวิชา "${course.name}"? การลบจะรวมทุกห้อง นักเรียน คะแนน และโครงสร้างคะแนนของวิชานี้ทั้งหมด และกู้คืนไม่ได้`);
   if (!step1) return;
   const step2 = prompt(`เพื่อยืนยัน พิมพ์ชื่อวิชา "${course.name}" ให้ตรงกันแล้วกดตกลง`);
@@ -330,7 +309,8 @@ async function confirmDeleteCourse(course) {
   await courseRef.delete();
 
   showToast('ลบรายวิชาสำเร็จ');
-  navigate('courses');
+  if (onDone) onDone();
+  else navigate('courses');
 }
 
 async function renderCourseOverview(container, course, sections) {

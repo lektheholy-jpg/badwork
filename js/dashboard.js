@@ -54,14 +54,12 @@ async function renderDashboard() {
 
     <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
       <h2 style="font-size:15px; font-weight:700;">รายวิชาของฉัน</h2>
-      <button class="btn btn-primary btn-sm" id="dash-create-course">+ สร้างรายวิชา</button>
     </div>
 
     ${courses.length === 0 ? `
       <div class="card"><div class="empty-state">
         <div class="icon">📚</div>
-        <div>ยังไม่มีรายวิชา เริ่มสร้างรายวิชาแรกของคุณได้เลย</div>
-        <div style="margin-top:14px;"><button class="btn btn-primary" id="dash-create-course-2">+ สร้างรายวิชา</button></div>
+        <div>ยังไม่มีรายวิชา ไปที่หน้า ⚙️ ตั้งค่าโครงสร้างวิชา เพื่อสร้างรายวิชาแรกของคุณ</div>
       </div></div>
     ` : `
       <div class="course-list">
@@ -74,7 +72,6 @@ async function renderDashboard() {
             </div>
             <div class="progress-bar"><div class="fill" style="width:${c.progress}%"></div></div>
             <div class="progress-pct">${c.progress}%</div>
-            <button class="btn btn-danger-ghost btn-sm del-course-btn" data-course-id="${c.id}" data-course-name="${escapeHtml(c.name)}" title="ลบรายวิชา">ลบ</button>
             <button class="btn btn-ghost btn-sm">เปิดรายวิชา</button>
           </div>
         `).join('')}
@@ -85,15 +82,4 @@ async function renderDashboard() {
   view.querySelectorAll('.course-row').forEach(row => {
     row.addEventListener('click', () => openCourse(row.dataset.courseId));
   });
-  view.querySelectorAll('.del-course-btn').forEach(btn => {
-    btn.addEventListener('click', async (e) => {
-      e.stopPropagation();
-      await confirmDeleteCourse({ id: btn.dataset.courseId, name: btn.dataset.courseName });
-      renderDashboard();
-    });
-  });
-  const c1 = document.getElementById('dash-create-course');
-  const c2 = document.getElementById('dash-create-course-2');
-  if (c1) c1.addEventListener('click', openCreateCourseModal);
-  if (c2) c2.addEventListener('click', openCreateCourseModal);
 }
