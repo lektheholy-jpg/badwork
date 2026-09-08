@@ -74,6 +74,7 @@ async function renderDashboard() {
             </div>
             <div class="progress-bar"><div class="fill" style="width:${c.progress}%"></div></div>
             <div class="progress-pct">${c.progress}%</div>
+            <button class="btn btn-danger-ghost btn-sm del-course-btn" data-course-id="${c.id}" data-course-name="${escapeHtml(c.name)}" title="ลบรายวิชา">ลบ</button>
             <button class="btn btn-ghost btn-sm">เปิดรายวิชา</button>
           </div>
         `).join('')}
@@ -83,6 +84,13 @@ async function renderDashboard() {
 
   view.querySelectorAll('.course-row').forEach(row => {
     row.addEventListener('click', () => openCourse(row.dataset.courseId));
+  });
+  view.querySelectorAll('.del-course-btn').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      await confirmDeleteCourse({ id: btn.dataset.courseId, name: btn.dataset.courseName });
+      renderDashboard();
+    });
   });
   const c1 = document.getElementById('dash-create-course');
   const c2 = document.getElementById('dash-create-course-2');

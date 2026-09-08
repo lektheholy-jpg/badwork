@@ -48,8 +48,10 @@ async function renderStudentsTab(container, course, section) {
   container.querySelectorAll('.del-student').forEach(btn => {
     btn.addEventListener('click', async (e) => {
       const row = e.target.closest('tr');
-      if (!confirm('ลบนักเรียนคนนี้ออกจากห้อง?')) return;
-      await sectionRef(uid, course.id, section.id).collection('students').doc(row.dataset.id).delete();
+      if (!confirm('ลบนักเรียนคนนี้ออกจากห้อง? คะแนนของนักเรียนคนนี้จะถูกลบไปด้วย')) return;
+      const secBase = sectionRef(uid, course.id, section.id);
+      await secBase.collection('students').doc(row.dataset.id).delete();
+      await secBase.collection('scores').doc(row.dataset.id).delete().catch(() => {}); // อาจไม่มีคะแนนอยู่แล้ว
       renderStudentsTab(container, course, section);
     });
   });

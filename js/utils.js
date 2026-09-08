@@ -100,6 +100,20 @@ function uid4() {
   return Math.random().toString(36).slice(2, 6) + Date.now().toString(36).slice(-4);
 }
 
+// ลบทุก doc ใน collection แบบ batch (Firestore client ไม่มี recursive delete ในตัว)
+// ใช้ตอนลบห้อง/ลบวิชา ที่ต้องเคลียร์ subcollection ก่อนลบ doc แม่
+async function deleteCollectionDocs(colRef) {
+  const snap = await colRef.get();
+  if (snap.empty) return;
+  const docs = snap.docs;
+  const CHUNK = 400; // เผื่อ margin จากลิมิต batch 500 ops ของ Firestore
+  for (let i = 0; i < docs.length; i += CHUNK) {
+    const batch = db.batch();
+    docs.slice(i, i + CHUNK).forEach(d => batch.delete(d.ref));
+    await batch.commit();
+  }
+}
+
 // ---------- Mobile nav (hamburger drawer) ----------
 function openMobileNav() {
   document.getElementById('app')?.classList.add('nav-open');

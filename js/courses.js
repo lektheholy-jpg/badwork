@@ -131,6 +131,7 @@ async function renderCoursesList() {
               <div class="name">${escapeHtml(c.name)}</div>
               <div class="meta">${escapeHtml(c.code || '')} • ${escapeHtml(c.level || '')} • ${c.roomCount || 0} ห้อง • ภาคเรียน ${escapeHtml(c.semester || '-')}/${escapeHtml(c.year || '-')}</div>
             </div>
+            <button class="btn btn-danger-ghost btn-sm del-course-btn" data-course-id="${c.id}" data-course-name="${escapeHtml(c.name)}" title="ลบรายวิชา">ลบ</button>
             <button class="btn btn-ghost btn-sm">เปิดรายวิชา</button>
           </div>
         `).join('')}
@@ -140,6 +141,13 @@ async function renderCoursesList() {
   document.getElementById('new-course-btn').addEventListener('click', openCreateCourseModal);
   view.querySelectorAll('.course-row').forEach(row => {
     row.addEventListener('click', () => openCourse(row.dataset.courseId));
+  });
+  view.querySelectorAll('.del-course-btn').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      await confirmDeleteCourse({ id: btn.dataset.courseId, name: btn.dataset.courseName });
+      renderCoursesList();
+    });
   });
 }
 
@@ -191,9 +199,18 @@ async function renderCourseShell() {
       <div class="sub">${escapeHtml(course.level || '')} • ภาคเรียน ${escapeHtml(course.semester || '-')}/${escapeHtml(course.year || '-')} • ${sections.length} ห้อง</div>
     </div>
 
+    <div class="page-actions">
+      <button class="btn btn-danger-ghost btn-sm" id="delete-course-btn">🗑️ ลบรายวิชานี้</button>
+    </div>
+
     ${sections.length > 0 ? `
       <div class="room-pills" id="room-pills">
-        ${sections.map(s => `<button class="room-pill ${s.id === AppState.currentSectionId ? 'active' : ''}" data-section-id="${s.id}">ห้อง ${escapeHtml(s.room)}</button>`).join('')}
+        ${sections.map(s => `
+          <div class="room-pill-wrap">
+            <button class="room-pill ${s.id === AppState.currentSectionId ? 'active' : ''}" data-section-id="${s.id}">ห้อง ${escapeHtml(s.room)}</button>
+            <button class="room-pill-del" data-section-id="${s.id}" data-room-label="${escapeHtml(s.room)}" title="ลบห้องนี้">×</button>
+          </div>
+        `).join('')}
         <button class="room-pill room-pill-add" id="add-room-btn">+ เพิ่มห้อง</button>
       </div>
     ` : `
@@ -211,10 +228,17 @@ async function renderCourseShell() {
 
   document.getElementById('back-to-courses').addEventListener('click', (e) => { e.preventDefault(); navigate('courses'); });
   document.getElementById('add-room-btn').addEventListener('click', () => openAddRoomModal(course));
+  document.getElementById('delete-course-btn').addEventListener('click', () => confirmDeleteCourse(course));
   view.querySelectorAll('.room-pill[data-section-id]').forEach(p => {
     p.addEventListener('click', () => {
       AppState.currentSectionId = p.dataset.sectionId;
       renderCourseShell();
+    });
+  });
+  view.querySelectorAll('.room-pill-del').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      confirmDeleteSection(course, btn.dataset.sectionId, btn.dataset.roomLabel);
     });
   });
   view.querySelectorAll('.tab').forEach(t => {
@@ -261,6 +285,52 @@ function openAddRoomModal(course) {
     showToast('เพิ่มห้องสำเร็จ');
     renderCourseShell();
   });
+}
+
+async function confirmDeleteSection(course, sectionId, roomLabel) {
+  if (AppState.sections.length <= 1) {
+    if (!confirm(`ห้อง ${roomLabel} เป็นห้องเดียวที่เหลืออยู่ในวิชานี้ ต้องการลบหรือไม่? (นักเรียนและคะแนนในห้องนี้จะหายไปด้วย)`)) return;
+  } else {
+    if (!confirm(`ลบห้อง ${roomLabel}? นักเรียนและคะแนนทั้งหมดในห้องนี้จะถูกลบไปด้วย และกู้คืนไม่ได้`)) return;
+  }
+  const uid = AppState.user.uid;
+  const courseRef = db.collection('users').doc(uid).collection('courses').doc(course.id);
+  const secRef = courseRef.collection('sections').doc(sectionId);
+
+  showToast('กำลังลบห้อง...');
+  await deleteCollectionDocs(secRef.collection('scores'));
+  await deleteCollectionDocs(secRef.collection('students'));
+  await secRef.delete();
+  await courseRef.update({ roomCount: firebase.firestore.FieldValue.increment(-1) });
+
+  if (AppState.currentSectionId === sectionId) AppState.currentSectionId = null;
+  showToast('ลบห้องสำเร็จ');
+  renderCourseShell();
+}
+
+async function confirmDeleteCourse(course) {
+  const step1 = confirm(`ลบรายวิชา "${course.name}"? การลบจะรวมทุกห้อง นักเรียน คะแนน และโครงสร้างคะแนนของวิชานี้ทั้งหมด และกู้คืนไม่ได้`);
+  if (!step1) return;
+  const step2 = prompt(`เพื่อยืนยัน พิมพ์ชื่อวิชา "${course.name}" ให้ตรงกันแล้วกดตกลง`);
+  if (step2 !== course.name) { showToast('ชื่อวิชาไม่ตรงกัน ยกเลิกการลบ'); return; }
+
+  const uid = AppState.user.uid;
+  const courseRef = db.collection('users').doc(uid).collection('courses').doc(course.id);
+
+  showToast('กำลังลบรายวิชา...');
+  const sectionsSnap = await courseRef.collection('sections').get();
+  for (const secDoc of sectionsSnap.docs) {
+    const secRef = secDoc.ref;
+    await deleteCollectionDocs(secRef.collection('scores'));
+    await deleteCollectionDocs(secRef.collection('students'));
+    await secRef.delete();
+  }
+  await deleteCollectionDocs(courseRef.collection('assessments'));
+  await deleteCollectionDocs(courseRef.collection('settings'));
+  await courseRef.delete();
+
+  showToast('ลบรายวิชาสำเร็จ');
+  navigate('courses');
 }
 
 async function renderCourseOverview(container, course, sections) {
