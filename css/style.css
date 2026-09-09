@@ -558,6 +558,14 @@ table.sheet td.grp-mid { background: var(--col-mid); }
 table.sheet td.grp-final { background: var(--col-final); }
 table.sheet th.grp-collect-total { background: var(--col-collect-strong); color: #fff; }
 table.sheet td.grp-collect-total { background: var(--col-collect-strong); color: #fff; font-weight: 700; font-family: var(--font-mono); }
+/* บั๊ก: กฎ "แถวคู่" ด้านบน (tr:nth-child(even) td) specificity สูงกว่า .grp-collect/.grp-mid/.grp-final/.grp-collect-total
+   เฉยๆ (คลาสเท่ากันแต่ type selector มากกว่า) เลยไปทับสีพื้นหลังของคอลัมน์กลุ่มคะแนนในแถวคู่ กลายเป็นขาวซีด
+   ทำให้ตัวเลขสีขาวในคอลัมน์ "รวมเก็บ" มองไม่เห็นจนกว่าจะเอาเมาส์ไปชี้ (:hover ไปแก้พื้นหลังกลับมาเอง) — ต้อง
+   ประกาศทับแถวคู่ตรงๆ ให้คอลัมน์กลุ่มคะแนนคงสีเดิมเสมอ ไม่ว่าจะเป็นแถวคู่หรือคี่ */
+table.sheet tbody tr:nth-child(even) td.grp-collect { background: var(--col-collect); }
+table.sheet tbody tr:nth-child(even) td.grp-mid { background: var(--col-mid); }
+table.sheet tbody tr:nth-child(even) td.grp-final { background: var(--col-final); }
+table.sheet tbody tr:nth-child(even) td.grp-collect-total { background: var(--col-collect-strong); }
 
 /* Category band header (row 1): strong color + white text, always readable */
 table.sheet th.grp-label {
