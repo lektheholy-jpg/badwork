@@ -10,35 +10,6 @@ async function loadCourseOptions() {
   return snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(c => !c.archived);
 }
 
-function courseSelectorHtml(courses, selectedId, selectId) {
-  if (courses.length === 0) {
-    return `<div class="card"><div class="empty-state"><div class="icon">📚</div>ยังไม่มีรายวิชา กรุณาสร้างรายวิชาก่อน</div></div>`;
-  }
-  return `
-    <div class="card card-pad picker-bar">
-      <div class="picker-label">เลือกรายวิชา</div>
-      <select id="${selectId}" class="picker-select">
-        ${courses.map(c => `<option value="${c.id}" ${c.id === selectedId ? 'selected' : ''}>${escapeHtml(c.code ? c.code + ' - ' : '')}${escapeHtml(c.name)}${c.level ? ' (' + escapeHtml(c.level) + ')' : ''}</option>`).join('')}
-      </select>
-      <span class="picker-note">ภาคเรียน ${escapeHtml(courses.find(c => c.id === selectedId)?.semester || '-')}/${escapeHtml(courses.find(c => c.id === selectedId)?.year || '-')}</span>
-    </div>
-  `;
-}
-
-function roomSelectorHtml(sections, selectedId, selectId) {
-  if (sections.length === 0) {
-    return `<div class="card"><div class="empty-state"><div class="icon">🏫</div>วิชานี้ยังไม่มีห้องเรียน กรุณาเพิ่มห้องในหน้ารายวิชาก่อน</div></div>`;
-  }
-  return `
-    <div class="card card-pad picker-bar">
-      <div class="picker-label">เลือกห้อง</div>
-      <select id="${selectId}" class="picker-select picker-select-sm">
-        ${sections.map(s => `<option value="${s.id}" ${s.id === selectedId ? 'selected' : ''}>ห้อง ${escapeHtml(s.room)}</option>`).join('')}
-      </select>
-    </div>
-  `;
-}
-
 // รหัสวิชาใช้เป็นคีย์หลักในการเรียงและอ้างอิงในหน้านี้ — โหลดวิชา "ทั้งหมด"
 // (รวมที่ปิดใช้งาน/เก็บเข้าคลังแล้ว) เพื่อให้ครูเปิด/ปิดใช้งานได้จากลิสต์เดียว
 async function loadAllCoursesForStructure() {
@@ -244,48 +215,160 @@ async function renderStructureEditor(view, courseId) {
   renderStructureTab(document.getElementById('structure-page-body'), course);
 }
 
+// ==========================================================================
+// หน้าบันทึกคะแนน: เลือกด้วยการ์ดแบบเดียวกับหน้าแรก จัดกลุ่มตามระดับชั้น
+// แล้วตามด้วยรายวิชา — เลือกห้องแล้วเข้าสู่ตารางบันทึกคะแนนทันที
+// ==========================================================================
+
+async function loadScoresPickerCards(courses) {
+  const uid = AppState.user.uid;
+  const cards = []; // { course, sections: [{section, studentCount, progress}] }
+  for (const course of courses) {
+    const sections = await loadSections(uid, course.id);
+    const secInfos = await Promise.all(sections.map(async (s) => {
+      const secBase = db.collection('users').doc(uid).collection('courses').doc(course.id).collection('sections').doc(s.id);
+      const [studentsSnap, scoresSnap] = await Promise.all([
+        secBase.collection('students').get(),
+        secBase.collection('scores').get(),
+      ]);
+      const progress = studentsSnap.size > 0 ? Math.round((scoresSnap.size / studentsSnap.size) * 100) : 0;
+      return { section: s, studentCount: studentsSnap.size, progress };
+    }));
+    cards.push({ course, sections: secInfos });
+  }
+  return cards;
+}
+
+function scoresPickerGroupsHtml(cards) {
+  const groups = LEVEL_OPTIONS.map(level => ({ level, cards: cards.filter(c => c.course.level === level) }))
+    .filter(g => g.cards.length > 0);
+  const noLevel = cards.filter(c => !LEVEL_OPTIONS.includes(c.course.level));
+  if (noLevel.length > 0) groups.push({ level: null, cards: noLevel });
+
+  return `
+    <div class="struct-groups">
+      ${groups.map(g => {
+        const col = getLevelColor(g.level);
+        return `
+          <div class="struct-group">
+            <div class="struct-group-header" style="background:${col.tint}; color:${col.strong};">
+              <span class="struct-group-title">${g.level ? g.level : 'ไม่ระบุระดับชั้น'}</span>
+              <span class="struct-group-count">${g.cards.length} วิชา</span>
+            </div>
+            <div class="scores-subject-list">
+              ${g.cards.map(c => scoresSubjectBlockHtml(c)).join('')}
+            </div>
+          </div>
+        `;
+      }).join('')}
+    </div>
+  `;
+}
+
+function scoresSubjectBlockHtml({ course, sections }) {
+  const col = getLevelColor(course.level);
+  return `
+    <div class="scores-subject-block">
+      <div class="scores-subject-title" style="border-left:4px solid ${col.strong};">
+        <span class="struct-code" style="color:${col.strong};">${escapeHtml(course.code || 'ไม่มีรหัส')}</span>
+        <span class="struct-course-name">${escapeHtml(course.name)}</span>
+      </div>
+      ${sections.length === 0 ? `
+        <div class="empty-state" style="padding:10px 0 0; text-align:left;">วิชานี้ยังไม่มีห้องเรียน</div>
+      ` : `
+        <div class="section-card-grid">
+          ${sections.map(({ section, studentCount, progress }) => `
+            <div class="section-card" data-course-id="${course.id}" data-section-id="${section.id}">
+              <div class="section-card-top">
+                <span class="course-dot" style="background:${course.color || col.strong}"></span>
+                <span class="section-card-room">ห้อง ${escapeHtml(section.room)}</span>
+              </div>
+              <div class="section-card-name">${escapeHtml(course.name)}</div>
+              <div class="section-card-meta">${studentCount} คน</div>
+              <div class="progress-bar"><div class="fill" style="width:${progress}%; background:${course.color || col.strong}"></div></div>
+              <div class="section-card-pct">${progress}% บันทึกแล้ว</div>
+            </div>
+          `).join('')}
+        </div>
+      `}
+    </div>
+  `;
+}
+
 async function renderScoresPage() {
   const view = document.getElementById('view');
   view.innerHTML = `<div class="empty-state">กำลังโหลด...</div>`;
-  const courses = await loadCourseOptions();
-  AppState.pickerCourses = courses;
-  const selectedId = AppState.scoresPageCourseId || courses[0]?.id || null;
-  AppState.scoresPageCourseId = selectedId;
+
+  const selCourseId = AppState.scoresPageCourseId;
+  const selSectionId = AppState.scoresPageSectionId;
+
+  // ยังไม่ได้เลือกวิชา/ห้อง (หรือกด "เลือกวิชาอื่น") -> แสดงการ์ดเลือกแยกชั้น/วิชา แบบหน้าแรก
+  if (!selCourseId || !selSectionId) {
+    const courses = await loadCourseOptions();
+    AppState.pickerCourses = courses;
+
+    if (courses.length === 0) {
+      view.innerHTML = `
+        <div class="page-header">
+          <h1>📝 บันทึกคะแนน</h1>
+          <div class="sub">บันทึกคะแนนรายบุคคลแบบตาราง พร้อมคำนวณรวมและเกรดอัตโนมัติ</div>
+        </div>
+        <div class="card"><div class="empty-state"><div class="icon">📚</div>ยังไม่มีรายวิชา กรุณาสร้างรายวิชาก่อน</div></div>
+      `;
+      return;
+    }
+
+    const cards = await loadScoresPickerCards(courses);
+    view.innerHTML = `
+      <div class="page-header">
+        <h1>📝 บันทึกคะแนน</h1>
+        <div class="sub">เลือกรายวิชาและห้องที่ต้องการบันทึกคะแนน</div>
+      </div>
+      ${scoresPickerGroupsHtml(cards)}
+    `;
+
+    view.querySelectorAll('.section-card').forEach(card => {
+      card.addEventListener('click', () => {
+        AppState.scoresPageCourseId = card.dataset.courseId;
+        AppState.scoresPageSectionId = card.dataset.sectionId;
+        renderScoresPage();
+      });
+    });
+    return;
+  }
+
+  // เลือกแล้ว -> แสดงตารางบันทึกคะแนน พร้อมทางกลับไปเลือกวิชา/ห้องอื่น
+  const uid = AppState.user.uid;
+  const courseDoc = await db.collection('users').doc(uid).collection('courses').doc(selCourseId).get();
+  if (!courseDoc.exists) {
+    AppState.scoresPageCourseId = null;
+    AppState.scoresPageSectionId = null;
+    return renderScoresPage();
+  }
+  const course = { id: courseDoc.id, ...courseDoc.data() };
+  const sections = await loadSections(uid, course.id);
+  const section = sections.find(s => s.id === selSectionId);
+  if (!section) {
+    AppState.scoresPageCourseId = null;
+    AppState.scoresPageSectionId = null;
+    return renderScoresPage();
+  }
 
   view.innerHTML = `
+    <div class="crumb"><a href="#" id="scores-back-to-picker" style="text-decoration:none; color:inherit;">📝 บันทึกคะแนน</a> / <b>${escapeHtml(course.code ? course.code + ' - ' : '')}${escapeHtml(course.name)} • ห้อง ${escapeHtml(section.room)}</b></div>
     <div class="page-header">
-      <h1>📝 บันทึกคะแนน</h1>
-      <div class="sub">บันทึกคะแนนรายบุคคลแบบตาราง พร้อมคำนวณรวมและเกรดอัตโนมัติ</div>
+      <h1>${escapeHtml(course.code ? course.code + ' • ' : '')}${escapeHtml(course.name)}</h1>
+      <div class="sub">${escapeHtml(course.level || '')} • ห้อง ${escapeHtml(section.room)} • บันทึกคะแนนรายบุคคลแบบตาราง พร้อมคำนวณรวมและเกรดอัตโนมัติ</div>
     </div>
-    ${courseSelectorHtml(courses, selectedId, 'scores-course-select')}
-    <div id="scores-room-selector"></div>
     <div id="scores-page-body"></div>
   `;
 
-  if (!selectedId) return;
-  const sel = document.getElementById('scores-course-select');
-  sel.addEventListener('change', () => {
-    AppState.scoresPageCourseId = sel.value;
+  document.getElementById('scores-back-to-picker').addEventListener('click', (e) => {
+    e.preventDefault();
+    AppState.scoresPageCourseId = null;
     AppState.scoresPageSectionId = null;
     renderScoresPage();
   });
 
-  const course = courses.find(c => c.id === selectedId);
-  const uid = AppState.user.uid;
-  const sections = await loadSections(uid, course.id);
-  const selectedSectionId = AppState.scoresPageSectionId && sections.some(s => s.id === AppState.scoresPageSectionId)
-    ? AppState.scoresPageSectionId : (sections[0]?.id || null);
-  AppState.scoresPageSectionId = selectedSectionId;
-
-  document.getElementById('scores-room-selector').innerHTML = roomSelectorHtml(sections, selectedSectionId, 'scores-room-select');
-  if (!selectedSectionId) return;
-
-  const roomSel = document.getElementById('scores-room-select');
-  roomSel.addEventListener('change', () => {
-    AppState.scoresPageSectionId = roomSel.value;
-    renderScoresPage();
-  });
-
-  const section = sections.find(s => s.id === selectedSectionId);
   renderScoresTab(document.getElementById('scores-page-body'), course, section);
 }
