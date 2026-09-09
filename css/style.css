@@ -6,43 +6,43 @@
    by color and weight rather than hairline borders.
    ========================================================================== */
 :root {
-  --bg: #F3F4FA;
+  --bg: #F7F7F9;
   --surface: #FFFFFF;
-  --surface-sunken: #EBEDF6;
-  --primary: #3B32E0;
-  --primary-dark: #26208F;
-  --primary-tint: #E8E6FC;
-  --ink: #12142B;
-  --ink-soft: #6A6E8C;
-  --border: #DFE1EE;
-  --success: #0EA968;
-  --success-tint: #DEF7EB;
-  --warning: #E88A00;
-  --warning-tint: #FCEBCF;
-  --danger: #E23D34;
-  --danger-tint: #FCE3E0;
+  --surface-sunken: #F1F1F4;
+  --primary: #4A4A68;
+  --primary-dark: #33334A;
+  --primary-tint: #ECECF1;
+  --ink: #2A2A35;
+  --ink-soft: #85859A;
+  --border: #E7E7EC;
+  --success: #4E9E77;
+  --success-tint: #E7F3ED;
+  --warning: #C1873C;
+  --warning-tint: #F6ECDD;
+  --danger: #C15B54;
+  --danger-tint: #F5E7E5;
   --radius-s: 8px;
-  --radius-m: 16px;
-  --shadow: 0 10px 30px rgba(18, 20, 43, 0.14);
+  --radius-m: 14px;
+  --shadow: 0 8px 24px rgba(30, 30, 40, 0.08);
   --font: 'Noto Sans Thai', system-ui, sans-serif;
   --font-head: 'IBM Plex Sans Thai', 'Noto Sans Thai', system-ui, sans-serif;
   --font-mono: 'IBM Plex Mono', monospace;
 
-  --col-collect: #EDEBFD;
-  --col-collect-strong: #3B32E0;
-  --col-mid: #E1F3FF;
-  --col-mid-strong: #0091D6;
-  --col-final: #FFF0DE;
-  --col-final-strong: #E88A00;
+  --col-collect: #F1F0F6;
+  --col-collect-strong: #6C6C95;
+  --col-mid: #EEF3F5;
+  --col-mid-strong: #5C8A9B;
+  --col-final: #F6F1E9;
+  --col-final-strong: #B08A4E;
 
   --sidebar-bg: #FFFFFF;
-  --sidebar-hover: #F3F3FA;
+  --sidebar-hover: #F5F5F8;
   --sidebar-w: 240px;
   --sidebar-w-collapsed: 78px;
 }
 
 * { box-sizing: border-box; }
-html, body { height: 100%; }
+html, body { height: 100%; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 body {
   margin: 0;
   font-family: var(--font);
@@ -246,6 +246,19 @@ a { color: inherit; }
 .course-row .info { flex: 1; min-width: 0; }
 .course-row .name { font-weight: 700; font-size: 14.5px; }
 .course-row .meta { font-size: 12.5px; color: var(--ink-soft); margin-top: 2px; }
+/* ---------- Dashboard charts ---------- */
+.chart-row { display: grid; grid-template-columns: 1.3fr 1fr; gap: 16px; margin: 18px 0 26px; }
+.chart-card { padding: 18px 18px 14px; }
+.chart-title { font-size: 13px; font-weight: 700; color: var(--ink-soft); margin-bottom: 14px; }
+.donut-wrap { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+.donut-legend { display: flex; flex-direction: column; gap: 8px; }
+.donut-legend-item { font-size: 12px; color: var(--ink-soft); font-weight: 600; display: flex; align-items: center; gap: 7px; }
+.donut-legend-item .dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+.donut-legend-item b { color: var(--ink); font-weight: 700; }
+@media (max-width: 860px) {
+  .chart-row { grid-template-columns: 1fr; }
+}
+
 .progress-bar { width: 140px; height: 7px; border-radius: 4px; background: var(--surface-sunken); overflow: hidden; }
 .progress-bar .fill { height: 100%; background: var(--primary); }
 .progress-pct { font-family: var(--font-mono); font-size: 12px; color: var(--ink-soft); width: 34px; text-align: right; }
@@ -369,15 +382,17 @@ table.sheet th {
   position: sticky; top: 0; z-index: 2;
   background: var(--ink);
   color: #fff;
-  text-align: center; padding: 9px 10px;
+  text-align: center; padding: 0 8px;
   font-size: 12px; font-weight: 700;
-  line-height: 1.35;
+  line-height: 1.3;
   white-space: nowrap;
   border-bottom: 1px solid rgba(255,255,255,0.12);
+  height: 32px;
+  transform: translateZ(0);
 }
-table.sheet th span.max { display: block; font-weight: 500; font-size: 10.5px; opacity: .75; margin-top: 1px; }
-table.sheet thead tr:first-child th { top: 0; }
-table.sheet thead tr:last-child th { top: 34px; }
+table.sheet th span.max { display: block; font-weight: 500; font-size: 10px; opacity: .75; }
+table.sheet thead tr:first-child th { top: 0; height: 26px; }
+table.sheet thead tr:last-child th { top: 26px; height: 38px; }
 
 table.sheet td {
   padding: 0;
@@ -458,12 +473,13 @@ table.sheet th.grp-label.grp-final { background: var(--col-final-strong); }
 .sheet .sticky-col-1, .sheet .sticky-col-2, .sheet .sticky-col-3,
 .sheet .sticky-right-1, .sheet .sticky-right-2 {
   position: sticky; z-index: 1;
+  transform: translateZ(0);
 }
-.sheet .sticky-col-1 { left: 0; width: 44px; min-width: 44px; }
-.sheet .sticky-col-2 { left: 44px; width: 70px; min-width: 70px; }
-.sheet .sticky-col-3 { left: 114px; width: 172px; min-width: 172px; max-width: 172px; box-shadow: 2px 0 6px rgba(18,20,43,0.06); }
-.sheet .sticky-right-1 { right: 68px; width: 90px; min-width: 90px; }
-.sheet .sticky-right-2 { right: 0; width: 68px; min-width: 68px; box-shadow: -2px 0 6px rgba(18,20,43,0.06); }
+.sheet .sticky-col-1 { left: 0; width: 34px; min-width: 34px; }
+.sheet .sticky-col-2 { left: 34px; width: 56px; min-width: 56px; }
+.sheet .sticky-col-3 { left: 90px; width: 130px; min-width: 130px; max-width: 130px; box-shadow: 2px 0 6px rgba(18,20,43,0.06); }
+.sheet .sticky-right-1 { right: 56px; width: 74px; min-width: 74px; }
+.sheet .sticky-right-2 { right: 0; width: 56px; min-width: 56px; box-shadow: -2px 0 6px rgba(18,20,43,0.06); }
 table.sheet thead th.sticky-col-1,
 table.sheet thead th.sticky-col-2,
 table.sheet thead th.sticky-col-3,
@@ -650,11 +666,15 @@ table.sheet tbody tr:nth-child(even) td.sticky-col-3 { background: #FAFAFD; }
 
   .sheet-scroll-hint { display: flex; }
   .sheet-wrap { max-height: 68vh; }
-  .sheet .sticky-col-2 { width: 58px; min-width: 58px; }
-  .sheet .sticky-col-3 { left: 102px; width: 130px; min-width: 130px; max-width: 130px; }
-  .sheet .sticky-right-1 { right: 60px; width: 78px; min-width: 78px; }
-  .sheet .sticky-right-2 { width: 60px; min-width: 60px; }
-  table.sheet td.name-cell { padding: 9px 8px; font-size: 13px; }
+  .sheet .sticky-col-1 { width: 26px; min-width: 26px; }
+  .sheet .sticky-col-2 { left: 26px; width: 44px; min-width: 44px; }
+  .sheet .sticky-col-3 { left: 70px; width: 96px; min-width: 96px; max-width: 96px; }
+  .sheet .sticky-right-1 { right: 50px; width: 66px; min-width: 66px; }
+  .sheet .sticky-right-2 { width: 50px; min-width: 50px; }
+  table.sheet td.name-cell { padding: 7px 6px; font-size: 12.5px; }
+  table.sheet td { min-width: 40px; }
+  table.sheet th { padding: 0 4px; font-size: 10.5px; }
+  table.sheet td input.score-input { font-size: 12px; padding: 5px 2px; }
 }
 
 @media (max-width: 480px) {
