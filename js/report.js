@@ -15,6 +15,7 @@ async function renderReportTab(container, course, section) {
     courseBase.collection('settings').doc('grading').get(),
   ]);
   const students = studentsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+  students.sort((a, b) => (Number(a.no) || 0) - (Number(b.no) || 0));
   const assessments = assessSnap.docs.map(d => ({ id: d.id, ...d.data() }));
   const scores = {};
   scoresSnap.docs.forEach(d => { scores[d.id] = d.data(); });

@@ -438,12 +438,15 @@ table.sheet td input.score-input:focus {
   box-shadow: 0 0 0 4px var(--primary-tint) inset;
 }
 
-table.sheet td.total-cell { font-family: var(--font-mono); font-weight: 700; text-align: center; background: var(--ink); color: #fff; padding: 10px 6px; }
+table.sheet td.total-cell.sticky-right-1 { font-family: var(--font-mono); font-weight: 700; text-align: center; background: var(--ink); color: #fff; padding: 10px 6px; }
+table.sheet td.total-cell.sticky-right-2 { background: #fff; padding: 10px 6px; text-align: center; }
+table.sheet tbody tr:nth-child(even) td.total-cell.sticky-right-2 { background: #FAFAFD; }
 table.sheet td.over-max { background: var(--danger-tint) !important; }
 table.sheet td.over-max input { color: var(--danger); }
 
 table.sheet tbody tr:hover td { background: var(--surface-sunken); }
-table.sheet tbody tr:hover td.total-cell { background: var(--ink); }
+table.sheet tbody tr:hover td.total-cell.sticky-right-1 { background: var(--ink); }
+table.sheet tbody tr:hover td.total-cell.sticky-right-2 { background: #F1F1FA; }
 table.sheet tbody tr:hover td.grp-collect-total { background: var(--col-collect-strong); }
 table.sheet tbody tr:hover td.sticky-col-1,
 table.sheet tbody tr:hover td.sticky-col-2,
@@ -458,7 +461,7 @@ table.sheet td.grp-collect { background: var(--col-collect); }
 table.sheet td.grp-mid { background: var(--col-mid); }
 table.sheet td.grp-final { background: var(--col-final); }
 table.sheet th.grp-collect-total { background: var(--col-collect-strong); color: #fff; }
-table.sheet td.grp-collect-total { background: var(--col-collect-strong); color: #fff; font-weight: 700; }
+table.sheet td.grp-collect-total { background: var(--col-collect-strong); color: #fff; font-weight: 700; font-family: var(--font-mono); }
 
 /* Category band header (row 1): strong color + white text, always readable */
 table.sheet th.grp-label {
@@ -487,12 +490,12 @@ table.sheet thead th.sticky-right-1,
 table.sheet thead th.sticky-right-2 { z-index: 3; }
 table.sheet tbody td.sticky-col-1,
 table.sheet tbody td.sticky-col-2,
-table.sheet tbody td.sticky-col-3,
-table.sheet tbody td.sticky-right-1,
-table.sheet tbody td.sticky-right-2 { background: #fff; }
+table.sheet tbody td.sticky-col-3 { background: #fff; }
 table.sheet tbody tr:nth-child(even) td.sticky-col-1,
 table.sheet tbody tr:nth-child(even) td.sticky-col-2,
 table.sheet tbody tr:nth-child(even) td.sticky-col-3 { background: #FAFAFD; }
+/* sticky-right-1/2 intentionally NOT reset to white here — total-cell/grade-cell
+   need to keep their own dark/badge backgrounds at all times, not just on hover */
 
 /* ---------- Grade badges (color-coded by grade level, easy to scan) ---------- */
 .badge-grade-good { background: var(--success-tint); color: var(--success); }
@@ -666,15 +669,15 @@ table.sheet tbody tr:nth-child(even) td.sticky-col-3 { background: #FAFAFD; }
 
   .sheet-scroll-hint { display: flex; }
   .sheet-wrap { max-height: 68vh; }
-  .sheet .sticky-col-1 { width: 26px; min-width: 26px; }
-  .sheet .sticky-col-2 { left: 26px; width: 44px; min-width: 44px; }
-  .sheet .sticky-col-3 { left: 70px; width: 96px; min-width: 96px; max-width: 96px; }
-  .sheet .sticky-right-1 { right: 50px; width: 66px; min-width: 66px; }
-  .sheet .sticky-right-2 { width: 50px; min-width: 50px; }
+  .sheet .sticky-col-1 { display: none; }
+  .sheet .sticky-col-2 { left: 0; width: 52px; min-width: 52px; }
+  .sheet .sticky-col-3 { left: 52px; width: 118px; min-width: 118px; max-width: 118px; }
+  .sheet .sticky-right-1 { right: 52px; width: 72px; min-width: 72px; }
+  .sheet .sticky-right-2 { width: 52px; min-width: 52px; }
   table.sheet td.name-cell { padding: 7px 6px; font-size: 12.5px; }
-  table.sheet td { min-width: 40px; }
+  table.sheet td { min-width: 54px; }
   table.sheet th { padding: 0 4px; font-size: 10.5px; }
-  table.sheet td input.score-input { font-size: 12px; padding: 5px 2px; }
+  table.sheet td input.score-input { font-size: 13px; padding: 8px 2px; min-height: 40px; }
 }
 
 @media (max-width: 480px) {

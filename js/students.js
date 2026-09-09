@@ -12,6 +12,7 @@ async function renderStudentsTab(container, course, section) {
   const uid = AppState.user.uid;
   const snap = await sectionRef(uid, course.id, section.id).collection('students').orderBy('no', 'asc').get();
   const students = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  students.sort((a, b) => (Number(a.no) || 0) - (Number(b.no) || 0));
 
   container.innerHTML = `
     <div class="toolbar">
