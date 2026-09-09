@@ -123,21 +123,20 @@ function openCourseSection(courseId, sectionId) {
 
 function renderProgressChart(courses) {
   if (!courses.length) return `<div class="empty-state" style="padding:20px 0;">ยังไม่มีข้อมูล</div>`;
-  const rowH = 30;
-  const height = courses.length * rowH + 10;
-  const rows = courses.map((c, i) => {
-    const y = i * rowH + 6;
-    const w = Math.max(2, (c.progress || 0));
-    const color = c.color || 'var(--primary)';
-    return `
-      <g>
-        <text x="0" y="${y + 13}" font-size="11" fill="var(--ink-soft)" font-weight="600">${escapeHtml(truncateLabel(c.name, 14))}</text>
-        <rect x="0" y="${y + 18}" width="100%" height="6" rx="3" fill="var(--surface-sunken)"></rect>
-        <rect x="0" y="${y + 18}" width="${w}%" height="6" rx="3" fill="${color}"></rect>
-        <text x="100%" y="${y + 13}" font-size="11" fill="var(--ink)" font-weight="700" text-anchor="end">${c.progress || 0}%</text>
-      </g>`;
-  }).join('');
-  return `<svg viewBox="0 0 300 ${height}" width="100%" height="${height}" preserveAspectRatio="none" style="overflow:visible;">${rows}</svg>`;
+  return `
+    <div class="progress-chart-list">
+      ${courses.map(c => `
+        <div class="progress-chart-row">
+          <div class="progress-chart-label" title="${escapeHtml(c.name)}">
+            <span class="progress-chart-dot" style="background:${c.color || 'var(--primary)'}"></span>
+            <span class="progress-chart-label-text">${escapeHtml(c.name)}</span>
+          </div>
+          <div class="progress-bar"><div class="fill" style="width:${c.progress || 0}%; background:${c.color || 'var(--primary)'}"></div></div>
+          <div class="progress-pct" style="color:${c.color || 'var(--primary)'};">${c.progress || 0}%</div>
+        </div>
+      `).join('')}
+    </div>
+  `;
 }
 
 function renderStudentDonut(courses, totalStudents) {

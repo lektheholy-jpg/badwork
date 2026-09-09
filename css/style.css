@@ -270,8 +270,22 @@ a { color: inherit; }
 .section-card-pct { font-size: 11.5px; color: var(--ink-soft); font-weight: 600; margin-top: 6px; }
 
 .progress-bar { width: 140px; height: 7px; border-radius: 4px; background: var(--surface-sunken); overflow: hidden; }
-.progress-bar .fill { height: 100%; background: var(--primary); }
+.progress-bar .fill { height: 100%; background: var(--primary); border-radius: 4px; transition: width .25s ease; }
 .progress-pct { font-family: var(--font-mono); font-size: 12px; color: var(--ink-soft); width: 34px; text-align: right; }
+
+/* ---------- Dashboard: "ความคืบหน้าการบันทึกคะแนนต่อวิชา" list (replaces old cramped inline-SVG chart) ---------- */
+.progress-chart-list { display: flex; flex-direction: column; gap: 16px; }
+.progress-chart-row { display: flex; align-items: center; gap: 14px; }
+.progress-chart-label {
+  flex: 1 1 42%; min-width: 0;
+  display: flex; align-items: center; gap: 9px;
+  font-size: 13px; font-weight: 700; color: var(--ink);
+}
+.progress-chart-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+.progress-chart-label-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.progress-chart-row .progress-bar { flex: 1 1 auto; width: auto; height: 9px; border-radius: 5px; }
+.progress-chart-row .progress-bar .fill { border-radius: 5px; }
+.progress-chart-row .progress-pct { flex: 0 0 auto; width: 40px; font-weight: 700; font-size: 12.5px; }
 
 /* ---------- Buttons / forms ---------- */
 .btn {
@@ -464,6 +478,11 @@ table.sheet th {
 table.sheet th span.max { display: block; font-weight: 500; font-size: 10px; opacity: .75; }
 table.sheet thead tr:first-child th { top: 0; height: 26px; }
 table.sheet thead tr:last-child th { top: 26px; height: 38px; }
+
+/* ตารางแบบหัวแถวเดียว (เช่น รายชื่อนักเรียน) — "ห้ามใช้กติกา 2 แถวหัวตาราง" ของตารางคะแนน
+   เพราะ tr เดียวกันจะแมตช์ทั้ง :first-child และ :last-child พร้อมกัน ทำให้ top เพี้ยนเป็น 26px
+   จนหัวตารางลอยไปกลางตารางแทนที่จะติดขอบบน ต้อง reset top ให้เป็น 0 เสมอ */
+table.sheet.sheet-simple thead th { top: 0 !important; height: 34px !important; }
 
 table.sheet td {
   padding: 0;
