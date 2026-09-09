@@ -139,6 +139,48 @@ function openCreateCourseModal(onCreated, sourceCourse = null) {
   });
 }
 
+// จัดกลุ่มรายวิชาตามระดับชั้นแบบเดียวกับหน้า "ตั้งค่าโครงสร้างวิชา" (สีอ่อนประจำระดับชั้น
+// ช่วยแยกสายตาเมื่อมีหลายวิชา) แต่ในหน้านี้แต่ละแถวกดแล้วเปิดเข้ารายวิชาได้เลย ไม่มีปุ่มแก้ไข/ลบ
+function courseListGroupsHtml(courses) {
+  const groups = LEVEL_OPTIONS.map(level => ({ level, courses: courses.filter(c => c.level === level) }))
+    .filter(g => g.courses.length > 0);
+  const noLevel = courses.filter(c => !LEVEL_OPTIONS.includes(c.level));
+  if (noLevel.length > 0) groups.push({ level: null, courses: noLevel });
+
+  return `
+    <div class="struct-groups">
+      ${groups.map(g => {
+        const col = getLevelColor(g.level);
+        return `
+          <div class="struct-group">
+            <div class="struct-group-header" style="background:${col.tint}; color:${col.strong};">
+              <span class="struct-group-title">${g.level ? g.level : 'ไม่ระบุระดับชั้น'}</span>
+              <span class="struct-group-count">${g.courses.length} วิชา</span>
+            </div>
+            <div class="course-list">
+              ${g.courses.map(c => courseRowHtml(c)).join('')}
+            </div>
+          </div>
+        `;
+      }).join('')}
+    </div>
+  `;
+}
+
+function courseRowHtml(c) {
+  const col = getLevelColor(c.level);
+  return `
+    <div class="course-row" data-course-id="${c.id}" style="border-left:4px solid ${c.color || col.strong};">
+      <div class="course-dot" style="background:${c.color || col.strong}"></div>
+      <div class="info">
+        <div class="name">${escapeHtml(c.code ? c.code + ' - ' : '')}${escapeHtml(c.name)}</div>
+        <div class="meta">${c.roomCount || 0} ห้อง • ภาคเรียน ${escapeHtml(c.semester || '-')}/${escapeHtml(c.year || '-')}</div>
+      </div>
+      <button class="btn btn-ghost btn-sm">เปิดรายวิชา</button>
+    </div>
+  `;
+}
+
 async function renderCoursesList() {
   const view = document.getElementById('view');
   view.innerHTML = `<div class="empty-state">กำลังโหลด...</div>`;
@@ -156,20 +198,7 @@ async function renderCoursesList() {
         <div class="icon">📚</div>
         <div>ยังไม่มีรายวิชา ไปที่หน้า ⚙️ ตั้งค่าโครงสร้างวิชา เพื่อสร้างรายวิชาแรกของคุณ</div>
       </div></div>
-    ` : `
-      <div class="course-list">
-        ${courses.map(c => `
-          <div class="course-row" data-course-id="${c.id}">
-            <div class="course-dot" style="background:${c.color || '#6B7A4F'}"></div>
-            <div class="info">
-              <div class="name">${escapeHtml(c.name)}</div>
-              <div class="meta">${escapeHtml(c.code || '')} • ${escapeHtml(c.level || '')} • ${c.roomCount || 0} ห้อง • ภาคเรียน ${escapeHtml(c.semester || '-')}/${escapeHtml(c.year || '-')}</div>
-            </div>
-            <button class="btn btn-ghost btn-sm">เปิดรายวิชา</button>
-          </div>
-        `).join('')}
-      </div>
-    `}
+    ` : courseListGroupsHtml(courses)}
   `;
   view.querySelectorAll('.course-row').forEach(row => {
     row.addEventListener('click', () => openCourse(row.dataset.courseId));
