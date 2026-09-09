@@ -94,44 +94,111 @@ function openAddOneStudentModal(course, section) {
 function openImportStudentsModal(course, section) {
   openModal(`
     <h2>นำเข้ารายชื่อนักเรียน</h2>
-    <div class="modal-sub">ห้อง ${escapeHtml(section.room)} — วางข้อมูลจาก Excel/CSV รูปแบบ: เลขที่, รหัสนักเรียน, ชื่อ, นามสกุล (คั่นด้วย comma หรือ tab)</div>
-    <div class="field">
-      <textarea id="import-text" rows="8" placeholder="1,16001,สมชาย,ใจดี&#10;2,16002,สมหญิง,รักเรียน"></textarea>
+    <div class="modal-sub">ห้อง ${escapeHtml(section.room)}</div>
+
+    <div class="room-mode-toggle">
+      <button type="button" class="room-mode-btn active" data-mode="file">อัปโหลดไฟล์ Excel/CSV</button>
+      <button type="button" class="room-mode-btn" data-mode="paste">วางข้อความ</button>
     </div>
+
+    <div id="import-mode-file">
+      <div class="field">
+        <input type="file" id="import-file" accept=".xlsx,.xls,.csv">
+        <div class="field-hint">รองรับไฟล์ที่มีคอลัมน์ เลขที่/ลำดับ, รหัสนักเรียน, ชื่อ (หรือ ชื่อ-สกุล), นามสกุล, ห้อง — ระบบจะพยายามจับคู่คอลัมน์ให้อัตโนมัติ ไม่จำเป็นต้องเรียงตำแหน่งเป๊ะ</div>
+      </div>
+    </div>
+    <div id="import-mode-paste" class="hidden">
+      <div class="field">
+        <textarea id="import-text" rows="8" placeholder="1,16001,สมชาย,ใจดี&#10;2,16002,สมหญิง,รักเรียน"></textarea>
+      </div>
+      <div class="field-hint" style="margin:-8px 0 12px;">รูปแบบ: เลขที่, รหัสนักเรียน, ชื่อ, นามสกุล (คั่นด้วย comma หรือ tab)</div>
+      <button class="btn btn-ghost btn-sm" id="preview-paste-btn">ตรวจสอบข้อมูล</button>
+    </div>
+
     <div id="preview-area"></div>
     <div class="modal-actions">
       <button class="btn btn-ghost" id="cancel-import">ยกเลิก</button>
-      <button class="btn btn-ghost" id="preview-import-btn">ตรวจสอบข้อมูล</button>
       <button class="btn btn-primary hidden" id="confirm-import-btn">นำเข้า</button>
     </div>
   `);
   document.getElementById('cancel-import').addEventListener('click', closeModal);
 
-  let parsedRows = [];
-  document.getElementById('preview-import-btn').addEventListener('click', () => {
-    const text = document.getElementById('import-text').value;
-    const rows = parseDelimitedText(text);
-    parsedRows = rows.map(r => ({ no: r[0] || '', code: r[1] || '', firstName: r[2] || '', lastName: r[3] || '' }));
+  const modeFileBtn = document.querySelector('.room-mode-btn[data-mode="file"]');
+  const modePasteBtn = document.querySelector('.room-mode-btn[data-mode="paste"]');
+  modeFileBtn.addEventListener('click', () => {
+    modeFileBtn.classList.add('active'); modePasteBtn.classList.remove('active');
+    document.getElementById('import-mode-file').classList.remove('hidden');
+    document.getElementById('import-mode-paste').classList.add('hidden');
+    resetPreview();
+  });
+  modePasteBtn.addEventListener('click', () => {
+    modePasteBtn.classList.add('active'); modeFileBtn.classList.remove('active');
+    document.getElementById('import-mode-paste').classList.remove('hidden');
+    document.getElementById('import-mode-file').classList.add('hidden');
+    resetPreview();
+  });
 
-    const codes = parsedRows.map(r => r.code).filter(Boolean);
+  let parsedRows = [];
+
+  function resetPreview() {
+    parsedRows = [];
+    document.getElementById('preview-area').innerHTML = '';
+    document.getElementById('confirm-import-btn').classList.add('hidden');
+  }
+
+  function showPreview(rows, meta) {
+    parsedRows = rows;
+    const codes = rows.map(r => r.code).filter(Boolean);
     const dupCodes = codes.filter((c, i) => codes.indexOf(c) !== i);
-    const emptyNames = parsedRows.filter(r => !r.firstName.trim()).length;
+    const emptyNames = rows.filter(r => !r.firstName.trim()).length;
 
     const checks = [
-      { ok: parsedRows.length > 0, text: `พบข้อมูล ${parsedRows.length} คน` },
+      { ok: rows.length > 0, text: `พบข้อมูล ${rows.length} คน` },
       { ok: dupCodes.length === 0, text: dupCodes.length === 0 ? 'ไม่มีรหัสซ้ำ' : `พบรหัสซ้ำ ${dupCodes.length} รายการ` },
       { ok: emptyNames === 0, text: emptyNames === 0 ? 'ไม่มีชื่อว่าง' : `พบชื่อว่าง ${emptyNames} รายการ` },
     ];
+    if (meta && meta.roomColumnFound) {
+      if (meta.matchedRoomCount > 0) {
+        checks.push({ ok: true, text: `กรองเฉพาะห้อง ${escapeHtml(section.room)} จากทั้งหมด ${meta.totalParsed} แถวในไฟล์` });
+      } else {
+        checks.push({ ok: false, text: `ไม่พบแถวที่ตรงกับห้อง ${escapeHtml(section.room)} ในคอลัมน์ห้อง — นำเข้าทั้งหมด ${meta.totalParsed} แถวแทน` });
+      }
+    }
 
     document.getElementById('preview-area').innerHTML = `
       <div class="card card-pad" style="margin-bottom:10px;">
         ${checks.map(c => `<div class="check-row ${c.ok ? 'ok' : 'warn'}">${c.ok ? '✓' : '✕'} ${c.text}</div>`).join('')}
       </div>
     `;
-    const canImport = parsedRows.length > 0 && dupCodes.length === 0 && emptyNames === 0;
+    const canImport = rows.length > 0 && dupCodes.length === 0 && emptyNames === 0;
     const confirmBtn = document.getElementById('confirm-import-btn');
     confirmBtn.classList.toggle('hidden', !canImport);
-    confirmBtn.textContent = `นำเข้า ${parsedRows.length} คน`;
+    confirmBtn.textContent = `นำเข้า ${rows.length} คน`;
+  }
+
+  document.getElementById('import-file').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    try {
+      const aoa = await readFileAsRows(file);
+      const result = parseImportSheet(aoa, section.room);
+      if (result.rows.length === 0) {
+        document.getElementById('preview-area').innerHTML = `<div class="card card-pad"><div class="check-row warn">✕ ไม่พบข้อมูลนักเรียนในไฟล์นี้ ลองตรวจสอบว่าไฟล์มีคอลัมน์ชื่อ/นามสกุลหรือไม่</div></div>`;
+        document.getElementById('confirm-import-btn').classList.add('hidden');
+        return;
+      }
+      showPreview(result.rows, result);
+    } catch (err) {
+      document.getElementById('preview-area').innerHTML = `<div class="card card-pad"><div class="check-row warn">✕ อ่านไฟล์ไม่สำเร็จ: ${escapeHtml(err.message || String(err))}</div></div>`;
+      document.getElementById('confirm-import-btn').classList.add('hidden');
+    }
+  });
+
+  document.getElementById('preview-paste-btn').addEventListener('click', () => {
+    const text = document.getElementById('import-text').value;
+    const aoa = parseDelimitedText(text);
+    const rows = aoa.map(r => ({ no: r[0] || '', code: r[1] || '', firstName: r[2] || '', lastName: r[3] || '' }));
+    showPreview(rows, null);
   });
 
   document.getElementById('confirm-import-btn').addEventListener('click', async () => {
@@ -140,7 +207,7 @@ function openImportStudentsModal(course, section) {
     const colRef = sectionRef(uid, course.id, section.id).collection('students');
     parsedRows.forEach(r => {
       const ref = colRef.doc();
-      batch.set(ref, r);
+      batch.set(ref, { no: r.no, code: r.code, firstName: r.firstName, lastName: r.lastName });
     });
     await batch.commit();
     closeModal();

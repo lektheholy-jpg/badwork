@@ -41,16 +41,16 @@
         <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9a1 1 0 0 0 1 1H9a1 1 0 0 0 1-1v-4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v4a1 1 0 0 0 1 1h2.5a1 1 0 0 0 1-1v-9"/></svg></span>
         <span class="nav-label">หน้าหลัก</span>
       </button>
-      <button class="nav-item" data-route="courses" data-tip="รายวิชาของฉัน">
-        <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6.7c-1.6-1.3-3.7-2-6.1-2-.6 0-1 .5-1 1.1v11.4c0 .6.4 1.1 1 1.1 2.4 0 4.5.7 6.1 2"/><path d="M12 6.7c1.6-1.3 3.7-2 6.1-2 .6 0 1 .5 1 1.1v11.4c0 .6-.4 1.1-1 1.1-2.4 0-4.5.7-6.1 2"/><path d="M12 6.7v13.5"/></svg></span>
-        <span class="nav-label">รายวิชาของฉัน</span>
-      </button>
 
       <div class="nav-divider"></div>
 
       <button class="nav-item" data-route="structure-page" data-tip="ตั้งค่าโครงสร้างวิชา">
         <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="8" x2="20" y2="8"/><circle cx="9" cy="8" r="2"/><line x1="4" y1="16" x2="20" y2="16"/><circle cx="15" cy="16" r="2"/></svg></span>
         <span class="nav-label">ตั้งค่าโครงสร้างวิชา</span>
+      </button>
+      <button class="nav-item" data-route="courses" data-tip="รายวิชาของฉัน">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6.7c-1.6-1.3-3.7-2-6.1-2-.6 0-1 .5-1 1.1v11.4c0 .6.4 1.1 1 1.1 2.4 0 4.5.7 6.1 2"/><path d="M12 6.7c1.6-1.3 3.7-2 6.1-2 .6 0 1 .5 1 1.1v11.4c0 .6-.4 1.1-1 1.1-2.4 0-4.5.7-6.1 2"/><path d="M12 6.7v13.5"/></svg></span>
+        <span class="nav-label">รายวิชาของฉัน</span>
       </button>
       <button class="nav-item" data-route="scores-page" data-tip="บันทึกคะแนน">
         <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></span>
@@ -95,6 +95,7 @@
 
 <script src="js/firebase-config.js"></script>
 <script src="js/utils.js"></script>
+<script src="js/vendor/xlsx.mini.min.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/dashboard.js"></script>
 <script src="js/courses.js"></script>
