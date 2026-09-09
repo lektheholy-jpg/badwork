@@ -41,26 +41,39 @@ async function renderScoresTab(container, course, section) {
   container.innerHTML = `
     <div class="toolbar">
       <div class="toolbar-left">
-        <span style="font-size:13px; color:var(--ink-soft); font-weight:600;">ห้อง ${escapeHtml(section.room)}</span>
+        <span class="badge badge-neutral" style="font-size:13px; padding:6px 12px;">ห้อง ${escapeHtml(section.room)}</span>
         <div class="search-box"><input id="student-search" placeholder="ค้นหานักเรียน..."></div>
       </div>
       <div class="save-status" id="save-status"><span class="dot"></span> บันทึกอัตโนมัติแล้ว</div>
     </div>
+
+    <div class="sheet-legend">
+      ${collectItems.length ? `<span class="lg-item"><span class="lg-dot collect"></span>คะแนนเก็บ</span>` : ''}
+      ${midItems.length ? `<span class="lg-item"><span class="lg-dot mid"></span>กลางภาค</span>` : ''}
+      ${finalItems.length ? `<span class="lg-item"><span class="lg-dot final"></span>ปลายภาค</span>` : ''}
+    </div>
+    <div class="sheet-scroll-hint">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="M16 21l4-4-4-4"/><path d="M20 17H4"/></svg>
+      เลื่อนซ้าย-ขวาเพื่อดูคะแนนทั้งหมด — ชื่อนักเรียนและคะแนนรวมจะติดหน้าจอไว้เสมอ
+    </div>
+
     <div class="sheet-wrap">
       <table class="sheet" id="score-sheet">
         <thead>
           <tr>
-            <th rowspan="2">เลขที่</th>
-            <th rowspan="2">นักเรียน</th>
-            ${collectItems.length ? `<th class="grp-label grp-collect" colspan="${collectItems.length}">คะแนนเก็บ</th>` : ''}
-            <th rowspan="2" class="grp-collect-total">รวมเก็บ<br><span style="font-weight:400;">/${collectMax}</span></th>
-            ${midItems.map(a => `<th rowspan="2" class="grp-mid">${escapeHtml(a.name)}<br><span style="font-weight:400;">/${a.max}</span></th>`).join('')}
-            ${finalItems.map(a => `<th rowspan="2" class="grp-final">${escapeHtml(a.name)}<br><span style="font-weight:400;">/${a.max}</span></th>`).join('')}
-            <th rowspan="2">รวม<br><span style="font-weight:400;">/${maxTotal}</span></th>
-            <th rowspan="2">เกรด</th>
+            <th rowspan="2" class="sticky-col-1">เลขที่</th>
+            <th rowspan="2" class="sticky-col-2" style="text-align:left;">นักเรียน</th>
+            ${collectItems.length ? `<th class="grp-label grp-collect" colspan="${collectItems.length + 1}">คะแนนเก็บ</th>` : ''}
+            ${midItems.length ? `<th class="grp-label grp-mid" colspan="${midItems.length}">กลางภาค</th>` : ''}
+            ${finalItems.length ? `<th class="grp-label grp-final" colspan="${finalItems.length}">ปลายภาค</th>` : ''}
+            <th rowspan="2" class="sticky-right-1">รวม<span class="max">/${maxTotal}</span></th>
+            <th rowspan="2" class="sticky-right-2">เกรด</th>
           </tr>
           <tr>
-            ${collectItems.map(a => `<th class="grp-collect">${escapeHtml(a.name)}<br><span style="font-weight:400;">/${a.max}</span></th>`).join('')}
+            ${collectItems.map(a => `<th class="grp-collect">${escapeHtml(a.name)}<span class="max">/${a.max}</span></th>`).join('')}
+            ${collectItems.length ? `<th class="grp-collect-total">รวมเก็บ<span class="max">/${collectMax}</span></th>` : ''}
+            ${midItems.map(a => `<th class="grp-mid">${escapeHtml(a.name)}<span class="max">/${a.max}</span></th>`).join('')}
+            ${finalItems.map(a => `<th class="grp-final">${escapeHtml(a.name)}<span class="max">/${a.max}</span></th>`).join('')}
           </tr>
         </thead>
         <tbody id="score-tbody">
@@ -81,6 +94,14 @@ async function renderScoresTab(container, course, section) {
   wireScoreInputs(container, course, section, students, collectItems, midItems, finalItems, scores, collectMax, maxTotal, gradeScale);
 }
 
+function gradeBadgeClass(grade) {
+  const val = parseFloat(grade);
+  if (isNaN(val)) return 'badge-neutral';
+  if (val >= 3) return 'badge-grade-good';
+  if (val >= 2) return 'badge-grade-mid';
+  return 'badge-grade-low';
+}
+
 function renderScoreRow(student, collectItems, midItems, finalItems, studentScores, collectMax, maxTotal, gradeScale) {
   const collectSum = collectItems.reduce((s, a) => s + (Number(studentScores[a.id]) || 0), 0);
   const midSum = midItems.reduce((s, a) => s + (Number(studentScores[a.id]) || 0), 0);
@@ -91,21 +112,21 @@ function renderScoreRow(student, collectItems, midItems, finalItems, studentScor
 
   const cellFor = (a) => `
     <td class="grp-${a.category === 'collect' ? 'collect' : a.category === 'midterm' ? 'mid' : 'final'}" data-assessment-id="${a.id}">
-      <input class="score-input" type="number" min="0" max="${a.max}"
+      <input class="score-input" type="number" min="0" max="${a.max}" placeholder="–"
              value="${studentScores[a.id] ?? ''}"
              data-student-id="${student.id}" data-assessment-id="${a.id}" data-max="${a.max}">
     </td>`;
 
   return `
     <tr data-student-id="${student.id}" data-searchtext="${escapeHtml(searchText)}">
-      <td class="name-cell">${escapeHtml(student.no)}</td>
-      <td class="name-cell">${escapeHtml(student.firstName)} ${escapeHtml(student.lastName)}<div class="name-sub">${escapeHtml(student.code || '')}</div></td>
+      <td class="name-cell no-cell sticky-col-1">${escapeHtml(student.no)}</td>
+      <td class="name-cell sticky-col-2">${escapeHtml(student.firstName)} ${escapeHtml(student.lastName)}<div class="name-sub">${escapeHtml(student.code || '')}</div></td>
       ${collectItems.map(cellFor).join('')}
       <td class="total-cell grp-collect-total" data-collect-for="${student.id}">${collectSum}</td>
       ${midItems.map(cellFor).join('')}
       ${finalItems.map(cellFor).join('')}
-      <td class="total-cell" data-total-for="${student.id}">${total}/${maxTotal}</td>
-      <td class="total-cell" data-grade-for="${student.id}"><span class="badge badge-neutral">${grade}</span></td>
+      <td class="total-cell sticky-right-1" data-total-for="${student.id}">${total}<span class="max" style="opacity:.65;">/${maxTotal}</span></td>
+      <td class="total-cell sticky-right-2" data-grade-for="${student.id}"><span class="badge ${gradeBadgeClass(grade)}">${grade}</span></td>
     </tr>
   `;
 }
@@ -137,9 +158,9 @@ function wireScoreInputs(container, course, section, students, collectItems, mid
       if (collectItems.some(a => a.id === inp.dataset.assessmentId)) collectSum += val;
     });
     row.querySelector(`[data-collect-for="${studentId}"]`).textContent = collectSum;
-    row.querySelector(`[data-total-for="${studentId}"]`).textContent = `${total}/${maxTotal}`;
+    row.querySelector(`[data-total-for="${studentId}"]`).innerHTML = `${total}<span class="max" style="opacity:.65;">/${maxTotal}</span>`;
     const grade = calcGrade(total, gradeScale);
-    row.querySelector(`[data-grade-for="${studentId}"]`).innerHTML = `<span class="badge badge-neutral">${grade}</span>`;
+    row.querySelector(`[data-grade-for="${studentId}"]`).innerHTML = `<span class="badge ${gradeBadgeClass(grade)}">${grade}</span>`;
   }
 
   const inputs = [...container.querySelectorAll('.score-input')];

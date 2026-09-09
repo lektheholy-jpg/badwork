@@ -344,50 +344,134 @@ a { color: inherit; }
 .tab.active { color: var(--primary); border-bottom-color: var(--primary); background: var(--surface); }
 
 /* ---------- Spreadsheet (score entry) ---------- */
-.sheet-wrap { overflow-x: auto; border-radius: var(--radius-m); background: #fff; -webkit-overflow-scrolling: touch; }
-table.sheet { border-collapse: collapse; width: 100%; font-size: 13.5px; }
-table.sheet th {
-  background: var(--ink);
-  color: rgba(255,255,255,0.72);
-  text-align: left; padding: 10px 10px;
-  font-size: 11.5px; font-weight: 700;
-  white-space: nowrap;
+.sheet-legend { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; margin: 0 0 12px; }
+.sheet-legend .lg-item { display: flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 700; color: var(--ink-soft); }
+.sheet-legend .lg-dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+.sheet-legend .lg-dot.collect { background: var(--col-collect-strong); }
+.sheet-legend .lg-dot.mid { background: var(--col-mid-strong); }
+.sheet-legend .lg-dot.final { background: var(--col-final-strong); }
+.sheet-scroll-hint {
+  display: none; align-items: center; gap: 6px;
+  font-size: 12px; color: var(--ink-soft); font-weight: 600;
+  margin-bottom: 8px;
 }
+.sheet-scroll-hint svg { width: 14px; height: 14px; flex-shrink: 0; }
+
+.sheet-wrap {
+  overflow: auto; border-radius: var(--radius-m); background: #fff;
+  -webkit-overflow-scrolling: touch;
+  max-height: 74vh;
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+table.sheet { border-collapse: separate; border-spacing: 0; width: 100%; font-size: 13.5px; }
+
+table.sheet th {
+  position: sticky; top: 0; z-index: 2;
+  background: var(--ink);
+  color: #fff;
+  text-align: center; padding: 9px 10px;
+  font-size: 12px; font-weight: 700;
+  line-height: 1.35;
+  white-space: nowrap;
+  border-bottom: 1px solid rgba(255,255,255,0.12);
+}
+table.sheet th span.max { display: block; font-weight: 500; font-size: 10.5px; opacity: .75; margin-top: 1px; }
+table.sheet thead tr:first-child th { top: 0; }
+table.sheet thead tr:last-child th { top: 34px; }
+
 table.sheet td {
   padding: 0;
   border-bottom: 1px solid var(--border);
-  min-width: 68px;
+  min-width: 72px;
+  text-align: center;
+  vertical-align: middle;
+  background: #fff;
 }
-table.sheet td.name-cell { padding: 9px 10px; min-width: 180px; font-weight: 600; }
+table.sheet tbody tr:nth-child(even) td { background: #FAFAFD; }
+
+table.sheet td.name-cell {
+  padding: 10px 12px; min-width: 180px; font-weight: 700;
+  text-align: left; font-size: 13.5px;
+}
+table.sheet td.name-cell.no-cell { text-align: center; font-weight: 700; color: var(--ink-soft); padding: 10px 6px; }
+table.sheet td.name-sub { font-size: 11.5px; color: var(--ink-soft); font-weight: 400; margin-top: 1px; }
+
 table.sheet td input.score-input {
-  width: 100%; height: 100%; min-height: 40px;
+  width: 100%; height: 100%; min-height: 46px;
   border: none; text-align: center;
-  font-family: var(--font-mono); font-size: 13.5px; font-weight: 600;
+  font-family: var(--font-mono); font-size: 14.5px; font-weight: 700;
   padding: 8px 4px;
   background: transparent;
+  color: var(--ink);
+  -moz-appearance: textfield;
 }
+table.sheet td input.score-input::-webkit-outer-spin-button,
+table.sheet td input.score-input::-webkit-inner-spin-button {
+  -webkit-appearance: none; margin: 0;
+}
+table.sheet td input.score-input::placeholder { color: var(--ink-soft); opacity: .45; }
+table.sheet td input.score-input:hover { background: rgba(18,20,43,0.04); }
 table.sheet td input.score-input:focus {
-  outline: 3px solid var(--primary);
-  outline-offset: -3px;
-  background: var(--primary-tint);
+  outline: 2.5px solid var(--primary);
+  outline-offset: -2.5px;
+  background: #fff;
+  box-shadow: 0 0 0 4px var(--primary-tint) inset;
 }
-table.sheet td.total-cell { font-family: var(--font-mono); font-weight: 700; text-align: center; background: var(--ink); color: #fff; }
-table.sheet td.over-max { background: var(--danger-tint); }
-table.sheet tr:hover td { background: var(--surface-sunken); }
-table.sheet tr:hover td.total-cell { background: var(--ink); }
-table.sheet tr:hover td.grp-collect-total { background: var(--col-collect-strong); }
+
+table.sheet td.total-cell { font-family: var(--font-mono); font-weight: 700; text-align: center; background: var(--ink); color: #fff; padding: 10px 6px; }
+table.sheet td.over-max { background: var(--danger-tint) !important; }
+table.sheet td.over-max input { color: var(--danger); }
+
+table.sheet tbody tr:hover td { background: var(--surface-sunken); }
+table.sheet tbody tr:hover td.total-cell { background: var(--ink); }
+table.sheet tbody tr:hover td.grp-collect-total { background: var(--col-collect-strong); }
+table.sheet tbody tr:hover td.sticky-col-1,
+table.sheet tbody tr:hover td.sticky-col-2 { background: #F1F1FA; }
 
 /* ---------- Grouped column colors (คะแนนเก็บ / กลางภาค / ปลายภาค) ---------- */
-table.sheet th.grp-collect, table.sheet td.grp-collect { background: var(--col-collect); }
-table.sheet th.grp-collect-total, table.sheet td.grp-collect-total { background: var(--col-collect-strong); color: #fff; font-weight: 700; }
-table.sheet th.grp-mid, table.sheet td.grp-mid { background: var(--col-mid); }
-table.sheet th.grp-final, table.sheet td.grp-final { background: var(--col-final); }
+/* Sub-header row: light tint background, so text must stay DARK for contrast */
+table.sheet th.grp-collect { background: var(--col-collect); color: var(--col-collect-strong); }
+table.sheet th.grp-mid { background: var(--col-mid); color: var(--col-mid-strong); }
+table.sheet th.grp-final { background: var(--col-final); color: var(--col-final-strong); }
+table.sheet td.grp-collect { background: var(--col-collect); }
+table.sheet td.grp-mid { background: var(--col-mid); }
+table.sheet td.grp-final { background: var(--col-final); }
+table.sheet th.grp-collect-total { background: var(--col-collect-strong); color: #fff; }
+table.sheet td.grp-collect-total { background: var(--col-collect-strong); color: #fff; font-weight: 700; }
+
+/* Category band header (row 1): strong color + white text, always readable */
 table.sheet th.grp-label {
-  text-align: center; font-size: 11px; padding: 7px 8px;
-  color: #fff; font-weight: 700;
+  text-align: center; font-size: 11.5px; padding: 8px 8px;
+  color: #fff; font-weight: 700; letter-spacing: .01em;
 }
 table.sheet th.grp-label.grp-collect { background: var(--col-collect-strong); }
-table.sheet td.name-sub { font-size: 11.5px; color: var(--ink-soft); font-weight: 400; margin-top: 1px; }
+table.sheet th.grp-label.grp-mid { background: var(--col-mid-strong); }
+table.sheet th.grp-label.grp-final { background: var(--col-final-strong); }
+
+/* ---------- Frozen columns: identity (left) + total/grade (right) ---------- */
+.sheet .sticky-col-1, .sheet .sticky-col-2,
+.sheet .sticky-right-1, .sheet .sticky-right-2 {
+  position: sticky; z-index: 1;
+}
+.sheet .sticky-col-1 { left: 0; width: 52px; min-width: 52px; }
+.sheet .sticky-col-2 { left: 52px; width: 176px; min-width: 176px; box-shadow: 2px 0 6px rgba(18,20,43,0.06); }
+.sheet .sticky-right-1 { right: 68px; width: 90px; min-width: 90px; }
+.sheet .sticky-right-2 { right: 0; width: 68px; min-width: 68px; box-shadow: -2px 0 6px rgba(18,20,43,0.06); }
+table.sheet thead th.sticky-col-1,
+table.sheet thead th.sticky-col-2,
+table.sheet thead th.sticky-right-1,
+table.sheet thead th.sticky-right-2 { z-index: 3; }
+table.sheet tbody td.sticky-col-1,
+table.sheet tbody td.sticky-col-2,
+table.sheet tbody td.sticky-right-1,
+table.sheet tbody td.sticky-right-2 { background: #fff; }
+table.sheet tbody tr:nth-child(even) td.sticky-col-1,
+table.sheet tbody tr:nth-child(even) td.sticky-col-2 { background: #FAFAFD; }
+
+/* ---------- Grade badges (color-coded by grade level, easy to scan) ---------- */
+.badge-grade-good { background: var(--success-tint); color: var(--success); }
+.badge-grade-mid { background: var(--warning-tint); color: var(--warning); }
+.badge-grade-low { background: var(--danger-tint); color: var(--danger); }
 
 /* ---------- Structure builder ---------- */
 .struct-summary-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 18px; }
@@ -553,6 +637,13 @@ table.sheet td.name-sub { font-size: 11.5px; color: var(--ink-soft); font-weight
   .progress-bar { width: 100%; order: 3; }
   .toolbar { flex-direction: column; align-items: stretch; }
   .search-box input { width: 100%; }
+
+  .sheet-scroll-hint { display: flex; }
+  .sheet-wrap { max-height: 68vh; }
+  .sheet .sticky-col-2 { width: 128px; min-width: 128px; }
+  .sheet .sticky-right-1 { right: 60px; width: 78px; min-width: 78px; }
+  .sheet .sticky-right-2 { width: 60px; min-width: 60px; }
+  table.sheet td.name-cell { padding: 9px 8px; font-size: 13px; }
 }
 
 @media (max-width: 480px) {
