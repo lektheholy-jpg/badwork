@@ -47,3 +47,4 @@ document.querySelectorAll('.nav-item[data-route]').forEach(el => {
 
 document.getElementById('hamburger-btn')?.addEventListener('click', toggleMobileNav);
 document.getElementById('nav-overlay')?.addEventListener('click', closeMobileNav);
+document.getElementById('sidebar-toggle')?.addEventListener('click', toggleSidebarCollapse);

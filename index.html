@@ -28,18 +28,49 @@
   </button>
   <div class="nav-overlay" id="nav-overlay"></div>
 
-  <aside class="sidebar">
-    <div class="brand"><span class="mark">MS</span> MyScore</div>
-    <button class="nav-item active" data-route="dashboard">🏠 หน้าหลัก</button>
-    <button class="nav-item" data-route="courses">📚 รายวิชาของฉัน</button>
-    <div class="nav-divider"></div>
-    <button class="nav-item" data-route="structure-page">🧮 ตั้งค่าโครงสร้างวิชา</button>
-    <button class="nav-item" data-route="scores-page">📝 บันทึกคะแนน</button>
-    <div class="nav-divider"></div>
-    <button class="nav-item" data-route="settings">⚙️ ตั้งค่า</button>
-    <button class="nav-item" id="logout-btn">🚪 ออกจากระบบ</button>
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-top">
+      <button class="sidebar-toggle" id="sidebar-toggle" aria-label="ย่อ/ขยายเมนู">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 17l-5-5 5-5"/><path d="M18 17l-5-5 5-5"/></svg>
+      </button>
+      <div class="brand"><span class="mark">MS</span><span class="brand-text">MyScore</span></div>
+    </div>
+
+    <nav class="nav-list">
+      <button class="nav-item active" data-route="dashboard" data-tip="หน้าหลัก">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9a1 1 0 0 0 1 1H9a1 1 0 0 0 1-1v-4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v4a1 1 0 0 0 1 1h2.5a1 1 0 0 0 1-1v-9"/></svg></span>
+        <span class="nav-label">หน้าหลัก</span>
+      </button>
+      <button class="nav-item" data-route="courses" data-tip="รายวิชาของฉัน">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6.7c-1.6-1.3-3.7-2-6.1-2-.6 0-1 .5-1 1.1v11.4c0 .6.4 1.1 1 1.1 2.4 0 4.5.7 6.1 2"/><path d="M12 6.7c1.6-1.3 3.7-2 6.1-2 .6 0 1 .5 1 1.1v11.4c0 .6-.4 1.1-1 1.1-2.4 0-4.5.7-6.1 2"/><path d="M12 6.7v13.5"/></svg></span>
+        <span class="nav-label">รายวิชาของฉัน</span>
+      </button>
+
+      <div class="nav-divider"></div>
+
+      <button class="nav-item" data-route="structure-page" data-tip="ตั้งค่าโครงสร้างวิชา">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="8" x2="20" y2="8"/><circle cx="9" cy="8" r="2"/><line x1="4" y1="16" x2="20" y2="16"/><circle cx="15" cy="16" r="2"/></svg></span>
+        <span class="nav-label">ตั้งค่าโครงสร้างวิชา</span>
+      </button>
+      <button class="nav-item" data-route="scores-page" data-tip="บันทึกคะแนน">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></span>
+        <span class="nav-label">บันทึกคะแนน</span>
+      </button>
+
+      <div class="nav-divider"></div>
+
+      <button class="nav-item" data-route="settings" data-tip="ตั้งค่า">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 13a7.9 7.9 0 0 0 0-2l2-1.6-2-3.4-2.4 1a7.6 7.6 0 0 0-1.7-1L14.9 3h-3.8l-.4 2.6a7.6 7.6 0 0 0-1.7 1l-2.4-1-2 3.4 2 1.6a7.9 7.9 0 0 0 0 2l-2 1.6 2 3.4 2.4-1c.5.4 1.1.8 1.7 1l.4 2.6h3.8l.4-2.6c.6-.2 1.2-.6 1.7-1l2.4 1 2-3.4Z"/></svg></span>
+        <span class="nav-label">ตั้งค่า</span>
+      </button>
+      <button class="nav-item" id="logout-btn" data-tip="ออกจากระบบ">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg></span>
+        <span class="nav-label">ออกจากระบบ</span>
+      </button>
+    </nav>
+
     <div class="sidebar-footer">
-      <div class="user-chip">
+      <div class="user-chip" data-tip="บัญชีของฉัน">
         <img id="user-photo" src="" alt="">
         <div>
           <div class="name" id="user-name"></div>

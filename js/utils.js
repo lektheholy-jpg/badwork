@@ -124,3 +124,28 @@ function closeMobileNav() {
 function toggleMobileNav() {
   document.getElementById('app')?.classList.toggle('nav-open');
 }
+
+// ---------- Sidebar collapse/expand (desktop) ----------
+const SIDEBAR_COLLAPSE_KEY = 'myscore_sidebar_collapsed';
+const SIDEBAR_BREAKPOINT = 860;
+
+function applyStoredSidebarState() {
+  const app = document.getElementById('app');
+  if (!app) return;
+  if (window.innerWidth <= SIDEBAR_BREAKPOINT) {
+    app.classList.remove('sidebar-collapsed');
+    return;
+  }
+  const collapsed = localStorage.getItem(SIDEBAR_COLLAPSE_KEY) === '1';
+  app.classList.toggle('sidebar-collapsed', collapsed);
+}
+
+function toggleSidebarCollapse() {
+  const app = document.getElementById('app');
+  if (!app || window.innerWidth <= SIDEBAR_BREAKPOINT) return;
+  const collapsed = app.classList.toggle('sidebar-collapsed');
+  localStorage.setItem(SIDEBAR_COLLAPSE_KEY, collapsed ? '1' : '0');
+}
+
+window.addEventListener('resize', debounce(applyStoredSidebarState, 150));
+applyStoredSidebarState();
