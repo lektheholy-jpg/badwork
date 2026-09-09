@@ -62,7 +62,8 @@ async function renderScoresTab(container, course, section) {
         <thead>
           <tr>
             <th rowspan="2" class="sticky-col-1">เลขที่</th>
-            <th rowspan="2" class="sticky-col-2" style="text-align:left;">นักเรียน</th>
+            <th rowspan="2" class="sticky-col-2">รหัส</th>
+            <th rowspan="2" class="sticky-col-3" style="text-align:left;">นักเรียน</th>
             ${collectItems.length ? `<th class="grp-label grp-collect" colspan="${collectItems.length + 1}">คะแนนเก็บ</th>` : ''}
             ${midItems.length ? `<th class="grp-label grp-mid" colspan="${midItems.length}">กลางภาค</th>` : ''}
             ${finalItems.length ? `<th class="grp-label grp-final" colspan="${finalItems.length}">ปลายภาค</th>` : ''}
@@ -120,7 +121,8 @@ function renderScoreRow(student, collectItems, midItems, finalItems, studentScor
   return `
     <tr data-student-id="${student.id}" data-searchtext="${escapeHtml(searchText)}">
       <td class="name-cell no-cell sticky-col-1">${escapeHtml(student.no)}</td>
-      <td class="name-cell sticky-col-2">${escapeHtml(student.firstName)} ${escapeHtml(student.lastName)}<div class="name-sub">${escapeHtml(student.code || '')}</div></td>
+      <td class="name-cell code-cell sticky-col-2">${escapeHtml(student.code || '–')}</td>
+      <td class="name-cell sticky-col-3" title="${escapeHtml(student.firstName)} ${escapeHtml(student.lastName)}">${escapeHtml(student.firstName)} ${escapeHtml(student.lastName)}</td>
       ${collectItems.map(cellFor).join('')}
       <td class="total-cell grp-collect-total" data-collect-for="${student.id}">${collectSum}</td>
       ${midItems.map(cellFor).join('')}
