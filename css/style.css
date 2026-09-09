@@ -259,6 +259,16 @@ a { color: inherit; }
   .chart-row { grid-template-columns: 1fr; }
 }
 
+/* ---------- Dashboard: per-section course cards ---------- */
+.section-card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
+.section-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-m); padding: 16px; cursor: pointer; transition: border-color .15s, box-shadow .15s; }
+.section-card:hover { border-color: var(--primary); box-shadow: var(--shadow); }
+.section-card-top { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.section-card-room { font-size: 12px; font-weight: 700; color: var(--ink-soft); background: var(--surface-sunken); padding: 3px 9px; border-radius: 20px; }
+.section-card-name { font-size: 15px; font-weight: 700; color: var(--ink); margin-bottom: 3px; }
+.section-card-meta { font-size: 12px; color: var(--ink-soft); margin-bottom: 12px; }
+.section-card-pct { font-size: 11.5px; color: var(--ink-soft); font-weight: 600; margin-top: 6px; }
+
 .progress-bar { width: 140px; height: 7px; border-radius: 4px; background: var(--surface-sunken); overflow: hidden; }
 .progress-bar .fill { height: 100%; background: var(--primary); }
 .progress-pct { font-family: var(--font-mono); font-size: 12px; color: var(--ink-soft); width: 34px; text-align: right; }
@@ -668,16 +678,19 @@ table.sheet tbody tr:nth-child(even) td.sticky-col-3 { background: #FAFAFD; }
   .search-box input { width: 100%; }
 
   .sheet-scroll-hint { display: flex; }
-  .sheet-wrap { max-height: 68vh; }
+  .sheet-wrap { max-height: 68vh; touch-action: pan-x pan-y; }
   .sheet .sticky-col-1 { display: none; }
-  .sheet .sticky-col-2 { left: 0; width: 52px; min-width: 52px; }
-  .sheet .sticky-col-3 { left: 52px; width: 118px; min-width: 118px; max-width: 118px; }
-  .sheet .sticky-right-1 { right: 52px; width: 72px; min-width: 72px; }
-  .sheet .sticky-right-2 { width: 52px; min-width: 52px; }
-  table.sheet td.name-cell { padding: 7px 6px; font-size: 12.5px; }
-  table.sheet td { min-width: 54px; }
-  table.sheet th { padding: 0 4px; font-size: 10.5px; }
-  table.sheet td input.score-input { font-size: 13px; padding: 8px 2px; min-height: 40px; }
+  .sheet .sticky-col-2 { left: 0; width: 46px; min-width: 46px; }
+  .sheet .sticky-col-3 { left: 46px; width: 104px; min-width: 104px; max-width: 104px; }
+  .sheet .sticky-right-1 { right: 46px; width: 62px; min-width: 62px; }
+  .sheet .sticky-right-2 { width: 46px; min-width: 46px; }
+  table.sheet td.name-cell { padding: 6px 5px; font-size: 11px; }
+  table.sheet td { min-width: 56px; }
+  table.sheet th { padding: 0 3px; font-size: 9.5px; }
+  table.sheet th span.max { font-size: 8.5px; }
+  table.sheet td input.score-input { font-size: 12px; padding: 8px 2px; min-height: 40px; touch-action: manipulation; }
+  table.sheet td.total-cell { font-size: 12px; }
+  .sheet .badge { font-size: 10.5px; padding: 3px 7px; }
 }
 
 @media (max-width: 480px) {

@@ -11,6 +11,7 @@ async function renderDashboard() {
     .orderBy('createdAt', 'desc').get();
 
   const courses = [];
+  const sectionCards = [];
   let totalStudents = 0;
   let totalProgressSum = 0;
 
@@ -25,8 +26,19 @@ async function renderDashboard() {
         secBase.collection('students').get(),
         secBase.collection('scores').get(),
       ]);
+      const secProgress = studentsSnap.size > 0 ? Math.round((scoresSnap.size / studentsSnap.size) * 100) : 0;
       studentCount += studentsSnap.size;
-      progressSum += studentsSnap.size > 0 ? Math.round((scoresSnap.size / studentsSnap.size) * 100) : 0;
+      progressSum += secProgress;
+      sectionCards.push({
+        courseId: c.id,
+        sectionId: s.id,
+        courseName: c.name,
+        level: c.level,
+        color: c.color,
+        room: s.room,
+        studentCount: studentsSnap.size,
+        progress: secProgress,
+      });
     }
     c.studentCount = studentCount;
     c.roomCount = sections.length;
@@ -69,32 +81,41 @@ async function renderDashboard() {
       <h2 style="font-size:15px; font-weight:700;">รายวิชาของฉัน</h2>
     </div>
 
-    ${courses.length === 0 ? `
+    ${sectionCards.length === 0 ? `
       <div class="card"><div class="empty-state">
         <div class="icon">📚</div>
         <div>ยังไม่มีรายวิชา ไปที่หน้า ⚙️ ตั้งค่าโครงสร้างวิชา เพื่อสร้างรายวิชาแรกของคุณ</div>
       </div></div>
     ` : `
-      <div class="course-list">
-        ${courses.map(c => `
-          <div class="course-row" data-course-id="${c.id}">
-            <div class="course-dot" style="background:${c.color || '#6B7A4F'}"></div>
-            <div class="info">
-              <div class="name">${escapeHtml(c.name)}</div>
-              <div class="meta">${escapeHtml(c.level || '')} • ${c.roomCount} ห้อง • ${c.studentCount} คน</div>
+      <div class="section-card-grid">
+        ${sectionCards.map(sc => `
+          <div class="section-card" data-course-id="${sc.courseId}" data-section-id="${sc.sectionId}">
+            <div class="section-card-top">
+              <span class="course-dot" style="background:${sc.color || '#6B7A4F'}"></span>
+              <span class="section-card-room">ห้อง ${escapeHtml(sc.room)}</span>
             </div>
-            <div class="progress-bar"><div class="fill" style="width:${c.progress}%"></div></div>
-            <div class="progress-pct">${c.progress}%</div>
-            <button class="btn btn-ghost btn-sm">เปิดรายวิชา</button>
+            <div class="section-card-name">${escapeHtml(sc.courseName)}</div>
+            <div class="section-card-meta">${escapeHtml(sc.level || '')} • ${sc.studentCount} คน</div>
+            <div class="progress-bar"><div class="fill" style="width:${sc.progress}%"></div></div>
+            <div class="section-card-pct">${sc.progress}% บันทึกแล้ว</div>
           </div>
         `).join('')}
       </div>
     `}
   `;
 
-  view.querySelectorAll('.course-row').forEach(row => {
-    row.addEventListener('click', () => openCourse(row.dataset.courseId));
+  view.querySelectorAll('.section-card').forEach(card => {
+    card.addEventListener('click', () => openCourseSection(card.dataset.courseId, card.dataset.sectionId));
   });
+}
+
+function openCourseSection(courseId, sectionId) {
+  AppState.currentRoute = 'course';
+  AppState.currentCourseId = courseId;
+  AppState.currentSectionId = sectionId;
+  AppState.currentTab = 'scores';
+  setActiveNav(null);
+  renderCourseShell();
 }
 
 // ---------- Lightweight inline SVG charts (no external chart library) ----------

@@ -128,7 +128,7 @@ function renderScoreRow(student, collectItems, midItems, finalItems, studentScor
       <td class="total-cell grp-collect-total" data-collect-for="${student.id}">${collectSum}</td>
       ${midItems.map(cellFor).join('')}
       ${finalItems.map(cellFor).join('')}
-      <td class="total-cell sticky-right-1" data-total-for="${student.id}">${total}<span class="max" style="opacity:.65;">/${maxTotal}</span></td>
+      <td class="total-cell sticky-right-1" data-total-for="${student.id}">${total}</td>
       <td class="total-cell sticky-right-2" data-grade-for="${student.id}"><span class="badge ${gradeBadgeClass(grade)}">${grade}</span></td>
     </tr>
   `;
@@ -161,7 +161,7 @@ function wireScoreInputs(container, course, section, students, collectItems, mid
       if (collectItems.some(a => a.id === inp.dataset.assessmentId)) collectSum += val;
     });
     row.querySelector(`[data-collect-for="${studentId}"]`).textContent = collectSum;
-    row.querySelector(`[data-total-for="${studentId}"]`).innerHTML = `${total}<span class="max" style="opacity:.65;">/${maxTotal}</span>`;
+    row.querySelector(`[data-total-for="${studentId}"]`).textContent = total;
     const grade = calcGrade(total, gradeScale);
     row.querySelector(`[data-grade-for="${studentId}"]`).innerHTML = `<span class="badge ${gradeBadgeClass(grade)}">${grade}</span>`;
   }
