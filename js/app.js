@@ -17,7 +17,7 @@ function navigate(route) {
   if (route === 'dashboard') renderDashboard();
   else if (route === 'courses') renderCoursesList();
   else if (route === 'archive-page') renderArchivePage();
-  else if (route === 'structure-page') renderStructurePage();
+  else if (route === 'structure-page') { AppState.structureEditingCourseId = null; renderStructurePage(); }
   else if (route === 'scores-page') renderScoresPage();
   else if (route === 'settings') renderSettings();
 }

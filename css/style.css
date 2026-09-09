@@ -344,6 +344,44 @@ a { color: inherit; }
 }
 .room-pill-del:hover { opacity: 1; background: var(--danger); color: #fff; }
 
+/* ---------- Structure page: subject list with active/inactive toggle ---------- */
+.struct-row { justify-content: space-between; }
+.struct-row.is-archived { background: var(--surface-sunken); }
+.struct-row.is-archived .struct-code { color: var(--ink-soft); }
+.struct-row.is-archived .struct-course-name,
+.struct-row.is-archived .struct-level-badge { opacity: .6; }
+.struct-code {
+  font-family: var(--font-mono); font-weight: 700; color: var(--primary);
+  margin-right: 6px;
+}
+.struct-course-name { font-weight: 700; }
+.struct-level-badge { margin-right: 8px; vertical-align: middle; }
+.struct-status-tag {
+  margin-left: 8px; font-weight: 700; color: var(--ink-soft);
+}
+.struct-status-tag.is-active { color: var(--success); }
+.struct-row-actions { display: flex; gap: 8px; flex-shrink: 0; }
+
+.switch { position: relative; display: inline-flex; width: 40px; height: 23px; flex-shrink: 0; cursor: pointer; }
+.switch input { opacity: 0; width: 0; height: 0; position: absolute; }
+.switch-slider {
+  position: absolute; inset: 0; background: var(--border); border-radius: 999px;
+  transition: background .18s ease; cursor: pointer;
+}
+.switch-slider::before {
+  content: ""; position: absolute; height: 17px; width: 17px; left: 3px; top: 3px;
+  background: #fff; border-radius: 50%; transition: transform .18s ease;
+  box-shadow: 0 1px 3px rgba(0,0,0,.25);
+}
+.switch input:checked + .switch-slider { background: var(--success); }
+.switch input:checked + .switch-slider::before { transform: translateX(17px); }
+.switch input:focus-visible + .switch-slider { box-shadow: 0 0 0 3px var(--primary-tint); }
+
+@media (max-width: 640px) {
+  .struct-row { flex-wrap: wrap; }
+  .struct-row-actions { width: 100%; justify-content: flex-end; }
+}
+
 /* ---------- Course/section pickers (structure-page, scores-page) ---------- */
 .picker-bar { margin-bottom: 20px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .picker-label { font-size: 13px; font-weight: 700; color: var(--ink-soft); white-space: nowrap; }
