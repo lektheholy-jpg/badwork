@@ -27,7 +27,7 @@
 <!-- LOGIN SCREEN -->
 <div id="login-screen" class="login-screen hidden">
   <div class="login-card">
-    <div class="mark-lg">😩</div>
+    <img class="mark-lg" src="assets/icons/android-chrome-192x192.png" alt="โลโก้">
     <h1>งานน่าเบื่อ..</h1>
     <p>ระบบบันทึกคะแนนสำหรับครู เข้าสู่ระบบด้วยบัญชี Google เพื่อเริ่มใช้งาน</p>
     <button class="google-btn" id="google-signin-btn">
@@ -49,7 +49,7 @@
       <button class="sidebar-toggle" id="sidebar-toggle" aria-label="ย่อ/ขยายเมนู">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 17l-5-5 5-5"/><path d="M18 17l-5-5 5-5"/></svg>
       </button>
-      <div class="brand"><span class="mark">😩</span><span class="brand-text">งานน่าเบื่อ..</span></div>
+      <div class="brand"><img class="mark" src="assets/icons/android-chrome-192x192.png" alt="โลโก้"><span class="brand-text">งานน่าเบื่อ..</span></div>
     </div>
 
     <nav class="nav-list">
@@ -71,6 +71,10 @@
       <button class="nav-item" data-route="scores-page" data-tip="บันทึกคะแนน">
         <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></span>
         <span class="nav-label">บันทึกคะแนน</span>
+      </button>
+      <button class="nav-item" data-route="archive-page" data-tip="คลังรายวิชา">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="5" rx="1.5"/><path d="M4 9v9a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9"/><path d="M10 13h4"/></svg></span>
+        <span class="nav-label">คลังรายวิชา</span>
       </button>
 
       <div class="nav-divider"></div>

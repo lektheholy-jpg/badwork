@@ -109,11 +109,9 @@ a { color: inherit; }
 .brand .mark {
   width: 28px; height: 28px;
   border-radius: 8px;
-  background: var(--primary);
-  color: #fff;
-  display: flex; align-items: center; justify-content: center;
-  font-family: var(--font-head);
-  font-size: 13px; font-weight: 700;
+  background: var(--surface-sunken);
+  object-fit: contain;
+  padding: 3px;
   flex-shrink: 0;
 }
 
@@ -289,6 +287,8 @@ a { color: inherit; }
 .btn-primary:hover { background: var(--primary-dark); }
 .btn-ghost { background: var(--surface); color: var(--ink); border-color: var(--border); }
 .btn-danger-ghost { background: var(--danger-tint); color: var(--danger); }
+.btn-danger { background: var(--danger); color: #fff; }
+.btn-danger:hover { filter: brightness(0.92); }
 .btn-sm { padding: 7px 12px; font-size: 12.5px; }
 .btn:disabled { opacity: .5; cursor: not-allowed; }
 
@@ -586,9 +586,8 @@ table.sheet tbody tr:nth-child(even) td.sticky-col-3 { background: #FAFAFD; }
   box-shadow: var(--shadow); width: 360px; max-width: 100%; text-align: center;
 }
 .login-card .mark-lg {
-  width: 54px; height: 54px; border-radius: 16px; background: var(--primary); color: #fff;
-  display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 22px;
-  font-family: var(--font-head);
+  width: 64px; height: 64px; border-radius: 16px; background: var(--surface-sunken);
+  object-fit: contain; padding: 8px;
   margin: 0 auto 18px;
 }
 .login-card h1 { font-size: 20px; margin-bottom: 7px; }

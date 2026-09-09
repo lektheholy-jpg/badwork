@@ -9,13 +9,14 @@ async function renderDashboard() {
   const uid = AppState.user.uid;
   const coursesSnap = await db.collection('users').doc(uid).collection('courses')
     .orderBy('createdAt', 'desc').get();
+  const activeDocs = coursesSnap.docs.filter(d => !d.data().archived);
 
   const courses = [];
   const sectionCards = [];
   let totalStudents = 0;
   let totalProgressSum = 0;
 
-  for (const doc of coursesSnap.docs) {
+  for (const doc of activeDocs) {
     const c = { id: doc.id, ...doc.data() };
     const sections = await loadSections(uid, c.id);
     let studentCount = 0;

@@ -2,23 +2,24 @@
 // Courses: list, create (with room/section picker), detail shell (tabs)
 // ==========================================================================
 
-function openCreateCourseModal(onCreated) {
+function openCreateCourseModal(onCreated, sourceCourse = null) {
+  const src = sourceCourse || {};
   openModal(`
-    <h2>สร้างรายวิชา</h2>
-    <div class="modal-sub">กรอกข้อมูลพื้นฐานของรายวิชา — ตั้งครั้งเดียว ใช้ได้ทุกห้อง แก้ไขภายหลังได้</div>
+    <h2>${sourceCourse ? 'คัดลอกวิชาไปเทอมใหม่' : 'สร้างรายวิชา'}</h2>
+    <div class="modal-sub">${sourceCourse ? `คัดลอกโครงสร้างคะแนนจาก "${escapeHtml(sourceCourse.name)}" มาใช้ — แค่ตั้งภาคเรียน/ปี และห้องใหม่ นักเรียน/คะแนนเริ่มต้นใหม่หมด` : 'กรอกข้อมูลพื้นฐานของรายวิชา — ตั้งครั้งเดียว ใช้ได้ทุกห้อง แก้ไขภายหลังได้'}</div>
     <div class="field-row">
-      <div class="field"><label>รหัสวิชา</label><input id="f-code" placeholder="เช่น ว33101"></div>
-      <div class="field"><label>ชื่อวิชา</label><input id="f-name" placeholder="เช่น วิทยาการคำนวณ"></div>
+      <div class="field"><label>รหัสวิชา</label><input id="f-code" placeholder="เช่น ว33101" value="${escapeHtml(src.code || '')}"></div>
+      <div class="field"><label>ชื่อวิชา</label><input id="f-name" placeholder="เช่น วิทยาการคำนวณ" value="${escapeHtml(src.name || '')}"></div>
     </div>
     <div class="field-row">
-      <div class="field"><label>ระดับชั้น</label><input id="f-level" placeholder="เช่น ม.6"></div>
-      <div class="field"><label>สีประจำวิชา</label><input id="f-color" type="color" value="#6B7A4F" style="height:38px; padding:3px;"></div>
+      <div class="field"><label>ระดับชั้น</label><input id="f-level" placeholder="เช่น ม.6" value="${escapeHtml(src.level || '')}"></div>
+      <div class="field"><label>สีประจำวิชา</label><input id="f-color" type="color" value="${src.color || '#6B7A4F'}" style="height:38px; padding:3px;"></div>
     </div>
     <div class="field-row">
       <div class="field"><label>ภาคเรียน</label><input id="f-semester" placeholder="1"></div>
       <div class="field"><label>ปีการศึกษา</label><input id="f-year" placeholder="2569"></div>
     </div>
-    <div class="field"><label>หน่วยกิต</label><input id="f-credit" placeholder="1.0"></div>
+    <div class="field"><label>หน่วยกิต</label><input id="f-credit" placeholder="1.0" value="${escapeHtml(src.credit || '')}"></div>
 
     <div class="field">
       <label>ห้องที่สอน</label>
@@ -27,7 +28,7 @@ function openCreateCourseModal(onCreated) {
         <button type="button" class="room-mode-btn" data-mode="list">พิมพ์เลขห้องเอง</button>
       </div>
       <div id="room-mode-count">
-        <input id="f-room-count" type="number" min="1" value="1" placeholder="เช่น 5">
+        <input id="f-room-count" type="number" min="1" value="${src.roomCount || 1}" placeholder="เช่น 5">
         <div class="field-hint">ระบบจะสร้างห้อง 1, 2, 3 ... ให้อัตโนมัติตามจำนวนที่ใส่</div>
       </div>
       <div id="room-mode-list" class="hidden">
@@ -38,7 +39,7 @@ function openCreateCourseModal(onCreated) {
 
     <div class="modal-actions">
       <button class="btn btn-ghost" id="cancel-create">ยกเลิก</button>
-      <button class="btn btn-primary" id="submit-create">สร้างรายวิชา</button>
+      <button class="btn btn-primary" id="submit-create">${sourceCourse ? 'คัดลอกและสร้างวิชา' : 'สร้างรายวิชา'}</button>
     </div>
   `);
 
@@ -86,12 +87,29 @@ function openCreateCourseModal(onCreated) {
       credit: document.getElementById('f-credit').value.trim(),
       color: document.getElementById('f-color').value,
       roomCount: rooms.length,
+      archived: false,
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
     };
     const courseRef = await db.collection('users').doc(uid).collection('courses').add(data);
 
-    // สร้างเกณฑ์เกรดเริ่มต้น (ใช้ร่วมกันทุกห้องในวิชานี้)
-    await courseRef.collection('settings').doc('grading').set({ scale: DEFAULT_GRADE_SCALE });
+    if (sourceCourse) {
+      // คัดลอกโครงสร้างคะแนน (assessments) และเกณฑ์เกรดจากวิชาต้นทาง
+      const srcBase = db.collection('users').doc(uid).collection('courses').doc(sourceCourse.id);
+      const [assessSnap, gradingDoc] = await Promise.all([
+        srcBase.collection('assessments').orderBy('order', 'asc').get(),
+        srcBase.collection('settings').doc('grading').get(),
+      ]);
+      const copyBatch = db.batch();
+      assessSnap.docs.forEach(d => {
+        copyBatch.set(courseRef.collection('assessments').doc(), d.data());
+      });
+      copyBatch.set(courseRef.collection('settings').doc('grading'), {
+        scale: gradingDoc.exists ? gradingDoc.data().scale : DEFAULT_GRADE_SCALE,
+      });
+      await copyBatch.commit();
+    } else {
+      await courseRef.collection('settings').doc('grading').set({ scale: DEFAULT_GRADE_SCALE });
+    }
 
     // สร้างห้องเรียนทั้งหมดในครั้งเดียว (โครงสร้างคะแนนตั้งครั้งเดียว ใช้ร่วมกันทุกห้อง)
     const batch = db.batch();
@@ -113,12 +131,12 @@ async function renderCoursesList() {
   view.innerHTML = `<div class="empty-state">กำลังโหลด...</div>`;
   const uid = AppState.user.uid;
   const snap = await db.collection('users').doc(uid).collection('courses').orderBy('createdAt', 'desc').get();
-  const courses = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  const courses = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(c => !c.archived);
 
   view.innerHTML = `
     <div class="page-header">
       <h1>รายวิชาของฉัน</h1>
-      <div class="sub">รายวิชาทั้งหมดที่คุณสอนในปีการศึกษานี้ — สร้าง/ลบรายวิชาและห้องเรียนได้ที่หน้า ⚙️ ตั้งค่าโครงสร้างวิชา</div>
+      <div class="sub">รายวิชาทั้งหมดที่คุณสอนในภาคเรียนนี้ — จบเทอมแล้วกดเก็บเข้า <a href="#" id="goto-archive" style="color:var(--primary); font-weight:600;">คลังรายวิชา</a> ได้จากหน้ารายวิชานั้น</div>
     </div>
     ${courses.length === 0 ? `
       <div class="card"><div class="empty-state">
@@ -143,6 +161,7 @@ async function renderCoursesList() {
   view.querySelectorAll('.course-row').forEach(row => {
     row.addEventListener('click', () => openCourse(row.dataset.courseId));
   });
+  document.getElementById('goto-archive')?.addEventListener('click', (e) => { e.preventDefault(); navigate('archive-page'); });
 }
 
 function openCourse(courseId) {
@@ -188,9 +207,16 @@ async function renderCourseShell() {
   const view = document.getElementById('view');
   view.innerHTML = `
     <div class="crumb"><a href="#" id="back-to-courses" style="text-decoration:none; color:inherit;">รายวิชาของฉัน</a> / <b>${escapeHtml(course.name)}</b></div>
-    <div class="page-header">
-      <h1>${escapeHtml(course.code ? course.code + ' • ' : '')}${escapeHtml(course.name)}</h1>
-      <div class="sub">${escapeHtml(course.level || '')} • ภาคเรียน ${escapeHtml(course.semester || '-')}/${escapeHtml(course.year || '-')} • ${sections.length} ห้อง</div>
+    <div class="page-header" style="display:flex; align-items:flex-start; justify-content:space-between; gap:16px; flex-wrap:wrap;">
+      <div>
+        <h1>${escapeHtml(course.code ? course.code + ' • ' : '')}${escapeHtml(course.name)} ${course.archived ? '<span class="badge badge-neutral" style="vertical-align:middle; margin-left:6px;">📦 อยู่ในคลัง</span>' : ''}</h1>
+        <div class="sub">${escapeHtml(course.level || '')} • ภาคเรียน ${escapeHtml(course.semester || '-')}/${escapeHtml(course.year || '-')} • ${sections.length} ห้อง</div>
+      </div>
+      <div>
+        ${course.archived
+          ? `<button class="btn btn-ghost btn-sm" id="unarchive-course-btn">↩️ นำกลับมาใช้งาน</button>`
+          : `<button class="btn btn-ghost btn-sm" id="archive-course-btn">📦 จบเทอมนี้แล้ว เก็บเข้าคลัง</button>`}
+      </div>
     </div>
 
     ${sections.length > 0 ? `
@@ -212,6 +238,23 @@ async function renderCourseShell() {
   `;
 
   document.getElementById('back-to-courses').addEventListener('click', (e) => { e.preventDefault(); navigate('courses'); });
+  document.getElementById('archive-course-btn')?.addEventListener('click', () => {
+    openConfirmModal({
+      title: 'เก็บวิชานี้เข้าคลัง?',
+      body: `"${escapeHtml(course.name)}" ทุกห้อง นักเรียน และคะแนน จะยังอยู่ครบเหมือนเดิม แค่จะไม่แสดงในหน้าแรก/รายวิชาของฉันอีกต่อไป — ดูย้อนหลังหรือกู้กลับมาได้ทุกเมื่อที่หน้า "คลังรายวิชา"`,
+      confirmLabel: 'เก็บเข้าคลัง',
+      onConfirm: async () => {
+        await db.collection('users').doc(uid).collection('courses').doc(courseId).update({ archived: true, archivedAt: firebase.firestore.FieldValue.serverTimestamp() });
+        showToast('เก็บวิชาเข้าคลังแล้ว');
+        navigate('courses');
+      }
+    });
+  });
+  document.getElementById('unarchive-course-btn')?.addEventListener('click', async () => {
+    await db.collection('users').doc(uid).collection('courses').doc(courseId).update({ archived: false });
+    showToast('นำวิชากลับมาใช้งานแล้ว');
+    renderCourseShell();
+  });
   view.querySelectorAll('.room-pill[data-section-id]').forEach(p => {
     p.addEventListener('click', () => {
       AppState.currentSectionId = p.dataset.sectionId;
@@ -236,6 +279,52 @@ async function renderCourseShell() {
   else if (AppState.currentTab === 'structure') renderStructureTab(body, course);
   else if (AppState.currentTab === 'scores') renderScoresTab(body, course, section);
   else if (AppState.currentTab === 'report') renderReportTab(body, course, section);
+}
+
+async function renderArchivePage() {
+  const view = document.getElementById('view');
+  view.innerHTML = `<div class="empty-state">กำลังโหลด...</div>`;
+  const uid = AppState.user.uid;
+  const snap = await db.collection('users').doc(uid).collection('courses').orderBy('createdAt', 'desc').get();
+  const courses = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(c => c.archived);
+
+  view.innerHTML = `
+    <div class="page-header">
+      <h1>📦 คลังรายวิชา</h1>
+      <div class="sub">วิชาจากเทอมก่อนหน้าที่เก็บไว้ — ข้อมูลนักเรียนและคะแนนยังอยู่ครบ ดู แก้ไข หรือคัดลอกไปใช้เทอมใหม่ได้ทุกเมื่อ</div>
+    </div>
+    ${courses.length === 0 ? `
+      <div class="card"><div class="empty-state">
+        <div class="icon">📦</div>
+        <div>ยังไม่มีวิชาในคลัง — จบเทอมแล้วกดปุ่ม "จบเทอมนี้แล้ว เก็บเข้าคลัง" ที่หน้ารายวิชานั้นได้เลย</div>
+      </div></div>
+    ` : `
+      <div class="course-list">
+        ${courses.map(c => `
+          <div class="course-row" data-course-id="${c.id}" style="cursor:default;">
+            <div class="course-dot" style="background:${c.color || '#6B7A4F'}"></div>
+            <div class="info">
+              <div class="name">${escapeHtml(c.name)}</div>
+              <div class="meta">${escapeHtml(c.code || '')} • ${escapeHtml(c.level || '')} • ${c.roomCount || 0} ห้อง • ภาคเรียน ${escapeHtml(c.semester || '-')}/${escapeHtml(c.year || '-')}</div>
+            </div>
+            <button class="btn btn-ghost btn-sm view-archived-btn" data-course-id="${c.id}">ดูรายละเอียด</button>
+            <button class="btn btn-primary btn-sm duplicate-course-btn" data-course-id="${c.id}">📋 คัดลอกไปเทอมใหม่</button>
+          </div>
+        `).join('')}
+      </div>
+    `}
+  `;
+
+  view.querySelectorAll('.view-archived-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => { e.stopPropagation(); openCourse(btn.dataset.courseId); });
+  });
+  view.querySelectorAll('.duplicate-course-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const source = courses.find(c => c.id === btn.dataset.courseId);
+      openCreateCourseModal(null, source);
+    });
+  });
 }
 
 function openAddRoomModal(course, onDone) {

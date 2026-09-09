@@ -21,6 +21,32 @@ function closeModal() {
   document.getElementById('modal-root').innerHTML = '';
 }
 
+function openConfirmModal({ title, body, confirmLabel = 'ยืนยัน', cancelLabel = 'ยกเลิก', danger = false, onConfirm }) {
+  openModal(`
+    <h2>${title}</h2>
+    <div class="modal-sub">${body}</div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="confirm-cancel-btn">${cancelLabel}</button>
+      <button class="btn ${danger ? 'btn-danger' : 'btn-primary'}" id="confirm-ok-btn">${confirmLabel}</button>
+    </div>
+  `);
+  document.getElementById('confirm-cancel-btn').addEventListener('click', closeModal);
+  document.getElementById('confirm-ok-btn').addEventListener('click', async () => {
+    const btn = document.getElementById('confirm-ok-btn');
+    btn.disabled = true;
+    btn.textContent = 'กำลังดำเนินการ...';
+    try {
+      await onConfirm();
+      closeModal();
+    } catch (err) {
+      console.error(err);
+      showToast('เกิดข้อผิดพลาด ลองใหม่อีกครั้ง');
+      btn.disabled = false;
+      btn.textContent = confirmLabel;
+    }
+  });
+}
+
 function debounce(fn, ms) {
   let t;
   return (...args) => {

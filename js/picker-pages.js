@@ -7,7 +7,7 @@
 async function loadCourseOptions() {
   const uid = AppState.user.uid;
   const snap = await db.collection('users').doc(uid).collection('courses').orderBy('createdAt', 'desc').get();
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  return snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(c => !c.archived);
 }
 
 function courseSelectorHtml(courses, selectedId, selectId) {
