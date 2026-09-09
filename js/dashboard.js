@@ -18,16 +18,32 @@ async function renderDashboard() {
 
   for (const doc of activeDocs) {
     const c = { id: doc.id, ...doc.data() };
-    const sections = await loadSections(uid, c.id);
+    const courseBase = db.collection('users').doc(uid).collection('courses').doc(c.id);
+    const [sections, assessSnap] = await Promise.all([
+      loadSections(uid, c.id),
+      courseBase.collection('assessments').get(),
+    ]);
+    const assessmentIds = assessSnap.docs.map(d => d.id);
     let studentCount = 0;
     let progressSum = 0;
     for (const s of sections) {
-      const secBase = db.collection('users').doc(uid).collection('courses').doc(c.id).collection('sections').doc(s.id);
+      const secBase = courseBase.collection('sections').doc(s.id);
       const [studentsSnap, scoresSnap] = await Promise.all([
         secBase.collection('students').get(),
         secBase.collection('scores').get(),
       ]);
-      const secProgress = studentsSnap.size > 0 ? Math.round((scoresSnap.size / studentsSnap.size) * 100) : 0;
+      // ความคืบหน้า = สัดส่วน "ช่องคะแนน" ที่กรอกแล้วจากทุกช่องในห้องนี้ (นักเรียน x รายการคะแนนทั้งหมด)
+      const totalCells = studentsSnap.size * assessmentIds.length;
+      let filledCells = 0;
+      if (totalCells > 0) {
+        scoresSnap.docs.forEach(d => {
+          const data = d.data();
+          assessmentIds.forEach(aid => {
+            if (data[aid] !== undefined && data[aid] !== null && data[aid] !== '') filledCells++;
+          });
+        });
+      }
+      const secProgress = totalCells > 0 ? Math.round((filledCells / totalCells) * 100) : 0;
       studentCount += studentsSnap.size;
       progressSum += secProgress;
       sectionCards.push({

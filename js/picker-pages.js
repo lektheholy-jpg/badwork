@@ -224,14 +224,32 @@ async function loadScoresPickerCards(courses) {
   const uid = AppState.user.uid;
   const cards = []; // { course, sections: [{section, studentCount, progress}] }
   for (const course of courses) {
-    const sections = await loadSections(uid, course.id);
+    const courseBase = db.collection('users').doc(uid).collection('courses').doc(course.id);
+    const [sections, assessSnap] = await Promise.all([
+      loadSections(uid, course.id),
+      courseBase.collection('assessments').get(),
+    ]);
+    const assessmentIds = assessSnap.docs.map(d => d.id);
+
     const secInfos = await Promise.all(sections.map(async (s) => {
-      const secBase = db.collection('users').doc(uid).collection('courses').doc(course.id).collection('sections').doc(s.id);
+      const secBase = courseBase.collection('sections').doc(s.id);
       const [studentsSnap, scoresSnap] = await Promise.all([
         secBase.collection('students').get(),
         secBase.collection('scores').get(),
       ]);
-      const progress = studentsSnap.size > 0 ? Math.round((scoresSnap.size / studentsSnap.size) * 100) : 0;
+      // ความคืบหน้า = สัดส่วน "ช่องคะแนน" ที่กรอกแล้วจากทุกช่องในห้องนี้ (นักเรียน x รายการคะแนนทั้งหมด)
+      // ไม่ใช่แค่จำนวนนักเรียนที่เริ่มกรอก เพื่อให้เห็นความคืบหน้าที่แท้จริงระหว่างกรอกอยู่
+      const totalCells = studentsSnap.size * assessmentIds.length;
+      let filledCells = 0;
+      if (totalCells > 0) {
+        scoresSnap.docs.forEach(d => {
+          const data = d.data();
+          assessmentIds.forEach(aid => {
+            if (data[aid] !== undefined && data[aid] !== null && data[aid] !== '') filledCells++;
+          });
+        });
+      }
+      const progress = totalCells > 0 ? Math.round((filledCells / totalCells) * 100) : 0;
       return { section: s, studentCount: studentsSnap.size, progress };
     }));
     cards.push({ course, sections: secInfos });
