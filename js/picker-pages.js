@@ -198,7 +198,10 @@ async function renderStructureEditor(view, courseId) {
       <button class="btn btn-danger-ghost btn-sm" id="struct-del-course-btn">🗑️ ลบวิชานี้</button>
     </div>
     <div class="card card-pad" style="margin-bottom:16px;">
-      <div style="font-weight:600; font-size:13.5px; margin-bottom:10px;">ห้องเรียนของวิชานี้</div>
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; flex-wrap:wrap; gap:8px;">
+        <div style="font-weight:600; font-size:13.5px;">ห้องเรียนของวิชานี้</div>
+        <button class="btn btn-ghost btn-sm" id="struct-import-all-btn">📥 นำเข้ารายชื่อ (แยกห้องอัตโนมัติ)</button>
+      </div>
       <div class="room-pills" id="struct-room-pills" style="margin-bottom:0;">
         ${sections.map(s => `
           <div class="room-pill-wrap">
@@ -228,6 +231,9 @@ async function renderStructureEditor(view, courseId) {
 
   document.getElementById('struct-add-room-btn').addEventListener('click', () => {
     openAddRoomModal(course, () => renderStructureEditor(view, courseId));
+  });
+  document.getElementById('struct-import-all-btn').addEventListener('click', () => {
+    openImportAllRoomsModal(course, sections, () => renderStructureEditor(view, courseId));
   });
   view.querySelectorAll('#struct-room-pills .room-pill-del').forEach(btn => {
     btn.addEventListener('click', () => {

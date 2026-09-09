@@ -92,6 +92,139 @@ function openAddOneStudentModal(course, section) {
   });
 }
 
+// ==========================================================================
+// นำเข้ารายชื่อทั้งวิชา — แยกห้องอัตโนมัติจากไฟล์เดียว (คอลัมน์ห้อง/ชั้น-ห้อง
+// เช่น "มัธยมศึกษาปีที่ 2/1") ห้องที่ยังไม่มีในวิชาจะถูกสร้างให้อัตโนมัติ (1-13)
+// ==========================================================================
+function openImportAllRoomsModal(course, existingSections, onDone) {
+  openModal(`
+    <h2>นำเข้ารายชื่อ — แยกห้องอัตโนมัติ</h2>
+    <div class="modal-sub">อัปโหลดไฟล์รายชื่อนักเรียนหลายห้องของวิชา "${escapeHtml(course.name)}" ในไฟล์เดียว ระบบจะอ่านคอลัมน์ห้อง/ชั้น-ห้อง แล้วแยกนักเรียนลงห้องที่ตรงกันให้อัตโนมัติ ห้องที่ยังไม่มีในวิชานี้จะถูกสร้างใหม่ให้ (รองรับห้อง 1-13)</div>
+    <div class="field">
+      <input type="file" id="import-all-file" accept=".xlsx,.xls,.csv">
+      <div class="field-hint">ต้องมีคอลัมน์ห้อง เช่น "ห้อง" หรือ "ชั้น/ห้อง" (เช่น มัธยมศึกษาปีที่ 2/1) — ระบบจะดึงเลขห้องท้ายสุดออกมาให้เอง</div>
+    </div>
+    <div id="import-all-preview"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="cancel-import-all">ยกเลิก</button>
+      <button class="btn btn-primary hidden" id="confirm-import-all-btn">นำเข้า</button>
+    </div>
+  `);
+  document.getElementById('cancel-import-all').addEventListener('click', closeModal);
+
+  const existingByRoom = new Map(existingSections.map(s => [String(s.room), s]));
+  let groups = null;
+
+  document.getElementById('import-all-file').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    const previewEl = document.getElementById('import-all-preview');
+    const confirmBtn = document.getElementById('confirm-import-all-btn');
+    confirmBtn.classList.add('hidden');
+    groups = null;
+    if (!file) return;
+
+    try {
+      const aoa = await readFileAsRows(file);
+      const result = parseImportSheetMultiRoom(aoa);
+
+      if (!result.roomColumnFound) {
+        previewEl.innerHTML = `<div class="card card-pad"><div class="check-row warn">✕ ไม่พบคอลัมน์ห้อง/ชั้น-ห้องในไฟล์นี้ — ใช้เมนู "นำเข้ารายชื่อ" ในแต่ละห้องแทนได้</div></div>`;
+        return;
+      }
+      if (result.rows.length === 0) {
+        previewEl.innerHTML = `<div class="card card-pad"><div class="check-row warn">✕ ไม่พบข้อมูลนักเรียนในไฟล์นี้</div></div>`;
+        return;
+      }
+
+      const validRows = result.rows.filter(r => ROOM_OPTIONS.includes(r.room));
+      const invalidRows = result.rows.filter(r => !ROOM_OPTIONS.includes(r.room));
+      const grouped = {};
+      validRows.forEach(r => { (grouped[r.room] = grouped[r.room] || []).push(r); });
+      groups = grouped;
+
+      const codes = validRows.map(r => r.code).filter(Boolean);
+      const dupCodes = codes.filter((c, i) => codes.indexOf(c) !== i);
+      const emptyNames = validRows.filter(r => !r.firstName.trim()).length;
+      const roomList = Object.keys(grouped).sort((a, b) => Number(a) - Number(b));
+      const newRooms = roomList.filter(r => !existingByRoom.has(r));
+
+      const checks = [
+        { ok: true, text: `พบนักเรียน ${validRows.length} คน ใน ${roomList.length} ห้อง (${roomList.map(r => 'ห้อง ' + r).join(', ')})` },
+        { ok: dupCodes.length === 0, text: dupCodes.length === 0 ? 'ไม่มีรหัสซ้ำ' : `พบรหัสซ้ำ ${dupCodes.length} รายการ` },
+        { ok: emptyNames === 0, text: emptyNames === 0 ? 'ไม่มีชื่อว่าง' : `พบชื่อว่าง ${emptyNames} รายการ` },
+      ];
+      if (newRooms.length > 0) checks.push({ ok: true, text: `จะสร้างห้องใหม่ ${newRooms.length} ห้อง: ${newRooms.map(r => 'ห้อง ' + r).join(', ')}` });
+      if (invalidRows.length > 0) checks.push({ ok: false, text: `ข้าม ${invalidRows.length} แถวที่ระบุเลขห้อง (1-13) ไม่ได้` });
+
+      previewEl.innerHTML = `<div class="card card-pad" style="margin-bottom:10px;">${checks.map(c => `<div class="check-row ${c.ok ? 'ok' : 'warn'}">${c.ok ? '✓' : '✕'} ${c.text}</div>`).join('')}</div>`;
+
+      const canImport = validRows.length > 0 && dupCodes.length === 0 && emptyNames === 0;
+      confirmBtn.classList.toggle('hidden', !canImport);
+      confirmBtn.textContent = `นำเข้า ${validRows.length} คน (${roomList.length} ห้อง)`;
+    } catch (err) {
+      previewEl.innerHTML = `<div class="card card-pad"><div class="check-row warn">✕ อ่านไฟล์ไม่สำเร็จ: ${escapeHtml(err.message || String(err))}</div></div>`;
+    }
+  });
+
+  document.getElementById('confirm-import-all-btn').addEventListener('click', async (e) => {
+    if (!groups) return;
+    const btn = e.target;
+    btn.disabled = true;
+    btn.textContent = 'กำลังนำเข้า...';
+    const roomCount = Object.keys(groups).length;
+    const studentCount = Object.values(groups).reduce((s, arr) => s + arr.length, 0);
+    try {
+      await performMultiRoomImport(course, existingSections, groups);
+      closeModal();
+      showToast(`นำเข้านักเรียน ${studentCount} คน ใน ${roomCount} ห้องสำเร็จ`);
+      if (onDone) onDone();
+    } catch (err) {
+      btn.disabled = false;
+      btn.textContent = `นำเข้า ${studentCount} คน (${roomCount} ห้อง)`;
+      showToast('นำเข้าไม่สำเร็จ: ' + (err.message || String(err)));
+    }
+  });
+}
+
+async function performMultiRoomImport(course, existingSections, groups) {
+  const uid = AppState.user.uid;
+  const courseRef = db.collection('users').doc(uid).collection('courses').doc(course.id);
+  const existingByRoom = new Map(existingSections.map(s => [String(s.room), s]));
+  const roomNumbers = Object.keys(groups);
+
+  // 1) สร้างห้องที่ยังไม่มีในวิชานี้ก่อน (เรียงเลขห้องน้อยไปมาก ต่อจากลำดับห้องเดิม)
+  const toCreate = roomNumbers.filter(r => !existingByRoom.has(r)).sort((a, b) => Number(a) - Number(b));
+  let nextOrder = existingSections.length;
+  const createdRefs = {};
+  if (toCreate.length > 0) {
+    const sectionBatch = db.batch();
+    toCreate.forEach(room => {
+      const ref = courseRef.collection('sections').doc();
+      sectionBatch.set(ref, { room, order: nextOrder++, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+      createdRefs[room] = ref;
+    });
+    await sectionBatch.commit();
+    await courseRef.update({ roomCount: firebase.firestore.FieldValue.increment(toCreate.length) });
+  }
+
+  // 2) เพิ่มนักเรียนเข้าห้องที่ถูกต้อง แบ่ง batch ก้อนละไม่เกิน 400 รายการ (ลิมิต Firestore 500 ops/batch)
+  const ops = [];
+  roomNumbers.forEach(room => {
+    const secRef = createdRefs[room] || courseRef.collection('sections').doc(existingByRoom.get(room).id);
+    groups[room].forEach(stu => ops.push({ secRef, stu }));
+  });
+  const CHUNK = 400;
+  for (let i = 0; i < ops.length; i += CHUNK) {
+    const batch = db.batch();
+    ops.slice(i, i + CHUNK).forEach(({ secRef, stu }) => {
+      batch.set(secRef.collection('students').doc(), {
+        no: stu.no, code: stu.code, firstName: stu.firstName, lastName: stu.lastName,
+      });
+    });
+    await batch.commit();
+  }
+}
+
 function openImportStudentsModal(course, section) {
   openModal(`
     <h2>นำเข้ารายชื่อนักเรียน</h2>

@@ -149,6 +149,21 @@ function levelSelectOptionsHtml(selected) {
     LEVEL_OPTIONS.map(l => `<option value="${l}" ${l === selected ? 'selected' : ''}>${l}</option>`).join('');
 }
 
+// ดึงเลขห้องจากป้ายชั้น/ห้องแบบเต็ม เช่น "มัธยมศึกษาปีที่ 2/1" หรือ "ม.2/10" -> "1", "10"
+// เอาตัวเลขหลัง "/" ตัวสุดท้าย ถ้าไม่มี "/" เลยก็ลองหาเลขตัวสุดท้ายในข้อความแทน
+function extractRoomFromClassLabel(text) {
+  const s = String(text ?? '').trim();
+  if (!s) return '';
+  const slashIdx = s.lastIndexOf('/');
+  if (slashIdx !== -1) {
+    const after = s.slice(slashIdx + 1);
+    const m = after.match(/\d+/);
+    if (m) return m[0];
+  }
+  const all = s.match(/\d+/g);
+  return all && all.length ? all[all.length - 1] : s;
+}
+
 // ลบทุก doc ใน collection แบบ batch (Firestore client ไม่มี recursive delete ในตัว)
 // ใช้ตอนลบห้อง/ลบวิชา ที่ต้องเคลียร์ subcollection ก่อนลบ doc แม่
 async function deleteCollectionDocs(colRef) {
@@ -259,6 +274,56 @@ function parseImportSheet(aoa, targetRoom) {
   rows = rows.map(({ room, ...rest }) => rest);
 
   return { rows, roomColumnFound, matchedRoomCount, totalParsed: allRows.length };
+}
+
+// เหมือน parseImportSheet แต่ไม่กรองเฉพาะห้องเดียว — คืนค่าเลขห้อง (ที่ normalize ผ่าน
+// extractRoomFromClassLabel แล้ว) ติดมากับทุกแถว เพื่อเอาไปแยกกลุ่มตามห้องเองภายนอกฟังก์ชัน
+// ใช้กับฟีเจอร์ "นำเข้ารายชื่อ แยกห้องอัตโนมัติ" ที่ระดับวิชา (หลายห้องในไฟล์เดียว)
+function parseImportSheetMultiRoom(aoa) {
+  const isRowBlank = (row) => !row || row.every(c => String(c ?? '').trim() === '');
+
+  let headerRowIdx = -1, bestScore = 0, bestMap = null;
+  for (let i = 0; i < Math.min(aoa.length, 12); i++) {
+    const row = aoa[i];
+    if (isRowBlank(row)) continue;
+    const map = {};
+    row.forEach((cell, ci) => {
+      const field = matchImportHeaderField(cell);
+      if (field && !(field in map)) map[field] = ci;
+    });
+    const score = Object.keys(map).length;
+    if (score > bestScore) { bestScore = score; headerRowIdx = i; bestMap = map; }
+  }
+
+  if (headerRowIdx === -1 || bestScore < 2) {
+    return { rows: [], roomColumnFound: false, totalParsed: 0 };
+  }
+
+  const map = bestMap;
+  const roomColumnFound = 'room' in map;
+  const dataRows = aoa.slice(headerRowIdx + 1).filter(r => !isRowBlank(r));
+
+  const rows = dataRows.map(r => {
+    const get = (field) => (field in map) ? String(r[map[field]] ?? '').trim() : '';
+    let firstName = get('firstName') || get('fullName');
+    let lastName = get('lastName');
+    if (!lastName) {
+      const parts = firstName.split(/\s+/).filter(Boolean);
+      if (parts.length > 1) {
+        lastName = parts.pop();
+        firstName = parts.join(' ');
+      }
+    }
+    return {
+      no: get('no'),
+      code: get('code'),
+      firstName,
+      lastName,
+      room: roomColumnFound ? extractRoomFromClassLabel(get('room')) : '',
+    };
+  }).filter(r => r.firstName);
+
+  return { rows, roomColumnFound, totalParsed: rows.length };
 }
 
 function readFileAsRows(file) {
