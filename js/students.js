@@ -47,13 +47,22 @@ async function renderStudentsTab(container, course, section) {
   document.getElementById('add-one-btn').addEventListener('click', () => openAddOneStudentModal(course, section));
   document.getElementById('import-btn').addEventListener('click', () => openImportStudentsModal(course, section));
   container.querySelectorAll('.del-student').forEach(btn => {
-    btn.addEventListener('click', async (e) => {
+    btn.addEventListener('click', (e) => {
       const row = e.target.closest('tr');
-      if (!confirm('ลบนักเรียนคนนี้ออกจากห้อง? คะแนนของนักเรียนคนนี้จะถูกลบไปด้วย')) return;
-      const secBase = sectionRef(uid, course.id, section.id);
-      await secBase.collection('students').doc(row.dataset.id).delete();
-      await secBase.collection('scores').doc(row.dataset.id).delete().catch(() => {}); // อาจไม่มีคะแนนอยู่แล้ว
-      renderStudentsTab(container, course, section);
+      const student = students.find(s => s.id === row.dataset.id);
+      openConfirmModal({
+        title: 'ลบนักเรียนคนนี้?',
+        body: `"${escapeHtml(student?.firstName || '')} ${escapeHtml(student?.lastName || '')}" จะถูกลบออกจากห้อง ${escapeHtml(section.room)} พร้อมคะแนนทั้งหมดของนักเรียนคนนี้ — กู้คืนไม่ได้`,
+        confirmLabel: 'ลบนักเรียน',
+        danger: true,
+        onConfirm: async () => {
+          const secBase = sectionRef(uid, course.id, section.id);
+          await secBase.collection('students').doc(row.dataset.id).delete();
+          await secBase.collection('scores').doc(row.dataset.id).delete().catch(() => {}); // อาจไม่มีคะแนนอยู่แล้ว
+          showToast('ลบนักเรียนสำเร็จ');
+          renderStudentsTab(container, course, section);
+        }
+      });
     });
   });
 }

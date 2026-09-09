@@ -384,52 +384,87 @@ function openAddRoomModal(course, onDone) {
   });
 }
 
-async function confirmDeleteSection(course, sectionId, roomLabel, onDone) {
-  if (AppState.sections.length <= 1) {
-    if (!confirm(`ห้อง ${roomLabel} เป็นห้องเดียวที่เหลืออยู่ในวิชานี้ ต้องการลบหรือไม่? (นักเรียนและคะแนนในห้องนี้จะหายไปด้วย)`)) return;
-  } else {
-    if (!confirm(`ลบห้อง ${roomLabel}? นักเรียนและคะแนนทั้งหมดในห้องนี้จะถูกลบไปด้วย และกู้คืนไม่ได้`)) return;
-  }
-  const uid = AppState.user.uid;
-  const courseRef = db.collection('users').doc(uid).collection('courses').doc(course.id);
-  const secRef = courseRef.collection('sections').doc(sectionId);
+function confirmDeleteSection(course, sectionId, roomLabel, onDone) {
+  const isLast = AppState.sections.length <= 1;
+  openConfirmModal({
+    title: `ลบห้อง ${escapeHtml(roomLabel)}?`,
+    body: isLast
+      ? `ห้อง ${escapeHtml(roomLabel)} เป็นห้องเดียวที่เหลืออยู่ในวิชานี้ นักเรียนและคะแนนในห้องนี้จะถูกลบไปด้วย และกู้คืนไม่ได้`
+      : `นักเรียนและคะแนนทั้งหมดในห้องนี้จะถูกลบไปด้วย และกู้คืนไม่ได้`,
+    confirmLabel: 'ลบห้อง',
+    danger: true,
+    onConfirm: async () => {
+      const uid = AppState.user.uid;
+      const courseRef = db.collection('users').doc(uid).collection('courses').doc(course.id);
+      const secRef = courseRef.collection('sections').doc(sectionId);
 
-  showToast('กำลังลบห้อง...');
-  await deleteCollectionDocs(secRef.collection('scores'));
-  await deleteCollectionDocs(secRef.collection('students'));
-  await secRef.delete();
-  await courseRef.update({ roomCount: firebase.firestore.FieldValue.increment(-1) });
+      showToast('กำลังลบห้อง...');
+      await deleteCollectionDocs(secRef.collection('scores'));
+      await deleteCollectionDocs(secRef.collection('students'));
+      await secRef.delete();
+      await courseRef.update({ roomCount: firebase.firestore.FieldValue.increment(-1) });
 
-  if (AppState.currentSectionId === sectionId) AppState.currentSectionId = null;
-  showToast('ลบห้องสำเร็จ');
-  if (onDone) onDone();
-  else renderCourseShell();
+      if (AppState.currentSectionId === sectionId) AppState.currentSectionId = null;
+      showToast('ลบห้องสำเร็จ');
+      if (onDone) onDone();
+      else renderCourseShell();
+    }
+  });
 }
 
-async function confirmDeleteCourse(course, onDone) {
-  const step1 = confirm(`ลบรายวิชา "${course.name}"? การลบจะรวมทุกห้อง นักเรียน คะแนน และโครงสร้างคะแนนของวิชานี้ทั้งหมด และกู้คืนไม่ได้`);
-  if (!step1) return;
-  const step2 = prompt(`เพื่อยืนยัน พิมพ์ชื่อวิชา "${course.name}" ให้ตรงกันแล้วกดตกลง`);
-  if (step2 !== course.name) { showToast('ชื่อวิชาไม่ตรงกัน ยกเลิกการลบ'); return; }
+// ลบรายวิชาเป็นการกระทำที่ย้อนกลับไม่ได้และกระทบข้อมูลเยอะที่สุดในแอป จึงให้พิมพ์ชื่อวิชา
+// ยืนยันในกล่องเดียว (แทนการเด้ง native confirm()/prompt() 2 ครั้ง ซึ่งเบราว์เซอร์อาจบล็อกเงียบๆ
+// ถ้าผู้ใช้เคยกด "ป้องกันไม่ให้หน้านี้สร้างกล่องโต้ตอบเพิ่มเติม" มาก่อน)
+function confirmDeleteCourse(course, onDone) {
+  openModal(`
+    <h2>ลบรายวิชา "${escapeHtml(course.name)}"?</h2>
+    <div class="modal-sub">การลบจะรวมทุกห้อง นักเรียน คะแนน และโครงสร้างคะแนนของวิชานี้ทั้งหมด และกู้คืนไม่ได้<br><br>
+      พิมพ์ชื่อวิชา <b>${escapeHtml(course.name)}</b> ให้ตรงกันเพื่อยืนยัน</div>
+    <div class="field"><input id="del-course-confirm-input" placeholder="${escapeHtml(course.name)}" autocomplete="off"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="del-course-cancel-btn">ยกเลิก</button>
+      <button class="btn btn-danger" id="del-course-confirm-btn" disabled>ลบรายวิชา</button>
+    </div>
+  `);
 
-  const uid = AppState.user.uid;
-  const courseRef = db.collection('users').doc(uid).collection('courses').doc(course.id);
+  const input = document.getElementById('del-course-confirm-input');
+  const confirmBtn = document.getElementById('del-course-confirm-btn');
+  input.focus();
+  input.addEventListener('input', () => { confirmBtn.disabled = input.value !== course.name; });
+  input.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !confirmBtn.disabled) confirmBtn.click(); });
+  document.getElementById('del-course-cancel-btn').addEventListener('click', closeModal);
 
-  showToast('กำลังลบรายวิชา...');
-  const sectionsSnap = await courseRef.collection('sections').get();
-  for (const secDoc of sectionsSnap.docs) {
-    const secRef = secDoc.ref;
-    await deleteCollectionDocs(secRef.collection('scores'));
-    await deleteCollectionDocs(secRef.collection('students'));
-    await secRef.delete();
-  }
-  await deleteCollectionDocs(courseRef.collection('assessments'));
-  await deleteCollectionDocs(courseRef.collection('settings'));
-  await courseRef.delete();
+  confirmBtn.addEventListener('click', async () => {
+    if (input.value !== course.name) return;
+    confirmBtn.disabled = true;
+    confirmBtn.textContent = 'กำลังลบ...';
+    try {
+      const uid = AppState.user.uid;
+      const courseRef = db.collection('users').doc(uid).collection('courses').doc(course.id);
 
-  showToast('ลบรายวิชาสำเร็จ');
-  if (onDone) onDone();
-  else navigate('courses');
+      showToast('กำลังลบรายวิชา...');
+      const sectionsSnap = await courseRef.collection('sections').get();
+      for (const secDoc of sectionsSnap.docs) {
+        const secRef = secDoc.ref;
+        await deleteCollectionDocs(secRef.collection('scores'));
+        await deleteCollectionDocs(secRef.collection('students'));
+        await secRef.delete();
+      }
+      await deleteCollectionDocs(courseRef.collection('assessments'));
+      await deleteCollectionDocs(courseRef.collection('settings'));
+      await courseRef.delete();
+
+      closeModal();
+      showToast('ลบรายวิชาสำเร็จ');
+      if (onDone) onDone();
+      else navigate('courses');
+    } catch (err) {
+      console.error(err);
+      showToast('เกิดข้อผิดพลาด ลองใหม่อีกครั้ง');
+      confirmBtn.disabled = false;
+      confirmBtn.textContent = 'ลบรายวิชา';
+    }
+  });
 }
 
 async function renderCourseOverview(container, course, sections) {
