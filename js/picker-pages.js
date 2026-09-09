@@ -59,6 +59,61 @@ async function renderStructurePage() {
   return renderStructureList(view);
 }
 
+// จัดกลุ่มรายวิชาตามระดับชั้น (ม.1-ม.6 ตามลำดับ แล้วตามด้วยวิชาที่ไม่ระบุระดับชั้น)
+// แต่ละกลุ่มมีสีอ่อนประจำระดับชั้นของตัวเอง ช่วยแยกสายตาเมื่อมีหลายวิชา
+function renderStructureGroupsHtml(courses) {
+  const groups = LEVEL_OPTIONS.map(level => ({ level, courses: courses.filter(c => c.level === level) }))
+    .filter(g => g.courses.length > 0);
+  const noLevel = courses.filter(c => !LEVEL_OPTIONS.includes(c.level));
+  if (noLevel.length > 0) groups.push({ level: null, courses: noLevel });
+
+  return `
+    <div class="struct-groups">
+      ${groups.map(g => {
+        const col = getLevelColor(g.level);
+        return `
+          <div class="struct-group">
+            <div class="struct-group-header" style="background:${col.tint}; color:${col.strong};">
+              <span class="struct-group-title">${g.level ? g.level : 'ไม่ระบุระดับชั้น'}</span>
+              <span class="struct-group-count">${g.courses.length} วิชา</span>
+            </div>
+            <div class="course-list struct-list">
+              ${g.courses.map(c => structureRowHtml(c)).join('')}
+            </div>
+          </div>
+        `;
+      }).join('')}
+    </div>
+  `;
+}
+
+function structureRowHtml(c) {
+  const col = getLevelColor(c.level);
+  return `
+    <div class="course-row struct-row ${c.archived ? 'is-archived' : ''}" data-course-id="${c.id}" style="border-left:4px solid ${c.archived ? 'var(--border)' : col.strong};">
+      <label class="switch" title="${c.archived ? 'ปิดใช้งานอยู่ — กดเพื่อใช้ในเทอมนี้' : 'กำลังใช้งานเทอมนี้ — กดเพื่อปิด'}">
+        <input type="checkbox" class="struct-toggle" data-course-id="${c.id}" ${c.archived ? '' : 'checked'}>
+        <span class="switch-slider"></span>
+      </label>
+      <div class="info">
+        <div class="name">
+          <span class="struct-code" style="color:${c.archived ? 'var(--ink-soft)' : col.strong};">${escapeHtml(c.code || 'ไม่มีรหัส')}</span>
+          <span class="struct-course-name">${escapeHtml(c.name)}</span>
+        </div>
+        <div class="meta">
+          <span class="badge struct-level-badge" style="background:${col.tint}; color:${col.strong};">${escapeHtml(c.level || 'ไม่ระบุระดับชั้น')}</span>
+          ภาคเรียน ${escapeHtml(c.semester || '-')}/${escapeHtml(c.year || '-')} • ${c.roomCount || 0} ห้อง
+          ${c.archived ? '<span class="struct-status-tag">ปิดใช้งาน</span>' : '<span class="struct-status-tag is-active">กำลังใช้งาน</span>'}
+        </div>
+      </div>
+      <div class="struct-row-actions">
+        <button class="btn btn-ghost btn-sm struct-edit-btn" data-course-id="${c.id}">แก้ไขโครงสร้าง</button>
+        <button class="btn btn-danger-ghost btn-sm struct-del-btn" data-course-id="${c.id}">ลบ</button>
+      </div>
+    </div>
+  `;
+}
+
 async function renderStructureList(view) {
   const courses = await loadAllCoursesForStructure();
 
@@ -75,33 +130,7 @@ async function renderStructureList(view) {
         <div class="icon">📚</div>
         <div>ยังไม่มีรายวิชา กด "+ สร้างรายวิชาใหม่" เพื่อเริ่มต้น</div>
       </div></div>
-    ` : `
-      <div class="course-list struct-list">
-        ${courses.map(c => `
-          <div class="course-row struct-row ${c.archived ? 'is-archived' : ''}" data-course-id="${c.id}">
-            <label class="switch" title="${c.archived ? 'ปิดใช้งานอยู่ — กดเพื่อใช้ในเทอมนี้' : 'กำลังใช้งานเทอมนี้ — กดเพื่อปิด'}">
-              <input type="checkbox" class="struct-toggle" data-course-id="${c.id}" ${c.archived ? '' : 'checked'}>
-              <span class="switch-slider"></span>
-            </label>
-            <div class="info">
-              <div class="name">
-                <span class="struct-code">${escapeHtml(c.code || 'ไม่มีรหัส')}</span>
-                <span class="struct-course-name">${escapeHtml(c.name)}</span>
-              </div>
-              <div class="meta">
-                <span class="badge badge-neutral struct-level-badge">${escapeHtml(c.level || 'ไม่ระบุระดับชั้น')}</span>
-                ภาคเรียน ${escapeHtml(c.semester || '-')}/${escapeHtml(c.year || '-')} • ${c.roomCount || 0} ห้อง
-                ${c.archived ? '<span class="struct-status-tag">ปิดใช้งาน</span>' : '<span class="struct-status-tag is-active">กำลังใช้งาน</span>'}
-              </div>
-            </div>
-            <div class="struct-row-actions">
-              <button class="btn btn-ghost btn-sm struct-edit-btn" data-course-id="${c.id}">แก้ไขโครงสร้าง</button>
-              <button class="btn btn-danger-ghost btn-sm struct-del-btn" data-course-id="${c.id}">ลบ</button>
-            </div>
-          </div>
-        `).join('')}
-      </div>
-    `}
+    ` : renderStructureGroupsHtml(courses)}
   `;
 
   document.getElementById('struct-new-course-btn').addEventListener('click', () => {

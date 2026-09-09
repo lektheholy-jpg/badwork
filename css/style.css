@@ -53,7 +53,9 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 button { font-family: inherit; }
-h1, h2, h3 { margin: 0; font-family: var(--font-head); letter-spacing: -0.01em; }
+/* หมายเหตุ: ห้ามใช้ letter-spacing ติดลบกับข้อความไทย เพราะสระ/วรรณยุกต์ที่ลอยอยู่
+   เหนือ-ใต้ตัวพยัญชนะจะเยื้องออกจากตำแหน่งจนดูเหมือนตัวอักษรเพี้ยน */
+h1, h2, h3 { margin: 0; font-family: var(--font-head); }
 a { color: inherit; }
 
 /* ---------- Layout shell ---------- */
@@ -324,6 +326,18 @@ a { color: inherit; }
   border-radius: var(--radius-s); font-size: 14px; font-family: inherit;
 }
 
+.room-number-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+.room-pick-btn {
+  padding: 9px 0; font-size: 13px; font-weight: 700; text-align: center;
+  border: 1.5px solid var(--border); border-radius: var(--radius-s);
+  background: var(--surface); color: var(--ink-soft); cursor: pointer;
+}
+.room-pick-btn:hover { border-color: var(--primary); color: var(--ink); }
+.room-pick-btn.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+@media (max-width: 480px) {
+  .room-number-grid { grid-template-columns: repeat(5, 1fr); }
+}
+
 /* ---------- Room pills (course shell) ---------- */
 .room-pills { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; align-items: center; }
 .room-pill-wrap { position: relative; display: inline-flex; align-items: center; }
@@ -343,6 +357,15 @@ a { color: inherit; }
   display: flex; align-items: center; justify-content: center;
 }
 .room-pill-del:hover { opacity: 1; background: var(--danger); color: #fff; }
+
+/* ---------- Structure page: grouped by level, soft level colors ---------- */
+.struct-groups { display: flex; flex-direction: column; gap: 22px; }
+.struct-group-header {
+  display: flex; align-items: baseline; justify-content: space-between;
+  padding: 8px 14px; border-radius: var(--radius-s); margin-bottom: 10px;
+  font-weight: 700; font-size: 13px;
+}
+.struct-group-count { font-size: 12px; font-weight: 600; opacity: .8; }
 
 /* ---------- Structure page: subject list with active/inactive toggle ---------- */
 .struct-row { justify-content: space-between; }
@@ -514,7 +537,7 @@ table.sheet td.grp-collect-total { background: var(--col-collect-strong); color:
 /* Category band header (row 1): strong color + white text, always readable */
 table.sheet th.grp-label {
   text-align: center; font-size: 11.5px; padding: 8px 8px;
-  color: #fff; font-weight: 700; letter-spacing: .01em;
+  color: #fff; font-weight: 700;
 }
 table.sheet th.grp-label.grp-collect { background: var(--col-collect-strong); }
 table.sheet th.grp-label.grp-mid { background: var(--col-mid-strong); }

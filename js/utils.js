@@ -126,6 +126,29 @@ function uid4() {
   return Math.random().toString(36).slice(2, 6) + Date.now().toString(36).slice(-4);
 }
 
+// ==========================================================================
+// ระดับชั้น (ม.1-ม.6) และห้อง (1-13) — ตัวเลือกมาตรฐานที่ใช้ทั้งแอป
+// สีของแต่ละระดับชั้นเป็นโทนอ่อน (soft/pastel) ใช้แยกกลุ่มวิชาให้มองง่าย
+// ==========================================================================
+const LEVEL_OPTIONS = ['ม.1', 'ม.2', 'ม.3', 'ม.4', 'ม.5', 'ม.6'];
+const ROOM_OPTIONS = Array.from({ length: 13 }, (_, i) => String(i + 1));
+const LEVEL_COLORS = {
+  'ม.1': { tint: '#EAF2FB', strong: '#5C89BF' },
+  'ม.2': { tint: '#E9F5EE', strong: '#4E9E77' },
+  'ม.3': { tint: '#FBF3E5', strong: '#C1873C' },
+  'ม.4': { tint: '#F4EBF8', strong: '#8C63A8' },
+  'ม.5': { tint: '#FBEBEA', strong: '#C15B54' },
+  'ม.6': { tint: '#EDEDF6', strong: '#5C5C8A' },
+};
+const LEVEL_COLOR_FALLBACK = { tint: 'var(--surface-sunken)', strong: 'var(--ink-soft)' };
+function getLevelColor(level) {
+  return LEVEL_COLORS[level] || LEVEL_COLOR_FALLBACK;
+}
+function levelSelectOptionsHtml(selected) {
+  return `<option value="">— เลือกระดับชั้น —</option>` +
+    LEVEL_OPTIONS.map(l => `<option value="${l}" ${l === selected ? 'selected' : ''}>${l}</option>`).join('');
+}
+
 // ลบทุก doc ใน collection แบบ batch (Firestore client ไม่มี recursive delete ในตัว)
 // ใช้ตอนลบห้อง/ลบวิชา ที่ต้องเคลียร์ subcollection ก่อนลบ doc แม่
 async function deleteCollectionDocs(colRef) {

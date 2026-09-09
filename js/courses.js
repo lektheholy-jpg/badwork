@@ -12,28 +12,32 @@ function openCreateCourseModal(onCreated, sourceCourse = null) {
       <div class="field"><label>ชื่อวิชา</label><input id="f-name" placeholder="เช่น วิทยาการคำนวณ" value="${escapeHtml(src.name || '')}"></div>
     </div>
     <div class="field-row">
-      <div class="field"><label>ระดับชั้น</label><input id="f-level" placeholder="เช่น ม.6" value="${escapeHtml(src.level || '')}"></div>
-      <div class="field"><label>สีประจำวิชา</label><input id="f-color" type="color" value="${src.color || '#6B7A4F'}" style="height:38px; padding:3px;"></div>
+      <div class="field"><label>ระดับชั้น</label>
+        <select id="f-level">${levelSelectOptionsHtml(src.level || '')}</select>
+      </div>
+      <div class="field"><label>ภาคเรียน</label><input id="f-semester" placeholder="1"></div>
     </div>
     <div class="field-row">
-      <div class="field"><label>ภาคเรียน</label><input id="f-semester" placeholder="1"></div>
       <div class="field"><label>ปีการศึกษา</label><input id="f-year" placeholder="2569"></div>
+      <div class="field"><label>หน่วยกิต</label><input id="f-credit" placeholder="1.0" value="${escapeHtml(src.credit || '')}"></div>
     </div>
-    <div class="field"><label>หน่วยกิต</label><input id="f-credit" placeholder="1.0" value="${escapeHtml(src.credit || '')}"></div>
+    <div class="field-hint" style="margin:-6px 0 14px;">สีประจำวิชาจะถูกกำหนดอัตโนมัติตามระดับชั้นที่เลือก เพื่อให้แยกกลุ่มวิชาได้ง่ายในหน้ารายวิชา</div>
 
     <div class="field">
-      <label>ห้องที่สอน</label>
+      <label>ห้องที่สอน (เลือกได้ 1-13)</label>
       <div class="room-mode-toggle">
         <button type="button" class="room-mode-btn active" data-mode="count">ระบุจำนวนห้อง</button>
-        <button type="button" class="room-mode-btn" data-mode="list">พิมพ์เลขห้องเอง</button>
+        <button type="button" class="room-mode-btn" data-mode="list">เลือกเลขห้องเอง</button>
       </div>
       <div id="room-mode-count">
-        <input id="f-room-count" type="number" min="1" value="${src.roomCount || 1}" placeholder="เช่น 5">
-        <div class="field-hint">ระบบจะสร้างห้อง 1, 2, 3 ... ให้อัตโนมัติตามจำนวนที่ใส่</div>
+        <input id="f-room-count" type="number" min="1" max="13" value="${Math.min(src.roomCount || 1, 13)}" placeholder="เช่น 5">
+        <div class="field-hint">ระบบจะสร้างห้อง 1, 2, 3 ... ให้อัตโนมัติตามจำนวนที่ใส่ (สูงสุด 13 ห้อง)</div>
       </div>
       <div id="room-mode-list" class="hidden">
-        <input id="f-room-list" placeholder="เช่น 1,2,3 หรือ 1-5 หรือ ม.6/1, ม.6/2">
-        <div class="field-hint">คั่นด้วยจุลภาค (,) ใช้เครื่องหมาย - เพื่อระบุช่วงได้ เช่น 1-6</div>
+        <div class="room-number-grid" id="f-room-pick-grid">
+          ${ROOM_OPTIONS.map(n => `<button type="button" class="room-pick-btn" data-room="${n}">${n}</button>`).join('')}
+        </div>
+        <div class="field-hint">แตะเลขห้องที่ต้องการสอน เลือกได้หลายห้อง</div>
       </div>
     </div>
 
@@ -59,6 +63,14 @@ function openCreateCourseModal(onCreated, sourceCourse = null) {
     document.getElementById('room-mode-count').classList.add('hidden');
   });
 
+  const selectedRooms = new Set();
+  document.querySelectorAll('#f-room-pick-grid .room-pick-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (selectedRooms.has(btn.dataset.room)) { selectedRooms.delete(btn.dataset.room); btn.classList.remove('active'); }
+      else { selectedRooms.add(btn.dataset.room); btn.classList.add('active'); }
+    });
+  });
+
   document.getElementById('cancel-create').addEventListener('click', closeModal);
   document.getElementById('submit-create').addEventListener('click', async () => {
     const name = document.getElementById('f-name').value.trim();
@@ -66,26 +78,27 @@ function openCreateCourseModal(onCreated, sourceCourse = null) {
 
     let rooms = [];
     if (roomMode === 'count') {
-      const n = Math.max(1, Number(document.getElementById('f-room-count').value) || 1);
+      const n = Math.min(13, Math.max(1, Number(document.getElementById('f-room-count').value) || 1));
       rooms = Array.from({ length: n }, (_, i) => String(i + 1));
     } else {
-      rooms = parseRoomList(document.getElementById('f-room-list').value);
-      if (rooms.length === 0) { showToast('กรุณาใส่เลขห้องอย่างน้อย 1 ห้อง'); return; }
+      rooms = ROOM_OPTIONS.filter(n => selectedRooms.has(n));
+      if (rooms.length === 0) { showToast('กรุณาเลือกเลขห้องอย่างน้อย 1 ห้อง'); return; }
     }
 
     const submitBtn = document.getElementById('submit-create');
     submitBtn.disabled = true;
     submitBtn.textContent = 'กำลังสร้าง...';
 
+    const level = document.getElementById('f-level').value.trim();
     const uid = AppState.user.uid;
     const data = {
       code: document.getElementById('f-code').value.trim(),
       name,
-      level: document.getElementById('f-level').value.trim(),
+      level,
       semester: document.getElementById('f-semester').value.trim(),
       year: document.getElementById('f-year').value.trim(),
       credit: document.getElementById('f-credit').value.trim(),
-      color: document.getElementById('f-color').value,
+      color: getLevelColor(level).strong,
       roomCount: rooms.length,
       archived: false,
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
@@ -328,10 +341,27 @@ async function renderArchivePage() {
 }
 
 function openAddRoomModal(course, onDone) {
+  const usedRooms = new Set((AppState.sections || []).map(s => String(s.room)));
+  const availableRooms = ROOM_OPTIONS.filter(n => !usedRooms.has(n));
+
+  if (availableRooms.length === 0) {
+    openModal(`
+      <h2>เพิ่มห้องเรียน</h2>
+      <div class="modal-sub">วิชา ${escapeHtml(course.name)} ใช้ห้อง 1-13 ครบทุกห้องแล้ว</div>
+      <div class="modal-actions"><button class="btn btn-primary" id="cancel-add-room">ปิด</button></div>
+    `);
+    document.getElementById('cancel-add-room').addEventListener('click', closeModal);
+    return;
+  }
+
   openModal(`
     <h2>เพิ่มห้องเรียน</h2>
     <div class="modal-sub">เพิ่มห้องใหม่ให้วิชา ${escapeHtml(course.name)} — ใช้โครงสร้างคะแนนเดียวกับห้องอื่น</div>
-    <div class="field"><label>เลขห้อง</label><input id="new-room-input" placeholder="เช่น 4 หรือ ม.6/4"></div>
+    <div class="field"><label>เลขห้อง</label>
+      <select id="new-room-input">
+        ${availableRooms.map(n => `<option value="${n}">ห้อง ${n}</option>`).join('')}
+      </select>
+    </div>
     <div class="modal-actions">
       <button class="btn btn-ghost" id="cancel-add-room">ยกเลิก</button>
       <button class="btn btn-primary" id="submit-add-room">เพิ่มห้อง</button>
@@ -340,7 +370,7 @@ function openAddRoomModal(course, onDone) {
   document.getElementById('cancel-add-room').addEventListener('click', closeModal);
   document.getElementById('submit-add-room').addEventListener('click', async () => {
     const room = document.getElementById('new-room-input').value.trim();
-    if (!room) { showToast('กรุณาใส่เลขห้อง'); return; }
+    if (!room) { showToast('กรุณาเลือกเลขห้อง'); return; }
     const uid = AppState.user.uid;
     const courseRef = db.collection('users').doc(uid).collection('courses').doc(course.id);
     await courseRef.collection('sections').add({
