@@ -111,8 +111,16 @@ async function renderStructureList(view) {
     });
   });
 
+  // สำคัญ: ต้อง stopPropagation ที่ label.switch (ไม่ใช่แค่ input) เพราะ input ถูกทำ
+  // opacity:0 / width:0 / height:0 (ซ่อนไว้ใช้แค่ state) จุดที่ผู้ใช้คลิกจริงคือ
+  // span.switch-slider ที่มองเห็น ซึ่ง event 'click' จะ bubble จาก span ผ่าน label ขึ้นไปที่
+  // .struct-row ก่อนที่ browser จะ synthesize click แยกไปที่ input เสียอีก — ถ้า stopPropagation
+  // ไว้ที่ input อย่างเดียว event ตัวจริง (target = span) จะหลุดไปโดน .struct-row แล้วเด้งเข้า
+  // หน้าแก้ไขโครงสร้างแทนที่จะแค่ toggle
+  view.querySelectorAll('.switch').forEach(label => {
+    label.addEventListener('click', (e) => e.stopPropagation());
+  });
   view.querySelectorAll('.struct-toggle').forEach(toggle => {
-    toggle.addEventListener('click', (e) => e.stopPropagation());
     toggle.addEventListener('change', async () => {
       const courseId = toggle.dataset.courseId;
       const course = courses.find(c => c.id === courseId);
