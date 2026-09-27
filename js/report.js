@@ -114,6 +114,7 @@ function parsePp5TemplateColumns(aoa) {
     cols.push({
       colIndex: c,
       group: lastGroup,
+      bucket: classifyPp5Bucket(lastGroup),
       order: orderRow[c] !== undefined ? orderRow[c] : '',
       max: Number(max) || 0,
       itemId: idRow[c] !== undefined ? idRow[c] : '',
@@ -122,10 +123,34 @@ function parsePp5TemplateColumns(aoa) {
   return cols;
 }
 
+// จัดกลุ่มคอลัมน์ของฟอร์มเข้ากับ 3 หมวดคะแนนที่ระบบมีอยู่จริง (collect/midterm/final)
+// โดยดูจากคำในชื่อหมวดของฟอร์ม (มาตรฐาน สพฐ.: ก่อนกลางภาค/กลางภาค/หลังกลางภาค/ปลายภาค)
+function classifyPp5Bucket(groupLabel) {
+  const s = String(groupLabel || '');
+  if (s.includes('ปลาย')) return 'final';
+  if (s.includes('กลางภาค') && !s.includes('ก่อน') && !s.includes('หลัง')) return 'midterm';
+  return 'collect'; // ก่อนกลางภาค, หลังกลางภาค, เก็บคะแนน ฯลฯ ล้วนมาจากคะแนนเก็บ (collect) ของครู
+}
+
+// คำนวณสัดส่วนที่ทำได้จริงของแต่ละหมวด (0-1) จากคะแนนที่มีอยู่แล้วในระบบ
+function computeStudentBucketRatios(sc, assessments) {
+  const byCat = { collect: { score: 0, max: 0 }, midterm: { score: 0, max: 0 }, final: { score: 0, max: 0 } };
+  assessments.forEach(a => {
+    const cat = byCat[a.category] ? a.category : 'collect';
+    byCat[cat].max += Number(a.max) || 0;
+    byCat[cat].score += Number(sc[a.id]) || 0;
+  });
+  const ratio = {};
+  Object.keys(byCat).forEach(cat => {
+    ratio[cat] = byCat[cat].max > 0 ? (byCat[cat].score / byCat[cat].max) : 0;
+  });
+  return { ratio, byCat };
+}
+
 function openPp5ExportModal(course, section, students, assessments, scores) {
   openModal(`
     <h2>ส่งออกเข้าฟอร์ม ปพ.5</h2>
-    <div class="modal-sub">ห้อง ${escapeHtml(section.room)} — อัปโหลดไฟล์แบบฟอร์ม ปพ.5 ที่โรงเรียนออกให้สำหรับวิชา/ห้องนี้ (ไฟล์ .xlsx) ระบบจะอ่านโครงสร้างคอลัมน์คะแนนจากไฟล์เอง แล้วให้เลือกว่ารายการคะแนนของครูข้อไหนลงคอลัมน์ไหน</div>
+    <div class="modal-sub">ห้อง ${escapeHtml(section.room)} — อัปโหลดไฟล์แบบฟอร์ม ปพ.5 ที่โรงเรียนออกให้ ระบบจะ<b>แปลงคะแนนที่มีอยู่แล้วในระบบให้อัตโนมัติ</b> ตามสัดส่วนของแต่ละหมวด (เก็บ/กลางภาค/ปลายภาค) โดยไม่ต้องเลือก mapping เอง และคำนวณให้เกรดรวม (%) เท่าเดิม</div>
     <div class="field">
       <input type="file" id="pp5-file" accept=".xlsx,.xls">
       <div class="field-hint">ต้องเป็นไฟล์ต้นฉบับที่มีคอลัมน์ ID ของโรงเรียนอยู่แล้ว (คอลัมน์ A-E: ลำดับ/ID/รหัส/ชื่อ/ห้อง) — ระบบจะเติมเฉพาะคะแนน ไม่แก้คอลัมน์อื่น</div>
@@ -160,41 +185,32 @@ function openPp5ExportModal(course, section, students, assessments, scores) {
         return;
       }
 
-      const courseBase = db.collection('users').doc(AppState.user.uid).collection('courses').doc(course.id);
-      const savedDoc = await courseBase.collection('settings').doc('pp5mapping').get();
-      const saved = savedDoc.exists ? savedDoc.data() : null;
-      const savedMap = (saved && Array.isArray(saved.columns) && saved.columns.length === targetCols.length)
-        ? saved.columns : null;
+      // ตรวจสอบว่าคะแนนเต็มรวมของแต่ละหมวดใน "ระบบ" ตรงกับ "ฟอร์ม" หรือไม่
+      // (ถ้าตรง → เกรดรวมจะเท่าเดิมเป๊ะ ถ้าไม่ตรง → คลาดเคลื่อนได้ตามสัดส่วน)
+      const appMax = { collect: 0, midterm: 0, final: 0 };
+      assessments.forEach(a => { appMax[appMax[a.category] !== undefined ? a.category : 'collect'] += Number(a.max) || 0; });
+      const formMax = { collect: 0, midterm: 0, final: 0 };
+      targetCols.forEach(c => { formMax[c.bucket] += c.max; });
+
+      const mismatches = ['collect', 'midterm', 'final'].filter(cat => appMax[cat] !== formMax[cat]);
+      const bucketLabel = { collect: 'คะแนนเก็บ (ก่อน+หลังกลางภาค)', midterm: 'กลางภาค', final: 'ปลายภาค' };
 
       bodyEl.innerHTML = `
         <div class="card card-pad" style="margin-bottom:12px;">
-          <div class="check-row ok">✓ พบคอลัมน์คะแนนในฟอร์ม ${targetCols.length} คอลัมน์ — เลือกรายการคะแนนของครูที่จะลงแต่ละคอลัมน์ (เลือกได้มากกว่า 1 รายการ ระบบจะรวมคะแนนให้)</div>
-        </div>
-        <div style="display:flex; flex-direction:column; gap:12px;" id="pp5-map-rows">
-          ${targetCols.map((col, idx) => `
-            <div class="card card-pad">
-              <div style="font-size:13px; font-weight:600; margin-bottom:6px;">
-                ${escapeHtml(col.group || '')} ข้อที่ ${escapeHtml(String(col.order))} — เต็ม ${col.max} คะแนน
-                <span style="color:var(--ink-soft); font-weight:400;">(รหัสคอลัมน์ในระบบโรงเรียน: ${escapeHtml(String(col.itemId))})</span>
-              </div>
-              <div style="display:flex; flex-wrap:wrap; gap:10px;">
-                ${assessments.map(a => `
-                  <label style="display:flex; align-items:center; gap:5px; font-size:13px;">
-                    <input type="checkbox" class="pp5-item-check" data-col="${idx}" data-item="${a.id}"
-                      ${savedMap && savedMap[idx] && savedMap[idx].assessmentIds && savedMap[idx].assessmentIds.includes(a.id) ? 'checked' : ''}>
-                    ${escapeHtml(a.name)} (${a.max})
-                  </label>
-                `).join('')}
-              </div>
+          <div class="check-row ok">✓ พบคอลัมน์คะแนนในฟอร์ม ${targetCols.length} คอลัมน์ — จะแปลงคะแนนอัตโนมัติตามสัดส่วน ไม่ต้องเลือกเอง</div>
+          ${mismatches.length === 0 ? `
+            <div class="check-row ok" style="margin-top:6px;">✓ คะแนนเต็มแต่ละหมวดตรงกับฟอร์มพอดี (เก็บ ${appMax.collect}, กลางภาค ${appMax.midterm}, ปลายภาค ${appMax.final}) — เกรดรวม (%) จะเท่าเดิมแน่นอน</div>
+          ` : `
+            <div class="check-row warn" style="margin-top:6px;">
+              ✕ คะแนนเต็มบางหมวดในระบบไม่ตรงกับฟอร์ม: ${mismatches.map(cat => `${bucketLabel[cat]} (ระบบ ${appMax[cat]} / ฟอร์ม ${formMax[cat]})`).join(', ')}
+              — ระบบจะยังคำนวณสัดส่วน (%) ให้เท่าเดิมในแต่ละหมวด แต่ผลรวม 100 คะแนนสุดท้ายอาจ<b>คลาดเคลื่อนเล็กน้อย</b>จากเกรดจริงในระบบ เพราะน้ำหนักหมวดคะแนนของวิชานี้ไม่เท่ากับที่ฟอร์มกำหนดไว้ — แนะนำให้เช็กเกรดหลัง export อีกครั้ง
             </div>
-          `).join('')}
+          `}
         </div>
-        <div id="pp5-mismatch-preview" style="margin-top:12px;"></div>
+        <div id="pp5-mismatch-preview"></div>
       `;
       confirmBtn.classList.remove('hidden');
       updateMismatchPreview();
-
-      document.querySelectorAll('.pp5-item-check').forEach(chk => chk.addEventListener('change', updateMismatchPreview));
     } catch (err) {
       bodyEl.innerHTML = `<div class="card card-pad"><div class="check-row warn">✕ อ่านไฟล์ไม่สำเร็จ: ${escapeHtml(err.message || String(err))}</div></div>`;
     }
@@ -204,15 +220,14 @@ function openPp5ExportModal(course, section, students, assessments, scores) {
     if (!aoa) return;
     const dataRows = aoa.slice(PP5_HEADER_ROWS);
     const fileCodes = new Set(dataRows.map(r => String(r[PP5_CODE_COL] ?? '').trim()).filter(Boolean));
-    const appCodes = students.map(s => String(s.code ?? '').trim());
-    const matched = appCodes.filter(c => fileCodes.has(c));
     const missingInFile = students.filter(s => !fileCodes.has(String(s.code ?? '').trim()));
+    const matchedCount = students.length - missingInFile.length;
     const el = document.getElementById('pp5-mismatch-preview');
     if (!el) return;
     el.innerHTML = `
       <div class="card card-pad">
         <div class="check-row ${missingInFile.length === 0 ? 'ok' : 'warn'}">
-          ${missingInFile.length === 0 ? '✓' : '✕'} จับคู่รหัสนักเรียนได้ ${matched.length}/${students.length} คน
+          ${missingInFile.length === 0 ? '✓' : '✕'} จับคู่รหัสนักเรียนได้ ${matchedCount}/${students.length} คน
         </div>
         ${missingInFile.length > 0 ? `
           <div style="font-size:12.5px; color:var(--ink-soft); margin-top:6px;">
@@ -225,15 +240,6 @@ function openPp5ExportModal(course, section, students, assessments, scores) {
 
   document.getElementById('pp5-confirm').addEventListener('click', async () => {
     if (!wb || !ws || !aoa || targetCols.length === 0) { showToast('กรุณาอัปโหลดไฟล์ก่อน'); return; }
-
-    const mapping = targetCols.map((col, idx) => ({
-      colIndex: col.colIndex,
-      itemId: col.itemId,
-      assessmentIds: Array.from(document.querySelectorAll(`.pp5-item-check[data-col="${idx}"]:checked`)).map(el => el.dataset.item),
-    }));
-
-    const courseBase = db.collection('users').doc(AppState.user.uid).collection('courses').doc(course.id);
-    await courseBase.collection('settings').doc('pp5mapping').set({ columns: mapping });
 
     const dataRows = aoa.slice(PP5_HEADER_ROWS);
     const rowByCode = new Map();
@@ -250,10 +256,11 @@ function openPp5ExportModal(course, section, students, assessments, scores) {
       if (rowIdx === undefined) { missing.push(`${s.firstName} ${s.lastName} (รหัส ${s.code || '-'})`); return; }
       matchedCount++;
       const sc = scores[s.id] || {};
-      mapping.forEach(m => {
-        const total = m.assessmentIds.reduce((sum, aid) => sum + (Number(sc[aid]) || 0), 0);
-        const cellRef = XLSX.utils.encode_cell({ r: rowIdx, c: m.colIndex });
-        ws[cellRef] = { ...(ws[cellRef] || {}), t: 'n', v: total };
+      const { ratio } = computeStudentBucketRatios(sc, assessments);
+      targetCols.forEach(col => {
+        const value = Math.round((ratio[col.bucket] || 0) * col.max * 100) / 100; // ปัดทศนิยม 2 ตำแหน่ง
+        const cellRef = XLSX.utils.encode_cell({ r: rowIdx, c: col.colIndex });
+        ws[cellRef] = { ...(ws[cellRef] || {}), t: 'n', v: value };
       });
     });
 
