@@ -2,6 +2,14 @@
 // Utils: toast, modal, csv parsing, debounce, grade calculation, mobile nav
 // ==========================================================================
 
+// ป้องกันค่าตัวเลข (คะแนน/คะแนนเต็ม/เกณฑ์เกรด ฯลฯ) เปลี่ยนโดยไม่ตั้งใจจากการเลื่อนเมาส์ (scroll wheel)
+// ขณะเคอร์เซอร์อยู่ในช่อง input type="number" — ใช้ event delegation ครอบคลุมทุกหน้าในระบบ
+document.addEventListener('wheel', (e) => {
+  if (e.target && e.target.tagName === 'INPUT' && e.target.type === 'number' && document.activeElement === e.target) {
+    e.preventDefault();
+  }
+}, { passive: false });
+
 function showToast(msg) {
   const el = document.getElementById('toast');
   el.textContent = msg;

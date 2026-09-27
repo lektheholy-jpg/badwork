@@ -114,7 +114,7 @@ function renderScoreRow(student, collectItems, midItems, finalItems, studentScor
 
   const cellFor = (a) => `
     <td class="grp-${a.category === 'collect' ? 'collect' : a.category === 'midterm' ? 'mid' : 'final'}" data-assessment-id="${a.id}">
-      <input class="score-input" type="number" min="0" max="${a.max}" placeholder="–"
+      <input class="score-input" type="text" inputmode="decimal" autocomplete="off" placeholder="–"
              value="${studentScores[a.id] ?? ''}"
              data-student-id="${student.id}" data-assessment-id="${a.id}" data-max="${a.max}">
     </td>`;
@@ -170,6 +170,10 @@ function wireScoreInputs(container, course, section, students, collectItems, mid
 
   inputs.forEach((inp) => {
     inp.addEventListener('input', () => {
+      // กรองให้พิมพ์ได้เฉพาะตัวเลข (และจุดทศนิยม 1 จุด) — ป้องกันค่าอื่นที่ไม่ได้มาจากการพิมพ์คะแนนจริง
+      const cleaned = inp.value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+      if (cleaned !== inp.value) inp.value = cleaned;
+
       const max = Number(inp.dataset.max);
       const val = Number(inp.value);
       inp.closest('td').classList.toggle('over-max', inp.value !== '' && val > max);
