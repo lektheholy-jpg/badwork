@@ -19,13 +19,17 @@ async function renderDashboard() {
   for (const doc of activeDocs) {
     const c = { id: doc.id, ...doc.data() };
     const courseBase = db.collection('users').doc(uid).collection('courses').doc(c.id);
-    const [sections, assessSnap] = await Promise.all([
+    const [sections, assessSnap, gradingDoc] = await Promise.all([
       loadSections(uid, c.id),
       courseBase.collection('assessments').get(),
+      courseBase.collection('settings').doc('grading').get(),
     ]);
-    const assessmentIds = assessSnap.docs.map(d => d.id);
+    const assessments = assessSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const assessmentIds = assessments.map(a => a.id);
+    const gradeScale = gradingDoc.exists ? gradingDoc.data().scale : DEFAULT_GRADE_SCALE;
     let studentCount = 0;
     let progressSum = 0;
+    const roomsData = []; // สถิติเกรดแยกรายห้อง สำหรับใช้ในการ์ด "สถิติเกรดรายวิชา"
     for (const s of sections) {
       const secBase = courseBase.collection('sections').doc(s.id);
       const [studentsSnap, scoresSnap] = await Promise.all([
@@ -35,14 +39,14 @@ async function renderDashboard() {
       // ความคืบหน้า = สัดส่วน "ช่องคะแนน" ที่กรอกแล้วจากทุกช่องในห้องนี้ (นักเรียน x รายการคะแนนทั้งหมด)
       const totalCells = studentsSnap.size * assessmentIds.length;
       let filledCells = 0;
-      if (totalCells > 0) {
-        scoresSnap.docs.forEach(d => {
-          const data = d.data();
-          assessmentIds.forEach(aid => {
-            if (data[aid] !== undefined && data[aid] !== null && data[aid] !== '') filledCells++;
-          });
+      const scoresByStudent = {};
+      scoresSnap.docs.forEach(d => {
+        const data = d.data();
+        scoresByStudent[d.id] = data;
+        assessmentIds.forEach(aid => {
+          if (data[aid] !== undefined && data[aid] !== null && data[aid] !== '') filledCells++;
         });
-      }
+      });
       const secProgress = totalCells > 0 ? Math.round((filledCells / totalCells) * 100) : 0;
       studentCount += studentsSnap.size;
       progressSum += secProgress;
@@ -56,10 +60,19 @@ async function renderDashboard() {
         studentCount: studentsSnap.size,
         progress: secProgress,
       });
+
+      const gradedStudents = studentsSnap.docs.map(sd => {
+        const sc = scoresByStudent[sd.id] || {};
+        const total = assessments.reduce((sum, a) => sum + (Number(sc[a.id]) || 0), 0);
+        return { id: sd.id, total, grade: calcGrade(total, gradeScale) };
+      });
+      roomsData.push({ sectionId: s.id, room: s.room, students: gradedStudents });
     }
     c.studentCount = studentCount;
     c.roomCount = sections.length;
     c.progress = sections.length > 0 ? Math.round(progressSum / sections.length) : 0;
+    c.gradeScale = gradeScale;
+    c.roomsData = roomsData;
     totalStudents += studentCount;
     totalProgressSum += c.progress;
     courses.push(c);
@@ -68,6 +81,11 @@ async function renderDashboard() {
 
   const avgProgress = courses.length ? Math.round(totalProgressSum / courses.length) : 0;
   const firstName = (AppState.user.displayName || 'คุณครู').split(' ')[0];
+
+  // ปีการศึกษาที่มีวิชาเปิดสอนอยู่ (เอาจากฟิลด์ปีของแต่ละวิชา) — ใหม่สุดก่อน, ใช้เป็นตัวกรองเริ่มต้น
+  const years = Array.from(new Set(courses.map(c => (c.year || '').toString().trim()).filter(Boolean)))
+    .sort((a, b) => (Number(b) - Number(a)) || b.localeCompare(a));
+  const defaultYear = years[0] || '__all__';
 
   view.innerHTML = `
     <div class="page-header">
@@ -91,6 +109,19 @@ async function renderDashboard() {
         <div class="chart-title">สัดส่วนนักเรียนต่อวิชา</div>
         ${renderStudentDonut(courses, totalStudents)}
       </div>
+    </div>
+    ` : ''}
+
+    ${courses.length > 0 ? `
+    <div class="card card-pad" style="margin-bottom:16px;">
+      <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:12px;">
+        <h2 style="font-size:15px; font-weight:700;">สถิติเกรดรายวิชา</h2>
+        <select id="grade-year-filter" style="padding:6px 10px; border:1px solid var(--border); border-radius:6px; font-size:13px;">
+          ${years.map(y => `<option value="${y}" ${y === defaultYear ? 'selected' : ''}>ปีการศึกษา ${escapeHtml(y)}</option>`).join('')}
+          <option value="__all__" ${defaultYear === '__all__' ? 'selected' : ''}>ทุกปีการศึกษา</option>
+        </select>
+      </div>
+      <div id="grade-stats-body">${buildGradeStatsBodyHtml(courses, defaultYear)}</div>
     </div>
     ` : ''}
 
@@ -124,6 +155,86 @@ async function renderDashboard() {
   view.querySelectorAll('.section-card').forEach(card => {
     card.addEventListener('click', () => openCourseSection(card.dataset.courseId, card.dataset.sectionId));
   });
+
+  const yearFilterEl = document.getElementById('grade-year-filter');
+  if (yearFilterEl) {
+    yearFilterEl.addEventListener('change', () => {
+      document.getElementById('grade-stats-body').innerHTML = buildGradeStatsBodyHtml(courses, yearFilterEl.value);
+      wireGradeRoomFilters(courses);
+    });
+  }
+  wireGradeRoomFilters(courses);
+}
+
+// ==========================================================================
+// สถิติเกรดรายวิชา — กรองตามปีการศึกษา, เลือกดูรายห้องหรือทุกห้องรวมกันได้
+// ==========================================================================
+
+function buildGradeStatsBodyHtml(courses, year) {
+  const filtered = year === '__all__' ? courses : courses.filter(c => (c.year || '').toString().trim() === year);
+  if (filtered.length === 0) {
+    return `<div class="empty-state" style="padding:16px 0;">ไม่มีวิชาที่เปิดสอนในปีการศึกษานี้</div>`;
+  }
+  return filtered.map(c => {
+    const totalInCourse = c.roomsData.reduce((sum, r) => sum + r.students.length, 0);
+    return `
+      <div class="card card-pad grade-stat-card" style="margin-bottom:10px;">
+        <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:8px;">
+          <div style="font-size:13.5px; font-weight:600; display:flex; align-items:center; gap:6px;">
+            <span class="course-dot" style="background:${c.color || '#6B7A4F'}"></span>
+            ${escapeHtml(c.name)} <span style="color:var(--ink-soft); font-weight:400;">${c.code ? '(' + escapeHtml(c.code) + ')' : ''}</span>
+          </div>
+          <select class="grade-room-filter" data-course-id="${c.id}" style="padding:5px 8px; border:1px solid var(--border); border-radius:6px; font-size:12.5px;">
+            <option value="__all__">ทุกห้อง (${totalInCourse} คน)</option>
+            ${c.roomsData.map(r => `<option value="${r.sectionId}">ห้อง ${escapeHtml(r.room)} (${r.students.length} คน)</option>`).join('')}
+          </select>
+        </div>
+        <div class="grade-stat-body" data-course-id="${c.id}">${renderGradeDistribution(c, '__all__')}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+function wireGradeRoomFilters(courses) {
+  document.querySelectorAll('.grade-room-filter').forEach(sel => {
+    sel.addEventListener('change', () => {
+      const course = courses.find(c => c.id === sel.dataset.courseId);
+      const bodyEl = document.querySelector(`.grade-stat-body[data-course-id="${sel.dataset.courseId}"]`);
+      if (course && bodyEl) bodyEl.innerHTML = renderGradeDistribution(course, sel.value);
+    });
+  });
+}
+
+function renderGradeDistribution(course, roomFilter) {
+  const students = roomFilter === '__all__'
+    ? course.roomsData.flatMap(r => r.students)
+    : (course.roomsData.find(r => r.sectionId === roomFilter)?.students || []);
+
+  if (students.length === 0) {
+    return `<div class="empty-state" style="padding:12px 0;">ยังไม่มีนักเรียน/คะแนนในห้องนี้</div>`;
+  }
+
+  const gradeScale = course.gradeScale;
+  const gradeCounts = {};
+  gradeScale.forEach(g => { gradeCounts[g.grade] = 0; });
+  let sumTotal = 0;
+  students.forEach(s => {
+    gradeCounts[s.grade] = (gradeCounts[s.grade] || 0) + 1;
+    sumTotal += s.total;
+  });
+  const avg = (sumTotal / students.length).toFixed(1);
+  const maxCount = Math.max(1, ...Object.values(gradeCounts));
+
+  return `
+    <div style="font-size:12.5px; color:var(--ink-soft); margin-bottom:8px;">นักเรียน ${students.length} คน • คะแนนเฉลี่ย ${avg}</div>
+    ${gradeScale.map(g => `
+      <div class="dist-row">
+        <span class="g-label">${escapeHtml(g.grade)}</span>
+        <div class="g-bar-track"><div class="g-bar-fill" style="width:${((gradeCounts[g.grade] || 0) / maxCount) * 100}%"></div></div>
+        <span class="g-count">${gradeCounts[g.grade] || 0}</span>
+      </div>
+    `).join('')}
+  `;
 }
 
 function openCourseSection(courseId, sectionId) {
