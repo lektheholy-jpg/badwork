@@ -139,18 +139,61 @@ function wireScoreInputs(container, course, section, students, collectItems, mid
   const base = sectionRef(uid, course.id, section.id);
   const statusEl = document.getElementById('save-status');
 
-  const saveCell = debounce(async (studentId, assessmentId, value) => {
+  // เดิม: ใช้ debounce ตัวเดียวรวมทุกช่อง ทำให้พิมพ์คะแนนช่องถัดไปเร็ว ๆ ไปยกเลิกการบันทึก
+  // ของช่องก่อนหน้าที่ยังไม่ทันบันทึกจริง (นี่คือสาเหตุคะแนนหาย) — เปลี่ยนมาเป็น debounce
+  // แยกอิสระ "ต่อช่อง" (คีย์ = นักเรียน+รายการคะแนน) ไม่ให้ช่องอื่นมาตัดหน้ากัน
+  const pendingSaves = new Map(); // key -> { timer, run }
+  let pendingCount = 0;
+
+  function updateStatusPending() {
     statusEl.classList.add('saving');
     statusEl.innerHTML = `<span class="dot"></span> กำลังบันทึก...`;
+  }
+
+  async function runSave(studentId, assessmentId, value) {
     try {
       await base.collection('scores').doc(studentId).set({ [assessmentId]: value }, { merge: true });
-      statusEl.classList.remove('saving');
-      statusEl.innerHTML = `<span class="dot"></span> บันทึกแล้ว`;
     } catch (err) {
       statusEl.innerHTML = `<span class="dot" style="background:var(--danger)"></span> บันทึกไม่สำเร็จ`;
       console.error(err);
+      return;
     }
-  }, 500);
+    pendingCount = Math.max(0, pendingCount - 1);
+    if (pendingCount === 0) {
+      statusEl.classList.remove('saving');
+      statusEl.innerHTML = `<span class="dot"></span> บันทึกแล้ว`;
+    }
+  }
+
+  function saveCell(studentId, assessmentId, value) {
+    const key = `${studentId}:${assessmentId}`;
+    updateStatusPending();
+    if (!pendingSaves.has(key)) pendingCount++;
+    const existing = pendingSaves.get(key);
+    if (existing) clearTimeout(existing.timer);
+    const timer = setTimeout(() => {
+      pendingSaves.delete(key);
+      runSave(studentId, assessmentId, value);
+    }, 500);
+    pendingSaves.set(key, { timer });
+  }
+
+  // บันทึกทันทีทุกช่องที่ยังค้างอยู่ (ไม่รอ debounce) — เรียกก่อนสลับแท็บ/ออกจากหน้านี้
+  // เพื่อกันคะแนนหายกรณีพิมพ์เสร็จแล้วรีบสลับแท็บก่อนครบ 500ms
+  function flushPendingSaves() {
+    pendingSaves.forEach(({ timer }, key) => clearTimeout(timer));
+    const keys = [...pendingSaves.keys()];
+    pendingSaves.clear();
+    keys.forEach(key => {
+      const inp = container.querySelector(`.score-input[data-student-id="${key.split(':')[0]}"][data-assessment-id="${key.split(':')[1]}"]`);
+      if (!inp) return;
+      const val = inp.value === '' ? 0 : Number(inp.value);
+      runSave(inp.dataset.studentId, inp.dataset.assessmentId, val);
+    });
+  }
+  // เผื่อกรณีปิดแท็บ/รีเฟรชเบราว์เซอร์ทันทีหลังพิมพ์
+  window.addEventListener('beforeunload', flushPendingSaves);
+  AppState.flushScoreSaves = flushPendingSaves;
 
   function recalcRow(studentId) {
     const row = container.querySelector(`tr[data-student-id="${studentId}"]`);

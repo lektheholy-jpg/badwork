@@ -299,12 +299,14 @@ async function renderCourseShell() {
   });
   view.querySelectorAll('.room-pill[data-section-id]').forEach(p => {
     p.addEventListener('click', () => {
+      AppState.flushScoreSaves?.(); // กันคะแนนหายถ้าเพิ่งพิมพ์แล้วรีบสลับห้อง
       AppState.currentSectionId = p.dataset.sectionId;
       renderCourseShell();
     });
   });
   view.querySelectorAll('.tab').forEach(t => {
     t.addEventListener('click', () => {
+      AppState.flushScoreSaves?.(); // กันคะแนนหายถ้าเพิ่งพิมพ์แล้วรีบสลับแท็บ
       AppState.currentTab = t.dataset.tab;
       renderCourseShell();
     });

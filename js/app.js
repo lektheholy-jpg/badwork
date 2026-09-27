@@ -9,6 +9,7 @@ function setActiveNav(routeId) {
 }
 
 function navigate(route) {
+  AppState.flushScoreSaves?.(); // กันคะแนนหายถ้าเพิ่งพิมพ์คะแนนแล้วรีบกดออกจากหน้าวิชา
   AppState.currentRoute = route;
   AppState.currentCourseId = null;
   setActiveNav(route);
