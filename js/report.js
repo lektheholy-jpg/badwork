@@ -258,7 +258,7 @@ function openPp5ExportModal(course, section, students, assessments, scores) {
       const sc = scores[s.id] || {};
       const { ratio } = computeStudentBucketRatios(sc, assessments);
       targetCols.forEach(col => {
-        const value = Math.round((ratio[col.bucket] || 0) * col.max * 100) / 100; // ปัดทศนิยม 2 ตำแหน่ง
+        const value = Math.round((ratio[col.bucket] || 0) * col.max); // ปัดเป็นจำนวนเต็ม
         const cellRef = XLSX.utils.encode_cell({ r: rowIdx, c: col.colIndex });
         ws[cellRef] = { ...(ws[cellRef] || {}), t: 'n', v: value };
       });
