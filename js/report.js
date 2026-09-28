@@ -68,6 +68,12 @@ async function renderReportTab(container, course, section) {
         <button class="btn btn-ghost btn-sm" id="export-pp5-btn">Export เข้าฟอร์ม ปพ.5</button>
       </div>
     </div>
+
+    <div class="card card-pad" style="margin-top:16px;">
+      <h2 style="font-size:14.5px; margin-bottom:4px;">แปลงคะแนน NextSchool</h2>
+      <div style="font-size:12.5px; color:var(--ink-soft); margin-bottom:12px;">ส่งออกคะแนนเป็น เก็บก่อนกลางภาค 30 · กลางภาค 20 · เก็บหลังกลางภาค 30 · ปลายภาค 20 — คะแนนจริงและเกรดในระบบไม่เปลี่ยน</div>
+      <button class="btn btn-primary btn-sm" id="export-nextschool-btn">แปลงคะแนน NextSchool</button>
+    </div>
   `;
 
   document.getElementById('export-csv-btn').addEventListener('click', () => {
@@ -83,6 +89,10 @@ async function renderReportTab(container, course, section) {
 
   document.getElementById('export-pp5-btn').addEventListener('click', () => {
     openPp5ExportModal(course, section, students, assessments, scores);
+  });
+
+  document.getElementById('export-nextschool-btn').addEventListener('click', () => {
+    openNextSchoolModal(course, section, students, assessments, scores, gradeScale);
   });
 
   document.getElementById('edit-grade-scale').addEventListener('click', () => openGradeScaleModal(course, section, gradeScale));
@@ -277,6 +287,220 @@ function openPp5ExportModal(course, section, students, assessments, scores) {
     closeModal();
     showToast(`ส่งออกสำเร็จ ${matchedCount}/${students.length} คน${missing.length ? ` (ตกหล่น ${missing.length} คน)` : ''}`);
   });
+}
+
+// ==========================================================================
+// แปลงคะแนน NextSchool — ส่งออกคะแนนเป็น 4 ช่วง:
+//   เก็บก่อนกลางภาค 30 / กลางภาค 20 / เก็บหลังกลางภาค 30 / ปลายภาค 20 (รวม 100)
+// แปลงเฉพาะไฟล์ที่ส่งออก ไม่แก้คะแนนจริงในระบบ และบังคับให้ "เกรด" หลังแปลง
+// ตรงกับเกรดจริงของนักเรียนทุกคน (ถ้าปัดเศษแล้วเกรดเปลี่ยน จะปรับผลรวมให้เกรดคงเดิม)
+// ==========================================================================
+
+const NS_PARTS = [
+  { key: 'before', label: 'เก็บก่อนกลางภาค', max: 30 },
+  { key: 'mid',    label: 'กลางภาค',         max: 20 },
+  { key: 'after',  label: 'เก็บหลังกลางภาค', max: 30 },
+  { key: 'final',  label: 'ปลายภาค',         max: 20 },
+];
+
+// แบ่งผลรวม `total` (หน่วยเป็นจำนวนเต็ม) ให้ 4 ช่วง ตามสัดส่วน `ideal` โดยไม่เกินคะแนนเต็ม `caps`
+// และรวมกันได้เท่ากับ total เป๊ะ (ปัดเศษแบบ largest remainder)
+function nsAllocate(total, ideal, caps) {
+  if (total <= 0) return ideal.map(() => 0);
+  let base = ideal;
+  let sumBase = base.reduce((a, b) => a + b, 0);
+  if (sumBase <= 0) { base = caps; sumBase = caps.reduce((a, b) => a + b, 0); }
+  let y = base.map(v => v * total / sumBase);
+  for (let iter = 0; iter < 6; iter++) {
+    let over = 0;
+    y = y.map((v, i) => { if (v > caps[i]) { over += v - caps[i]; return caps[i]; } return v; });
+    if (over < 1e-9) break;
+    const room = y.reduce((s, v, i) => s + (caps[i] - v), 0);
+    if (room <= 0) break;
+    y = y.map((v, i) => v + over * (caps[i] - v) / room);
+  }
+  const f = y.map((v, i) => Math.min(caps[i], Math.floor(v + 1e-9)));
+  let rem = total - f.reduce((a, b) => a + b, 0);
+  const byFrac = y.map((v, i) => ({ i, frac: v - Math.floor(v + 1e-9) })).sort((a, b) => b.frac - a.frac);
+  while (rem > 0) {
+    let moved = false;
+    for (const { i } of byFrac) {
+      if (rem <= 0) break;
+      if (f[i] < caps[i]) { f[i]++; rem--; moved = true; }
+    }
+    if (!moved) break;
+  }
+  while (rem < 0) { f[f.indexOf(Math.max(...f))]--; rem++; }
+  return f;
+}
+
+// opts: { mode: 'order' | 'equal', splitN: จำนวนรายการคะแนนเก็บแรกที่นับเป็น "ก่อนกลางภาค", decimals: bool }
+function computeNextSchoolRows(students, scores, assessments, gradeScale, opts) {
+  const k = opts.decimals ? 10 : 1; // ทำงานเป็น "หน่วย" จำนวนเต็ม (1 หรือ 0.1 คะแนน) เพื่อกันเลขทศนิยมเพี้ยน
+  const isMid = a => a.category === 'midterm';
+  const isFinal = a => a.category === 'final';
+  const collectItems = assessments.filter(a => !isMid(a) && !isFinal(a));
+  const midItems = assessments.filter(isMid);
+  const finalItems = assessments.filter(isFinal);
+  const maxTotal = assessments.reduce((s, a) => s + (Number(a.max) || 0), 0) || 100;
+
+  const useSplit = opts.mode === 'order' && collectItems.length >= 2;
+  const n = Math.min(Math.max(1, Number(opts.splitN) || 1), Math.max(1, collectItems.length - 1));
+  const beforeItems = useSplit ? collectItems.slice(0, n) : collectItems;
+  const afterItems = useSplit ? collectItems.slice(n) : collectItems;
+
+  const ratioOf = (items, sc) => {
+    const mx = items.reduce((s, a) => s + (Number(a.max) || 0), 0);
+    const got = items.reduce((s, a) => s + (Number(sc[a.id]) || 0), 0);
+    return mx > 0 ? got / mx : 0;
+  };
+  const caps = NS_PARTS.map(p => p.max * k);
+
+  return students.map(s => {
+    const sc = scores[s.id] || {};
+    const realTotal = assessments.reduce((sum, a) => sum + (Number(sc[a.id]) || 0), 0);
+    const realGrade = calcGrade(realTotal, gradeScale);
+
+    // เลือกผลรวมใหม่ (เต็ม 100) ที่ใกล้คะแนนจริงที่สุด โดยเกรดต้องเท่าเดิม: ลองปัดปกติ → ปัดลง → ปัดขึ้น → ลดลงอีก 1 หน่วย (กรณีเลขทศนิยมลอยติดขอบเกรด)
+    const t = Number((realTotal * 100 / maxTotal * k).toFixed(6));
+    let units = null;
+    for (const c of [Math.round(t), Math.floor(t), Math.ceil(t), Math.floor(t) - 1]) {
+      const cc = Math.max(0, Math.min(100 * k, c));
+      if (calcGrade(cc / k, gradeScale) === realGrade) { units = cc; break; }
+    }
+    if (units === null) units = Math.max(0, Math.min(100 * k, Math.round(t)));
+
+    const ideal = [
+      ratioOf(beforeItems, sc) * 30,
+      ratioOf(midItems, sc) * 20,
+      ratioOf(afterItems, sc) * 30,
+      ratioOf(finalItems, sc) * 20,
+    ].map(v => v * k);
+    const parts = nsAllocate(units, ideal, caps).map(v => v / k);
+    const total = units / k;
+    const grade = calcGrade(total, gradeScale);
+    return { student: s, parts, total, grade, realTotal, realGrade, ok: grade === realGrade };
+  });
+}
+
+function openNextSchoolModal(course, section, students, assessments, scores, gradeScale) {
+  const collectItems = assessments.filter(a => a.category !== 'midterm' && a.category !== 'final');
+  const canSplit = collectItems.length >= 2;
+  const opts = { mode: canSplit ? 'order' : 'equal', splitN: Math.max(1, Math.ceil(collectItems.length / 2)), decimals: false };
+  const fmt = v => (Number.isInteger(v) ? String(v) : v.toFixed(1));
+  const maxTotal = assessments.reduce((s, a) => s + (Number(a.max) || 0), 0) || 100;
+
+  openModal(`
+    <h2>แปลงคะแนน NextSchool</h2>
+    <div class="modal-sub">ห้อง ${escapeHtml(section.room)} — แปลงคะแนนเป็น <b>เก็บก่อนกลางภาค 30 · กลางภาค 20 · เก็บหลังกลางภาค 30 · ปลายภาค 20</b> (รวม 100) เฉพาะไฟล์ที่ส่งออก <b>คะแนนจริงในระบบไม่ถูกแก้</b> และเกรดหลังแปลงจะตรงกับเกรดจริงของทุกคน</div>
+    <div class="field-row">
+      <div class="field">
+        <label>แบ่งคะแนนเก็บเป็นก่อน/หลังกลางภาค</label>
+        <select id="ns-mode">
+          <option value="order" ${canSplit ? '' : 'disabled'}>ตามลำดับรายการคะแนนเก็บ</option>
+          <option value="equal">ใช้ % คะแนนเก็บเท่ากันทั้งสองช่วง</option>
+        </select>
+      </div>
+      <div class="field" id="ns-n-field">
+        <label>รายการที่ 1 ถึง N เป็น "ก่อนกลางภาค"</label>
+        <input type="number" id="ns-n" min="1" max="${Math.max(1, collectItems.length - 1)}" value="${opts.splitN}">
+      </div>
+    </div>
+    <div class="field">
+      <label>รูปแบบตัวเลข</label>
+      <select id="ns-dec">
+        <option value="0">จำนวนเต็ม</option>
+        <option value="1">ทศนิยม 1 ตำแหน่ง</option>
+      </select>
+      <div class="field-hint" id="ns-split-hint"></div>
+    </div>
+    <div id="ns-body"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="ns-cancel">ยกเลิก</button>
+      <button class="btn btn-ghost" id="ns-csv">ส่งออก CSV</button>
+      <button class="btn btn-primary" id="ns-xlsx">ส่งออก Excel</button>
+    </div>
+  `);
+  document.querySelector('#modal-root .modal').classList.add('modal-wide');
+  document.getElementById('ns-mode').value = opts.mode;
+
+  let rows = [];
+
+  function redraw() {
+    document.getElementById('ns-n-field').classList.toggle('hidden', opts.mode !== 'order');
+    const n = Math.min(Math.max(1, opts.splitN), Math.max(1, collectItems.length - 1));
+    document.getElementById('ns-split-hint').textContent = opts.mode === 'order'
+      ? `ก่อนกลางภาค: ${collectItems.slice(0, n).map(a => a.name).join(', ') || '-'}  |  หลังกลางภาค: ${collectItems.slice(n).map(a => a.name).join(', ') || '-'}`
+      : 'คะแนนเก็บทั้งหมดถูกคิดเป็น % แล้วนำไปคูณ 30 ทั้งช่วงก่อนและหลังกลางภาค';
+
+    rows = computeNextSchoolRows(students, scores, assessments, gradeScale, opts);
+    const okCount = rows.filter(r => r.ok).length;
+    const bodyEl = document.getElementById('ns-body');
+    if (rows.length === 0) {
+      bodyEl.innerHTML = `<div class="card card-pad"><div class="check-row warn">✕ ห้องนี้ยังไม่มีนักเรียน</div></div>`;
+      return;
+    }
+    bodyEl.innerHTML = `
+      <div class="check-row ${okCount === rows.length ? 'ok' : 'warn'}">
+        ${okCount === rows.length ? '✓' : '✕'} เกรดหลังแปลงตรงกับเกรดจริง ${okCount}/${rows.length} คน
+      </div>
+      ${maxTotal !== 100 ? `<div class="check-row warn">✕ คะแนนเต็มรวมของวิชานี้คือ ${maxTotal} (ไม่ใช่ 100) — ระบบปรับสัดส่วนเป็นเต็ม 100 ให้ แต่ควรตรวจเกรดก่อนอัปโหลด</div>` : ''}
+      <div class="ns-table-wrap">
+        <table class="ns-table">
+          <thead><tr>
+            <th>เลขที่</th><th class="ns-left">ชื่อ-นามสกุล</th>
+            ${NS_PARTS.map(p => `<th>${p.label}<span>/${p.max}</span></th>`).join('')}
+            <th>รวม<span>/100</span></th><th>เกรด</th><th>จริง (เกรดจริง)</th><th></th>
+          </tr></thead>
+          <tbody>
+            ${rows.map(r => `
+              <tr class="${r.ok ? '' : 'ns-bad'}">
+                <td>${escapeHtml(String(r.student.no ?? ''))}</td>
+                <td class="ns-left">${escapeHtml(`${r.student.firstName || ''} ${r.student.lastName || ''}`.trim())}</td>
+                ${r.parts.map(v => `<td>${fmt(v)}</td>`).join('')}
+                <td><b>${fmt(r.total)}</b></td><td>${escapeHtml(String(r.grade))}</td>
+                <td>${fmt(Number(r.realTotal.toFixed(2)))} (${escapeHtml(String(r.realGrade))})</td>
+                <td>${r.ok ? '✓' : '✕'}</td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  function buildTable() {
+    const header = ['เลขที่', 'รหัสนักเรียน', 'ชื่อ', 'นามสกุล', ...NS_PARTS.map(p => `${p.label} (${p.max})`), 'รวม (100)', 'เกรด'];
+    const body = rows.map(r => [r.student.no, r.student.code, r.student.firstName, r.student.lastName, ...r.parts, r.total, r.grade]);
+    return [header, ...body];
+  }
+  function checkBeforeExport() {
+    if (rows.length === 0) { showToast('ห้องนี้ยังไม่มีนักเรียน'); return false; }
+    const bad = rows.filter(r => !r.ok).length;
+    if (bad > 0) showToast(`คำเตือน: ${bad} คนเกรดหลังแปลงไม่ตรงกับเกรดจริง ตรวจสอบก่อนอัปโหลด`);
+    return true;
+  }
+
+  document.getElementById('ns-mode').addEventListener('change', (e) => { opts.mode = e.target.value; redraw(); });
+  document.getElementById('ns-n').addEventListener('input', (e) => { opts.splitN = Number(e.target.value) || 1; redraw(); });
+  document.getElementById('ns-dec').addEventListener('change', (e) => { opts.decimals = e.target.value === '1'; redraw(); });
+  document.getElementById('ns-cancel').addEventListener('click', closeModal);
+
+  document.getElementById('ns-csv').addEventListener('click', () => {
+    if (!checkBeforeExport()) return;
+    downloadCsv(`NextSchool-${course.code || course.name}-ห้อง${section.room}.csv`, buildTable());
+    showToast('ส่งออกไฟล์ CSV สำเร็จ');
+  });
+  document.getElementById('ns-xlsx').addEventListener('click', () => {
+    if (!checkBeforeExport()) return;
+    const ws = XLSX.utils.aoa_to_sheet(buildTable());
+    ws['!cols'] = [{ wch: 8 }, { wch: 16 }, { wch: 18 }, { wch: 18 }, { wch: 20 }, { wch: 14 }, { wch: 20 }, { wch: 14 }, { wch: 11 }, { wch: 8 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'NextSchool');
+    XLSX.writeFile(wb, `NextSchool-${course.code || course.name}-ห้อง${section.room}.xlsx`);
+    showToast('ส่งออกไฟล์ Excel สำเร็จ');
+  });
+
+  redraw();
 }
 
 function openGradeScaleModal(course, section, scale) {
