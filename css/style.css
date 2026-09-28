@@ -792,7 +792,7 @@ table.sheet tbody tr:nth-child(even) td.sticky-col-3 { background: #FAFAFD; }
   .modal { padding: 22px 18px; }
 }
 
-/* ---------- แปลงคะแนน NextSchool (พรีวิวในหน้ารายงาน) ---------- */
+/* ---------- แปลงคะแนน SGS (พรีวิวในหน้ารายงาน) ---------- */
 .modal.modal-wide { width: 880px; }
 .ns-table-wrap { max-height: 320px; overflow: auto; border: 1px solid var(--border); border-radius: 8px; margin-top: 8px; }
 .ns-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }

@@ -70,9 +70,9 @@ async function renderReportTab(container, course, section) {
     </div>
 
     <div class="card card-pad" style="margin-top:16px;">
-      <h2 style="font-size:14.5px; margin-bottom:4px;">แปลงคะแนน NextSchool</h2>
+      <h2 style="font-size:14.5px; margin-bottom:4px;">แปลงคะแนน SGS</h2>
       <div style="font-size:12.5px; color:var(--ink-soft); margin-bottom:12px;">ส่งออกคะแนนเป็น เก็บก่อนกลางภาค 30 · กลางภาค 20 · เก็บหลังกลางภาค 30 · ปลายภาค 20 — คะแนนจริงและเกรดในระบบไม่เปลี่ยน</div>
-      <button class="btn btn-primary btn-sm" id="export-nextschool-btn">แปลงคะแนน NextSchool</button>
+      <button class="btn btn-primary btn-sm" id="export-nextschool-btn">แปลงคะแนน SGS</button>
     </div>
   `;
 
@@ -391,7 +391,7 @@ function openNextSchoolModal(course, section, students, assessments, scores, gra
   const maxTotal = assessments.reduce((s, a) => s + (Number(a.max) || 0), 0) || 100;
 
   openModal(`
-    <h2>แปลงคะแนน NextSchool</h2>
+    <h2>แปลงคะแนน SGS</h2>
     <div class="modal-sub">ห้อง ${escapeHtml(section.room)} — แปลงคะแนนเป็น <b>เก็บก่อนกลางภาค 30 · กลางภาค 20 · เก็บหลังกลางภาค 30 · ปลายภาค 20</b> (รวม 100) เฉพาะไฟล์ที่ส่งออก <b>คะแนนจริงในระบบไม่ถูกแก้</b> และเกรดหลังแปลงจะตรงกับเกรดจริงของทุกคน</div>
     <div class="field-row">
       <div class="field">
@@ -487,7 +487,7 @@ function openNextSchoolModal(course, section, students, assessments, scores, gra
 
   document.getElementById('ns-csv').addEventListener('click', () => {
     if (!checkBeforeExport()) return;
-    downloadCsv(`NextSchool-${course.code || course.name}-ห้อง${section.room}.csv`, buildTable());
+    downloadCsv(`SGS-${course.code || course.name}-ห้อง${section.room}.csv`, buildTable());
     showToast('ส่งออกไฟล์ CSV สำเร็จ');
   });
   document.getElementById('ns-xlsx').addEventListener('click', () => {
@@ -495,8 +495,8 @@ function openNextSchoolModal(course, section, students, assessments, scores, gra
     const ws = XLSX.utils.aoa_to_sheet(buildTable());
     ws['!cols'] = [{ wch: 8 }, { wch: 16 }, { wch: 18 }, { wch: 18 }, { wch: 20 }, { wch: 14 }, { wch: 20 }, { wch: 14 }, { wch: 11 }, { wch: 8 }];
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'NextSchool');
-    XLSX.writeFile(wb, `NextSchool-${course.code || course.name}-ห้อง${section.room}.xlsx`);
+    XLSX.utils.book_append_sheet(wb, ws, 'SGS');
+    XLSX.writeFile(wb, `SGS-${course.code || course.name}-ห้อง${section.room}.xlsx`);
     showToast('ส่งออกไฟล์ Excel สำเร็จ');
   });
 
