@@ -71,7 +71,7 @@ async function renderReportTab(container, course, section) {
 
     <div class="card card-pad" style="margin-top:16px;">
       <h2 style="font-size:14.5px; margin-bottom:4px;">แปลงคะแนน SGS</h2>
-      <div style="font-size:12.5px; color:var(--ink-soft); margin-bottom:12px;">ส่งออกคะแนนตามฟอร์มนำเข้า NextSchool: ก่อนกลางภาค 1-3 (10·10·10) · กลางภาค (20) · หลังกลางภาค 4-5 (15·15) · ปลายภาค (20) — คะแนนจริงและเกรดในระบบไม่เปลี่ยน</div>
+      <div style="font-size:12.5px; color:var(--ink-soft); margin-bottom:12px;">ส่งออกคะแนนเป็น เก็บก่อนกลางภาค 30 · กลางภาค 20 · เก็บหลังกลางภาค 30 · ปลายภาค 20 — คะแนนจริงและเกรดในระบบไม่เปลี่ยน</div>
       <button class="btn btn-primary btn-sm" id="export-nextschool-btn">แปลงคะแนน SGS</button>
     </div>
   `;
@@ -290,36 +290,17 @@ function openPp5ExportModal(course, section, students, assessments, scores) {
 }
 
 // ==========================================================================
-// แปลงคะแนน NextSchool — ส่งออกคะแนนตามฟอร์มนำเข้าคะแนนจริงของ NextSchool
-// (อิงคอลัมน์/ID ของฟอร์มที่โรงเรียนออกให้: 78228-78234) แบ่งเป็น 7 คอลัมน์:
-//   ก่อนกลางภาค 1(10) / ก่อนกลางภาค 2(10) / ก่อนกลางภาค 3(10) / กลางภาค(20) /
-//   หลังกลางภาค 4(15) / หลังกลางภาค 5(15) / ปลายภาค(20)  (รวม 100)
-// กลางภาคและปลายภาคเป็นคอลัมน์เดี่ยว ตรงกับที่แปลงคะแนนของ SGS อยู่แล้ว
-// ส่วนก่อนกลางภาคและหลังกลางภาค เดิมรวมเป็นช่องเดียว ตอนนี้กระจายเป็น
-// คอลัมน์ย่อยตามฟอร์ม (3 และ 2 คอลัมน์ตามลำดับ) โดยผลรวมของคอลัมน์ย่อย
-// เท่ากับผลรวมเดิมของช่วงนั้นเป๊ะ (ปัดเศษแบบ largest remainder เหมือนเดิม)
+// แปลงคะแนน NextSchool — ส่งออกคะแนนเป็น 4 ช่วง:
+//   เก็บก่อนกลางภาค 30 / กลางภาค 20 / เก็บหลังกลางภาค 30 / ปลายภาค 20 (รวม 100)
 // แปลงเฉพาะไฟล์ที่ส่งออก ไม่แก้คะแนนจริงในระบบ และบังคับให้ "เกรด" หลังแปลง
 // ตรงกับเกรดจริงของนักเรียนทุกคน (ถ้าปัดเศษแล้วเกรดเปลี่ยน จะปรับผลรวมให้เกรดคงเดิม)
 // ==========================================================================
 
-// กลุ่มหลัก 4 กลุ่ม ใช้คำนวณสัดส่วน + รักษาเกรดให้ตรงเดิม (ตรรกะเดิม ไม่เปลี่ยน)
 const NS_PARTS = [
   { key: 'before', label: 'เก็บก่อนกลางภาค', max: 30 },
   { key: 'mid',    label: 'กลางภาค',         max: 20 },
   { key: 'after',  label: 'เก็บหลังกลางภาค', max: 30 },
   { key: 'final',  label: 'ปลายภาค',         max: 20 },
-];
-
-// คอลัมน์จริงตามฟอร์มนำเข้า NextSchool ที่โรงเรียนออกให้ (7 คอลัมน์)
-// id = รหัสคอลัมน์คะแนนของ NextSchool, order = เลขลำดับ/ป้ายกำกับตามฟอร์ม
-const NS_FORM_COLS = [
-  { group: 'before', label: 'ก่อนกลางภาค 1', id: 78228, order: 1,     max: 10 },
-  { group: 'before', label: 'ก่อนกลางภาค 2', id: 78229, order: 2,     max: 10 },
-  { group: 'before', label: 'ก่อนกลางภาค 3', id: 78230, order: 3,     max: 10 },
-  { group: 'mid',    label: 'กลางภาค',       id: 78231, order: '1-3', max: 20 },
-  { group: 'after',  label: 'หลังกลางภาค 4', id: 78232, order: 4,     max: 15 },
-  { group: 'after',  label: 'หลังกลางภาค 5', id: 78233, order: 5,     max: 15 },
-  { group: 'final',  label: 'ปลายภาค',       id: 78234, order: '4-5', max: 20 },
 ];
 
 // แบ่งผลรวม `total` (หน่วยเป็นจำนวนเต็ม) ให้ 4 ช่วง ตามสัดส่วน `ideal` โดยไม่เกินคะแนนเต็ม `caps`
@@ -395,23 +376,9 @@ function computeNextSchoolRows(students, scores, assessments, gradeScale, opts) 
       ratioOf(afterItems, sc) * 30,
       ratioOf(finalItems, sc) * 20,
     ].map(v => v * k);
-    // ขั้นที่ 1: แบ่งเป็น 4 ช่วงหลัก (ก่อนกลางภาค/กลางภาค/หลังกลางภาค/ปลายภาค) แบบเดิม
-    // เพื่อรักษาผลรวม 100 และเกรดให้ตรงกับเกรดจริงเป๊ะ (ไม่เปลี่ยนตรรกะนี้)
-    const macroUnits = nsAllocate(units, ideal, caps); // [before, mid, after, final] หน่วย k
+    const parts = nsAllocate(units, ideal, caps).map(v => v / k);
     const total = units / k;
     const grade = calcGrade(total, gradeScale);
-
-    // ขั้นที่ 2: กระจาย "ก่อนกลางภาค" และ "หลังกลางภาค" ต่อลงคอลัมน์ย่อยตามฟอร์ม
-    // (เดิมเป็นช่องเดียว ตอนนี้ต้องมี 3 คอลัมน์ และ 2 คอลัมน์ตามลำดับ)
-    // ใช้ nsAllocate ซ้ำ โดยแบ่งเท่า ๆ กันในแต่ละคอลัมน์ย่อย (เต็มคอลัมน์ละ 10 / 15)
-    // ผลรวมของคอลัมน์ย่อยจะเท่ากับผลรวมเดิมของช่วงนั้นเป๊ะ ไม่กระทบผลรวม 100 หรือเกรด
-    const beforeCaps = [10, 10, 10].map(v => v * k);
-    const afterCaps = [15, 15].map(v => v * k);
-    const beforeSub = nsAllocate(macroUnits[0], beforeCaps, beforeCaps);
-    const afterSub = nsAllocate(macroUnits[2], afterCaps, afterCaps);
-    const formUnits = [...beforeSub, macroUnits[1], ...afterSub, macroUnits[3]]; // 7 ค่า ตาม NS_FORM_COLS
-    const parts = formUnits.map(v => v / k);
-
     return { student: s, parts, total, grade, realTotal, realGrade, ok: grade === realGrade };
   });
 }
@@ -425,7 +392,7 @@ function openNextSchoolModal(course, section, students, assessments, scores, gra
 
   openModal(`
     <h2>แปลงคะแนน SGS</h2>
-    <div class="modal-sub">ห้อง ${escapeHtml(section.room)} — แปลงคะแนนตามฟอร์มนำเข้า NextSchool: <b>ก่อนกลางภาค 1-3 (10·10·10) · กลางภาค (20) · หลังกลางภาค 4-5 (15·15) · ปลายภาค (20)</b> (รวม 100) เฉพาะไฟล์ที่ส่งออก <b>คะแนนจริงในระบบไม่ถูกแก้</b> และเกรดหลังแปลงจะตรงกับเกรดจริงของทุกคน</div>
+    <div class="modal-sub">ห้อง ${escapeHtml(section.room)} — แปลงคะแนนเป็น <b>เก็บก่อนกลางภาค 30 · กลางภาค 20 · เก็บหลังกลางภาค 30 · ปลายภาค 20</b> (รวม 100) เฉพาะไฟล์ที่ส่งออก <b>คะแนนจริงในระบบไม่ถูกแก้</b> และเกรดหลังแปลงจะตรงกับเกรดจริงของทุกคน</div>
     <div class="field-row">
       <div class="field">
         <label>แบ่งคะแนนเก็บเป็นก่อน/หลังกลางภาค</label>
@@ -482,7 +449,7 @@ function openNextSchoolModal(course, section, students, assessments, scores, gra
         <table class="ns-table">
           <thead><tr>
             <th>เลขที่</th><th class="ns-left">ชื่อ-นามสกุล</th>
-            ${NS_FORM_COLS.map(p => `<th>${p.label}<span>/${p.max}</span></th>`).join('')}
+            ${NS_PARTS.map(p => `<th>${p.label}<span>/${p.max}</span></th>`).join('')}
             <th>รวม<span>/100</span></th><th>เกรด</th><th>จริง (เกรดจริง)</th><th></th>
           </tr></thead>
           <tbody>
@@ -502,7 +469,7 @@ function openNextSchoolModal(course, section, students, assessments, scores, gra
   }
 
   function buildTable() {
-    const header = ['เลขที่', 'รหัสนักเรียน', 'ชื่อ', 'นามสกุล', ...NS_FORM_COLS.map(p => `${p.label} (${p.max})`), 'รวม (100)', 'เกรด'];
+    const header = ['เลขที่', 'รหัสนักเรียน', 'ชื่อ', 'นามสกุล', ...NS_PARTS.map(p => `${p.label} (${p.max})`), 'รวม (100)', 'เกรด'];
     const body = rows.map(r => [r.student.no, r.student.code, r.student.firstName, r.student.lastName, ...r.parts, r.total, r.grade]);
     return [header, ...body];
   }
@@ -526,11 +493,7 @@ function openNextSchoolModal(course, section, students, assessments, scores, gra
   document.getElementById('ns-xlsx').addEventListener('click', () => {
     if (!checkBeforeExport()) return;
     const ws = XLSX.utils.aoa_to_sheet(buildTable());
-    ws['!cols'] = [
-      { wch: 8 }, { wch: 16 }, { wch: 18 }, { wch: 18 },
-      ...NS_FORM_COLS.map(() => ({ wch: 16 })),
-      { wch: 11 }, { wch: 8 },
-    ];
+    ws['!cols'] = [{ wch: 8 }, { wch: 16 }, { wch: 18 }, { wch: 18 }, { wch: 20 }, { wch: 14 }, { wch: 20 }, { wch: 14 }, { wch: 11 }, { wch: 8 }];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'SGS');
     XLSX.writeFile(wb, `SGS-${course.code || course.name}-ห้อง${section.room}.xlsx`);
