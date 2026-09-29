@@ -71,8 +71,11 @@ async function renderReportTab(container, course, section) {
 
     <div class="card card-pad" style="margin-top:16px;">
       <h2 style="font-size:14.5px; margin-bottom:4px;">แปลงคะแนน SGS</h2>
-      <div style="font-size:12.5px; color:var(--ink-soft); margin-bottom:12px;">ส่งออกคะแนนเป็น เก็บก่อนกลางภาค 30 · กลางภาค 20 · เก็บหลังกลางภาค 30 · ปลายภาค 20 — คะแนนจริงและเกรดในระบบไม่เปลี่ยน</div>
-      <button class="btn btn-primary btn-sm" id="export-nextschool-btn">แปลงคะแนน SGS</button>
+      <div style="font-size:12.5px; color:var(--ink-soft); margin-bottom:12px;">ส่งออกคะแนนเป็น เก็บก่อนกลางภาค 30 · กลางภาค 20 · เก็บหลังกลางภาค 30 · ปลายภาค 20 — คะแนนจริงและเกรดในระบบไม่เปลี่ยน · ปุ่ม "แปลงคะแนน Next School" นำคะแนนนี้ไปใส่ในไฟล์ฟอร์มที่โรงเรียนส่งให้</div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <button class="btn btn-primary btn-sm" id="export-nextschool-btn">แปลงคะแนน SGS</button>
+        <button class="btn btn-primary btn-sm" id="export-nsform-btn">แปลงคะแนน Next School</button>
+      </div>
     </div>
   `;
 
@@ -93,6 +96,10 @@ async function renderReportTab(container, course, section) {
 
   document.getElementById('export-nextschool-btn').addEventListener('click', () => {
     openNextSchoolModal(course, section, students, assessments, scores, gradeScale);
+  });
+
+  document.getElementById('export-nsform-btn').addEventListener('click', () => {
+    openNextSchoolFormModal(course, section, students, assessments, scores, gradeScale);
   });
 
   document.getElementById('edit-grade-scale').addEventListener('click', () => openGradeScaleModal(course, section, gradeScale));
@@ -501,6 +508,231 @@ function openNextSchoolModal(course, section, students, assessments, scores, gra
   });
 
   redraw();
+}
+
+// ==========================================================================
+// แปลงคะแนน Next School — เอาคะแนนจาก "แปลงคะแนน SGS" (ก่อนกลางภาค 30 / กลางภาค 20 /
+// หลังกลางภาค 30 / ปลายภาค 20) ไปใส่ในฟอร์ม Next School ที่โรงเรียนส่งมา
+//   - กลางภาค/ปลายภาค ใช้ค่าจาก SGS ตรงๆ ไม่แก้
+//   - คะแนนเก็บก่อน/หลังกลางภาค ที่ SGS รวมเป็นช่องเดียว จะถูกแบ่งลงหลายช่องตามฟอร์ม
+//     (สัดส่วนตามคะแนนเต็มของแต่ละช่อง, ผลรวมเท่าเดิมเป๊ะ จึงไม่กระทบเกรด)
+// ==========================================================================
+
+function classifyNsFormBucket(label) {
+  const s = String(label || '').replace(/\s+/g, '');
+  if (s.includes('ปลาย')) return 'final';
+  if (s.includes('ก่อน')) return 'before';
+  if (s.includes('หลัง')) return 'after';
+  if (s.includes('กลางภาค')) return 'mid';
+  return null;
+}
+
+function parseNsFormColumns(aoa) {
+  const groupRow = aoa[0] || [];
+  const orderRow = aoa[2] || [];
+  const maxRow = aoa[3] || [];
+  const width = Math.max(groupRow.length, orderRow.length, maxRow.length);
+  const cols = [];
+  let lastGroup = '';
+  for (let c = PP5_SCORE_COL_START; c < width; c++) {
+    if (groupRow[c] !== undefined && groupRow[c] !== '') lastGroup = groupRow[c];
+    const max = maxRow[c];
+    if (max === undefined || max === '') break;
+    cols.push({
+      colIndex: c,
+      group: String(lastGroup),
+      bucket: classifyNsFormBucket(lastGroup),
+      order: orderRow[c] !== undefined ? orderRow[c] : '',
+      max: Number(max) || 0,
+    });
+  }
+  return cols;
+}
+
+// แบ่งคะแนนแต่ละช่วงของ SGS (parts เรียงตาม NS_PARTS) ลงคอลัมน์ของฟอร์ม → Map(colIndex → คะแนน)
+function fillNsFormValues(parts, cols, k) {
+  const out = new Map();
+  NS_PARTS.forEach((p, i) => {
+    const bcols = cols.filter(c => c.bucket === p.key);
+    if (!bcols.length) return;
+    const caps = bcols.map(c => c.max * k);
+    const capSum = caps.reduce((a, b) => a + b, 0);
+    // ถ้าคะแนนเต็มรวมของฟอร์มตรงกับ SGS (30/20/30/20) ค่าจะเท่าเดิมเป๊ะ ถ้าไม่ตรงจะปรับตามสัดส่วน
+    const total = Math.min(capSum, Math.round(parts[i] / p.max * capSum));
+    const ideal = caps.map(c => (capSum > 0 ? c * total / capSum : 0));
+    const alloc = nsAllocate(total, ideal, caps);
+    bcols.forEach((c, j) => out.set(c.colIndex, alloc[j] / k));
+  });
+  return out;
+}
+
+function openNextSchoolFormModal(course, section, students, assessments, scores, gradeScale) {
+  const collectItems = assessments.filter(a => a.category !== 'midterm' && a.category !== 'final');
+  const canSplit = collectItems.length >= 2;
+  const opts = { mode: canSplit ? 'order' : 'equal', splitN: Math.max(1, Math.ceil(collectItems.length / 2)), decimals: false };
+  const fmt = v => (Number.isInteger(v) ? String(v) : v.toFixed(1));
+
+  openModal(`
+    <h2>แปลงคะแนน Next School</h2>
+    <div class="modal-sub">ห้อง ${escapeHtml(section.room)} — อัปโหลดไฟล์ฟอร์ม Next School ระบบจะนำคะแนนจาก <b>แปลงคะแนน SGS</b> (ก่อนกลางภาค 30 · กลางภาค 20 · หลังกลางภาค 30 · ปลายภาค 20) มาใส่ให้ โดย <b>กลางภาค/ปลายภาคไม่เปลี่ยน</b> ส่วนคะแนนเก็บจะถูกแบ่งลงแต่ละช่องตามฟอร์ม</div>
+    <div class="field">
+      <input type="file" id="nsf-file" accept=".xlsx,.xls">
+      <div class="field-hint">ต้องเป็นไฟล์ต้นฉบับที่มีคอลัมน์ ID/รหัสนักเรียนอยู่แล้ว (A-E: ลำดับ/ID/รหัส/ชื่อ/ห้อง) ระบบเติมเฉพาะคอลัมน์คะแนน และจับคู่นักเรียนด้วยรหัส</div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>แบ่งคะแนนเก็บเป็นก่อน/หลังกลางภาค</label>
+        <select id="nsf-mode">
+          <option value="order" ${canSplit ? '' : 'disabled'}>ตามลำดับรายการคะแนนเก็บ</option>
+          <option value="equal">ใช้ % คะแนนเก็บเท่ากันทั้งสองช่วง</option>
+        </select>
+      </div>
+      <div class="field" id="nsf-n-field">
+        <label>รายการที่ 1 ถึง N เป็น "ก่อนกลางภาค"</label>
+        <input type="number" id="nsf-n" min="1" max="${Math.max(1, collectItems.length - 1)}" value="${opts.splitN}">
+      </div>
+    </div>
+    <div class="field">
+      <label>รูปแบบตัวเลข</label>
+      <select id="nsf-dec">
+        <option value="0">จำนวนเต็ม</option>
+        <option value="1">ทศนิยม 1 ตำแหน่ง</option>
+      </select>
+    </div>
+    <div id="nsf-body"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="nsf-cancel">ยกเลิก</button>
+      <button class="btn btn-primary hidden" id="nsf-confirm">ส่งออกไฟล์</button>
+    </div>
+  `);
+  document.querySelector('#modal-root .modal').classList.add('modal-wide');
+  document.getElementById('nsf-mode').value = opts.mode;
+  document.getElementById('nsf-cancel').addEventListener('click', closeModal);
+
+  let wb = null, ws = null, aoa = null, cols = [], rows = [];
+
+  function rowIndexByCode() {
+    const map = new Map();
+    aoa.slice(PP5_HEADER_ROWS).forEach((r, i) => {
+      const code = String(r[PP5_CODE_COL] ?? '').trim();
+      if (code) map.set(code, PP5_HEADER_ROWS + i);
+    });
+    return map;
+  }
+
+  function redraw() {
+    document.getElementById('nsf-n-field').classList.toggle('hidden', opts.mode !== 'order');
+    const bodyEl = document.getElementById('nsf-body');
+    const confirmBtn = document.getElementById('nsf-confirm');
+    if (!aoa) return;
+
+    const usable = cols.filter(c => c.bucket);
+    const unknown = cols.filter(c => !c.bucket);
+    if (usable.length === 0) {
+      confirmBtn.classList.add('hidden');
+      bodyEl.innerHTML = `<div class="card card-pad"><div class="check-row warn">✕ อ่านโครงสร้างคอลัมน์คะแนนจากไฟล์นี้ไม่ได้ (แถวที่ 1 ต้องมีชื่อกลุ่ม เช่น ก่อนกลางภาค / กลางภาค / หลังกลางภาค / ปลายภาค และแถวที่ 4 ต้องมีคะแนนเต็ม)</div></div>`;
+      return;
+    }
+    if (students.length === 0) {
+      confirmBtn.classList.add('hidden');
+      bodyEl.innerHTML = `<div class="card card-pad"><div class="check-row warn">✕ ห้องนี้ยังไม่มีนักเรียน</div></div>`;
+      return;
+    }
+
+    rows = computeNextSchoolRows(students, scores, assessments, gradeScale, opts);
+    const k = opts.decimals ? 10 : 1;
+    const byCode = rowIndexByCode();
+    const matched = rows.filter(r => byCode.has(String(r.student.code ?? '').trim()));
+    const missing = rows.filter(r => !byCode.has(String(r.student.code ?? '').trim()));
+
+    // ตรวจคะแนนเต็มรวมของแต่ละช่วงในฟอร์มเทียบกับ SGS
+    const mism = NS_PARTS.map(p => {
+      const bc = usable.filter(c => c.bucket === p.key);
+      const sum = bc.reduce((s, c) => s + c.max, 0);
+      return { p, sum, has: bc.length > 0 };
+    }).filter(x => x.sum !== x.p.max);
+
+    const filled = rows.map(r => ({ r, vals: fillNsFormValues(r.parts, usable, k) }));
+    const gradeOk = rows.filter(r => r.ok).length;
+
+    bodyEl.innerHTML = `
+      <div class="card card-pad" style="margin:12px 0;">
+        <div class="check-row ok">✓ พบคอลัมน์คะแนนในฟอร์ม ${usable.length} คอลัมน์</div>
+        ${mism.length === 0
+          ? `<div class="check-row ok" style="margin-top:6px;">✓ คะแนนเต็มแต่ละช่วงในฟอร์มตรงกับ SGS (30/20/30/20) — ผลรวมของแต่ละช่วงเท่ากับที่ SGS แปลงไว้</div>`
+          : `<div class="check-row warn" style="margin-top:6px;">✕ คะแนนเต็มในฟอร์มไม่ตรงกับ SGS: ${mism.map(x => `${x.p.label} (ฟอร์ม ${x.has ? x.sum : 'ไม่มีคอลัมน์'} / SGS ${x.p.max})`).join(', ')} — ระบบปรับตามสัดส่วนให้ แต่ควรตรวจเกรดก่อนอัปโหลด</div>`}
+        ${unknown.length ? `<div class="check-row warn" style="margin-top:6px;">✕ ข้ามคอลัมน์ที่ระบุช่วงไม่ได้: ${unknown.map(c => escapeHtml(`${c.group || '(ไม่มีชื่อกลุ่ม)'} ${c.order}`)).join(', ')}</div>` : ''}
+        <div class="check-row ${matched.length === rows.length ? 'ok' : 'warn'}" style="margin-top:6px;">${matched.length === rows.length ? '✓' : '✕'} จับคู่รหัสนักเรียนได้ ${matched.length}/${rows.length} คน</div>
+        ${missing.length ? `<div style="font-size:12.5px; color:var(--ink-soft); margin-top:6px;">ไม่พบรหัสในฟอร์ม (จะไม่ถูกส่งออก): ${missing.map(r => escapeHtml(`${r.student.firstName} ${r.student.lastName} (รหัส ${r.student.code || '-'})`)).join(', ')}</div>` : ''}
+        <div class="check-row ${gradeOk === rows.length ? 'ok' : 'warn'}" style="margin-top:6px;">${gradeOk === rows.length ? '✓' : '✕'} เกรดหลังแปลงตรงกับเกรดจริง ${gradeOk}/${rows.length} คน</div>
+      </div>
+      <div class="ns-table-wrap">
+        <table class="ns-table">
+          <thead><tr>
+            <th>เลขที่</th><th class="ns-left">ชื่อ-นามสกุล</th>
+            ${usable.map(c => `<th>${escapeHtml(c.group)} ${escapeHtml(String(c.order))}<span>/${fmt(c.max)}</span></th>`).join('')}
+            <th>รวม<span>/100</span></th><th>เกรด</th><th></th>
+          </tr></thead>
+          <tbody>
+            ${filled.map(({ r, vals }) => `
+              <tr class="${r.ok ? '' : 'ns-bad'}">
+                <td>${escapeHtml(String(r.student.no ?? ''))}</td>
+                <td class="ns-left">${escapeHtml(`${r.student.firstName || ''} ${r.student.lastName || ''}`.trim())}</td>
+                ${usable.map(c => `<td>${fmt(vals.get(c.colIndex) ?? 0)}</td>`).join('')}
+                <td><b>${fmt(r.total)}</b></td><td>${escapeHtml(String(r.grade))}</td><td>${r.ok ? '✓' : '✕'}</td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+    confirmBtn.classList.toggle('hidden', matched.length === 0);
+  }
+
+  document.getElementById('nsf-file').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    const bodyEl = document.getElementById('nsf-body');
+    document.getElementById('nsf-confirm').classList.add('hidden');
+    wb = ws = aoa = null; cols = [];
+    if (!file) { bodyEl.innerHTML = ''; return; }
+    bodyEl.innerHTML = `<div class="empty-state">กำลังอ่านไฟล์...</div>`;
+    try {
+      wb = XLSX.read(await file.arrayBuffer(), { type: 'array' });
+      ws = wb.Sheets[wb.SheetNames[0]];
+      aoa = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+      cols = parseNsFormColumns(aoa);
+      redraw();
+    } catch (err) {
+      wb = ws = aoa = null;
+      bodyEl.innerHTML = `<div class="card card-pad"><div class="check-row warn">✕ อ่านไฟล์ไม่สำเร็จ: ${escapeHtml(err.message || String(err))}</div></div>`;
+    }
+  });
+  document.getElementById('nsf-mode').addEventListener('change', (e) => { opts.mode = e.target.value; redraw(); });
+  document.getElementById('nsf-n').addEventListener('input', (e) => { opts.splitN = Number(e.target.value) || 1; redraw(); });
+  document.getElementById('nsf-dec').addEventListener('change', (e) => { opts.decimals = e.target.value === '1'; redraw(); });
+
+  document.getElementById('nsf-confirm').addEventListener('click', () => {
+    if (!wb || !ws || !aoa) { showToast('กรุณาอัปโหลดไฟล์ก่อน'); return; }
+    const usable = cols.filter(c => c.bucket);
+    const k = opts.decimals ? 10 : 1;
+    const byCode = rowIndexByCode();
+    let matchedCount = 0;
+    rows.forEach(r => {
+      const rowIdx = byCode.get(String(r.student.code ?? '').trim());
+      if (rowIdx === undefined) return;
+      matchedCount++;
+      fillNsFormValues(r.parts, usable, k).forEach((v, colIndex) => {
+        const ref = XLSX.utils.encode_cell({ r: rowIdx, c: colIndex });
+        const cell = { t: 'n', v };
+        if (ws[ref] && ws[ref].s) cell.s = ws[ref].s;
+        ws[ref] = cell;
+      });
+    });
+    if (matchedCount === 0) { showToast('ไม่พบนักเรียนที่จับคู่รหัสได้เลย ตรวจสอบไฟล์อีกครั้ง'); return; }
+    const bad = rows.filter(r => !r.ok).length;
+    XLSX.writeFile(wb, `NextSchool-${course.code || course.name}-ห้อง${section.room}.xlsx`);
+    closeModal();
+    showToast(`ส่งออกสำเร็จ ${matchedCount}/${rows.length} คน${rows.length - matchedCount ? ` (ตกหล่น ${rows.length - matchedCount} คน)` : ''}${bad ? ` — เกรดไม่ตรง ${bad} คน` : ''}`);
+  });
 }
 
 function openGradeScaleModal(course, section, scale) {
