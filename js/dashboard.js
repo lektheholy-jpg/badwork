@@ -64,7 +64,8 @@ async function renderDashboard() {
       const gradedStudents = studentsSnap.docs.map(sd => {
         const sc = scoresByStudent[sd.id] || {};
         const total = assessments.reduce((sum, a) => sum + (Number(sc[a.id]) || 0), 0);
-        return { id: sd.id, total, grade: calcGrade(total, gradeScale) };
+        const hasScore = assessmentIds.some(aid => sc[aid] !== undefined && sc[aid] !== null && sc[aid] !== '');
+        return { id: sd.id, total, hasScore, grade: calcGrade(total, gradeScale) };
       });
       roomsData.push({ sectionId: s.id, room: s.room, students: gradedStudents });
     }
@@ -113,15 +114,19 @@ async function renderDashboard() {
     ` : ''}
 
     ${courses.length > 0 ? `
-    <div class="card card-pad" style="margin-bottom:16px;">
-      <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:12px;">
-        <h2 style="font-size:15px; font-weight:700;">สถิติเกรดรายวิชา</h2>
-        <select id="grade-year-filter" style="padding:6px 10px; border:1px solid var(--border); border-radius:6px; font-size:13px;">
+    <div class="card card-pad grade-summary-card">
+      <div class="gs-head">
+        <h2>สรุปผลการเรียน</h2>
+        <select id="grade-year-filter" class="gs-select">
           ${years.map(y => `<option value="${y}" ${y === defaultYear ? 'selected' : ''}>ปีการศึกษา ${escapeHtml(y)}</option>`).join('')}
           <option value="__all__" ${defaultYear === '__all__' ? 'selected' : ''}>ทุกปีการศึกษา</option>
         </select>
       </div>
-      <div id="grade-stats-body">${buildGradeStatsBodyHtml(courses, defaultYear)}</div>
+      <div id="grade-summary-body">${buildGradeSummaryHtml(courses, defaultYear)}</div>
+      <details class="gs-details">
+        <summary>สถิติเกรดรายวิชา (กราฟ)</summary>
+        <div id="grade-stats-body">${buildGradeStatsBodyHtml(courses, defaultYear)}</div>
+      </details>
     </div>
     ` : ''}
 
@@ -159,11 +164,106 @@ async function renderDashboard() {
   const yearFilterEl = document.getElementById('grade-year-filter');
   if (yearFilterEl) {
     yearFilterEl.addEventListener('change', () => {
+      document.getElementById('grade-summary-body').innerHTML = buildGradeSummaryHtml(courses, yearFilterEl.value);
       document.getElementById('grade-stats-body').innerHTML = buildGradeStatsBodyHtml(courses, yearFilterEl.value);
+      wireGradeSummaryRows();
       wireGradeRoomFilters(courses);
     });
   }
+  wireGradeSummaryRows();
   wireGradeRoomFilters(courses);
+}
+
+// ==========================================================================
+// สรุปผลการเรียน — ตารางตามแบบฟอร์ม (ระดับชั้น / ห้อง / N / เกรด 4–0 / n / ร / มส.)
+// ==========================================================================
+
+const GS_GRADE_COLS = [4, 3.5, 3, 2.5, 2, 1.5, 1, 0];
+
+function gradeSummaryCounts(students) {
+  // n นับเฉพาะนักเรียนที่มีคะแนนบันทึกแล้ว — คนที่ยังไม่มีคะแนนเลยรวมอยู่ใน N แต่ยังไม่นับเป็นเกรด 0
+  const counts = GS_GRADE_COLS.map(() => 0);
+  students.forEach(s => {
+    if (!s.hasScore) return;
+    const i = GS_GRADE_COLS.indexOf(parseFloat(s.grade));
+    if (i >= 0) counts[i]++;
+  });
+  return { N: students.length, counts, n: counts.reduce((a, b) => a + b, 0) };
+}
+
+function gradeSummaryCells(row) {
+  return `
+    <td class="num">${row.N}</td>
+    ${row.counts.map(c => `<td class="num">${c || ''}</td>`).join('')}
+    <td class="num gs-n">${row.n}</td>
+    <td class="num"></td>
+    <td class="num"></td>`;
+}
+
+function buildGradeSummaryHtml(courses, year) {
+  const filtered = year === '__all__' ? courses : courses.filter(c => (c.year || '').toString().trim() === year);
+  if (filtered.length === 0) {
+    return `<div class="empty-state" style="padding:16px 0;">ไม่มีวิชาที่เปิดสอนในปีการศึกษานี้</div>`;
+  }
+  let no = 0;
+  const body = filtered.map(c => {
+    const rooms = c.roomsData || [];
+    const head = `
+      <tr class="gs-course">
+        <td colspan="15"><span class="course-dot" style="background:${c.color || '#6B7A4F'}"></span>${escapeHtml(c.name)}${c.code ? ` <span class="gs-code">(${escapeHtml(c.code)})</span>` : ''}</td>
+      </tr>`;
+    const rows = rooms.map(r => {
+      no++;
+      return `
+      <tr class="gs-row" data-course-id="${c.id}" data-section-id="${r.sectionId}" title="เปิดหน้าบันทึกคะแนน">
+        <td class="num gs-no">${no}</td>
+        <td>${escapeHtml(c.level || '')}</td>
+        <td>${escapeHtml(r.room)}</td>
+        ${gradeSummaryCells(gradeSummaryCounts(r.students))}
+      </tr>`;
+    }).join('');
+    let total = '';
+    if (rooms.length > 1) {
+      total = `
+      <tr class="gs-total">
+        <td colspan="3">รวมทุกห้อง</td>
+        ${gradeSummaryCells(gradeSummaryCounts(rooms.flatMap(r => r.students)))}
+      </tr>`;
+    }
+    return head + rows + total;
+  }).join('');
+
+  return `
+    <div class="gs-wrap">
+      <table class="gs-table">
+        <thead>
+          <tr>
+            <th rowspan="3" class="gs-no">ที่</th>
+            <th rowspan="3">ระดับชั้น</th>
+            <th rowspan="3">ห้อง</th>
+            <th rowspan="3">จำนวนนักเรียน<br>ทั้งหมด (N)</th>
+            <th colspan="11">จำนวนนักเรียน (คน)</th>
+          </tr>
+          <tr>
+            <th colspan="9">ผ่านการประเมิน (X)</th>
+            <th colspan="2">ไม่ผ่านการประเมิน</th>
+          </tr>
+          <tr>
+            ${GS_GRADE_COLS.map(g => `<th>${g}</th>`).join('')}
+            <th>รวม (n)</th>
+            <th>ร</th>
+            <th>มส.</th>
+          </tr>
+        </thead>
+        <tbody>${body}</tbody>
+      </table>
+    </div>`;
+}
+
+function wireGradeSummaryRows() {
+  document.querySelectorAll('.gs-row').forEach(tr => {
+    tr.addEventListener('click', () => openCourseSection(tr.dataset.courseId, tr.dataset.sectionId));
+  });
 }
 
 // ==========================================================================
@@ -173,26 +273,26 @@ async function renderDashboard() {
 function buildGradeStatsBodyHtml(courses, year) {
   const filtered = year === '__all__' ? courses : courses.filter(c => (c.year || '').toString().trim() === year);
   if (filtered.length === 0) {
-    return `<div class="empty-state" style="padding:16px 0;">ไม่มีวิชาที่เปิดสอนในปีการศึกษานี้</div>`;
+    return `<div class="empty-state" style="padding:12px 0;">ไม่มีวิชาที่เปิดสอนในปีการศึกษานี้</div>`;
   }
-  return filtered.map(c => {
+  return `<div class="grade-stat-grid">` + filtered.map(c => {
     const totalInCourse = c.roomsData.reduce((sum, r) => sum + r.students.length, 0);
     return `
-      <div class="card card-pad grade-stat-card" style="margin-bottom:10px;">
-        <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:8px;">
-          <div style="font-size:13.5px; font-weight:600; display:flex; align-items:center; gap:6px;">
+      <div class="grade-stat-card">
+        <div class="gsc-head">
+          <div class="gsc-title">
             <span class="course-dot" style="background:${c.color || '#6B7A4F'}"></span>
-            ${escapeHtml(c.name)} <span style="color:var(--ink-soft); font-weight:400;">${c.code ? '(' + escapeHtml(c.code) + ')' : ''}</span>
+            <span class="gsc-name">${escapeHtml(c.name)}</span>
           </div>
-          <select class="grade-room-filter" data-course-id="${c.id}" style="padding:5px 8px; border:1px solid var(--border); border-radius:6px; font-size:12.5px;">
-            <option value="__all__">ทุกห้อง (${totalInCourse} คน)</option>
-            ${c.roomsData.map(r => `<option value="${r.sectionId}">ห้อง ${escapeHtml(r.room)} (${r.students.length} คน)</option>`).join('')}
+          <select class="grade-room-filter" data-course-id="${c.id}">
+            <option value="__all__">ทุกห้อง (${totalInCourse})</option>
+            ${c.roomsData.map(r => `<option value="${r.sectionId}">ห้อง ${escapeHtml(r.room)} (${r.students.length})</option>`).join('')}
           </select>
         </div>
         <div class="grade-stat-body" data-course-id="${c.id}">${renderGradeDistribution(c, '__all__')}</div>
       </div>
     `;
-  }).join('');
+  }).join('') + `</div>`;
 }
 
 function wireGradeRoomFilters(courses) {
@@ -226,7 +326,7 @@ function renderGradeDistribution(course, roomFilter) {
   const maxCount = Math.max(1, ...Object.values(gradeCounts));
 
   return `
-    <div style="font-size:12.5px; color:var(--ink-soft); margin-bottom:8px;">นักเรียน ${students.length} คน • คะแนนเฉลี่ย ${avg}</div>
+    <div class="gsc-meta">นักเรียน ${students.length} คน • คะแนนเฉลี่ย ${avg}</div>
     ${gradeScale.map(g => `
       <div class="dist-row">
         <span class="g-label">${escapeHtml(g.grade)}</span>

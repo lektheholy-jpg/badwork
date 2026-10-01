@@ -791,3 +791,42 @@ table.sheet tbody tr:nth-child(even) td.sticky-col-3 { background: #FAFAFD; }
   .login-card { padding: 34px 24px; }
   .modal { padding: 22px 18px; }
 }
+
+/* ---------- Dashboard: สรุปผลการเรียน (ตารางตามแบบฟอร์ม) ---------- */
+.grade-summary-card { margin-bottom: 16px; padding: 16px 18px; }
+.gs-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+.gs-head h2 { font-size: 15px; font-weight: 700; }
+.gs-select, .grade-room-filter {
+  padding: 5px 9px; border: 1px solid var(--border); border-radius: 6px;
+  font-size: 12.5px; background: var(--surface); color: var(--ink); font-family: inherit;
+}
+.gs-wrap { overflow-x: auto; border: 1px solid var(--ink); }
+.gs-table { border-collapse: collapse; width: 100%; min-width: 760px; font-size: 12.5px; }
+.gs-table th, .gs-table td { border: 1px solid var(--ink); padding: 4px 6px; text-align: center; line-height: 1.35; }
+.gs-table thead th { background: var(--surface-sunken); font-weight: 700; white-space: nowrap; }
+.gs-table td.num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.gs-table td.gs-n { font-weight: 700; }
+.gs-table .gs-no { width: 30px; color: var(--ink-soft); }
+.gs-table tr.gs-course td { text-align: left; background: var(--primary-tint); font-weight: 700; padding: 5px 8px; }
+.gs-table tr.gs-course .course-dot { display: inline-block; margin-right: 7px; vertical-align: middle; }
+.gs-table .gs-code { color: var(--ink-soft); font-weight: 400; }
+.gs-table tr.gs-row { cursor: pointer; }
+.gs-table tr.gs-row:hover td { background: var(--surface-sunken); }
+.gs-table tr.gs-total td { background: #FAFAFD; font-weight: 700; }
+.gs-table tr.gs-total td:first-child { text-align: right; }
+
+/* สถิติเกรดรายวิชา — ย่อให้กะทัดรัด พับเก็บได้ */
+.gs-details { margin-top: 10px; border-top: 1px solid var(--border); padding-top: 8px; }
+.gs-details > summary { cursor: pointer; font-size: 12.5px; font-weight: 600; color: var(--ink-soft); padding: 2px 0; list-style-position: inside; }
+.gs-details[open] > summary { margin-bottom: 8px; }
+.grade-stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px; }
+.grade-stat-card { border: 1px solid var(--border); border-radius: var(--radius-s); padding: 8px 10px; }
+.gsc-head { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 4px; }
+.gsc-title { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: 12.5px; font-weight: 600; }
+.gsc-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.grade-stat-card .grade-room-filter { padding: 2px 5px; font-size: 11.5px; max-width: 110px; }
+.gsc-meta { font-size: 11.5px; color: var(--ink-soft); margin-bottom: 4px; }
+.grade-stat-card .dist-row { gap: 6px; margin-bottom: 2px; font-size: 11.5px; }
+.grade-stat-card .dist-row .g-label { width: 24px; }
+.grade-stat-card .dist-row .g-bar-track { height: 8px; border-radius: 4px; }
+.grade-stat-card .dist-row .g-count { width: 20px; }
