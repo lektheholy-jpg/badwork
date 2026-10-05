@@ -380,11 +380,14 @@ const RC_SERIES = [
 const RC_GEO = { l: 34, r: 14, t: 16, b: 30 };
 // ความกว้างวาดตามความกว้างจริงของการ์ด เพื่อให้ตัวอักษรขนาดคงที่ทั้งบนมือถือและเดสก์ท็อป
 function rcSize() {
-  const w = Math.round(document.getElementById('rc-body')?.clientWidth || 520);
+  const body = document.getElementById('rc-body');
+  const plot = body?.querySelector('.rc-plot');
+  const w = Math.round(body?.clientWidth || 520);
   const W = Math.max(280, Math.min(1600, w));
-  // ความสูงโตตามความกว้าง (จอใหญ่กราฟไม่แบนและไม่เหลือที่ว่าง) แต่ไม่สูงเกินไป
-  const H = W < 480 ? 214 : Math.round(Math.max(240, Math.min(480, W * 0.36)));
-  return { W, H };
+  // จอกว้าง: การ์ดยืดตามความสูงแถว → วาดกราฟให้เต็มพื้นที่จริง (ไม่เหลือที่ว่างใต้กราฟ)
+  const stretched = plot && window.matchMedia('(min-width: 1360px)').matches;
+  if (stretched && plot.clientHeight > 0) return { W, H: Math.max(240, Math.min(640, Math.round(plot.clientHeight))) };
+  return { W, H: W < 480 ? 214 : Math.round(Math.max(240, Math.min(480, W * 0.36))) };
 }
 
 function roomCompareCourses(courses) {
@@ -525,11 +528,12 @@ function wireRoomCompare(courses) {
     plot.querySelector('.rc-cross').style.display = 'none';
   };
   let lastW = body.querySelector('svg')?.viewBox.baseVal.width || 0;
+  let lastH = body.querySelector('svg')?.viewBox.baseVal.height || 0;
   if (window.ResizeObserver) new ResizeObserver(() => {
     if (!document.body.contains(body)) return;
-    const w = rcSize().W;
-    if (Math.abs(w - lastW) < 8) return;
-    lastW = w;
+    const sz = rcSize();
+    if (Math.abs(sz.W - lastW) < 8 && Math.abs(sz.H - lastH) < 8) return;
+    lastW = sz.W; lastH = sz.H;
     const c = current(); if (c) body.innerHTML = renderRoomCompareChart(c);
   }).observe(body);
   body.addEventListener('pointermove', show);
