@@ -15,35 +15,7 @@ function termLabel(key) {
   return `ภาคเรียนที่ ${s || '-'}/${y || '-'}`;
 }
 
-async function loadRoomReportData(course, section) {
-  const uid = AppState.user.uid;
-  const courseBase = db.collection('users').doc(uid).collection('courses').doc(course.id);
-  const secBase = sectionRef(uid, course.id, section.id);
-  const [studentsSnap, assessSnap, scoresSnap, gradingDoc] = await Promise.all([
-    secBase.collection('students').orderBy('no', 'asc').get(),
-    courseBase.collection('assessments').orderBy('order', 'asc').get(),
-    secBase.collection('scores').get(),
-    courseBase.collection('settings').doc('grading').get(),
-  ]);
-  const students = studentsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-  students.sort((a, b) => (Number(a.no) || 0) - (Number(b.no) || 0));
-  const assessments = assessSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-  const scores = {};
-  scoresSnap.docs.forEach(d => { scores[d.id] = d.data(); });
-  const gradeScale = gradingDoc.exists ? gradingDoc.data().scale : DEFAULT_GRADE_SCALE;
-  return { students, assessments, scores, gradeScale };
-}
-
-function exportRoomCsv(course, section, { students, assessments, scores, gradeScale }) {
-  const header = ['เลขที่', 'รหัสนักเรียน', 'ชื่อ', 'นามสกุล', ...assessments.map(a => a.name), 'รวม', 'เกรด'];
-  const rows = students.map(s => {
-    const sc = scores[s.id] || {};
-    const total = assessments.reduce((sum, a) => sum + (Number(sc[a.id]) || 0), 0);
-    return [s.no, s.code, s.firstName, s.lastName, ...assessments.map(a => sc[a.id] ?? ''), total, calcGrade(total, gradeScale)];
-  });
-  downloadCsv(`คะแนน-${course.name}-ห้อง${section.room}.csv`, [header, ...rows]);
-  showToast('ส่งออกไฟล์ CSV สำเร็จ');
-}
+// loadRoomReportData() และ exportRoomCsv() อยู่ใน report.js (ใช้ร่วมกับแท็บรายงานในวิชา)
 
 function reportRoomRowHtml(course, { section, studentCount, progress }) {
   const col = getLevelColor(course.level);

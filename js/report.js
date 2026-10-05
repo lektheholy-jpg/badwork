@@ -2,12 +2,13 @@
 // Report: summary stats, grade distribution, export — scoped to one ห้อง
 // ==========================================================================
 
-async function renderReportTab(container, course, section) {
-  container.innerHTML = `<div class="empty-state">กำลังโหลด...</div>`;
+// โหลดข้อมูลที่รายงานของ "ห้องเดียว" ต้องใช้ (นักเรียน / รายการคะแนน / คะแนน / เกณฑ์เกรด)
+// ใช้ร่วมกันระหว่างแท็บรายงานในวิชา (renderReportTab) และหน้ารายงานจากเมนูด้านข้าง (report-page.js)
+// ไม่ cache โดยตั้งใจ — คะแนนอาจถูกแก้ระหว่างนั้น ต้องอ่านค่าล่าสุดทุกครั้งที่ส่งออก
+async function loadRoomReportData(course, section) {
   const uid = AppState.user.uid;
   const courseBase = db.collection('users').doc(uid).collection('courses').doc(course.id);
   const secBase = sectionRef(uid, course.id, section.id);
-
   const [studentsSnap, assessSnap, scoresSnap, gradingDoc] = await Promise.all([
     secBase.collection('students').orderBy('no', 'asc').get(),
     courseBase.collection('assessments').orderBy('order', 'asc').get(),
@@ -20,6 +21,24 @@ async function renderReportTab(container, course, section) {
   const scores = {};
   scoresSnap.docs.forEach(d => { scores[d.id] = d.data(); });
   const gradeScale = gradingDoc.exists ? gradingDoc.data().scale : DEFAULT_GRADE_SCALE;
+  return { students, assessments, scores, gradeScale };
+}
+
+// ส่งออกคะแนนจริงของห้องเป็นไฟล์ CSV (ใช้ร่วมกันทั้งแท็บรายงานและหน้ารายงาน)
+function exportRoomCsv(course, section, { students, assessments, scores, gradeScale }) {
+  const header = ['เลขที่', 'รหัสนักเรียน', 'ชื่อ', 'นามสกุล', ...assessments.map(a => a.name), 'รวม', 'เกรด'];
+  const rows = students.map(s => {
+    const sc = scores[s.id] || {};
+    const total = assessments.reduce((sum, a) => sum + (Number(sc[a.id]) || 0), 0);
+    return [s.no, s.code, s.firstName, s.lastName, ...assessments.map(a => sc[a.id] ?? ''), total, calcGrade(total, gradeScale)];
+  });
+  downloadCsv(`คะแนน-${course.name}-ห้อง${section.room}.csv`, [header, ...rows]);
+  showToast('ส่งออกไฟล์ CSV สำเร็จ');
+}
+
+async function renderReportTab(container, course, section) {
+  container.innerHTML = `<div class="empty-state">กำลังโหลด...</div>`;
+  const { students, assessments, scores, gradeScale } = await loadRoomReportData(course, section);
   const maxTotal = assessments.reduce((s, a) => s + (Number(a.max) || 0), 0) || 100;
 
   const totals = students.map(s => {
@@ -80,14 +99,7 @@ async function renderReportTab(container, course, section) {
   `;
 
   document.getElementById('export-csv-btn').addEventListener('click', () => {
-    const header = ['เลขที่', 'รหัสนักเรียน', 'ชื่อ', 'นามสกุล', ...assessments.map(a => a.name), 'รวม', 'เกรด'];
-    const rows = students.map(s => {
-      const sc = scores[s.id] || {};
-      const total = assessments.reduce((sum, a) => sum + (Number(sc[a.id]) || 0), 0);
-      return [s.no, s.code, s.firstName, s.lastName, ...assessments.map(a => sc[a.id] ?? ''), total, calcGrade(total, gradeScale)];
-    });
-    downloadCsv(`คะแนน-${course.name}-ห้อง${section.room}.csv`, [header, ...rows]);
-    showToast('ส่งออกไฟล์ CSV สำเร็จ');
+    exportRoomCsv(course, section, { students, assessments, scores, gradeScale });
   });
 
   document.getElementById('export-pp5-btn').addEventListener('click', () => {
@@ -116,9 +128,13 @@ const PP5_SCORE_COL_START = 5; // คอลัมน์ F (0-indexed)
 const PP5_CODE_COL = 2;        // คอลัมน์ C (รหัส)
 const PP5_HEADER_ROWS = 4;     // แถวหัวตาราง 4 แถวแรก, ข้อมูลนักเรียนเริ่มแถวที่ 5 (index 4)
 
-function parsePp5TemplateColumns(aoa) {
+// อ่านโครงคอลัมน์คะแนนจากแถวหัวตาราง 4 แถวของไฟล์ฟอร์ม (ใช้ร่วมกันทั้ง ปพ.5 และ Next School)
+//   แถว 0 = ชื่อหมวด (merge cell: ช่องว่างหมายถึงหมวดเดิม)  แถว 1 = ID รายการ  แถว 2 = ลำดับ  แถว 3 = คะแนนเต็ม
+//   classify(groupLabel) → bucket ของคอลัมน์นั้น
+//   readIdRow → true จะอ่าน ID รายการใส่ itemId (ปพ.5 ใช้, Next School ไม่ใช้)
+function parseFormColumns(aoa, { classify, readIdRow = false }) {
   const groupRow = aoa[0] || [];
-  const idRow = aoa[1] || [];
+  const idRow = readIdRow ? (aoa[1] || []) : [];
   const orderRow = aoa[2] || [];
   const maxRow = aoa[3] || [];
   const cols = [];
@@ -128,16 +144,21 @@ function parsePp5TemplateColumns(aoa) {
     if (groupRow[c] !== undefined && groupRow[c] !== '') lastGroup = groupRow[c];
     const max = maxRow[c];
     if (max === undefined || max === '') break; // จบชุดคอลัมน์คะแนนเมื่อไม่มีค่าคะแนนเต็มแล้ว
-    cols.push({
+    const col = {
       colIndex: c,
-      group: lastGroup,
-      bucket: classifyPp5Bucket(lastGroup),
+      group: String(lastGroup),
+      bucket: classify(lastGroup),
       order: orderRow[c] !== undefined ? orderRow[c] : '',
       max: Number(max) || 0,
-      itemId: idRow[c] !== undefined ? idRow[c] : '',
-    });
+    };
+    if (readIdRow) col.itemId = idRow[c] !== undefined ? idRow[c] : '';
+    cols.push(col);
   }
   return cols;
+}
+
+function parsePp5TemplateColumns(aoa) {
+  return parseFormColumns(aoa, { classify: classifyPp5Bucket, readIdRow: true });
 }
 
 // จัดกลุ่มคอลัมน์ของฟอร์มเข้ากับ 3 หมวดคะแนนที่ระบบมีอยู่จริง (collect/midterm/final)
@@ -528,25 +549,7 @@ function classifyNsFormBucket(label) {
 }
 
 function parseNsFormColumns(aoa) {
-  const groupRow = aoa[0] || [];
-  const orderRow = aoa[2] || [];
-  const maxRow = aoa[3] || [];
-  const width = Math.max(groupRow.length, orderRow.length, maxRow.length);
-  const cols = [];
-  let lastGroup = '';
-  for (let c = PP5_SCORE_COL_START; c < width; c++) {
-    if (groupRow[c] !== undefined && groupRow[c] !== '') lastGroup = groupRow[c];
-    const max = maxRow[c];
-    if (max === undefined || max === '') break;
-    cols.push({
-      colIndex: c,
-      group: String(lastGroup),
-      bucket: classifyNsFormBucket(lastGroup),
-      order: orderRow[c] !== undefined ? orderRow[c] : '',
-      max: Number(max) || 0,
-    });
-  }
-  return cols;
+  return parseFormColumns(aoa, { classify: classifyNsFormBucket });
 }
 
 // แบ่งคะแนนแต่ละช่วงของ SGS (parts เรียงตาม NS_PARTS) ลงคอลัมน์ของฟอร์ม → Map(colIndex → คะแนน)
