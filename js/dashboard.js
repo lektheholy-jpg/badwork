@@ -116,11 +116,11 @@ async function renderDashboard() {
   view.innerHTML = `
     <!-- หัวหน้าแรกแบบ One UI -->
     <header class="oneui-hero">
-      <div class="oneui-hero-text">
-        <p class="oneui-hello">สวัสดีครับ คุณครู ${escapeHtml(firstName)}</p>
+      <p class="oneui-hello">สวัสดีครับ คุณครู ${escapeHtml(firstName)}</p>
+      <div class="oneui-titlewrap">
+        <img class="oneui-logo" src="assets/icons/android-chrome-512x512.png" alt="">
         <h1 class="oneui-title">งานน่าเบื่อ<span class="dots">..</span></h1>
       </div>
-      <img class="oneui-logo" src="assets/icons/android-chrome-512x512.png" alt="โลโก้งานน่าเบื่อ">
     </header>
     <div class="cw-row">
       <div class="cw-card cw-clock" style="--w: var(--hue-violet)">
@@ -477,10 +477,12 @@ function renderRoomCompare(courses) {
     <section class="rc-card">
       <div class="rc-head">
         <div class="chart-title">คะแนนรายห้อง · สูงสุด เฉลี่ย ต่ำสุด</div>
-        ${list.length > 1
-          ? `<select class="grade-room-filter" id="rc-select" aria-label="เลือกวิชา">${list.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('')}</select>`
-          : `<span class="rc-course">${escapeHtml(list[0].name)}</span>`}
       </div>
+      ${list.length > 1
+        ? `<div class="rc-tabs" role="tablist" aria-label="เลือกวิชา">${list.map((c, i) => `
+            <button type="button" role="tab" class="rc-tab${i === 0 ? ' is-on' : ''}" aria-selected="${i === 0}" data-course-id="${c.id}" style="--tc:${courseColor(c) || 'var(--primary)'}">${escapeHtml(c.name)}</button>`).join('')}
+          </div>`
+        : `<div class="rc-course">${escapeHtml(list[0].name)}</div>`}
       <div id="rc-body">${renderRoomCompareChart(list[0])}</div>
     </section>`;
 }
@@ -488,12 +490,14 @@ function renderRoomCompare(courses) {
 function wireRoomCompare(courses) {
   const body = document.getElementById('rc-body');
   if (!body) return;
-  const sel = document.getElementById('rc-select');
-  const current = () => courses.find(c => c.id === (sel ? sel.value : body.querySelector('.rc-plot')?.dataset.courseId));
-  if (sel) sel.addEventListener('change', () => {
-    const c = courses.find(x => x.id === sel.value);
-    if (c) body.innerHTML = renderRoomCompareChart(c);
-  });
+  const tabs = document.querySelectorAll('.rc-tab');
+  const current = () => courses.find(c => c.id === body.querySelector('.rc-plot')?.dataset.courseId);
+  tabs.forEach(tab => tab.addEventListener('click', () => {
+    const c = courses.find(x => x.id === tab.dataset.courseId);
+    if (!c) return;
+    tabs.forEach(t => { const on = t === tab; t.classList.toggle('is-on', on); t.setAttribute('aria-selected', String(on)); });
+    body.innerHTML = renderRoomCompareChart(c);
+  }));
 
   // เลื่อนเมาส์/แตะบนกราฟ → เส้นนำสายตา + ป้ายค่าของห้องนั้น
   const show = (ev) => {
