@@ -6,6 +6,10 @@ function setActiveNav(routeId) {
   document.querySelectorAll('.nav-item[data-route]').forEach(el => {
     el.classList.toggle('active', el.dataset.route === routeId);
   });
+  const MORE = ['structure-page', 'archive-page', 'settings'];
+  document.querySelectorAll('.tab-item').forEach(el => {
+    el.classList.toggle('active', el.dataset.route === routeId || (el.dataset.more && MORE.includes(routeId)));
+  });
 }
 
 function navigate(route) {
@@ -14,6 +18,7 @@ function navigate(route) {
   AppState.currentCourseId = null;
   setActiveNav(route);
   closeMobileNav();
+  document.getElementById('app')?.classList.remove('more-open');
 
   if (route === 'dashboard') renderDashboard();
   else if (route === 'courses') renderCoursesList();
@@ -72,3 +77,41 @@ document.getElementById('sidebar-toggle')?.addEventListener('click', () => {
   // เดสก์ท็อป: ย่อ/ขยายเมนู · มือถือ: แตะโลโก้เพื่อปิดลิ้นชักเมนู
   if (window.innerWidth <= SIDEBAR_BREAKPOINT) closeMobileNav(); else toggleSidebarCollapse();
 });
+
+// ==========================================================================
+// แถบเมนูล่างบนมือถือ + แผง "เพิ่มเติม" (สร้างจากปุ่มเมนูข้างเพื่อไม่ให้ไอคอนซ้ำซ้อน)
+// ==========================================================================
+(function initTabbar() {
+  const app = document.getElementById('app'), bar = document.getElementById('tabbar'), grid = document.getElementById('more-grid');
+  if (!app || !bar || !grid) return;
+  const src = k => k === 'logout' ? document.getElementById('logout-btn') : document.querySelector(`.nav-item[data-route="${k}"]`);
+  const iconOf = el => el.querySelector('.nav-icon')?.innerHTML || '';
+  const setMore = open => app.classList.toggle('more-open', open);
+
+  [['dashboard', 'หน้าหลัก'], ['courses', 'รายวิชา'], ['scores-page', 'คะแนน'], ['report-page', 'รายงาน']].forEach(([route, label]) => {
+    const s = src(route); if (!s) return;
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'tab-item'; b.dataset.route = route;
+    b.innerHTML = `<span class="tab-ico">${iconOf(s)}</span><span class="tab-label">${label}</span>`;
+    b.addEventListener('click', () => navigate(route));
+    bar.appendChild(b);
+  });
+
+  const more = document.createElement('button');
+  more.type = 'button'; more.className = 'tab-item'; more.dataset.route = 'more'; more.dataset.more = '1';
+  more.innerHTML = '<span class="tab-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/></svg></span><span class="tab-label">เพิ่มเติม</span>';
+  more.addEventListener('click', () => setMore(!app.classList.contains('more-open')));
+  bar.appendChild(more);
+
+  ['structure-page', 'archive-page', 'settings', 'logout'].forEach(k => {
+    const s = src(k); if (!s) return;
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'more-tile'; b.dataset.route = k === 'logout' ? 'logout-btn' : k;
+    b.innerHTML = `<span class="more-ico">${iconOf(s)}</span><span>${s.querySelector('.nav-label')?.textContent || ''}</span>`;
+    b.addEventListener('click', () => { setMore(false); if (k === 'logout') s.click(); else navigate(k); });
+    grid.appendChild(b);
+  });
+
+  document.getElementById('more-scrim')?.addEventListener('click', () => setMore(false));
+  setActiveNav((typeof AppState !== 'undefined' && AppState.currentRoute) || 'dashboard');
+})();
