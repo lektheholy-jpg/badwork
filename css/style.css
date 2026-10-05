@@ -2284,9 +2284,30 @@ html, body { overflow-x: clip; }
 .rc-course { margin: 0 0 8px; font-size: 13px; font-weight: 700; color: var(--ink-soft); }
 
 /* ===== หัวเว็บ (แบนเนอร์แมวอวกาศ): ขนาดตามหน้าจอ ===== */
-.site-banner { display: flex; justify-content: center; margin: 0 0 10px; padding: 4px 0 0; }
+.site-banner { display: flex; justify-content: flex-end; margin: 0 0 10px; padding: 4px 0 0; }
 .site-banner img { display: block; width: min(100%, 500px); height: auto; aspect-ratio: 590 / 350; user-select: none; -webkit-user-drag: none; }
 /* ธีมมืด: ภาพต้นฉบับเป็นเส้นดำบนพื้นโปร่งใส → กลับสี (หมุนเฉดกลับให้สีฟ้ายังเป็นฟ้า) */
 :root[data-theme="dark"] .site-banner img { filter: invert(1) hue-rotate(180deg); }
 @media (min-width: 1100px) { .site-banner img { width: min(100%, 540px); } }
 @media (max-width: 640px) { .site-banner { margin-bottom: 4px; } .site-banner img { width: 100%; } }
+
+/* ===== จอคอม: ขยายเนื้อหาให้เต็มพื้นที่ แทนที่จะเหลือขอบว่างสองข้าง ===== */
+@media (min-width: 861px) {
+  .main { max-width: min(1680px, 100%); margin: 0 auto; padding: 32px clamp(24px, 3.2vw, 56px) 64px; }
+}
+/* จอกว้าง (≥1360px): หน้าแรกแบ่ง 2 คอลัมน์ — ซ้าย: นาฬิกา/อากาศ + กราฟ · ขวา: ความคืบหน้าล่าสุด */
+@media (min-width: 1360px) {
+  .dash { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); column-gap: 24px; align-items: start; }
+  .dash > .site-banner { grid-column: 1 / -1; }
+  .dash > .cw-row, .dash > .rc-card { grid-column: 1; }
+  .dash > .prog-section { grid-column: 2; grid-row: 2 / span 2; margin: 0 0 20px; }
+  .dash > .book-inside { grid-column: 1 / -1; grid-row: 4; }
+  .dash > .prog-section .prog-row { grid-template-columns: 12px minmax(0, 1fr) 96px 46px; grid-template-areas: "dot title title pct" ". item bar bar"; gap: 6px 12px; padding: 14px 20px; }
+  .dash > .prog-section .prog-dot { grid-area: dot; }
+  .dash > .prog-section .prog-title { grid-area: title; }
+  .dash > .prog-section .prog-pct { grid-area: pct; }
+  .dash > .prog-section .prog-item { grid-area: item; font-size: 13px; }
+  .dash > .prog-section .progress-bar { grid-area: bar; }
+}
+/* จอใหญ่มาก: ให้การ์ดนาฬิกา/อากาศ และกราฟสูงขึ้นเล็กน้อยให้สมดุลกับคอลัมน์ขวา */
+@media (min-width: 1700px) { .dash { column-gap: 32px; } }

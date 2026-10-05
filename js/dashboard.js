@@ -113,7 +113,7 @@ async function renderDashboard() {
   const avgProgress = courses.length ? Math.round(totalProgressSum / courses.length) : 0;
 
   view.innerHTML = `
-    <!-- หัวหน้าแรกแบบ One UI -->
+    <div class="dash">
     <header class="site-banner">
       <img src="assets/banner.webp" width="590" height="350" decoding="async" alt="กมฺมุนา วตฺตตี โลโก — สัตว์โลกย่อมเป็นไปตามกรรม">
     </header>
@@ -159,6 +159,7 @@ async function renderDashboard() {
       </div></div>
     ` : ''}
     </section>
+    </div>
   `;
 
   view.querySelectorAll('.prog-row').forEach(el => el.addEventListener('click', () => openCourseSection(el.dataset.courseId, el.dataset.sectionId)));
