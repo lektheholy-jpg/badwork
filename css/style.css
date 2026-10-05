@@ -904,3 +904,69 @@ table.sheet td.grp-sub-total {
 }
 table.sheet tbody tr:nth-child(even) td.grp-sub-total,
 table.sheet tbody tr:hover td.grp-sub-total { background: var(--col-collect); }
+
+/* ==========================================================================
+   โหมดหน้าเอกสาร: เนื้อหาหลักเป็น "แผ่นกระดาษ" บนพื้นหลังสีเทา เหมือนเปิดใน Word / Google Docs
+   (ทับกฎด้านบนทั้งหมดไว้ในบล็อกเดียว — ลบบล็อกนี้ทิ้งเพื่อกลับไปดีไซน์เดิมได้)
+   ========================================================================== */
+:root {
+  --canvas: #E4E3DF;
+  --paper: #FFFFFF;
+  --paper-edge: #D6D4CE;
+  --paper-rule: #E9E7E2;
+  --paper-shadow: 0 1px 2px rgba(40,36,28,.10), 0 8px 28px rgba(40,36,28,.12);
+}
+body { background: var(--canvas); }
+#app { background: var(--canvas); }
+
+.main {
+  flex: 1; min-width: 0; max-width: 1060px;
+  margin: 28px auto 48px;
+  padding: 52px 60px 64px;
+  background: var(--paper);
+  border: 1px solid var(--paper-edge);
+  border-radius: 3px;
+  box-shadow: var(--paper-shadow);
+  min-height: calc(100vh - 76px);
+}
+
+/* หัวเรื่องเหมือนหัวเอกสาร: ชื่อใหญ่ + เส้นคั่นใต้หัว */
+.page-header { margin-bottom: 30px; padding-bottom: 14px; border-bottom: 2px solid var(--ink); }
+.page-header h1 { font-size: 26px; letter-spacing: -.2px; }
+.page-header .sub { margin-top: 6px; }
+
+/* การ์ดกลายเป็นส่วนของเอกสาร: ไม่มีเงา ไม่มีพื้นหลังแยก ใช้เส้นบางๆ คั่นแทน */
+.main .card {
+  background: transparent; box-shadow: none;
+  border: 1px solid var(--paper-rule); border-radius: 4px;
+  margin-bottom: 22px;
+}
+.main .card-pad { padding: 20px 22px; }
+.main .struct-panel-header {
+  background: transparent; border-bottom: 1px solid var(--paper-rule);
+}
+.main .course-row { border: 1px solid var(--paper-rule); box-shadow: none; border-radius: 4px; }
+.main .course-row:hover { border-color: var(--ink-soft); }
+.main .struct-summary-box { border-radius: 4px; box-shadow: none; border: 1px solid var(--paper-rule); }
+.main .group-creator { border-radius: 4px; }
+
+/* ตารางบันทึกคะแนนกว้างกว่ากระดาษ → ให้เลื่อนในกรอบตัวเอง ไม่ดันแผ่นกระดาษให้ล้น */
+.main .sheet-wrap { border: 1px solid var(--paper-rule); border-radius: 2px; box-shadow: none; max-width: 100%; }
+
+@media (max-width: 1100px) {
+  .main { margin: 18px 18px 40px; padding: 38px 34px 48px; }
+}
+@media (max-width: 860px) {
+  /* ปุ่ม hamburger ลอยอยู่มุมบน → เว้นที่ให้ ไม่ให้ทับแผ่นกระดาษ */
+  .main { margin-top: 64px; }
+}
+@media (max-width: 720px) {
+  /* มือถือ: เต็มจอ ไม่ต้องเว้นขอบกระดาษ เพราะพื้นที่น้อย */
+  body, #app { background: var(--paper); }
+  .main { margin: 0; padding: 70px 16px 40px; border: none; border-radius: 0; box-shadow: none; min-height: 100vh; }
+  .page-header h1 { font-size: 22px; }
+}
+@media print {
+  body, #app { background: #fff; }
+  .main { margin: 0; box-shadow: none; border: none; padding: 0; max-width: none; }
+}
