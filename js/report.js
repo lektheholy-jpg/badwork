@@ -765,6 +765,7 @@ function openGradeScaleModal(course, section, scale) {
     document.getElementById('save-scale').addEventListener('click', async () => {
       await db.collection('users').doc(AppState.user.uid).collection('courses').doc(course.id)
         .collection('settings').doc('grading').set({ scale: rows });
+      invalidateCourseData(course.id);
       closeModal();
       showToast('บันทึกเกณฑ์เกรดสำเร็จ');
       renderReportTab(document.getElementById('course-tab-body'), course, section);

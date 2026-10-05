@@ -14,93 +14,171 @@ function orderAssessmentsLikeSheet(assessments, groups) {
   return [...collect, ...byOrder.filter(a => a.category === 'midterm'), ...byOrder.filter(a => a.category === 'final')];
 }
 
-async function loadCoursesWithGrades() {
-  const uid = AppState.user.uid;
-  const coursesSnap = await db.collection('users').doc(uid).collection('courses')
-    .orderBy('createdAt', 'desc').get();
-  const activeDocs = coursesSnap.docs.filter(d => !d.data().archived);
+// --------------------------------------------------------------------------
+// แคชข้อมูลรายวิชา (อยู่ใน AppState) — หน้าแรกกับหน้ารายงานใช้ร่วมกัน ไม่อ่าน Firestore ซ้ำ
+//   • แคชแยกรายวิชา: แก้คะแนน/นักเรียนวิชาไหน ล้างเฉพาะวิชานั้น (invalidateCourseData(courseId))
+//   • เปลี่ยนรายการวิชา (สร้าง/เก็บเข้าคลัง/ลบ) ล้างทั้งหมด (invalidateCourseData())
+//   • มีอายุ 5 นาที เผื่อมีการแก้จากอุปกรณ์อื่น; บังคับโหลดใหม่ได้ด้วย loadCoursesWithGrades({ force: true })
+// --------------------------------------------------------------------------
+const COURSE_DATA_TTL_MS = 5 * 60 * 1000;
+const COURSE_LOAD_CONCURRENCY = 6; // จำนวนวิชาที่โหลดพร้อมกัน (กันยิงคำขอเป็นร้อยพร้อมกัน)
+const SECTION_LOAD_CONCURRENCY = 4; // จำนวนห้องต่อวิชาที่โหลดพร้อมกัน
 
-  const courses = [];
-  const sectionCards = [];
-  let totalStudents = 0;
-  let totalProgressSum = 0;
-
-  for (const doc of activeDocs) {
-    const c = { id: doc.id, ...doc.data() };
-    const courseBase = db.collection('users').doc(uid).collection('courses').doc(c.id);
-    const [sections, assessSnap, gradingDoc, structDoc] = await Promise.all([
-      loadSections(uid, c.id),
-      courseBase.collection('assessments').get(),
-      courseBase.collection('settings').doc('grading').get(),
-      courseBase.collection('settings').doc('structure').get(),
-    ]);
-    const assessments = assessSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-    const orderedItems = orderAssessmentsLikeSheet(assessments, structDoc.exists ? (structDoc.data().groups || []) : []);
-    const assessmentIds = assessments.map(a => a.id);
-    const gradeScale = gradingDoc.exists ? gradingDoc.data().scale : DEFAULT_GRADE_SCALE;
-    let studentCount = 0;
-    let progressSum = 0;
-    const roomsData = []; // สถิติเกรดแยกรายห้อง สำหรับใช้ในการ์ด "สถิติเกรดรายวิชา"
-    for (const s of sections) {
-      const secBase = courseBase.collection('sections').doc(s.id);
-      const [studentsSnap, scoresSnap] = await Promise.all([
-        secBase.collection('students').get(),
-        secBase.collection('scores').get(),
-      ]);
-      // ความคืบหน้า = สัดส่วน "ช่องคะแนน" ที่กรอกแล้วจากทุกช่องในห้องนี้ (นักเรียน x รายการคะแนนทั้งหมด)
-      const totalCells = studentsSnap.size * assessmentIds.length;
-      let filledCells = 0;
-      const scoresByStudent = {};
-      scoresSnap.docs.forEach(d => {
-        const data = d.data();
-        scoresByStudent[d.id] = data;
-        assessmentIds.forEach(aid => {
-          if (data[aid] !== undefined && data[aid] !== null && data[aid] !== '') filledCells++;
-        });
-      });
-      // รายการถัดไป = รายการแรก (ตามลำดับในตาราง) ที่ยังบันทึกไม่ครบทุกคน — ยังไม่เริ่มเลยจะเป็นรายการแรก
-      const sIds = studentsSnap.docs.map(d => d.id);
-      let nextItem = null, itemsDone = 0;
-      for (const a of orderedItems) {
-        const n = sIds.filter(id => { const v = (scoresByStudent[id] || {})[a.id]; return v !== undefined && v !== null && v !== ''; }).length;
-        if (sIds.length > 0 && n / sIds.length > ITEM_DONE_RATIO) itemsDone++; // นับว่าบันทึกแล้วเมื่อมากกว่า 70% ของนักเรียนในห้อง
-        else if (!nextItem) nextItem = { name: a.name, filled: n };
-      }
-      const secProgress = totalCells > 0 ? Math.round((filledCells / totalCells) * 100) : 0;
-      studentCount += studentsSnap.size;
-      progressSum += secProgress;
-      sectionCards.push({
-        courseId: c.id,
-        sectionId: s.id,
-        courseName: c.name,
-        level: c.level,
-        color: courseColor(c),
-        room: s.room,
-        studentCount: studentsSnap.size,
-        progress: secProgress,
-        nextItem, itemsDone, itemsTotal: orderedItems.length,
-        state: sIds.length === 0 ? 'nostudents' : orderedItems.length === 0 ? 'nostructure' : !nextItem ? 'complete' : secProgress === 0 ? 'notstarted' : 'partial',
-      });
-
-      const gradedStudents = studentsSnap.docs.map(sd => {
-        const sc = scoresByStudent[sd.id] || {};
-        const total = assessments.reduce((sum, a) => sum + (Number(sc[a.id]) || 0), 0);
-        const hasScore = assessmentIds.some(aid => sc[aid] !== undefined && sc[aid] !== null && sc[aid] !== '');
-        return { id: sd.id, total, hasScore, grade: calcGrade(total, gradeScale) };
-      });
-      roomsData.push({ sectionId: s.id, room: s.room, students: gradedStudents });
-    }
-    c.studentCount = studentCount;
-    c.roomCount = sections.length;
-    c.progress = sections.length > 0 ? Math.round(progressSum / sections.length) : 0;
-    c.gradeScale = gradeScale;
-    c.maxTotal = assessments.reduce((sum, a) => sum + (Number(a.max) || 0), 0) || 100;
-    c.roomsData = roomsData;
-    totalStudents += studentCount;
-    totalProgressSum += c.progress;
-    courses.push(c);
+function getCourseDataCache() {
+  const uid = AppState.user?.uid || null;
+  let cc = AppState.courseDataCache;
+  if (!cc || cc.uid !== uid) { // เปลี่ยนบัญชี → เริ่มแคชใหม่
+    cc = AppState.courseDataCache = { uid, version: 0, list: null, listAt: 0, byCourse: new Map(), inflight: null };
   }
+  return cc;
+}
+
+// เรียกหลังเขียนข้อมูลลง Firestore ทุกครั้ง: ระบุ courseId = ล้างเฉพาะวิชานั้น, ไม่ระบุ = ล้างทั้งหมด
+function invalidateCourseData(courseId) {
+  const cc = getCourseDataCache();
+  cc.version++;        // โหลดที่กำลังวิ่งอยู่ (เริ่มก่อนเขียน) จะไม่ถูกเก็บลงแคช
+  cc.inflight = null;
+  if (courseId) cc.byCourse.delete(courseId);
+  else { cc.list = null; cc.byCourse.clear(); }
+}
+
+// map แบบขนาน จำกัดจำนวนงานพร้อมกัน และคืนผลตามลำดับเดิม
+async function mapLimit(items, limit, fn) {
+  const results = new Array(items.length);
+  let next = 0;
+  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (next < items.length) {
+      const i = next++;
+      results[i] = await fn(items[i], i);
+    }
+  });
+  await Promise.all(workers);
+  return results;
+}
+
+async function loadSectionWithGrades(c, s, courseBase, ctx) {
+  const { assessments, assessmentIds, orderedItems, gradeScale } = ctx;
+  const secBase = courseBase.collection('sections').doc(s.id);
+  const [studentsSnap, scoresSnap] = await Promise.all([
+    secBase.collection('students').get(),
+    secBase.collection('scores').get(),
+  ]);
+  // ความคืบหน้า = สัดส่วน "ช่องคะแนน" ที่กรอกแล้วจากทุกช่องในห้องนี้ (นักเรียน x รายการคะแนนทั้งหมด)
+  const totalCells = studentsSnap.size * assessmentIds.length;
+  let filledCells = 0;
+  const scoresByStudent = {};
+  scoresSnap.docs.forEach(d => {
+    const data = d.data();
+    scoresByStudent[d.id] = data;
+    assessmentIds.forEach(aid => {
+      if (data[aid] !== undefined && data[aid] !== null && data[aid] !== '') filledCells++;
+    });
+  });
+  // รายการถัดไป = รายการแรก (ตามลำดับในตาราง) ที่ยังบันทึกไม่ครบทุกคน — ยังไม่เริ่มเลยจะเป็นรายการแรก
+  const sIds = studentsSnap.docs.map(d => d.id);
+  let nextItem = null, itemsDone = 0;
+  for (const a of orderedItems) {
+    const n = sIds.filter(id => { const v = (scoresByStudent[id] || {})[a.id]; return v !== undefined && v !== null && v !== ''; }).length;
+    if (sIds.length > 0 && n / sIds.length > ITEM_DONE_RATIO) itemsDone++; // นับว่าบันทึกแล้วเมื่อมากกว่า 70% ของนักเรียนในห้อง
+    else if (!nextItem) nextItem = { name: a.name, filled: n };
+  }
+  const secProgress = totalCells > 0 ? Math.round((filledCells / totalCells) * 100) : 0;
+  const card = {
+    courseId: c.id,
+    sectionId: s.id,
+    courseName: c.name,
+    level: c.level,
+    color: courseColor(c),
+    room: s.room,
+    studentCount: studentsSnap.size,
+    progress: secProgress,
+    nextItem, itemsDone, itemsTotal: orderedItems.length,
+    state: sIds.length === 0 ? 'nostudents' : orderedItems.length === 0 ? 'nostructure' : !nextItem ? 'complete' : secProgress === 0 ? 'notstarted' : 'partial',
+  };
+  const gradedStudents = studentsSnap.docs.map(sd => {
+    const sc = scoresByStudent[sd.id] || {};
+    const total = assessments.reduce((sum, a) => sum + (Number(sc[a.id]) || 0), 0);
+    const hasScore = assessmentIds.some(aid => sc[aid] !== undefined && sc[aid] !== null && sc[aid] !== '');
+    return { id: sd.id, total, hasScore, grade: calcGrade(total, gradeScale) };
+  });
+  return {
+    card,
+    roomData: { sectionId: s.id, room: s.room, students: gradedStudents }, // สถิติเกรดรายห้อง สำหรับการ์ด "สถิติเกรดรายวิชา"
+    studentCount: studentsSnap.size,
+    progress: secProgress,
+  };
+}
+
+async function loadOneCourseWithGrades(uid, courseDoc) {
+  const c = { id: courseDoc.id, ...courseDoc.data };
+  const courseBase = db.collection('users').doc(uid).collection('courses').doc(c.id);
+  const [sections, assessSnap, gradingDoc, structDoc] = await Promise.all([
+    loadSections(uid, c.id),
+    courseBase.collection('assessments').get(),
+    courseBase.collection('settings').doc('grading').get(),
+    courseBase.collection('settings').doc('structure').get(),
+  ]);
+  const assessments = assessSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+  const ctx = {
+    assessments,
+    assessmentIds: assessments.map(a => a.id),
+    orderedItems: orderAssessmentsLikeSheet(assessments, structDoc.exists ? (structDoc.data().groups || []) : []),
+    gradeScale: gradingDoc.exists ? gradingDoc.data().scale : DEFAULT_GRADE_SCALE,
+  };
+
+  // ห้องในวิชาเดียวกันโหลดขนานกัน (ผลลัพธ์เรียงตามลำดับห้องเดิม)
+  const secResults = await mapLimit(sections, SECTION_LOAD_CONCURRENCY, (s) => loadSectionWithGrades(c, s, courseBase, ctx));
+  const studentCount = secResults.reduce((n, r) => n + r.studentCount, 0);
+  const progressSum = secResults.reduce((n, r) => n + r.progress, 0);
+
+  c.studentCount = studentCount;
+  c.roomCount = sections.length;
+  c.progress = sections.length > 0 ? Math.round(progressSum / sections.length) : 0;
+  c.gradeScale = ctx.gradeScale;
+  c.maxTotal = assessments.reduce((sum, a) => sum + (Number(a.max) || 0), 0) || 100;
+  c.roomsData = secResults.map(r => r.roomData);
+  return { course: c, cards: secResults.map(r => r.card) };
+}
+
+async function fetchCoursesWithGrades(cc) {
+  const { uid } = cc;
+  const startVersion = cc.version;
+  const fresh = (at) => Date.now() - at < COURSE_DATA_TTL_MS;
+
+  // 1) รายการวิชาที่เปิดใช้งาน (อ่านแค่เอกสารวิชา ไม่แตะห้อง/นักเรียน/คะแนน)
+  let activeDocs = cc.list && fresh(cc.listAt) ? cc.list : null;
+  if (!activeDocs) {
+    const coursesSnap = await db.collection('users').doc(uid).collection('courses')
+      .orderBy('createdAt', 'desc').get();
+    activeDocs = coursesSnap.docs.filter(d => !d.data().archived).map(d => ({ id: d.id, data: d.data() }));
+    if (cc.version === startVersion) { cc.list = activeDocs; cc.listAt = Date.now(); }
+  }
+
+  // 2) แต่ละวิชา: ใช้แคชถ้ายังสด ไม่งั้นโหลด — โหลดขนานกันแทนการ await ทีละวิชา
+  const results = await mapLimit(activeDocs, COURSE_LOAD_CONCURRENCY, async (d) => {
+    const hit = cc.byCourse.get(d.id);
+    if (hit && fresh(hit.at)) return hit;
+    const loaded = await loadOneCourseWithGrades(uid, d);
+    // ถ้ามีการเขียนข้อมูลระหว่างโหลด (version เปลี่ยน) ผลนี้อาจเก่า → ใช้ครั้งนี้ แต่ไม่เก็บลงแคช
+    if (cc.version === startVersion) cc.byCourse.set(d.id, { ...loaded, at: Date.now() });
+    return loaded;
+  });
+
+  const courses = results.map(r => r.course);
+  const sectionCards = results.flatMap(r => r.cards);
+  const totalStudents = courses.reduce((n, c) => n + c.studentCount, 0);
+  const totalProgressSum = courses.reduce((n, c) => n + c.progress, 0);
   return { courses, sectionCards, totalStudents, totalProgressSum };
+}
+
+// ใช้ร่วมกันระหว่างหน้าแรกและหน้ารายงาน (เรียกพร้อมกันจะแชร์คำขอเดียวกัน)
+async function loadCoursesWithGrades({ force = false } = {}) {
+  if (force) invalidateCourseData();
+  const cc = getCourseDataCache();
+  if (cc.inflight) return cc.inflight;
+  const p = fetchCoursesWithGrades(cc).finally(() => { if (cc.inflight === p) cc.inflight = null; });
+  cc.inflight = p;
+  return p;
 }
 
 async function renderDashboard() {

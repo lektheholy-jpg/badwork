@@ -197,6 +197,7 @@ function wireScoreInputs(container, course, section, students, collectItems, mid
   async function runSave(studentId, assessmentId, value) {
     try {
       await base.collection('scores').doc(studentId).set({ [assessmentId]: value }, { merge: true });
+      invalidateCourseData(course.id); // หน้าแรก/รายงานต้องโหลดวิชานี้ใหม่
     } catch (err) {
       statusEl.innerHTML = `<span class="dot" style="background:var(--danger)"></span> บันทึกไม่สำเร็จ`;
       console.error(err);

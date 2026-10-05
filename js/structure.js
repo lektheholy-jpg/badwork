@@ -373,6 +373,7 @@ async function saveStructure(course, collectItems, groups, midterm, final, colRe
   });
 
   await batch.commit();
+  invalidateCourseData(course.id);
   showToast('บันทึกโครงสร้างวิชาสำเร็จ');
   renderStructureTab(document.getElementById('course-tab-body') || document.getElementById('structure-page-body'), course);
 }

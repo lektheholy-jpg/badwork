@@ -104,6 +104,7 @@ function openCreateCourseModal(onCreated, sourceCourse = null) {
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
     };
     const courseRef = await db.collection('users').doc(uid).collection('courses').add(data);
+    invalidateCourseData();
 
     if (sourceCourse) {
       // คัดลอกโครงสร้างคะแนน (assessments) และเกณฑ์เกรดจากวิชาต้นทาง
@@ -134,6 +135,7 @@ function openCreateCourseModal(onCreated, sourceCourse = null) {
       batch.set(secRef, { room, order: idx, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
     });
     await batch.commit();
+    invalidateCourseData();
 
     closeModal();
     showToast(`สร้างรายวิชาสำเร็จ (${rooms.length} ห้อง)`);
@@ -290,6 +292,7 @@ async function renderCourseShell() {
       confirmLabel: 'เก็บเข้าคลัง',
       onConfirm: async () => {
         await db.collection('users').doc(uid).collection('courses').doc(courseId).update({ archived: true, archivedAt: firebase.firestore.FieldValue.serverTimestamp() });
+        invalidateCourseData();
         showToast('เก็บวิชาเข้าคลังแล้ว');
         navigate('courses');
       }
@@ -297,6 +300,7 @@ async function renderCourseShell() {
   });
   document.getElementById('unarchive-course-btn')?.addEventListener('click', async () => {
     await db.collection('users').doc(uid).collection('courses').doc(courseId).update({ archived: false });
+    invalidateCourseData();
     showToast('นำวิชากลับมาใช้งานแล้ว');
     renderCourseShell();
   });
@@ -411,6 +415,7 @@ function openAddRoomModal(course, onDone) {
       room, order: AppState.sections.length, createdAt: firebase.firestore.FieldValue.serverTimestamp(),
     });
     await courseRef.update({ roomCount: firebase.firestore.FieldValue.increment(1) });
+    invalidateCourseData(course.id);
     closeModal();
     showToast('เพิ่มห้องสำเร็จ');
     if (onDone) onDone();
@@ -437,6 +442,7 @@ function confirmDeleteSection(course, sectionId, roomLabel, onDone) {
       await deleteCollectionDocs(secRef.collection('students'));
       await secRef.delete();
       await courseRef.update({ roomCount: firebase.firestore.FieldValue.increment(-1) });
+      invalidateCourseData(course.id);
 
       if (AppState.currentSectionId === sectionId) AppState.currentSectionId = null;
       showToast('ลบห้องสำเร็จ');
@@ -487,12 +493,14 @@ function confirmDeleteCourse(course, onDone) {
       await deleteCollectionDocs(courseRef.collection('assessments'));
       await deleteCollectionDocs(courseRef.collection('settings'));
       await courseRef.delete();
+      invalidateCourseData();
 
       closeModal();
       showToast('ลบรายวิชาสำเร็จ');
       if (onDone) onDone();
       else navigate('courses');
     } catch (err) {
+      invalidateCourseData(); // อาจลบไปแล้วบางส่วน
       console.error(err);
       showToast('เกิดข้อผิดพลาด ลองใหม่อีกครั้ง');
       confirmBtn.disabled = false;

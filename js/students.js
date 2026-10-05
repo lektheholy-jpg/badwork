@@ -59,6 +59,7 @@ async function renderStudentsTab(container, course, section) {
           const secBase = sectionRef(uid, course.id, section.id);
           await secBase.collection('students').doc(row.dataset.id).delete();
           await secBase.collection('scores').doc(row.dataset.id).delete().catch(() => {}); // อาจไม่มีคะแนนอยู่แล้ว
+          invalidateCourseData(course.id);
           showToast('ลบนักเรียนสำเร็จ');
           renderStudentsTab(container, course, section);
         }
@@ -95,6 +96,7 @@ function openAddOneStudentModal(course, section) {
       firstName: first,
       lastName: document.getElementById('s-last').value.trim(),
     });
+    invalidateCourseData(course.id);
     closeModal();
     showToast('เพิ่มนักเรียนสำเร็จ');
     renderStudentsTab(document.getElementById('course-tab-body'), course, section);
@@ -196,6 +198,14 @@ function openImportAllRoomsModal(course, existingSections, onDone) {
 }
 
 async function performMultiRoomImport(course, existingSections, groups) {
+  try {
+    return await importStudentsToRooms(course, existingSections, groups);
+  } finally {
+    invalidateCourseData(course.id); // ล้างแคชแม้นำเข้าสำเร็จเพียงบางส่วน
+  }
+}
+
+async function importStudentsToRooms(course, existingSections, groups) {
   const uid = AppState.user.uid;
   const courseRef = db.collection('users').doc(uid).collection('courses').doc(course.id);
   const existingByRoom = new Map(existingSections.map(s => [String(s.room), s]));
@@ -353,6 +363,7 @@ function openImportStudentsModal(course, section) {
       batch.set(ref, { no: r.no, code: r.code, firstName: r.firstName, lastName: r.lastName });
     });
     await batch.commit();
+    invalidateCourseData(course.id);
     closeModal();
     showToast(`นำเข้านักเรียน ${parsedRows.length} คนสำเร็จ`);
     renderStudentsTab(document.getElementById('course-tab-body'), course, section);

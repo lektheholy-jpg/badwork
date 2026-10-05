@@ -127,6 +127,7 @@ async function renderStructureList(view) {
       const nowArchived = !toggle.checked;
       await db.collection('users').doc(AppState.user.uid).collection('courses').doc(courseId)
         .update({ archived: nowArchived });
+      invalidateCourseData();
       showToast(nowArchived ? `ปิดใช้งาน "${course.name}" สำหรับเทอมนี้แล้ว` : `เปิดใช้งาน "${course.name}" สำหรับเทอมนี้แล้ว`);
       renderStructureList(view);
     });
