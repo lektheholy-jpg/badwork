@@ -63,17 +63,8 @@ async function loadSectionWithGrades(c, s, courseBase, ctx) {
     secBase.collection('students').get(),
     secBase.collection('scores').get(),
   ]);
-  // ความคืบหน้า = สัดส่วน "ช่องคะแนน" ที่กรอกแล้วจากทุกช่องในห้องนี้ (นักเรียน x รายการคะแนนทั้งหมด)
-  const totalCells = studentsSnap.size * assessmentIds.length;
-  let filledCells = 0;
   const scoresByStudent = {};
-  scoresSnap.docs.forEach(d => {
-    const data = d.data();
-    scoresByStudent[d.id] = data;
-    assessmentIds.forEach(aid => {
-      if (data[aid] !== undefined && data[aid] !== null && data[aid] !== '') filledCells++;
-    });
-  });
+  scoresSnap.docs.forEach(d => { scoresByStudent[d.id] = d.data(); });
   // รายการถัดไป = รายการแรก (ตามลำดับในตาราง) ที่ยังบันทึกไม่ครบทุกคน — ยังไม่เริ่มเลยจะเป็นรายการแรก
   const sIds = studentsSnap.docs.map(d => d.id);
   let nextItem = null, itemsDone = 0;
@@ -82,7 +73,7 @@ async function loadSectionWithGrades(c, s, courseBase, ctx) {
     if (sIds.length > 0 && n / sIds.length > ITEM_DONE_RATIO) itemsDone++; // นับว่าบันทึกแล้วเมื่อมากกว่า 70% ของนักเรียนในห้อง
     else if (!nextItem) nextItem = { name: a.name, filled: n };
   }
-  const secProgress = totalCells > 0 ? Math.round((filledCells / totalCells) * 100) : 0;
+  const secProgress = calcSectionProgress(studentsSnap, scoresSnap, assessmentIds);
   const card = {
     courseId: c.id,
     sectionId: s.id,

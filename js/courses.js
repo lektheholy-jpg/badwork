@@ -147,29 +147,11 @@ function openCreateCourseModal(onCreated, sourceCourse = null) {
 // จัดกลุ่มรายวิชาตามระดับชั้นแบบเดียวกับหน้า "ตั้งค่าโครงสร้างวิชา" (สีอ่อนประจำระดับชั้น
 // ช่วยแยกสายตาเมื่อมีหลายวิชา) แต่ในหน้านี้แต่ละแถวกดแล้วเปิดเข้ารายวิชาได้เลย ไม่มีปุ่มแก้ไข/ลบ
 function courseListGroupsHtml(courses) {
-  const groups = LEVEL_OPTIONS.map(level => ({ level, courses: courses.filter(c => c.level === level) }))
-    .filter(g => g.courses.length > 0);
-  const noLevel = courses.filter(c => !LEVEL_OPTIONS.includes(c.level));
-  if (noLevel.length > 0) groups.push({ level: null, courses: noLevel });
-
-  return `
-    <div class="struct-groups">
-      ${groups.map(g => {
-        const col = getLevelColor(g.level);
-        return `
-          <div class="struct-group">
-            <div class="struct-group-header" style="background:${col.tint}; color:${col.strong};">
-              <span class="struct-group-title">${g.level ? g.level : 'ไม่ระบุระดับชั้น'}</span>
-              <span class="struct-group-count">${g.courses.length} วิชา</span>
-            </div>
-            <div class="course-list">
-              ${g.courses.map(c => courseRowHtml(c)).join('')}
-            </div>
-          </div>
-        `;
-      }).join('')}
-    </div>
-  `;
+  return groupsByLevelHtml(courses, {
+    levelOf: c => c.level,
+    listClass: 'course-list',
+    rowFn: c => courseRowHtml(c),
+  });
 }
 
 function courseRowHtml(c) {
@@ -525,22 +507,12 @@ async function renderCourseOverview(container, course, sections) {
     })),
   ]);
 
-  // ความคืบหน้า = สัดส่วน "ช่องคะแนน" ที่กรอกแล้วจากทุกช่องในห้องนี้ (นักเรียน x รายการคะแนนทั้งหมด)
   const assessmentIds = assessSnap.docs.map(d => d.id);
-  const perSectionWithProgress = perSection.map(({ studentsSnap, scoresSnap, s }) => {
-    const totalCells = studentsSnap.size * assessmentIds.length;
-    let filledCells = 0;
-    if (totalCells > 0) {
-      scoresSnap.docs.forEach(d => {
-        const data = d.data();
-        assessmentIds.forEach(aid => {
-          if (data[aid] !== undefined && data[aid] !== null && data[aid] !== '') filledCells++;
-        });
-      });
-    }
-    const progress = totalCells > 0 ? Math.round((filledCells / totalCells) * 100) : 0;
-    return { ...s, studentCount: studentsSnap.size, progress };
-  });
+  const perSectionWithProgress = perSection.map(({ studentsSnap, scoresSnap, s }) => ({
+    ...s,
+    studentCount: studentsSnap.size,
+    progress: calcSectionProgress(studentsSnap, scoresSnap, assessmentIds),
+  }));
 
   const totalStudents = perSectionWithProgress.reduce((s, x) => s + x.studentCount, 0);
   const avgProgress = perSectionWithProgress.length ? Math.round(perSectionWithProgress.reduce((s, x) => s + x.progress, 0) / perSectionWithProgress.length) : 0;

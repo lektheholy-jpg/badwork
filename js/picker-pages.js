@@ -33,29 +33,11 @@ async function renderStructurePage() {
 // จัดกลุ่มรายวิชาตามระดับชั้น (ม.1-ม.6 ตามลำดับ แล้วตามด้วยวิชาที่ไม่ระบุระดับชั้น)
 // แต่ละกลุ่มมีสีอ่อนประจำระดับชั้นของตัวเอง ช่วยแยกสายตาเมื่อมีหลายวิชา
 function renderStructureGroupsHtml(courses) {
-  const groups = LEVEL_OPTIONS.map(level => ({ level, courses: courses.filter(c => c.level === level) }))
-    .filter(g => g.courses.length > 0);
-  const noLevel = courses.filter(c => !LEVEL_OPTIONS.includes(c.level));
-  if (noLevel.length > 0) groups.push({ level: null, courses: noLevel });
-
-  return `
-    <div class="struct-groups">
-      ${groups.map(g => {
-        const col = getLevelColor(g.level);
-        return `
-          <div class="struct-group">
-            <div class="struct-group-header" style="background:${col.tint}; color:${col.strong};">
-              <span class="struct-group-title">${g.level ? g.level : 'ไม่ระบุระดับชั้น'}</span>
-              <span class="struct-group-count">${g.courses.length} วิชา</span>
-            </div>
-            <div class="course-list struct-list">
-              ${g.courses.map(c => structureRowHtml(c)).join('')}
-            </div>
-          </div>
-        `;
-      }).join('')}
-    </div>
-  `;
+  return groupsByLevelHtml(courses, {
+    levelOf: c => c.level,
+    listClass: 'course-list struct-list',
+    rowFn: c => structureRowHtml(c),
+  });
 }
 
 function structureRowHtml(c) {
@@ -246,19 +228,7 @@ async function loadScoresPickerCards(courses) {
         secBase.collection('students').get(),
         secBase.collection('scores').get(),
       ]);
-      // ความคืบหน้า = สัดส่วน "ช่องคะแนน" ที่กรอกแล้วจากทุกช่องในห้องนี้ (นักเรียน x รายการคะแนนทั้งหมด)
-      // ไม่ใช่แค่จำนวนนักเรียนที่เริ่มกรอก เพื่อให้เห็นความคืบหน้าที่แท้จริงระหว่างกรอกอยู่
-      const totalCells = studentsSnap.size * assessmentIds.length;
-      let filledCells = 0;
-      if (totalCells > 0) {
-        scoresSnap.docs.forEach(d => {
-          const data = d.data();
-          assessmentIds.forEach(aid => {
-            if (data[aid] !== undefined && data[aid] !== null && data[aid] !== '') filledCells++;
-          });
-        });
-      }
-      const progress = totalCells > 0 ? Math.round((filledCells / totalCells) * 100) : 0;
+      const progress = calcSectionProgress(studentsSnap, scoresSnap, assessmentIds);
       return { section: s, studentCount: studentsSnap.size, progress };
     }));
     cards.push({ course, sections: secInfos });
@@ -267,29 +237,11 @@ async function loadScoresPickerCards(courses) {
 }
 
 function scoresPickerGroupsHtml(cards) {
-  const groups = LEVEL_OPTIONS.map(level => ({ level, cards: cards.filter(c => c.course.level === level) }))
-    .filter(g => g.cards.length > 0);
-  const noLevel = cards.filter(c => !LEVEL_OPTIONS.includes(c.course.level));
-  if (noLevel.length > 0) groups.push({ level: null, cards: noLevel });
-
-  return `
-    <div class="struct-groups">
-      ${groups.map(g => {
-        const col = getLevelColor(g.level);
-        return `
-          <div class="struct-group">
-            <div class="struct-group-header" style="background:${col.tint}; color:${col.strong};">
-              <span class="struct-group-title">${g.level ? g.level : 'ไม่ระบุระดับชั้น'}</span>
-              <span class="struct-group-count">${g.cards.length} วิชา</span>
-            </div>
-            <div class="scores-subject-list">
-              ${g.cards.map(c => scoresSubjectBlockHtml(c)).join('')}
-            </div>
-          </div>
-        `;
-      }).join('')}
-    </div>
-  `;
+  return groupsByLevelHtml(cards, {
+    levelOf: c => c.course.level,
+    listClass: 'scores-subject-list',
+    rowFn: c => scoresSubjectBlockHtml(c),
+  });
 }
 
 function scoresSubjectBlockHtml({ course, sections }) {

@@ -66,33 +66,20 @@ function reportRoomRowHtml(course, { section, studentCount, progress }) {
 
 function reportPageBodyHtml(cards) {
   if (cards.length === 0) return `<div class="card"><div class="empty-state"><div class="icon">${icon('book')}</div>ไม่มีรายวิชาในภาคเรียนนี้</div></div>`;
-  const groups = LEVEL_OPTIONS.map(level => ({ level, cards: cards.filter(c => c.course.level === level) }))
-    .filter(g => g.cards.length > 0);
-  const noLevel = cards.filter(c => !LEVEL_OPTIONS.includes(c.course.level));
-  if (noLevel.length > 0) groups.push({ level: null, cards: noLevel });
-
-  return `<div class="struct-groups">${groups.map(g => {
-    const col = getLevelColor(g.level);
-    return `
-      <div class="struct-group">
-        <div class="struct-group-header" style="background:${col.tint}; color:${col.strong};">
-          <span class="struct-group-title">${g.level ? g.level : 'ไม่ระบุระดับชั้น'}</span>
-          <span class="struct-group-count">${g.cards.length} วิชา</span>
+  return groupsByLevelHtml(cards, {
+    levelOf: c => c.course.level,
+    listClass: 'scores-subject-list',
+    rowFn: ({ course, sections }, col) => `
+      <div class="scores-subject-block">
+        <div class="scores-subject-title" style="border-left:4px solid ${col.strong};">
+          <span class="struct-code" style="color:${col.strong};">${escapeHtml(course.code || 'ไม่มีรหัส')}</span>
+          <span class="struct-course-name">${escapeHtml(course.name)}</span>
         </div>
-        <div class="scores-subject-list">
-          ${g.cards.map(({ course, sections }) => `
-            <div class="scores-subject-block">
-              <div class="scores-subject-title" style="border-left:4px solid ${col.strong};">
-                <span class="struct-code" style="color:${col.strong};">${escapeHtml(course.code || 'ไม่มีรหัส')}</span>
-                <span class="struct-course-name">${escapeHtml(course.name)}</span>
-              </div>
-              ${sections.length === 0
-                ? `<div class="empty-state" style="padding:10px 0 0; text-align:left;">วิชานี้ยังไม่มีห้องเรียน</div>`
-                : `<div class="report-room-list">${sections.map(si => reportRoomRowHtml(course, si)).join('')}</div>`}
-            </div>`).join('')}
-        </div>
-      </div>`;
-  }).join('')}</div>`;
+        ${sections.length === 0
+          ? `<div class="empty-state" style="padding:10px 0 0; text-align:left;">วิชานี้ยังไม่มีห้องเรียน</div>`
+          : `<div class="report-room-list">${sections.map(si => reportRoomRowHtml(course, si)).join('')}</div>`}
+      </div>`,
+  });
 }
 
 async function renderReportPage() {

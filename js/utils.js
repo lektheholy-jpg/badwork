@@ -184,6 +184,54 @@ function levelSelectOptionsHtml(selected) {
     LEVEL_OPTIONS.map(l => `<option value="${l}" ${l === selected ? 'selected' : ''}>${l}</option>`).join('');
 }
 
+// ช่องคะแนนถือว่า "กรอกแล้ว" เมื่อไม่ใช่ undefined / null / สตริงว่าง (เลข 0 นับว่ากรอกแล้ว)
+function hasScoreValue(v) { return v !== undefined && v !== null && v !== ''; }
+
+// ความคืบหน้า (%) = สัดส่วน "ช่องคะแนน" ที่กรอกแล้วจากทุกช่องในห้องนั้น (นักเรียน x รายการคะแนนทั้งหมด)
+// ไม่ใช่แค่จำนวนนักเรียนที่เริ่มกรอก เพื่อให้เห็นความคืบหน้าที่แท้จริงระหว่างกรอกอยู่
+// studentsSnap / scoresSnap = Firestore QuerySnapshot ของ students และ scores ในห้อง
+function calcSectionProgress(studentsSnap, scoresSnap, assessmentIds) {
+  const totalCells = studentsSnap.size * assessmentIds.length;
+  if (totalCells === 0) return 0;
+  let filledCells = 0;
+  scoresSnap.docs.forEach(d => {
+    const data = d.data();
+    assessmentIds.forEach(aid => { if (hasScoreValue(data[aid])) filledCells++; });
+  });
+  return Math.round((filledCells / totalCells) * 100);
+}
+
+// จัดกลุ่มรายการตามระดับชั้น (ม.1-ม.6 ตามลำดับ แล้วตามด้วยรายการที่ไม่ระบุระดับชั้น)
+// แต่ละกลุ่มมีหัวกลุ่มสีอ่อนประจำระดับชั้นของตัวเอง
+//   levelOf(item)      คืนค่าระดับชั้นของรายการ
+//   listClass          class ของกล่องรายการในแต่ละกลุ่ม (เช่น 'course-list')
+//   rowFn(item, color) สร้าง HTML ของแต่ละรายการ  (color = getLevelColor ของกลุ่มนั้น)
+function groupsByLevelHtml(items, { levelOf, listClass, rowFn }) {
+  const groups = LEVEL_OPTIONS.map(level => ({ level, items: items.filter(it => levelOf(it) === level) }))
+    .filter(g => g.items.length > 0);
+  const noLevel = items.filter(it => !LEVEL_OPTIONS.includes(levelOf(it)));
+  if (noLevel.length > 0) groups.push({ level: null, items: noLevel });
+
+  return `
+    <div class="struct-groups">
+      ${groups.map(g => {
+        const col = getLevelColor(g.level);
+        return `
+          <div class="struct-group">
+            <div class="struct-group-header" style="background:${col.tint}; color:${col.strong};">
+              <span class="struct-group-title">${g.level ? g.level : 'ไม่ระบุระดับชั้น'}</span>
+              <span class="struct-group-count">${g.items.length} วิชา</span>
+            </div>
+            <div class="${listClass}">
+              ${g.items.map(it => rowFn(it, col)).join('')}
+            </div>
+          </div>
+        `;
+      }).join('')}
+    </div>
+  `;
+}
+
 // ดึงเลขห้องจากป้ายชั้น/ห้องแบบเต็ม เช่น "มัธยมศึกษาปีที่ 2/1" หรือ "ม.2/10" -> "1", "10"
 // เอาตัวเลขหลัง "/" ตัวสุดท้าย ถ้าไม่มี "/" เลยก็ลองหาเลขตัวสุดท้ายในข้อความแทน
 function extractRoomFromClassLabel(text) {
@@ -241,16 +289,15 @@ function matchImportHeaderField(cell) {
   return null;
 }
 
-// aoa = array-of-arrays (แถวแรกอาจไม่ใช่หัวตาราง เผื่อไฟล์มีแถวว่าง/merge cell ด้านบน)
-// คืนค่า { rows: [{no, code, firstName, lastName}], roomColumnFound, matchedRoomCount, totalParsed }
-function parseImportSheet(aoa, targetRoom) {
-  const isRowBlank = (row) => !row || row.every(c => String(c ?? '').trim() === '');
+const isImportRowBlank = (row) => !row || row.every(c => String(c ?? '').trim() === '');
 
-  // หาแถวหัวตาราง: สแกน 12 แถวแรก เลือกแถวที่จับคู่ field ได้มากที่สุด (อย่างน้อย 2 คอลัมน์)
+// หาแถวหัวตาราง: สแกน 12 แถวแรก เลือกแถวที่จับคู่ field ได้มากที่สุด (อย่างน้อย 2 คอลัมน์)
+// คืนค่า { headerRowIdx, map } หรือ null ถ้าเดาไม่ได้
+function detectImportHeader(aoa) {
   let headerRowIdx = -1, bestScore = 0, bestMap = null;
   for (let i = 0; i < Math.min(aoa.length, 12); i++) {
     const row = aoa[i];
-    if (isRowBlank(row)) continue;
+    if (isImportRowBlank(row)) continue;
     const map = {};
     row.forEach((cell, ci) => {
       const field = matchImportHeaderField(cell);
@@ -259,10 +306,38 @@ function parseImportSheet(aoa, targetRoom) {
     const score = Object.keys(map).length;
     if (score > bestScore) { bestScore = score; headerRowIdx = i; bestMap = map; }
   }
+  if (headerRowIdx === -1 || bestScore < 2) return null;
+  return { headerRowIdx, map: bestMap };
+}
 
-  if (headerRowIdx === -1 || bestScore < 2) {
+// แปลง 1 แถวข้อมูลเป็น { no, code, firstName, lastName, room } — ถ้าไม่มีช่องนามสกุล จะแยกคำสุดท้ายของชื่อเต็มออกมาเป็นนามสกุล
+function buildImportRow(r, map) {
+  const get = (field) => (field in map) ? String(r[map[field]] ?? '').trim() : '';
+  let firstName = get('firstName') || get('fullName');
+  let lastName = get('lastName');
+  if (!lastName) {
+    const parts = firstName.split(/\s+/).filter(Boolean);
+    if (parts.length > 1) {
+      lastName = parts.pop();
+      firstName = parts.join(' ');
+    }
+  }
+  return { no: get('no'), code: get('code'), firstName, lastName, room: get('room') };
+}
+
+// ตัวอ่านรายชื่อจากไฟล์ Excel/CSV ตัวเดียว (ใช้ร่วมกันทั้งโหมดห้องเดียวและหลายห้อง)
+// aoa = array-of-arrays (แถวแรกอาจไม่ใช่หัวตาราง เผื่อไฟล์มีแถวว่าง/merge cell ด้านบน)
+//   multiRoom = false (ค่าเริ่มต้น): กรองเฉพาะ targetRoom
+//     คืนค่า { rows: [{no, code, firstName, lastName}], roomColumnFound, matchedRoomCount, totalParsed }
+//   multiRoom = true: ไม่กรอง คืนเลขห้อง (normalize ผ่าน extractRoomFromClassLabel แล้ว) ติดมากับทุกแถว
+//     คืนค่า { rows: [{no, code, firstName, lastName, room}], roomColumnFound, totalParsed }
+function parseImportSheetCore(aoa, { multiRoom = false, targetRoom = '' } = {}) {
+  const header = detectImportHeader(aoa);
+
+  if (!header) {
+    if (multiRoom) return { rows: [], roomColumnFound: false, totalParsed: 0 };
     // เดาไม่ได้ว่าหัวตารางอยู่แถวไหน — สมมติว่าไม่มีหัวตาราง ใช้ลำดับคอลัมน์เริ่มต้น: เลขที่, รหัส, ชื่อ, นามสกุล
-    const rows = aoa.filter(r => !isRowBlank(r)).map(r => ({
+    const rows = aoa.filter(r => !isImportRowBlank(r)).map(r => ({
       no: String(r[0] ?? '').trim(),
       code: String(r[1] ?? '').trim(),
       firstName: String(r[2] ?? '').trim(),
@@ -271,31 +346,19 @@ function parseImportSheet(aoa, targetRoom) {
     return { rows, roomColumnFound: false, matchedRoomCount: 0, totalParsed: rows.length };
   }
 
-  const map = bestMap;
-  const dataRows = aoa.slice(headerRowIdx + 1).filter(r => !isRowBlank(r));
+  const { headerRowIdx, map } = header;
   const roomColumnFound = 'room' in map;
+  const allRows = aoa.slice(headerRowIdx + 1)
+    .filter(r => !isImportRowBlank(r))
+    .map(r => buildImportRow(r, map))
+    .filter(r => r.firstName);
+
+  if (multiRoom) {
+    const rows = allRows.map(r => ({ ...r, room: roomColumnFound ? extractRoomFromClassLabel(r.room) : '' }));
+    return { rows, roomColumnFound, totalParsed: rows.length };
+  }
+
   const targetRoomNorm = String(targetRoom ?? '').trim();
-
-  const allRows = dataRows.map(r => {
-    const get = (field) => (field in map) ? String(r[map[field]] ?? '').trim() : '';
-    let firstName = get('firstName') || get('fullName');
-    let lastName = get('lastName');
-    if (!lastName) {
-      const parts = firstName.split(/\s+/).filter(Boolean);
-      if (parts.length > 1) {
-        lastName = parts.pop();
-        firstName = parts.join(' ');
-      }
-    }
-    return {
-      no: get('no'),
-      code: get('code'),
-      firstName,
-      lastName,
-      room: get('room'),
-    };
-  }).filter(r => r.firstName);
-
   const matchedRoomCount = roomColumnFound
     ? allRows.filter(r => r.room.trim() === targetRoomNorm).length
     : allRows.length;
@@ -311,54 +374,15 @@ function parseImportSheet(aoa, targetRoom) {
   return { rows, roomColumnFound, matchedRoomCount, totalParsed: allRows.length };
 }
 
-// เหมือน parseImportSheet แต่ไม่กรองเฉพาะห้องเดียว — คืนค่าเลขห้อง (ที่ normalize ผ่าน
-// extractRoomFromClassLabel แล้ว) ติดมากับทุกแถว เพื่อเอาไปแยกกลุ่มตามห้องเองภายนอกฟังก์ชัน
-// ใช้กับฟีเจอร์ "นำเข้ารายชื่อ แยกห้องอัตโนมัติ" ที่ระดับวิชา (หลายห้องในไฟล์เดียว)
+// นำเข้าเฉพาะห้องเดียว (ใช้ที่หน้ารายชื่อนักเรียนของห้อง)
+function parseImportSheet(aoa, targetRoom) {
+  return parseImportSheetCore(aoa, { targetRoom });
+}
+
+// นำเข้าหลายห้องในไฟล์เดียว แล้วแยกกลุ่มตามห้องภายนอกฟังก์ชัน
+// ใช้กับฟีเจอร์ "นำเข้ารายชื่อ แยกห้องอัตโนมัติ" ที่ระดับวิชา
 function parseImportSheetMultiRoom(aoa) {
-  const isRowBlank = (row) => !row || row.every(c => String(c ?? '').trim() === '');
-
-  let headerRowIdx = -1, bestScore = 0, bestMap = null;
-  for (let i = 0; i < Math.min(aoa.length, 12); i++) {
-    const row = aoa[i];
-    if (isRowBlank(row)) continue;
-    const map = {};
-    row.forEach((cell, ci) => {
-      const field = matchImportHeaderField(cell);
-      if (field && !(field in map)) map[field] = ci;
-    });
-    const score = Object.keys(map).length;
-    if (score > bestScore) { bestScore = score; headerRowIdx = i; bestMap = map; }
-  }
-
-  if (headerRowIdx === -1 || bestScore < 2) {
-    return { rows: [], roomColumnFound: false, totalParsed: 0 };
-  }
-
-  const map = bestMap;
-  const roomColumnFound = 'room' in map;
-  const dataRows = aoa.slice(headerRowIdx + 1).filter(r => !isRowBlank(r));
-
-  const rows = dataRows.map(r => {
-    const get = (field) => (field in map) ? String(r[map[field]] ?? '').trim() : '';
-    let firstName = get('firstName') || get('fullName');
-    let lastName = get('lastName');
-    if (!lastName) {
-      const parts = firstName.split(/\s+/).filter(Boolean);
-      if (parts.length > 1) {
-        lastName = parts.pop();
-        firstName = parts.join(' ');
-      }
-    }
-    return {
-      no: get('no'),
-      code: get('code'),
-      firstName,
-      lastName,
-      room: roomColumnFound ? extractRoomFromClassLabel(get('room')) : '',
-    };
-  }).filter(r => r.firstName);
-
-  return { rows, roomColumnFound, totalParsed: rows.length };
+  return parseImportSheetCore(aoa, { multiRoom: true });
 }
 
 function readFileAsRows(file) {
