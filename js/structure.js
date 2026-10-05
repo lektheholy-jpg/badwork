@@ -65,7 +65,7 @@ async function renderStructureTab(container, course) {
     const ungroupedHeader = () => `
       <tr class="group-row ungrouped" data-type="ungrouped"><td colspan="${cols}">
         <div class="group-bar">
-          <span class="group-title muted">📄 ยังไม่จัดหมวดหมู่</span>
+          <span class="group-title muted">ยังไม่จัดหมวดหมู่</span>
           <span class="group-stat" data-stat-for="">${statText(itemsOf(null))}</span>
           <span class="group-actions"><button class="btn btn-ghost btn-sm group-add" data-gid="">+ เพิ่มรายการ</button></span>
         </div>
@@ -74,7 +74,7 @@ async function renderStructureTab(container, course) {
     const groupHeader = (g, gi) => `
       <tr class="group-row" data-type="group" data-gid="${g.id}"><td colspan="${cols}">
         <div class="group-bar">
-          <span class="group-icon">📁</span>
+          <span class="group-icon">${icon('folder')}</span>
           <input class="group-name" data-gid="${g.id}" value="${escapeHtml(g.name)}" placeholder="ชื่อหมวดหมู่ เช่น ก่อนกลางภาค" aria-label="ชื่อหมวดหมู่">
           <span class="group-stat" data-stat-for="${g.id}">${statText(itemsOf(g.id))}</span>
           <span class="group-actions">
@@ -118,7 +118,7 @@ async function renderStructureTab(container, course) {
 
       <div class="card">
         <div class="struct-panel-header" style="display:flex; justify-content:space-between;">
-          <span>📋 รายละเอียดคะแนนเก็บ (งาน/ชิ้นงาน/แบบฝึกหัด)</span>
+          <span>รายละเอียดคะแนนเก็บ (งาน/ชิ้นงาน/แบบฝึกหัด)</span>
           <span style="font-weight:600; color:${gt === 100 ? 'var(--success)' : 'var(--danger)'};">รวมทั้งหมด ${gt} / 100</span>
         </div>
         <div class="card-pad">

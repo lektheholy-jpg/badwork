@@ -90,21 +90,16 @@ async function renderDashboard() {
   const firstName = (AppState.user.displayName || 'คุณครู').split(' ')[0];
 
   view.innerHTML = `
-    <!-- ปกหนังสือ -->
-    <section class="book-cover">
-      <i class="cv-ring"></i><i class="cv-circle"></i><i class="cv-dot"></i>
-      <div class="cover-emblem"><img src="assets/icons/android-chrome-512x512.png" alt="โลโก้"></div>
-      <div class="cover-kicker">สวัสดีครับ คุณครู ${escapeHtml(firstName)}</div>
-      <div class="cv-main">
-        <h1 class="cover-title">งานน่าเบื่อ<span class="dots">..</span></h1>
-        <p class="cover-sub">สมุดบันทึกคะแนนสำหรับครู</p>
-      </div>
-      <div class="cover-stats">
-        <div class="cover-stat"><div class="value">${courses.length}</div><div class="label">รายวิชา</div></div>
-        <div class="cover-stat"><div class="value">${totalStudents}</div><div class="label">นักเรียนทั้งหมด</div></div>
-        <div class="cover-stat"><div class="value">${avgProgress}%</div><div class="label">ความคืบหน้าเฉลี่ย</div></div>
-      </div>
-    </section>
+    <!-- หัวหน้าแรกแบบ One UI -->
+    <header class="oneui-hero">
+      <p class="oneui-hello">สวัสดีครับ คุณครู ${escapeHtml(firstName)}</p>
+      <h1 class="oneui-title">งานน่าเบื่อ<span class="dots">..</span></h1>
+    </header>
+    <div class="oneui-stats">
+      <div class="oneui-stat"><div class="value">${courses.length}</div><div class="label">รายวิชา</div></div>
+      <div class="oneui-stat"><div class="value">${totalStudents}</div><div class="label">นักเรียนทั้งหมด</div></div>
+      <div class="oneui-stat"><div class="value">${avgProgress}%</div><div class="label">ความคืบหน้าเฉลี่ย</div></div>
+    </div>
 
     <!-- หน้าในเล่ม -->
     <section class="book-inside">
@@ -123,8 +118,8 @@ async function renderDashboard() {
 
     ${courses.length === 0 ? `
       <div class="card"><div class="empty-state">
-        <div class="icon">📚</div>
-        <div>ยังไม่มีรายวิชา ไปที่หน้า ⚙️ ตั้งค่าโครงสร้างวิชา เพื่อสร้างรายวิชาแรกของคุณ</div>
+        <div class="icon">${icon('book')}</div>
+        <div>ยังไม่มีรายวิชา ไปที่หน้า "ตั้งค่าโครงสร้างวิชา" เพื่อสร้างรายวิชาแรกของคุณ</div>
       </div></div>
     ` : ''}
     </section>
@@ -327,7 +322,7 @@ function renderProgressChart(courses) {
 
 function renderStudentDonut(courses, totalStudents) {
   if (!totalStudents) return `<div class="empty-state" style="padding:20px 0;">ยังไม่มีนักเรียน</div>`;
-  const palette = ['#6C6C95', '#5C8A9B', '#B08A4E', '#4E9E77', '#C15B54', '#8A7CA8'];
+  const palette = ['#7A6550', '#5F8583', '#A97A2E', '#5E8650', '#A5524A', '#C4A574'];
   const r = 46, cx = 60, cy = 60, circumference = 2 * Math.PI * r;
   let offset = 0;
   const segs = courses.filter(c => c.studentCount > 0).map((c, i) => {

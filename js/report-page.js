@@ -65,7 +65,7 @@ function reportRoomRowHtml(course, { section, studentCount, progress }) {
 }
 
 function reportPageBodyHtml(cards) {
-  if (cards.length === 0) return `<div class="card"><div class="empty-state"><div class="icon">📚</div>ไม่มีรายวิชาในภาคเรียนนี้</div></div>`;
+  if (cards.length === 0) return `<div class="card"><div class="empty-state"><div class="icon">${icon('book')}</div>ไม่มีรายวิชาในภาคเรียนนี้</div></div>`;
   const groups = LEVEL_OPTIONS.map(level => ({ level, cards: cards.filter(c => c.course.level === level) }))
     .filter(g => g.cards.length > 0);
   const noLevel = cards.filter(c => !LEVEL_OPTIONS.includes(c.course.level));
@@ -103,8 +103,8 @@ async function renderReportPage() {
   const { courses, sectionCards } = await loadCoursesWithGrades(); // เฉพาะวิชาที่ยังเปิดใช้งาน
   if (courses.length === 0) {
     view.innerHTML = `
-      <div class="page-header"><h1>📊 รายงาน</h1><div class="sub">สรุปผลการเรียน และส่งออกข้อมูลเข้าฟอร์ม SGS / Next School</div></div>
-      <div class="card"><div class="empty-state"><div class="icon">📚</div>ยังไม่มีรายวิชา กรุณาสร้างรายวิชาก่อน</div></div>`;
+      <div class="page-header"><h1>รายงาน</h1><div class="sub">สรุปผลการเรียน และส่งออกข้อมูลเข้าฟอร์ม SGS / Next School</div></div>
+      <div class="card"><div class="empty-state"><div class="icon">${icon('book')}</div>ยังไม่มีรายวิชา กรุณาสร้างรายวิชาก่อน</div></div>`;
     return;
   }
 
@@ -118,7 +118,7 @@ async function renderReportPage() {
 
   view.innerHTML = `
     <div class="page-header">
-      <h1>📊 รายงาน</h1>
+      <h1>รายงาน</h1>
       <div class="sub">เลือกภาคเรียน เพื่อดูสรุปผลการเรียน และกดส่งออกข้อมูลหรือคะแนนเข้าฟอร์ม SGS / Next School ของแต่ละห้อง</div>
     </div>
     <div class="toolbar" style="margin-bottom:16px;">

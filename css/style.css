@@ -1418,3 +1418,47 @@ table.sheet th, table.sheet td.name-cell { font-family: var(--font); }
 }
 @media print { body, #app { background: #fff; } .main { padding: 0; } }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+/* ----- หน้าแรกแบบ One UI: หัวใหญ่ + การ์ดตัวเลขเล็กสีขาว (แทนปกหนังสือ) ----- */
+.oneui-hero { padding: 28px 0 22px; }
+.oneui-hello { margin: 0 0 4px; color: var(--ink-soft); font-size: 16px; }
+.oneui-title { font-size: clamp(36px, 6vw, 52px); font-weight: 700; line-height: 1.35; color: var(--ink); }
+.oneui-title .dots { color: var(--accent); }
+.oneui-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 8px; }
+.oneui-stat { background: #fff; border-radius: var(--radius-m); padding: 20px 22px; }
+.oneui-stat .value { font-size: 32px; font-weight: 700; line-height: 1.3; color: var(--primary-dark); }
+.oneui-stat .label { margin-top: 2px; font-size: 14px; color: var(--ink-soft); }
+.book-inside { padding: 24px 0 0; }
+@media (max-width: 720px) {
+  .oneui-hero { padding: 4px 0 16px; }
+  .oneui-stats { gap: 8px; }
+  .oneui-stat { padding: 16px 14px; border-radius: 22px; }
+  .oneui-stat .value { font-size: 24px; }
+  .oneui-stat .label { font-size: 12.5px; }
+}
+
+/* ----- ไอคอนแทนอีโมจิ ----- */
+.ico { width: 24px; height: 24px; flex-shrink: 0; }
+.empty-state .icon { display: grid; place-items: center; width: 72px; height: 72px; margin: 0 auto 16px; border-radius: 50%; background: var(--primary-tint); color: var(--primary); font-size: 0; }
+.empty-state .icon .ico { width: 32px; height: 32px; }
+.group-icon { display: inline-flex; color: var(--primary); }
+.group-icon .ico { width: 20px; height: 20px; }
+
+/* ----- ตารางบันทึกคะแนนแบบ One UI: หัวสีน้ำตาลอุ่น แถวโปร่ง เส้นคั่นบางมาก ----- */
+.sheet-wrap { border-radius: 28px; box-shadow: inset 0 0 0 1px var(--border); }
+table.sheet th { background: var(--primary-dark); border-bottom: 1px solid rgba(255, 255, 255, .14); }
+table.sheet th.grp-collect, table.sheet th.grp-mid, table.sheet th.grp-final { border-bottom: none; }
+table.sheet tbody td { border-bottom: 1px solid #F3EEE5; padding-top: 2px; padding-bottom: 2px; }
+table.sheet tbody tr:last-child td { border-bottom: none; }
+table.sheet td input.score-input { border-radius: 12px; min-height: 40px; }
+table.sheet td input.score-input:hover { background: rgba(122, 101, 80, .07); }
+table.sheet td input.score-input:focus { background: #fff; border-radius: 12px; box-shadow: 0 0 0 3px var(--primary-tint); }
+table.sheet tbody tr:nth-child(even) td.sticky-col-1, table.sheet tbody tr:nth-child(even) td.sticky-col-2, table.sheet tbody tr:nth-child(even) td.sticky-col-3 { background: #FBF8F3; }
+.sheet .sticky-col-3 { box-shadow: 2px 0 8px rgba(92, 74, 57, .08); }
+.sheet .sticky-right-2 { box-shadow: -2px 0 8px rgba(92, 74, 57, .08); }
+.sheet-legend .lg-item { font-weight: 600; }
+.sheet-legend .lg-dot { border-radius: 50%; }
+.save-status { background: #fff; padding: 7px 14px; border-radius: 999px; }
+.search-box input { background: #fff; border: 1.5px solid transparent; border-radius: 999px; padding: 10px 18px; font-family: var(--font); }
+.search-box input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 4px var(--primary-tint); }
+@media (max-width: 720px) { .sheet-wrap { border-radius: 22px; max-height: 70vh; } }

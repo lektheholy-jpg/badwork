@@ -24,7 +24,7 @@ async function renderStudentsTab(container, course, section) {
         <button class="btn btn-primary btn-sm" id="import-btn">นำเข้ารายชื่อ</button>
       </div>
     </div>
-    ${students.length === 0 ? `<div class="card"><div class="empty-state"><div class="icon">👨‍🎓</div>ยังไม่มีนักเรียนในห้องนี้</div></div>` : `
+    ${students.length === 0 ? `<div class="card"><div class="empty-state"><div class="icon">${icon('user')}</div>ยังไม่มีนักเรียนในห้องนี้</div></div>` : `
       <div class="sheet-wrap">
         <table class="sheet sheet-simple">
           <thead><tr><th>เลขที่</th><th>รหัสนักเรียน</th><th>ชื่อ</th><th>นามสกุล</th><th></th></tr></thead>

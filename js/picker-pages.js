@@ -91,14 +91,14 @@ async function renderStructureList(view) {
   view.innerHTML = `
     <div class="page-header" style="display:flex; align-items:flex-start; justify-content:space-between; flex-wrap:wrap; gap:10px;">
       <div>
-        <h1>⚙️ ตั้งค่าโครงสร้างวิชา</h1>
+        <h1>ตั้งค่าโครงสร้างวิชา</h1>
         <div class="sub">รายวิชาทั้งหมดของคุณ อ้างอิงด้วยรหัสวิชา — เปิด/ปิดใช้งานเพื่อกำหนดว่าจะใช้วิชาไหนในเทอมนี้ หรือกดแก้ไขเพื่อจัดการห้องเรียนและสัดส่วนคะแนน</div>
       </div>
       <button class="btn btn-primary btn-sm" id="struct-new-course-btn">+ สร้างรายวิชาใหม่</button>
     </div>
     ${courses.length === 0 ? `
       <div class="card"><div class="empty-state">
-        <div class="icon">📚</div>
+        <div class="icon">${icon('book')}</div>
         <div>ยังไม่มีรายวิชา กด "+ สร้างรายวิชาใหม่" เพื่อเริ่มต้น</div>
       </div></div>
     ` : renderStructureGroupsHtml(courses)}
@@ -168,18 +168,18 @@ async function renderStructureEditor(view, courseId) {
   AppState.sections = sections; // ใช้โดย openAddRoomModal/confirmDeleteSection เพื่อคำนวณลำดับห้อง/ข้อความยืนยัน
 
   view.innerHTML = `
-    <div class="crumb"><a href="#" id="struct-back-to-list" style="text-decoration:none; color:inherit;">⚙️ ตั้งค่าโครงสร้างวิชา</a> / <b>${escapeHtml(course.code ? course.code + ' - ' : '')}${escapeHtml(course.name)}</b></div>
+    <div class="crumb"><a href="#" id="struct-back-to-list" style="text-decoration:none; color:inherit;">ตั้งค่าโครงสร้างวิชา</a> / <b>${escapeHtml(course.code ? course.code + ' - ' : '')}${escapeHtml(course.name)}</b></div>
     <div class="page-header" style="display:flex; align-items:flex-start; justify-content:space-between; flex-wrap:wrap; gap:10px;">
       <div>
         <h1>${escapeHtml(course.code ? course.code + ' • ' : '')}${escapeHtml(course.name)} ${course.archived ? '<span class="badge badge-neutral" style="vertical-align:middle; margin-left:6px;">ปิดใช้งาน</span>' : '<span class="badge badge-success" style="vertical-align:middle; margin-left:6px;">กำลังใช้งาน</span>'}</h1>
         <div class="sub">${escapeHtml(course.level || 'ไม่ระบุระดับชั้น')} • ภาคเรียน ${escapeHtml(course.semester || '-')}/${escapeHtml(course.year || '-')}</div>
       </div>
-      <button class="btn btn-danger-ghost btn-sm" id="struct-del-course-btn">🗑️ ลบวิชานี้</button>
+      <button class="btn btn-danger-ghost btn-sm" id="struct-del-course-btn">ลบวิชานี้</button>
     </div>
     <div class="card card-pad" style="margin-bottom:16px;">
       <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; flex-wrap:wrap; gap:8px;">
         <div style="font-weight:600; font-size:13.5px;">ห้องเรียนของวิชานี้</div>
-        <button class="btn btn-ghost btn-sm" id="struct-import-all-btn">📥 นำเข้ารายชื่อ (แยกห้องอัตโนมัติ)</button>
+        <button class="btn btn-ghost btn-sm" id="struct-import-all-btn">นำเข้ารายชื่อ (แยกห้องอัตโนมัติ)</button>
       </div>
       <div class="room-pills" id="struct-room-pills" style="margin-bottom:0;">
         ${sections.map(s => `
@@ -336,10 +336,10 @@ async function renderScoresPage() {
     if (courses.length === 0) {
       view.innerHTML = `
         <div class="page-header">
-          <h1>📝 บันทึกคะแนน</h1>
+          <h1>บันทึกคะแนน</h1>
           <div class="sub">บันทึกคะแนนรายบุคคลแบบตาราง พร้อมคำนวณรวมและเกรดอัตโนมัติ</div>
         </div>
-        <div class="card"><div class="empty-state"><div class="icon">📚</div>ยังไม่มีรายวิชา กรุณาสร้างรายวิชาก่อน</div></div>
+        <div class="card"><div class="empty-state"><div class="icon">${icon('book')}</div>ยังไม่มีรายวิชา กรุณาสร้างรายวิชาก่อน</div></div>
       `;
       return;
     }
@@ -347,7 +347,7 @@ async function renderScoresPage() {
     const cards = await loadScoresPickerCards(courses);
     view.innerHTML = `
       <div class="page-header">
-        <h1>📝 บันทึกคะแนน</h1>
+        <h1>บันทึกคะแนน</h1>
         <div class="sub">เลือกรายวิชาและห้องที่ต้องการบันทึกคะแนน</div>
       </div>
       ${scoresPickerGroupsHtml(cards)}
@@ -381,7 +381,7 @@ async function renderScoresPage() {
   }
 
   view.innerHTML = `
-    <div class="crumb"><a href="#" id="scores-back-to-picker" style="text-decoration:none; color:inherit;">📝 บันทึกคะแนน</a> / <b>${escapeHtml(course.code ? course.code + ' - ' : '')}${escapeHtml(course.name)} • ห้อง ${escapeHtml(section.room)}</b></div>
+    <div class="crumb"><a href="#" id="scores-back-to-picker" style="text-decoration:none; color:inherit;">บันทึกคะแนน</a> / <b>${escapeHtml(course.code ? course.code + ' - ' : '')}${escapeHtml(course.name)} • ห้อง ${escapeHtml(section.room)}</b></div>
     <div class="page-header">
       <h1>${escapeHtml(course.code ? course.code + ' • ' : '')}${escapeHtml(course.name)}</h1>
       <div class="sub">${escapeHtml(course.level || '')} • ห้อง ${escapeHtml(section.room)} • บันทึกคะแนนรายบุคคลแบบตาราง พร้อมคำนวณรวมและเกรดอัตโนมัติ</div>

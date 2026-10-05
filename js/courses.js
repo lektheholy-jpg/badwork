@@ -198,8 +198,8 @@ async function renderCoursesList() {
     </div>
     ${courses.length === 0 ? `
       <div class="card"><div class="empty-state">
-        <div class="icon">📚</div>
-        <div>ยังไม่มีรายวิชา ไปที่หน้า ⚙️ ตั้งค่าโครงสร้างวิชา เพื่อสร้างรายวิชาแรกของคุณ</div>
+        <div class="icon">${icon('book')}</div>
+        <div>ยังไม่มีรายวิชา ไปที่หน้า "ตั้งค่าโครงสร้างวิชา" เพื่อสร้างรายวิชาแรกของคุณ</div>
       </div></div>
     ` : courseListGroupsHtml(courses)}
   `;
@@ -254,13 +254,13 @@ async function renderCourseShell() {
     <div class="crumb"><a href="#" id="back-to-courses" style="text-decoration:none; color:inherit;">รายวิชาของฉัน</a> / <b>${escapeHtml(course.name)}</b></div>
     <div class="page-header" style="display:flex; align-items:flex-start; justify-content:space-between; gap:16px; flex-wrap:wrap;">
       <div>
-        <h1>${escapeHtml(course.code ? course.code + ' • ' : '')}${escapeHtml(course.name)} ${course.archived ? '<span class="badge badge-neutral" style="vertical-align:middle; margin-left:6px;">📦 อยู่ในคลัง</span>' : ''}</h1>
+        <h1>${escapeHtml(course.code ? course.code + ' • ' : '')}${escapeHtml(course.name)} ${course.archived ? '<span class="badge badge-neutral" style="vertical-align:middle; margin-left:6px;">อยู่ในคลัง</span>' : ''}</h1>
         <div class="sub">${escapeHtml(course.level || '')} • ภาคเรียน ${escapeHtml(course.semester || '-')}/${escapeHtml(course.year || '-')} • ${sections.length} ห้อง</div>
       </div>
       <div>
         ${course.archived
-          ? `<button class="btn btn-ghost btn-sm" id="unarchive-course-btn">↩️ นำกลับมาใช้งาน</button>`
-          : `<button class="btn btn-ghost btn-sm" id="archive-course-btn">📦 จบเทอมนี้แล้ว เก็บเข้าคลัง</button>`}
+          ? `<button class="btn btn-ghost btn-sm" id="unarchive-course-btn">นำกลับมาใช้งาน</button>`
+          : `<button class="btn btn-ghost btn-sm" id="archive-course-btn">จบเทอมนี้แล้ว เก็บเข้าคลัง</button>`}
       </div>
     </div>
 
@@ -272,7 +272,7 @@ async function renderCourseShell() {
       </div>
     ` : `
       <div class="card card-pad" style="margin-bottom:16px;">
-        <div class="empty-state" style="padding:0; text-align:left;">ยังไม่มีห้องเรียนในวิชานี้ — ไปเพิ่มห้องได้ที่หน้า ⚙️ ตั้งค่าโครงสร้างวิชา</div>
+        <div class="empty-state" style="padding:0; text-align:left;">ยังไม่มีห้องเรียนในวิชานี้ — ไปเพิ่มห้องได้ที่หน้า "ตั้งค่าโครงสร้างวิชา"</div>
       </div>
     `}
 
@@ -317,7 +317,7 @@ async function renderCourseShell() {
 
   const body = document.getElementById('course-tab-body');
   if (sectionScopedTabs.has(AppState.currentTab) && !section) {
-    body.innerHTML = `<div class="card"><div class="empty-state"><div class="icon">🏫</div>กรุณาเพิ่มห้องเรียนก่อน เพื่อเริ่มเพิ่มนักเรียนและบันทึกคะแนน</div></div>`;
+    body.innerHTML = `<div class="card"><div class="empty-state"><div class="icon">${icon('book')}</div>กรุณาเพิ่มห้องเรียนก่อน เพื่อเริ่มเพิ่มนักเรียนและบันทึกคะแนน</div></div>`;
     return;
   }
 
@@ -337,12 +337,12 @@ async function renderArchivePage() {
 
   view.innerHTML = `
     <div class="page-header">
-      <h1>📦 คลังรายวิชา</h1>
+      <h1>คลังรายวิชา</h1>
       <div class="sub">วิชาจากเทอมก่อนหน้าที่เก็บไว้ — ข้อมูลนักเรียนและคะแนนยังอยู่ครบ ดู แก้ไข หรือคัดลอกไปใช้เทอมใหม่ได้ทุกเมื่อ</div>
     </div>
     ${courses.length === 0 ? `
       <div class="card"><div class="empty-state">
-        <div class="icon">📦</div>
+        <div class="icon">${icon('archive')}</div>
         <div>ยังไม่มีวิชาในคลัง — จบเทอมแล้วกดปุ่ม "จบเทอมนี้แล้ว เก็บเข้าคลัง" ที่หน้ารายวิชานั้นได้เลย</div>
       </div></div>
     ` : `
@@ -355,7 +355,7 @@ async function renderArchivePage() {
               <div class="meta">${escapeHtml(c.code || '')} • ${escapeHtml(c.level || '')} • ${c.roomCount || 0} ห้อง • ภาคเรียน ${escapeHtml(c.semester || '-')}/${escapeHtml(c.year || '-')}</div>
             </div>
             <button class="btn btn-ghost btn-sm view-archived-btn" data-course-id="${c.id}">ดูรายละเอียด</button>
-            <button class="btn btn-primary btn-sm duplicate-course-btn" data-course-id="${c.id}">📋 คัดลอกไปเทอมใหม่</button>
+            <button class="btn btn-primary btn-sm duplicate-course-btn" data-course-id="${c.id}">คัดลอกไปเทอมใหม่</button>
           </div>
         `).join('')}
       </div>
@@ -561,9 +561,9 @@ async function renderCourseOverview(container, course, sections) {
     <div class="card card-pad">
       <h2 style="font-size:14.5px; margin-bottom:10px;">ขั้นตอนถัดไป</h2>
       <div style="display:flex; flex-direction:column; gap:8px; font-size:13.5px; color:var(--ink-soft);">
-        <div>1. เพิ่มห้องเรียน ${sections.length > 0 ? '✅' : '— ยังไม่มีห้อง'}</div>
-        <div>2. เพิ่มรายชื่อนักเรียนแต่ละห้อง ${totalStudents > 0 ? '✅' : '— ยังไม่มีนักเรียน'}</div>
-        <div>3. กำหนดโครงสร้างคะแนน (ใช้ร่วมกันทุกห้อง) ${assessSnap.size > 0 ? '✅' : '— ยังไม่ได้กำหนด'}</div>
+        <div>1. เพิ่มห้องเรียน ${sections.length > 0 ? '✓' : '— ยังไม่มีห้อง'}</div>
+        <div>2. เพิ่มรายชื่อนักเรียนแต่ละห้อง ${totalStudents > 0 ? '✓' : '— ยังไม่มีนักเรียน'}</div>
+        <div>3. กำหนดโครงสร้างคะแนน (ใช้ร่วมกันทุกห้อง) ${assessSnap.size > 0 ? '✓' : '— ยังไม่ได้กำหนด'}</div>
         <div>4. บันทึกคะแนน ${avgProgress > 0 ? `— บันทึกแล้วเฉลี่ย ${avgProgress}%` : '— ยังไม่เริ่มบันทึก'}</div>
       </div>
     </div>

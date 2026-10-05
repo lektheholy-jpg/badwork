@@ -141,13 +141,25 @@ function uid4() {
 const LEVEL_OPTIONS = ['ม.1', 'ม.2', 'ม.3', 'ม.4', 'ม.5', 'ม.6'];
 const ROOM_OPTIONS = Array.from({ length: 13 }, (_, i) => String(i + 1));
 const LEVEL_COLORS = {
-  'ม.1': { tint: '#EAF2FB', strong: '#5C89BF' },
-  'ม.2': { tint: '#E9F5EE', strong: '#4E9E77' },
-  'ม.3': { tint: '#FBF3E5', strong: '#C1873C' },
-  'ม.4': { tint: '#F4EBF8', strong: '#8C63A8' },
-  'ม.5': { tint: '#FBEBEA', strong: '#C15B54' },
-  'ม.6': { tint: '#EDEDF6', strong: '#5C5C8A' },
+  'ม.1': { tint: '#E5EEED', strong: '#5F8583' },
+  'ม.2': { tint: '#E6EFE2', strong: '#5E8650' },
+  'ม.3': { tint: '#F6EBD3', strong: '#A97A2E' },
+  'ม.4': { tint: '#F3E4DA', strong: '#A8643F' },
+  'ม.5': { tint: '#F2E0DC', strong: '#A5524A' },
+  'ม.6': { tint: '#ECE4DB', strong: '#6F5A48' },
 };
+
+// ไอคอนเส้นบาง (แทนอีโมจิ) — ใช้เป็น ${icon('book')} ใน template
+const ICONS = {
+  book: '<path d="M12 6.7c-1.6-1.3-3.7-2-6.1-2-.6 0-1 .5-1 1.1v11.4c0 .6.4 1.1 1 1.1 2.4 0 4.5.7 6.1 2"/><path d="M12 6.7c1.6-1.3 3.7-2 6.1-2 .6 0 1 .5 1 1.1v11.4c0 .6-.4 1.1-1 1.1-2.4 0-4.5.7-6.1 2"/><path d="M12 6.7v13.5"/>',
+  archive: '<rect x="3" y="4" width="18" height="5" rx="1.5"/><path d="M4 9v9a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9"/><path d="M10 13h4"/>',
+  user: '<circle cx="12" cy="8" r="3.5"/><path d="M5 20c.8-3.6 3.6-5.5 7-5.5s6.2 1.9 7 5.5"/>',
+  sliders: '<line x1="4" y1="8" x2="20" y2="8"/><circle cx="9" cy="8" r="2"/><line x1="4" y1="16" x2="20" y2="16"/><circle cx="15" cy="16" r="2"/>',
+  folder: '<path d="M3 7.5A1.5 1.5 0 0 1 4.5 6H9l2 2.5h8.5A1.5 1.5 0 0 1 21 10v8a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 18Z"/>',
+};
+function icon(name) {
+  return `<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name] || ''}</svg>`;
+}
 const LEVEL_COLOR_FALLBACK = { tint: 'var(--surface-sunken)', strong: 'var(--ink-soft)' };
 function getLevelColor(level) {
   return LEVEL_COLORS[level] || LEVEL_COLOR_FALLBACK;

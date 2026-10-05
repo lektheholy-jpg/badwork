@@ -49,11 +49,11 @@ async function renderScoresTab(container, course, section) {
   const maxTotal = assessments.reduce((s, a) => s + (Number(a.max) || 0), 0);
 
   if (assessments.length === 0) {
-    container.innerHTML = `<div class="card"><div class="empty-state"><div class="icon">🧮</div>กรุณากำหนดโครงสร้างคะแนนของวิชานี้ก่อนเริ่มบันทึกคะแนน</div></div>`;
+    container.innerHTML = `<div class="card"><div class="empty-state"><div class="icon">${icon('sliders')}</div>กรุณากำหนดโครงสร้างคะแนนของวิชานี้ก่อนเริ่มบันทึกคะแนน</div></div>`;
     return;
   }
   if (students.length === 0) {
-    container.innerHTML = `<div class="card"><div class="empty-state"><div class="icon">👨‍🎓</div>กรุณาเพิ่มรายชื่อนักเรียนในห้อง ${escapeHtml(section.room)} ก่อนเริ่มบันทึกคะแนน</div></div>`;
+    container.innerHTML = `<div class="card"><div class="empty-state"><div class="icon">${icon('user')}</div>กรุณาเพิ่มรายชื่อนักเรียนในห้อง ${escapeHtml(section.room)} ก่อนเริ่มบันทึกคะแนน</div></div>`;
     return;
   }
 
