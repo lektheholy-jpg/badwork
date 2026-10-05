@@ -1841,3 +1841,80 @@ table.sheet td input.score-input:focus { box-shadow: 0 0 0 3px var(--primary-tin
   .prog-list .prog-row { border-radius: 20px; padding: 12px 16px; }
   .main .course-row, .main .section-card { border-radius: 24px; }
 }
+
+/* ==========================================================================
+   Rich surfaces v2 — พื้นการ์ดเข้มขึ้น สีไม่จืด และสีเดียวกันทั้งสว่าง/มืด
+   ผสมสี --w เข้ากับพื้นการ์ดแบบ oklab (สีไม่เพี้ยนเทา) ตารางทุกแบบใช้ตัวแปรธีม
+   ลบบล็อกนี้ทิ้งเพื่อกลับไปดีไซน์พาสเทลเดิม
+   ========================================================================== */
+:root { --wmix: 30%; --track: color-mix(in oklab, var(--ink) 11%, transparent); --zebra: #F6F7FA; --row-on: #E8F0FD; }
+:root[data-theme="dark"] { --wmix: 34%; --track: color-mix(in oklab, #fff 14%, transparent); --zebra: #222227; --row-on: #26303F; }
+
+.oneui-stats .oneui-stat, .oneui-shortcuts .oneui-tile, .main .course-row, .main .section-card,
+.prog-list .prog-row, .chart-row .chart-card, .stat-card {
+  background: color-mix(in oklab, var(--w, var(--hue-blue)) var(--wmix), var(--card));
+}
+.stat-card { --w: var(--hue-blue); }
+.stat-card:nth-child(2) { --w: var(--hue-teal); }
+.stat-card:nth-child(3) { --w: var(--hue-orange); }
+.stat-card:nth-child(4) { --w: var(--hue-violet); }
+.stat-card:nth-child(n) { background: color-mix(in oklab, var(--w) var(--wmix), var(--card)); }
+.chart-row .chart-card:nth-child(1) { --w: var(--hue-blue); --wmix: 26%; }
+.chart-row .chart-card:nth-child(2) { --w: var(--hue-violet); --wmix: 26%; }
+:root[data-theme="dark"] .chart-row .chart-card { --wmix: 30%; }
+.chart-row .chart-card h3, .chart-row .chart-card .card-title { color: var(--ink); font-weight: 700; }
+
+/* ฮีโร่: ไล่สีเข้มขึ้น */
+:root { --hero-a: #B9D3FF; --hero-b: #CDBFFF; --hero-c: #F2C4DC; }
+:root[data-theme="dark"] { --hero-a: #1D3F78; --hero-b: #38297D; --hero-c: #5A2A55; }
+
+/* กราฟ: รางแท่งเป็นกลางที่เห็นชัดทั้งสองโหมด + แท่งสีสด */
+.progress-chart-row .progress-bar, .prog-list .prog-row .progress-bar, .section-card .progress-bar { background: var(--track); }
+.progress-chart-row .progress-bar { height: 12px; }
+.progress-chart-row .progress-bar .fill { box-shadow: inset 0 -2px 0 rgba(0,0,0,.12); }
+.progress-chart-label { color: var(--ink); font-weight: 700; }
+.progress-chart-row .progress-pct { width: 44px; font-size: 14px; text-align: right; filter: saturate(1.35) brightness(1.05); }
+:root:not([data-theme="dark"]) .progress-chart-row .progress-pct { filter: saturate(1.4) brightness(.8); }
+.donut-wrap svg circle { stroke-width: 18; filter: saturate(1.2); }
+.donut-legend-item { color: var(--ink-soft); }
+.donut-legend-item .dot { width: 11px; height: 11px; }
+
+/* ===== หน้ารายงาน: รูปแบบตารางตามธีม ===== */
+.struct-group-header {
+  background: color-mix(in oklab, currentColor 20%, var(--card)) !important;
+  border: none !important; border-radius: 14px; font-weight: 700;
+}
+.scores-subject-title { border-left-width: 5px !important; background: transparent; }
+.report-room-list {
+  background: var(--card); border: 1px solid var(--border); border-radius: 20px; overflow: hidden; box-shadow: none;
+}
+.report-room-row { background: transparent; border-bottom: 1px solid var(--border); padding: 12px 18px; }
+.report-room-row:nth-child(even) { background: var(--zebra); }
+.report-room-row:hover, .report-room-row:nth-child(even):hover { background: var(--row-on); }
+.report-room-name { color: var(--ink); }
+.report-room-meta, .report-room-empty { color: var(--ink-soft); }
+
+/* ตารางกรอกคะแนน / ตารางในหน้าต่าง: ล้างสีขาวที่ฮาร์ดโค้ด */
+table.sheet tbody tr:nth-child(even) td, table.sheet tbody tr:nth-child(even) td.total-cell.sticky-right-2,
+table.sheet tbody tr:nth-child(even) td.sticky-col-1, table.sheet tbody tr:nth-child(even) td.sticky-col-2,
+table.sheet tbody tr:nth-child(even) td.sticky-col-3 { background: var(--zebra); }
+table.sheet tbody tr:hover td, table.sheet tbody tr:hover td.total-cell.sticky-right-2,
+table.sheet tbody tr:hover td.sticky-col-1, table.sheet tbody tr:hover td.sticky-col-2,
+table.sheet tbody tr:hover td.sticky-col-3 { background: var(--row-on); }
+table.sheet td.total-cell.sticky-right-2, table.sheet tbody td.sticky-col-1,
+table.sheet tbody td.sticky-col-2, table.sheet tbody td.sticky-col-3 { background: var(--card); }
+table.sheet td.total-cell.sticky-right-1, table.sheet tbody tr:hover td.total-cell.sticky-right-1 { background: var(--sheet-head); color: #fff; }
+table.sheet td input.score-input:hover { background: var(--hover-wash); }
+table.sheet th { background: var(--sheet-head); color: #fff; }
+table.sheet td.grp-collect, table.sheet tbody tr:nth-child(even) td.grp-collect { background: color-mix(in oklab, var(--col-collect-strong) 16%, var(--card)); }
+table.sheet td.grp-mid, table.sheet tbody tr:nth-child(even) td.grp-mid { background: color-mix(in oklab, var(--col-mid-strong) 16%, var(--card)); }
+table.sheet td.grp-final, table.sheet tbody tr:nth-child(even) td.grp-final { background: color-mix(in oklab, var(--col-final-strong) 16%, var(--card)); }
+table.sheet th.grp-collect { background: color-mix(in oklab, var(--col-collect-strong) 30%, var(--card)); }
+table.sheet th.grp-mid { background: color-mix(in oklab, var(--col-mid-strong) 30%, var(--card)); }
+table.sheet th.grp-final { background: color-mix(in oklab, var(--col-final-strong) 30%, var(--card)); }
+.ns-table-wrap { background: var(--card); border-color: var(--border); border-radius: 16px; }
+.ns-table th { background: var(--sheet-head); color: #fff; }
+.ns-table td { color: var(--ink); border-color: var(--border); }
+.ns-table tbody tr:nth-child(even) td { background: var(--zebra); }
+.ns-table tbody tr:hover td { background: var(--row-on); }
+.ns-table tr.ns-bad td { background: var(--danger-tint); color: var(--danger); }
