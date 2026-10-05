@@ -1941,3 +1941,34 @@ table.sheet th.grp-final { background: color-mix(in oklab, var(--col-final-stron
   .cw-card { min-height: 108px; padding: 16px 20px; border-radius: 24px; }
   .cw-time { font-size: 38px; } .cw-temp { font-size: 34px; }
 }
+
+/* ===== วิดเจ็ตหน้าแรก v3: พื้นเข้ม ตัวอักษรขาว (ทั้งโหมดสว่าง/มืด) ===== */
+.cw-card, .oneui-shortcuts .oneui-tile {
+  --wd: color-mix(in oklab, var(--w) 55%, #0a0b10);
+  background: linear-gradient(145deg, color-mix(in oklab, var(--wd) 100%, #fff 8%), var(--wd));
+  color: #fff;
+}
+:root[data-theme="dark"] .cw-card, :root[data-theme="dark"] .oneui-shortcuts .oneui-tile { --wd: color-mix(in oklab, var(--w) 42%, #050508); }
+.oneui-shortcuts .oneui-tile:hover, .oneui-shortcuts .oneui-tile:focus-visible { background: linear-gradient(145deg, color-mix(in oklab, var(--wd) 100%, #fff 14%), var(--wd)); filter: none; }
+.oneui-shortcuts .oneui-tile .tile-ico { background: rgba(255, 255, 255, .20); color: #fff; }
+.oneui-shortcuts .oneui-tile:hover .tile-ico { background: rgba(255, 255, 255, .30); }
+.cw-day, .cw-time small, .cw-date, .cw-wx-meta { color: rgba(255, 255, 255, .78); filter: none; }
+.cw-wx-ico { background: rgba(255, 255, 255, .20); }
+
+/* ขนาด: ไม่มีการ์ดตัวเลขแล้ว ให้เวลา/อากาศเด่น ทางลัดเตี้ยลง */
+.cw-row { grid-template-columns: 1.2fr 1fr; gap: 12px; margin-bottom: 12px; }
+.cw-card { min-height: 158px; padding: 24px 30px; border-radius: 32px; }
+.cw-time { font-size: 56px; }
+.cw-time small { font-size: 24px; }
+.cw-day { font-size: 15px; } .cw-date { font-size: 15px; }
+.cw-wx-ico { width: 72px; height: 72px; border-radius: 24px; font-size: 38px; }
+.cw-temp { font-size: 46px; } .cw-wx-desc { font-size: 16px; } .cw-wx-meta { font-size: 13px; }
+.oneui-shortcuts .oneui-tile { min-height: 112px; padding: 16px 18px; gap: 12px; border-radius: 26px; }
+.oneui-shortcuts .oneui-tile .tile-ico { width: 46px; height: 46px; border-radius: 16px; }
+@media (max-width: 640px) {
+  .cw-card { min-height: 116px; padding: 16px 20px; border-radius: 26px; }
+  .cw-time { font-size: 42px; } .cw-temp { font-size: 38px; }
+  .cw-wx-ico { width: 60px; height: 60px; font-size: 32px; }
+  .oneui-shortcuts .oneui-tile { min-height: 96px; padding: 12px 14px; border-radius: 22px; }
+  .oneui-shortcuts .oneui-tile .tile-ico { width: 40px; height: 40px; border-radius: 14px; }
+}

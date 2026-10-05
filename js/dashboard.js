@@ -136,12 +136,6 @@ async function renderDashboard() {
         </div>
       </div>
     </div>
-    <div class="oneui-stats">
-      <div class="oneui-stat"><span class="stat-ico">${icon('book')}</span><div class="value">${courses.length}</div><div class="label">รายวิชา</div></div>
-      <div class="oneui-stat"><span class="stat-ico">${icon('user')}</span><div class="value">${totalStudents}</div><div class="label">นักเรียนทั้งหมด</div></div>
-      <div class="oneui-stat stat-ring" style="--p:${avgProgress}"><span class="stat-ico">${icon('report')}</span><div class="value">${avgProgress}%</div><div class="label">ความคืบหน้าเฉลี่ย</div></div>
-    </div>
-
     <div class="oneui-shortcuts">
       <button class="oneui-tile" data-go="scores-page"><span class="tile-ico">${icon('edit')}</span><span>บันทึกคะแนน</span></button>
       <button class="oneui-tile" data-go="courses"><span class="tile-ico">${icon('book')}</span><span>รายวิชาของฉัน</span></button>
