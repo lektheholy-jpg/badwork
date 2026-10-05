@@ -20,6 +20,7 @@ function navigate(route) {
   else if (route === 'archive-page') renderArchivePage();
   else if (route === 'structure-page') { AppState.structureEditingCourseId = null; renderStructurePage(); }
   else if (route === 'scores-page') renderScoresPage();
+  else if (route === 'report-page') renderReportPage();
   else if (route === 'settings') renderSettings();
 }
 

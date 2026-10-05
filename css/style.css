@@ -970,3 +970,28 @@ body { background: var(--canvas); }
   body, #app { background: #fff; }
   .main { margin: 0; box-shadow: none; border: none; padding: 0; max-width: none; }
 }
+
+/* ---------- เมนูด้านข้างล็อกตำแหน่ง: เลื่อนเนื้อหาแล้วเมนูไม่เลื่อนตาม (เฉพาะจอ desktop) ---------- */
+@media (min-width: 861px) {
+  .sidebar {
+    position: sticky; top: 0;
+    height: 100vh; align-self: flex-start;
+  }
+  /* จอเตี้ยๆ: ให้เลื่อนภายในเมนูเองได้ (ตอนย่อเมนูไม่ใช้ เพราะ tooltip ต้องล้นออกนอกแถบ) */
+  #app:not(.sidebar-collapsed) .sidebar { overflow-y: auto; overscroll-behavior: contain; }
+}
+
+/* ---------- หน้ารายงาน ---------- */
+.report-room-list { display: flex; flex-direction: column; border: 1px solid var(--paper-rule, var(--border)); border-radius: 4px; }
+.report-room-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  padding: 11px 14px; border-bottom: 1px solid var(--paper-rule, var(--border));
+}
+.report-room-row:last-child { border-bottom: none; }
+.report-room-row:hover { background: var(--surface-sunken); }
+.report-room-info { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; min-width: 0; }
+.report-room-name { font-weight: 700; font-size: 14px; }
+.report-room-meta { font-size: 12.5px; color: var(--ink-soft); }
+.report-room-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.report-room-empty { font-size: 12.5px; color: var(--ink-soft); }
+@media (max-width: 560px) { .report-room-actions { width: 100%; } .report-room-actions .btn { flex: 1; } }
