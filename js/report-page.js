@@ -51,7 +51,7 @@ function reportRoomRowHtml(course, { section, studentCount, progress }) {
   return `
     <div class="report-room-row" data-course-id="${course.id}" data-section-id="${section.id}">
       <div class="report-room-info">
-        <span class="course-dot" style="background:${vividColor(course.color) || col.strong}"></span>
+        <span class="course-dot" style="background:${courseColor(course) || col.strong}"></span>
         <span class="report-room-name">ห้อง ${escapeHtml(section.room)}</span>
         <span class="report-room-meta">${studentCount} คน · บันทึกคะแนนแล้ว ${progress}%</span>
       </div>

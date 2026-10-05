@@ -2002,3 +2002,43 @@ table.sheet td input.score-input:focus, .field input:focus, .field select:focus,
   .oneui-shortcuts .oneui-tile { min-height: 98px; font-size: 14px; }
   .oneui-shortcuts .oneui-tile .tile-ico { width: 44px; height: 44px; border-radius: 16px; }
 }
+
+/* ==========================================================================
+   v6 — สีสัมพันธ์กันทุกหน้า (สีวิชา = สีระดับชั้น) + ตารางสรุปผลอ่านง่าย
+   ========================================================================== */
+/* หัวกลุ่มระดับชั้น กับแถววิชา ใช้สูตรผสมเดียวกัน จึงเป็นโทนเดียวกัน */
+.struct-group-header {
+  background: color-mix(in oklab, currentColor var(--wmix), var(--card)) !important;
+  padding: 10px 20px; font-size: 15px; font-weight: 800;
+}
+.struct-row, .struct-row.is-archived { border-left: none !important; }
+.struct-row.is-archived { --wmix: 12%; background: color-mix(in oklab, var(--w) 12%, var(--card)); }
+.struct-row.is-archived .info { opacity: .75; }
+.struct-level-badge, .main .course-row .badge { background: var(--card) !important; }
+.struct-status-tag { font-weight: 700; }
+.scores-subject-title { border-left-color: currentColor; }
+
+/* ตารางสรุปผลการเรียน: เส้นบาง หัวตารางเข้ม แถวกลุ่มสีตามวิชา */
+.gs-wrap { border: none; border-radius: 22px; background: var(--card); box-shadow: inset 0 0 0 1px var(--border); }
+.gs-table { font-size: 14px; }
+.gs-table th, .gs-table td { border: none; border-bottom: 1px solid var(--border); padding: 9px 8px; color: var(--ink); }
+.gs-table thead th { background: var(--sheet-head); color: #fff; font-weight: 700; border-bottom: 1px solid rgba(255,255,255,.16); border-right: 1px solid rgba(255,255,255,.12); padding: 8px 6px; }
+.gs-table thead th:last-child { border-right: none; }
+.gs-table td.num, .gs-table td { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.gs-table td:nth-child(2), .gs-table td:nth-child(3) { font-family: var(--font); }
+.gs-table td:nth-child(4), .gs-table td:nth-child(5), .gs-table td:nth-child(13) { border-left: 1px solid var(--border); }
+.gs-table td:nth-child(4), .gs-table td:nth-child(13) { font-weight: 800; }
+.gs-table .gs-no { color: var(--ink-soft); }
+.gs-table tr.gs-course td {
+  font-family: var(--font); font-size: 15px; font-weight: 800; padding: 10px 14px; border-left: none;
+  background: color-mix(in oklab, var(--cc, var(--primary)) var(--wmix), var(--card)); color: var(--ink);
+}
+.gs-table tr.gs-course .course-dot { width: 12px; height: 12px; margin-right: 9px; }
+.gs-table tr.gs-row td:first-child { box-shadow: inset 4px 0 0 var(--cc, transparent); }
+.gs-table tr.gs-row:hover td { background: var(--row-on); }
+.gs-table tr.gs-total td {
+  background: color-mix(in oklab, var(--cc, var(--primary)) 16%, var(--card)); font-weight: 800;
+  border-top: 1.5px solid color-mix(in oklab, var(--cc, var(--primary)) 60%, transparent);
+}
+.gs-table tr.gs-total td:first-child { text-align: right; box-shadow: none; font-family: var(--font); }
+.gs-details > summary { font-weight: 700; color: var(--ink); font-size: 14px; }

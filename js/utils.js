@@ -438,3 +438,9 @@ function vividColor(hex) {
   const x = v => Math.round(v * 255).toString(16).padStart(2, '0');
   return '#' + x(f(0)) + x(f(8)) + x(f(4));
 }
+
+// สีของวิชา = สีของระดับชั้น (ทุกหน้าใช้สีเดียวกัน) ถ้าไม่ระบุระดับให้ใช้สีที่บันทึกไว้แบบปรับให้สด
+function courseColor(c) {
+  if (c && c.level && getLevelColor(c.level) !== LEVEL_COLOR_FALLBACK) return getLevelColor(c.level).strong;
+  return vividColor(c && c.color) || getLevelColor(c && c.level).strong;
+}
