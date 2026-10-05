@@ -373,45 +373,110 @@ function renderLatestProgress(courses, sectionCards) {
 }
 
 // ==========================================================================
-// กราฟแท่งเทียบคะแนนเฉลี่ยรายห้อง (ในวิชาเดียวกัน) — แสดงเฉพาะวิชาที่มี 2 ห้องขึ้นไป
-// เฉลี่ยจากนักเรียนที่มีคะแนนบันทึกแล้วเท่านั้น
+// กราฟเส้นเทียบรายห้อง (ในวิชาเดียวกัน): คะแนนสูงสุด / เฉลี่ย / ต่ำสุด ของคะแนนรวม
+// แสดงเฉพาะวิชาที่มี 2 ห้องขึ้นไป · คิดจากนักเรียนที่มีคะแนนบันทึกแล้วเท่านั้น
 // ==========================================================================
+const RC_SERIES = [
+  { key: 'max', label: 'สูงสุด', cls: 'rc-s-max' },
+  { key: 'avg', label: 'เฉลี่ย', cls: 'rc-s-avg' },
+  { key: 'min', label: 'ต่ำสุด', cls: 'rc-s-min' },
+];
+const RC_GEO = { l: 34, r: 14, t: 16, b: 30 };
+// ความกว้างวาดตามความกว้างจริงของการ์ด เพื่อให้ตัวอักษรขนาดคงที่ทั้งบนมือถือและเดสก์ท็อป
+function rcSize() {
+  const w = Math.round(document.getElementById('rc-body')?.clientWidth || 520);
+  const W = Math.max(280, Math.min(780, w));
+  return { W, H: W < 480 ? 214 : 240 };
+}
+
 function roomCompareCourses(courses) {
   return courses.filter(c => (c.roomsData || []).length >= 2);
 }
 
-function renderRoomCompareChart(course) {
-  const max = course.maxTotal || 100;
-  const color = courseColor(course) || 'var(--primary)';
-  const rooms = course.roomsData.map(r => {
-    const scored = r.students.filter(s => s.hasScore);
-    const avg = scored.length ? scored.reduce((sum, s) => sum + s.total, 0) / scored.length : null;
-    return { room: r.room, avg, n: scored.length };
+function roomCompareStats(course) {
+  return course.roomsData.map(r => {
+    const t = r.students.filter(s => s.hasScore).map(s => s.total);
+    return {
+      room: r.room, n: t.length,
+      max: t.length ? Math.max(...t) : null,
+      min: t.length ? Math.min(...t) : null,
+      avg: t.length ? t.reduce((a, b) => a + b, 0) / t.length : null,
+    };
   });
-  const withData = rooms.filter(r => r.avg !== null);
-  const best = withData.length ? Math.max(...withData.map(r => r.avg)) : null;
+}
+
+const rcFmt = v => v === null ? '–' : (Math.round(v * 10) / 10).toString();
+
+function renderRoomCompareChart(course) {
+  const { l, r, t, b } = RC_GEO;
+  const { W, H } = rcSize();
+  const max = course.maxTotal || 100;
+  const stats = roomCompareStats(course);
+  const n = stats.length;
+  const iw = W - l - r, ih = H - t - b, band = iw / n;
+  const x = i => l + band * (i + 0.5);
+  const y = v => t + ih * (1 - Math.min(v, max) / max);
+
+  const grid = [0, .25, .5, .75, 1].map(f => {
+    const yy = t + ih * (1 - f);
+    return `<line class="rc-grid${f === 0 ? ' base' : ''}" x1="${l}" x2="${W - r}" y1="${yy}" y2="${yy}"/>
+            <text class="rc-tick" x="${l - 8}" y="${yy + 4}" text-anchor="end">${Math.round(max * f)}</text>`;
+  }).join('');
+
+  const xlabels = stats.map((s, i) => `<text class="rc-xlab" x="${x(i)}" y="${H - 9}" text-anchor="middle">${escapeHtml(truncateLabel(String(s.room), 6))}</text>`).join('');
+
+  const lines = RC_SERIES.map(sr => {
+    let d = '', pen = false;
+    stats.forEach((s, i) => {
+      if (s[sr.key] === null) { pen = false; return; }
+      d += `${pen ? 'L' : 'M'}${x(i).toFixed(1)} ${y(s[sr.key]).toFixed(1)} `;
+      pen = true;
+    });
+    const dots = stats.map((s, i) => s[sr.key] === null ? '' :
+      `<circle class="rc-dot ${sr.cls}" cx="${x(i).toFixed(1)}" cy="${y(s[sr.key]).toFixed(1)}" r="4.5"/>`).join('');
+    return `<g class="rc-series ${sr.cls}"><path class="rc-line" d="${d.trim()}"/>${dots}</g>`;
+  }).join('');
+
+  // ป้ายค่าเฉพาะเส้นเฉลี่ย (ไม่ใส่ตัวเลขทุกจุด)
+  const avgLabels = stats.map((s, i) => {
+    if (s.avg === null) return '';
+    const crowdedAbove = y(s.avg) - y(s.max) < 24;      // เส้นสูงสุดอยู่ใกล้เหนือจุดเฉลี่ย → วางป้ายไว้ใต้จุด
+    const crowdedBelow = y(s.min) - y(s.avg) < 24;
+    if (crowdedAbove && crowdedBelow) // ทั้งบนและล่างแน่น → วางป้ายไว้ข้างจุด
+      return `<text class="rc-val" x="${(x(i) + 11).toFixed(1)}" y="${(y(s.avg) + 4).toFixed(1)}" text-anchor="start">${rcFmt(s.avg)}</text>`;
+    const below = crowdedAbove;
+    return `<text class="rc-val" x="${x(i).toFixed(1)}" y="${(y(s.avg) + (below ? 19 : -10)).toFixed(1)}" text-anchor="middle">${rcFmt(s.avg)}</text>`;
+  }).join('');
+
+  const legend = RC_SERIES.map(sr => `<span class="rc-leg ${sr.cls}"><i></i>${sr.label}</span>`).join('');
+
+  const table = `
+    <details class="rc-table">
+      <summary>ดูเป็นตาราง</summary>
+      <table><thead><tr><th>ห้อง</th><th>จำนวน</th>${RC_SERIES.map(sr => `<th>${sr.label}</th>`).join('')}</tr></thead>
+      <tbody>${stats.map(s => `<tr><td>${escapeHtml(s.room)}</td><td>${s.n}</td>${RC_SERIES.map(sr => `<td>${rcFmt(s[sr.key])}</td>`).join('')}</tr>`).join('')}</tbody></table>
+    </details>`;
+
   return `
-    <div class="rc-plot" role="img" aria-label="คะแนนเฉลี่ยรายห้อง เต็ม ${max}">
-      <div class="rc-axis"><span>${max}</span><span>${Math.round(max / 2)}</span><span>0</span></div>
-      <div class="rc-bars" style="--rc-n:${rooms.length}">
-        ${rooms.map(r => `
-          <div class="rc-col${r.avg !== null && r.avg === best && withData.length > 1 ? ' is-best' : ''}" title="ห้อง ${escapeHtml(r.room)} · ${r.avg === null ? 'ยังไม่มีคะแนน' : 'เฉลี่ย ' + r.avg.toFixed(1) + ' จาก ' + r.n + ' คน'}">
-            <div class="rc-val">${r.avg === null ? '–' : r.avg.toFixed(1)}</div>
-            <div class="rc-bar-wrap">${r.avg === null ? '' : `<div class="rc-bar" style="height:${Math.min(100, (r.avg / max) * 100)}%; background:${color}"></div>`}</div>
-            <div class="rc-label">${escapeHtml(r.room)}</div>
-          </div>`).join('')}
-      </div>
+    <div class="rc-legend">${legend}<span class="rc-note">คะแนนเต็ม ${max}</span></div>
+    <div class="rc-plot" data-course-id="${course.id}">
+      <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="กราฟเส้นคะแนนสูงสุด เฉลี่ย ต่ำสุด รายห้อง วิชา ${escapeHtml(course.name)}">
+        ${grid}${xlabels}
+        <line class="rc-cross" x1="0" x2="0" y1="${t}" y2="${t + ih}" style="display:none"/>
+        ${lines}${avgLabels}
+      </svg>
+      <div class="rc-tip" hidden></div>
     </div>
-    <div class="rc-foot">คะแนนเฉลี่ยจากคะแนนเต็ม ${max} · เฉพาะนักเรียนที่มีคะแนนแล้ว</div>`;
+    ${table}`;
 }
 
 function renderRoomCompare(courses) {
   const list = roomCompareCourses(courses);
   if (!list.length) return '';
   return `
-    <section class="card chart-card rc-card">
+    <section class="rc-card">
       <div class="rc-head">
-        <div class="chart-title">เปรียบเทียบคะแนนเฉลี่ยรายห้อง</div>
+        <div class="chart-title">คะแนนรายห้อง · สูงสุด เฉลี่ย ต่ำสุด</div>
         ${list.length > 1
           ? `<select class="grade-room-filter" id="rc-select" aria-label="เลือกวิชา">${list.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('')}</select>`
           : `<span class="rc-course">${escapeHtml(list[0].name)}</span>`}
@@ -421,12 +486,53 @@ function renderRoomCompare(courses) {
 }
 
 function wireRoomCompare(courses) {
+  const body = document.getElementById('rc-body');
+  if (!body) return;
   const sel = document.getElementById('rc-select');
-  if (!sel) return;
-  sel.addEventListener('change', () => {
+  const current = () => courses.find(c => c.id === (sel ? sel.value : body.querySelector('.rc-plot')?.dataset.courseId));
+  if (sel) sel.addEventListener('change', () => {
     const c = courses.find(x => x.id === sel.value);
-    if (c) document.getElementById('rc-body').innerHTML = renderRoomCompareChart(c);
+    if (c) body.innerHTML = renderRoomCompareChart(c);
   });
+
+  // เลื่อนเมาส์/แตะบนกราฟ → เส้นนำสายตา + ป้ายค่าของห้องนั้น
+  const show = (ev) => {
+    const plot = ev.target.closest('.rc-plot');
+    const c = current();
+    if (!plot || !c) return;
+    const svg = plot.querySelector('svg'), tip = plot.querySelector('.rc-tip'), cross = plot.querySelector('.rc-cross');
+    const box = svg.getBoundingClientRect();
+    const { l, r } = RC_GEO;
+    const W = svg.viewBox.baseVal.width;
+    const stats = roomCompareStats(c);
+    const vx = (ev.clientX - box.left) / box.width * W;
+    const i = Math.max(0, Math.min(stats.length - 1, Math.floor((vx - l) / ((W - l - r) / stats.length))));
+    const cx = l + ((W - l - r) / stats.length) * (i + 0.5);
+    cross.setAttribute('x1', cx); cross.setAttribute('x2', cx); cross.style.display = '';
+    const s = stats[i];
+    tip.innerHTML = `<b>ห้อง ${escapeHtml(s.room)}</b><small>${s.n} คน</small>` +
+      RC_SERIES.map(sr => `<div class="rc-tip-row ${sr.cls}"><i></i><span>${sr.label}</span><b>${rcFmt(s[sr.key])}</b></div>`).join('');
+    tip.hidden = false;
+    const pct = cx / W * 100;
+    tip.style.left = pct + '%';
+    tip.classList.toggle('flip', pct > 58);
+  };
+  const hide = () => {
+    const plot = body.querySelector('.rc-plot'); if (!plot) return;
+    plot.querySelector('.rc-tip').hidden = true;
+    plot.querySelector('.rc-cross').style.display = 'none';
+  };
+  let lastW = body.querySelector('svg')?.viewBox.baseVal.width || 0;
+  if (window.ResizeObserver) new ResizeObserver(() => {
+    if (!document.body.contains(body)) return;
+    const w = rcSize().W;
+    if (Math.abs(w - lastW) < 8) return;
+    lastW = w;
+    const c = current(); if (c) body.innerHTML = renderRoomCompareChart(c);
+  }).observe(body);
+  body.addEventListener('pointermove', show);
+  body.addEventListener('pointerdown', show);
+  body.addEventListener('pointerleave', hide);
 }
 
 // ---------- Lightweight inline SVG charts (no external chart library) ----------
