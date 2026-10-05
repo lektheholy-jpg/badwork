@@ -118,12 +118,12 @@ async function renderDashboard() {
       <img src="assets/banner.webp" width="590" height="350" decoding="async" alt="กมฺมุนา วตฺตตี โลโก — สัตว์โลกย่อมเป็นไปตามกรรม">
     </header>
     <div class="cw-row">
-      <div class="cw-card cw-clock" style="--w: var(--hue-violet)">
+      <div class="cw-card cw-clock">
         <div class="cw-day" id="cw-day"></div>
         <div class="cw-time" id="cw-time">--:--<small>:--</small></div>
         <div class="cw-date" id="cw-date"></div>
       </div>
-      <div class="cw-card cw-weather" style="--w: var(--hue-amber)">
+      <div class="cw-card cw-weather" data-sky="clear-day">
         <div class="cw-wx-ico" id="cw-wx-ico" aria-hidden="true">…</div>
         <div class="cw-wx-main">
           <div class="cw-temp" id="cw-temp">--°</div>
@@ -381,8 +381,10 @@ const RC_GEO = { l: 34, r: 14, t: 16, b: 30 };
 // ความกว้างวาดตามความกว้างจริงของการ์ด เพื่อให้ตัวอักษรขนาดคงที่ทั้งบนมือถือและเดสก์ท็อป
 function rcSize() {
   const w = Math.round(document.getElementById('rc-body')?.clientWidth || 520);
-  const W = Math.max(280, Math.min(780, w));
-  return { W, H: W < 480 ? 214 : 240 };
+  const W = Math.max(280, Math.min(1600, w));
+  // ความสูงโตตามความกว้าง (จอใหญ่กราฟไม่แบนและไม่เหลือที่ว่าง) แต่ไม่สูงเกินไป
+  const H = W < 480 ? 214 : Math.round(Math.max(240, Math.min(480, W * 0.36)));
+  return { W, H };
 }
 
 function roomCompareCourses(courses) {
@@ -600,6 +602,16 @@ const WX_CODES = [
   [[61, 63, 65, 66, 67, 80, 81, 82], 'ฝนตก', '🌧️', '🌧️'], [[71, 73, 75, 77, 85, 86], 'หิมะ', '🌨️', '🌨️'],
   [[95, 96, 99], 'พายุฝนฟ้าคะนอง', '⛈️', '⛈️'],
 ];
+function wxSky(code, isDay) {
+  const t = isDay ? 'day' : 'night';
+  if ([95, 96, 99].includes(code)) return 'storm';
+  if ([71, 73, 75, 77, 85, 86].includes(code)) return 'snow';
+  if ([51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82].includes(code)) return 'rain-' + t;
+  if ([45, 48].includes(code)) return 'fog-' + t;
+  if (code === 3) return 'cloud-' + t;
+  if ([1, 2].includes(code)) return 'part-' + t;
+  return 'clear-' + t;
+}
 function wxDescribe(code, isDay) {
   const hit = WX_CODES.find(r => r[0].includes(code));
   return hit ? { text: hit[1], emoji: isDay ? hit[2] : hit[3] } : { text: 'ไม่ทราบสภาพอากาศ', emoji: '🌡️' };
@@ -651,10 +663,13 @@ function initClockWeather() {
     if (!$('cw-temp')) return;
     const info = wxDescribe(w.weather_code, w.is_day);
     $('cw-wx-ico').textContent = info.emoji;
+    const card = $('cw-wx-ico').closest('.cw-weather');
+    if (card) card.dataset.sky = wxSky(w.weather_code, w.is_day);
     $('cw-temp').textContent = `${Math.round(w.temperature_2m)}°C`;
     $('cw-wx-desc').textContent = info.text;
     $('cw-wx-meta').textContent = `${w.place} · รู้สึกเหมือน ${Math.round(w.apparent_temperature)}° · ชื้น ${w.relative_humidity_2m}%`;
   }).catch(() => {
+    const card = document.querySelector('.cw-weather'); if (card) card.dataset.sky = 'cloud-day';
     if ($('cw-wx-desc')) { $('cw-wx-ico').textContent = '🌡️'; $('cw-wx-desc').textContent = 'โหลดสภาพอากาศไม่ได้'; }
   });
 }

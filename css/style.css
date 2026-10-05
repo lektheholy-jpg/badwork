@@ -2311,3 +2311,110 @@ html, body { overflow-x: clip; }
 }
 /* จอใหญ่มาก: ให้การ์ดนาฬิกา/อากาศ และกราฟสูงขึ้นเล็กน้อยให้สมดุลกับคอลัมน์ขวา */
 @media (min-width: 1700px) { .dash { column-gap: 32px; } }
+
+/* ==========================================================================
+   v9 — วิดเจ็ตวันที่/อากาศแบบ One UI 9 + ขยายตามขนาดหน้าจอ (ไม่เหลือช่องว่างบนจอใหญ่)
+   - อากาศ: พื้นท้องฟ้าไล่สี ตัวอักษรขาว เปลี่ยนตามสภาพอากาศ/กลางวัน-กลางคืน (data-sky)
+   - วันที่: การ์ดโทนฟ้าอ่อนของระบบ ป้ายวันเป็นแคปซูลสีหลัก
+   - ขนาดตัวอักษรในการ์ดใช้ container query (cqi) จึงโตตามความกว้างการ์ดจริง
+   ========================================================================== */
+:root { --sky-shade: .08; }
+:root[data-theme="dark"] { --sky-shade: .28; }
+
+.cw-row { gap: clamp(10px, 1.1vw, 20px); margin-bottom: clamp(12px, 1.2vw, 22px); }
+.cw-row .cw-card {
+  container-type: inline-size;
+  min-height: clamp(132px, 10.5vw, 230px);
+  padding: clamp(18px, 1.7vw, 34px) clamp(20px, 2vw, 40px);
+  border-radius: clamp(26px, 2.2vw, 40px);
+  border: 0; box-shadow: none;
+}
+
+/* ----- วันที่/เวลา ----- */
+.cw-row .cw-clock {
+  background: color-mix(in oklab, var(--hue-blue) 13%, var(--card));
+  justify-content: center; gap: .15em;
+}
+:root[data-theme="dark"] .cw-row .cw-clock { background: color-mix(in oklab, var(--hue-blue) 20%, var(--card)); }
+.cw-row .cw-day {
+  display: inline-block; padding: .28em .9em; border-radius: 999px; margin-bottom: .35em;
+  font-size: clamp(14px, 3.6cqi, 22px); font-weight: 800; letter-spacing: 0;
+  background: var(--hue-blue); color: var(--on-w); filter: none;
+}
+.cw-row .cw-time { font-size: clamp(40px, 13cqi, 104px); line-height: 1.08; font-weight: 800; letter-spacing: -.01em; }
+.cw-row .cw-time small { font-size: .42em; font-weight: 700; }
+.cw-row .cw-date { font-size: clamp(14px, 3.7cqi, 24px); font-weight: 600; }
+
+/* ----- อากาศ ----- */
+.cw-row .cw-weather {
+  --sky: linear-gradient(160deg, #3F8EF5 0%, #5AA9FA 52%, #7DBEFF 100%);
+  background: linear-gradient(rgba(0, 18, 60, var(--sky-shade)), rgba(0, 18, 60, var(--sky-shade))), var(--sky);
+  color: #fff; position: relative; overflow: hidden;
+  display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 16px;
+  transition: background .4s ease;
+}
+.cw-weather[data-sky="clear-day"]  { --sky: linear-gradient(160deg, #3F8EF5 0%, #5AA9FA 52%, #7DBEFF 100%); }
+.cw-weather[data-sky="part-day"]   { --sky: linear-gradient(160deg, #4B88DC 0%, #6C9FDB 55%, #8DB4DC 100%); }
+.cw-weather[data-sky="cloud-day"]  { --sky: linear-gradient(160deg, #5F7794 0%, #7E92AB 55%, #9AAABD 100%); }
+.cw-weather[data-sky="rain-day"]   { --sky: linear-gradient(160deg, #3F5F86 0%, #58779B 55%, #7490AE 100%); }
+.cw-weather[data-sky="fog-day"]    { --sky: linear-gradient(160deg, #70859A 0%, #8A9CAD 55%, #A2B0BE 100%); }
+.cw-weather[data-sky="snow"]       { --sky: linear-gradient(160deg, #6A93C0 0%, #86AAD0 55%, #A3C0DB 100%); }
+.cw-weather[data-sky="storm"]      { --sky: linear-gradient(160deg, #2F3459 0%, #464C78 55%, #646A94 100%); }
+.cw-weather[data-sky="clear-night"]{ --sky: linear-gradient(160deg, #0B1636 0%, #172A5E 55%, #2A4088 100%); }
+.cw-weather[data-sky="part-night"] { --sky: linear-gradient(160deg, #15213F 0%, #27385F 55%, #41547F 100%); }
+.cw-weather[data-sky="cloud-night"]{ --sky: linear-gradient(160deg, #232B3D 0%, #384359 55%, #4F5B73 100%); }
+.cw-weather[data-sky="rain-night"] { --sky: linear-gradient(160deg, #18233A 0%, #2A3B57 55%, #3F5373 100%); }
+.cw-weather[data-sky="fog-night"]  { --sky: linear-gradient(160deg, #2F3946 0%, #465160 55%, #5C6776 100%); }
+
+.cw-row .cw-wx-main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: .12em; text-shadow: 0 1px 8px rgba(0, 20, 60, .22); }
+.cw-row .cw-temp { font-size: clamp(40px, 15cqi, 112px); line-height: 1.05; font-weight: 700; color: #fff; letter-spacing: -.02em; }
+.cw-row .cw-wx-desc { font-size: clamp(16px, 4.6cqi, 28px); font-weight: 800; color: #fff; }
+.cw-row .cw-wx-meta { font-size: clamp(12.5px, 3.1cqi, 18px); font-weight: 600; color: rgba(255, 255, 255, .92); line-height: 1.45; }
+.cw-row .cw-wx-ico {
+  order: 2; flex: none; width: clamp(60px, 22cqi, 140px); height: clamp(60px, 22cqi, 140px);
+  border-radius: 32%; font-size: clamp(32px, 11.5cqi, 74px);
+  background: rgba(255, 255, 255, .2); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .22);
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+}
+
+@media (max-width: 640px) {
+  .cw-row { grid-template-columns: 1fr; gap: 10px; }
+  .cw-row .cw-card { min-height: 118px; padding: 16px 20px; border-radius: 26px; }
+  .cw-row .cw-time { font-size: clamp(40px, 15cqi, 64px); }
+  .cw-row .cw-temp { font-size: clamp(38px, 14cqi, 60px); }
+  .cw-row .cw-day { font-size: 14px; }
+  .cw-row .cw-date { font-size: 14px; }
+  .cw-row .cw-wx-desc { font-size: 16px; }
+  .cw-row .cw-wx-meta { font-size: 12.5px; }
+  .cw-row .cw-wx-ico { width: 60px; height: 60px; font-size: 32px; }
+}
+
+/* ----- ขยายตามหน้าจอ: ใช้พื้นที่เต็ม ไม่เหลือขอบว่างสองข้าง ----- */
+@media (min-width: 861px) {
+  .main { max-width: none; margin: 0; padding: 32px clamp(24px, 3vw, 72px) 64px; }
+}
+@media (min-width: 1360px) {
+  .dash { column-gap: clamp(24px, 2vw, 44px); grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); }
+  /* แบนเนอร์ขึ้นแถวเดียวกับวิดเจ็ต แทนที่จะลอยขวาโดยมีที่ว่างทางซ้าย */
+  .dash > .site-banner { grid-column: 2; grid-row: 1; margin: 0 0 clamp(12px, 1.2vw, 22px); align-self: stretch; justify-content: center; align-items: center; padding: 0; }
+  .dash > .site-banner img { width: auto; max-width: 100%; height: 100%; max-height: clamp(220px, 17vw, 380px); }
+  .dash > .cw-row { grid-column: 1; grid-row: 1; align-self: stretch; }
+  .dash > .cw-row .cw-card { min-height: clamp(220px, 17vw, 380px); }
+  .dash > .rc-card { grid-column: 1; grid-row: 2; }
+  .dash > .prog-section { grid-column: 2; grid-row: 2; margin: 4px 0 20px; }
+  .dash > .book-inside { grid-column: 1 / -1; grid-row: 3; }
+}
+@media (min-width: 1360px) {
+  .dash > .rc-card { padding: clamp(20px, 1.6vw, 34px) clamp(22px, 1.9vw, 40px) 14px; }
+  .chart-row { gap: clamp(14px, 1.4vw, 28px); }
+}
+
+/* จอกลาง (861–1359px): แบนเนอร์เล็กลง ชิดขวา ไม่กินพื้นที่แนวตั้งเกินจำเป็น */
+@media (min-width: 861px) and (max-width: 1359px) {
+  .site-banner img { width: min(100%, 380px); }
+}
+/* จอใหญ่: ความสูงการ์ดพอดีกับเนื้อหา ไม่โล่งเกิน */
+@media (min-width: 1360px) {
+  .dash > .site-banner img { max-height: clamp(200px, 13.5vw, 320px); }
+  .dash > .cw-row .cw-card { min-height: clamp(200px, 13.5vw, 320px); }
+}
