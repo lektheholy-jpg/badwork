@@ -1918,3 +1918,26 @@ table.sheet th.grp-final { background: color-mix(in oklab, var(--col-final-stron
 .ns-table tbody tr:nth-child(even) td { background: var(--zebra); }
 .ns-table tbody tr:hover td { background: var(--row-on); }
 .ns-table tr.ns-bad td { background: var(--danger-tint); color: var(--danger); }
+
+/* ===== วิดเจ็ตวัน/เวลา + สภาพอากาศ ===== */
+.cw-row { display: grid; grid-template-columns: 1.15fr 1fr; gap: 12px; margin-bottom: 12px; }
+.cw-card {
+  display: flex; align-items: center; gap: 18px; min-height: 132px; padding: 20px 26px; border-radius: 30px;
+  background: color-mix(in oklab, var(--w) var(--wmix), var(--card)); color: var(--ink);
+}
+.cw-clock { flex-direction: column; align-items: flex-start; justify-content: center; gap: 0; }
+.cw-day { font-size: 14px; font-weight: 700; color: var(--w); filter: brightness(var(--cw-b, .78)); }
+:root[data-theme="dark"] .cw-card { --cw-b: 1.1; }
+.cw-time { font-family: var(--font-head); font-size: 46px; font-weight: 700; line-height: 1.2; font-variant-numeric: tabular-nums; }
+.cw-time small { font-size: 22px; font-weight: 600; color: var(--ink-soft); }
+.cw-date { font-size: 14px; font-weight: 600; color: var(--ink-soft); }
+.cw-wx-ico { display: grid; place-items: center; flex-shrink: 0; width: 64px; height: 64px; border-radius: 22px; font-size: 34px; background: var(--w); }
+.cw-wx-main { min-width: 0; }
+.cw-temp { font-family: var(--font-head); font-size: 40px; font-weight: 700; line-height: 1.2; }
+.cw-wx-desc { font-size: 15px; font-weight: 700; }
+.cw-wx-meta { font-size: 12.5px; font-weight: 600; color: var(--ink-soft); }
+@media (max-width: 640px) {
+  .cw-row { grid-template-columns: 1fr; gap: 8px; }
+  .cw-card { min-height: 108px; padding: 16px 20px; border-radius: 24px; }
+  .cw-time { font-size: 38px; } .cw-temp { font-size: 34px; }
+}

@@ -121,6 +121,21 @@ async function renderDashboard() {
       </div>
       <img class="oneui-logo" src="assets/icons/android-chrome-512x512.png" alt="โลโก้งานน่าเบื่อ">
     </header>
+    <div class="cw-row">
+      <div class="cw-card cw-clock" style="--w: var(--hue-violet)">
+        <div class="cw-day" id="cw-day"></div>
+        <div class="cw-time" id="cw-time">--:--<small>:--</small></div>
+        <div class="cw-date" id="cw-date"></div>
+      </div>
+      <div class="cw-card cw-weather" style="--w: var(--hue-amber)">
+        <div class="cw-wx-ico" id="cw-wx-ico" aria-hidden="true">…</div>
+        <div class="cw-wx-main">
+          <div class="cw-temp" id="cw-temp">--°</div>
+          <div class="cw-wx-desc" id="cw-wx-desc">กำลังโหลดสภาพอากาศ</div>
+          <div class="cw-wx-meta" id="cw-wx-meta"></div>
+        </div>
+      </div>
+    </div>
     <div class="oneui-stats">
       <div class="oneui-stat"><span class="stat-ico">${icon('book')}</span><div class="value">${courses.length}</div><div class="label">รายวิชา</div></div>
       <div class="oneui-stat"><span class="stat-ico">${icon('user')}</span><div class="value">${totalStudents}</div><div class="label">นักเรียนทั้งหมด</div></div>
@@ -163,6 +178,7 @@ async function renderDashboard() {
 
   view.querySelectorAll('.prog-row').forEach(el => el.addEventListener('click', () => openCourseSection(el.dataset.courseId, el.dataset.sectionId)));
   view.querySelectorAll('[data-go]').forEach(el => el.addEventListener('click', () => navigate(el.dataset.go)));
+  initClockWeather();
 }
 
 // ==========================================================================
@@ -417,4 +433,74 @@ function renderStudentDonut(courses, totalStudents) {
 function truncateLabel(str, n) {
   if (!str) return '';
   return str.length > n ? str.slice(0, n) + '…' : str;
+}
+
+// ==========================================================================
+// วิดเจ็ตวัน/วันที่/เวลา + สภาพอากาศ (Open-Meteo ไม่ต้องใช้คีย์)
+// ตำแหน่ง: ใช้ตำแหน่งของเบราว์เซอร์ ถ้าไม่อนุญาตจะใช้ค่าเริ่มต้น (นครราชสีมา)
+// ==========================================================================
+const WX_DEFAULT = { lat: 14.9799, lon: 102.0978, name: 'นครราชสีมา' };
+const WX_CODES = [
+  [[0], 'ท้องฟ้าแจ่มใส', '☀️', '🌙'], [[1, 2], 'มีเมฆบางส่วน', '⛅', '☁️'], [[3], 'เมฆมาก', '☁️', '☁️'],
+  [[45, 48], 'มีหมอก', '🌫️', '🌫️'], [[51, 53, 55, 56, 57], 'ฝนปรอย', '🌦️', '🌧️'],
+  [[61, 63, 65, 66, 67, 80, 81, 82], 'ฝนตก', '🌧️', '🌧️'], [[71, 73, 75, 77, 85, 86], 'หิมะ', '🌨️', '🌨️'],
+  [[95, 96, 99], 'พายุฝนฟ้าคะนอง', '⛈️', '⛈️'],
+];
+function wxDescribe(code, isDay) {
+  const hit = WX_CODES.find(r => r[0].includes(code));
+  return hit ? { text: hit[1], emoji: isDay ? hit[2] : hit[3] } : { text: 'ไม่ทราบสภาพอากาศ', emoji: '🌡️' };
+}
+
+function getWxPosition() {
+  return new Promise(resolve => {
+    if (!navigator.geolocation) return resolve(WX_DEFAULT);
+    navigator.geolocation.getCurrentPosition(
+      p => resolve({ lat: p.coords.latitude, lon: p.coords.longitude, name: 'ตำแหน่งของคุณ' }),
+      () => resolve(WX_DEFAULT),
+      { timeout: 4000, maximumAge: 3600000 });
+  });
+}
+
+async function loadWeather() {
+  const KEY = 'myscore-wx';
+  try {
+    const c = JSON.parse(sessionStorage.getItem(KEY) || 'null');
+    if (c && Date.now() - c.t < 10 * 60 * 1000) return c.d;
+  } catch (e) {}
+  const pos = await getWxPosition();
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${pos.lat}&longitude=${pos.lon}` +
+    `&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,is_day&timezone=auto`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('weather ' + res.status);
+  const cur = (await res.json()).current;
+  const d = { ...cur, place: pos.name };
+  try { sessionStorage.setItem(KEY, JSON.stringify({ t: Date.now(), d })); } catch (e) {}
+  return d;
+}
+
+function initClockWeather() {
+  const $ = id => document.getElementById(id);
+  const tick = () => {
+    const elTime = $('cw-time');
+    if (!elTime) { clearInterval(timer); return; } // ออกจากหน้าแรกแล้ว
+    const now = new Date();
+    const hm = now.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', hour12: false });
+    const sec = String(now.getSeconds()).padStart(2, '0');
+    elTime.innerHTML = `${hm}<small>:${sec}</small>`;
+    $('cw-day').textContent = now.toLocaleDateString('th-TH', { weekday: 'long' });
+    $('cw-date').textContent = now.toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' });
+  };
+  const timer = setInterval(tick, 1000);
+  tick();
+
+  loadWeather().then(w => {
+    if (!$('cw-temp')) return;
+    const info = wxDescribe(w.weather_code, w.is_day);
+    $('cw-wx-ico').textContent = info.emoji;
+    $('cw-temp').textContent = `${Math.round(w.temperature_2m)}°C`;
+    $('cw-wx-desc').textContent = info.text;
+    $('cw-wx-meta').textContent = `${w.place} · รู้สึกเหมือน ${Math.round(w.apparent_temperature)}° · ชื้น ${w.relative_humidity_2m}%`;
+  }).catch(() => {
+    if ($('cw-wx-desc')) { $('cw-wx-ico').textContent = '🌡️'; $('cw-wx-desc').textContent = 'โหลดสภาพอากาศไม่ได้'; }
+  });
 }
