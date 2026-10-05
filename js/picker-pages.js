@@ -4,12 +4,6 @@
 // a course detail page.
 // ==========================================================================
 
-async function loadCourseOptions() {
-  const uid = AppState.user.uid;
-  const snap = await db.collection('users').doc(uid).collection('courses').orderBy('createdAt', 'desc').get();
-  return snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(c => !c.archived);
-}
-
 // รหัสวิชาใช้เป็นคีย์หลักในการเรียงและอ้างอิงในหน้านี้ — โหลดวิชา "ทั้งหมด"
 // (รวมที่ปิดใช้งาน/เก็บเข้าคลังแล้ว) เพื่อให้ครูเปิด/ปิดใช้งานได้จากลิสต์เดียว
 async function loadAllCoursesForStructure() {
@@ -211,29 +205,22 @@ async function renderStructureEditor(view, courseId) {
 // แล้วตามด้วยรายวิชา — เลือกห้องแล้วเข้าสู่ตารางบันทึกคะแนนทันที
 // ==========================================================================
 
-async function loadScoresPickerCards(courses) {
-  const uid = AppState.user.uid;
-  const cards = []; // { course, sections: [{section, studentCount, progress}] }
-  for (const course of courses) {
-    const courseBase = db.collection('users').doc(uid).collection('courses').doc(course.id);
-    const [sections, assessSnap] = await Promise.all([
-      loadSections(uid, course.id),
-      courseBase.collection('assessments').get(),
-    ]);
-    const assessmentIds = assessSnap.docs.map(d => d.id);
-
-    const secInfos = await Promise.all(sections.map(async (s) => {
-      const secBase = courseBase.collection('sections').doc(s.id);
-      const [studentsSnap, scoresSnap] = await Promise.all([
-        secBase.collection('students').get(),
-        secBase.collection('scores').get(),
-      ]);
-      const progress = calcSectionProgress(studentsSnap, scoresSnap, assessmentIds);
-      return { section: s, studentCount: studentsSnap.size, progress };
-    }));
-    cards.push({ course, sections: secInfos });
-  }
-  return cards;
+// ใช้ข้อมูลจากแคชกลาง loadCoursesWithGrades() (dashboard.js) ร่วมกับหน้าแรก/หน้ารายงาน
+// ไม่ยิง Firestore ซ้ำ — คะแนน/นักเรียน/ห้อง/โครงสร้างที่แก้แล้วจะล้างแคชวิชานั้นเอง (invalidateCourseData)
+// คืนค่า { courses, cards } โดย cards = [{ course, sections: [{ section, studentCount, progress }] }]
+async function loadScoresPickerCards() {
+  const { courses, sectionCards } = await loadCoursesWithGrades();
+  const cardsByCourse = new Map();
+  sectionCards.forEach(c => {
+    if (!cardsByCourse.has(c.courseId)) cardsByCourse.set(c.courseId, []);
+    cardsByCourse.get(c.courseId).push({
+      section: { id: c.sectionId, room: c.room },
+      studentCount: c.studentCount,
+      progress: c.progress,
+    });
+  });
+  const cards = courses.map(course => ({ course, sections: cardsByCourse.get(course.id) || [] }));
+  return { courses, cards };
 }
 
 function scoresPickerGroupsHtml(cards) {
@@ -283,7 +270,7 @@ async function renderScoresPage() {
 
   // ยังไม่ได้เลือกวิชา/ห้อง (หรือกด "เลือกวิชาอื่น") -> แสดงการ์ดเลือกแยกชั้น/วิชา แบบหน้าแรก
   if (!selCourseId || !selSectionId) {
-    const courses = await loadCourseOptions();
+    const { courses, cards } = await loadScoresPickerCards();
     AppState.pickerCourses = courses;
 
     if (courses.length === 0) {
@@ -297,7 +284,6 @@ async function renderScoresPage() {
       return;
     }
 
-    const cards = await loadScoresPickerCards(courses);
     view.innerHTML = `
       <div class="page-header">
         <h1>บันทึกคะแนน</h1>
