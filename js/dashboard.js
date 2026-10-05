@@ -2,10 +2,8 @@
 // Dashboard
 // ==========================================================================
 
-async function renderDashboard() {
-  const view = document.getElementById('view');
-  view.innerHTML = `<div class="empty-state">กำลังโหลด...</div>`;
-
+// โหลดรายวิชาที่เปิดใช้งานพร้อมข้อมูลห้อง/นักเรียน/เกรด — ใช้ร่วมกันระหว่างหน้าแรกและหน้ารายงาน
+async function loadCoursesWithGrades() {
   const uid = AppState.user.uid;
   const coursesSnap = await db.collection('users').doc(uid).collection('courses')
     .orderBy('createdAt', 'desc').get();
@@ -78,15 +76,18 @@ async function renderDashboard() {
     totalProgressSum += c.progress;
     courses.push(c);
   }
+  return { courses, sectionCards, totalStudents, totalProgressSum };
+}
+
+async function renderDashboard() {
+  const view = document.getElementById('view');
+  view.innerHTML = `<div class="empty-state">กำลังโหลด...</div>`;
+
+  const { courses, sectionCards, totalStudents, totalProgressSum } = await loadCoursesWithGrades();
   AppState.courses = courses;
 
   const avgProgress = courses.length ? Math.round(totalProgressSum / courses.length) : 0;
   const firstName = (AppState.user.displayName || 'คุณครู').split(' ')[0];
-
-  // ปีการศึกษาที่มีวิชาเปิดสอนอยู่ (เอาจากฟิลด์ปีของแต่ละวิชา) — ใหม่สุดก่อน, ใช้เป็นตัวกรองเริ่มต้น
-  const years = Array.from(new Set(courses.map(c => (c.year || '').toString().trim()).filter(Boolean)))
-    .sort((a, b) => (Number(b) - Number(a)) || b.localeCompare(a));
-  const defaultYear = years[0] || '__all__';
 
   view.innerHTML = `
     <div class="page-header">
@@ -110,23 +111,6 @@ async function renderDashboard() {
         <div class="chart-title">สัดส่วนนักเรียนต่อวิชา</div>
         ${renderStudentDonut(courses, totalStudents)}
       </div>
-    </div>
-    ` : ''}
-
-    ${courses.length > 0 ? `
-    <div class="card card-pad grade-summary-card">
-      <div class="gs-head">
-        <h2>สรุปผลการเรียน</h2>
-        <select id="grade-year-filter" class="gs-select">
-          ${years.map(y => `<option value="${y}" ${y === defaultYear ? 'selected' : ''}>ปีการศึกษา ${escapeHtml(y)}</option>`).join('')}
-          <option value="__all__" ${defaultYear === '__all__' ? 'selected' : ''}>ทุกปีการศึกษา</option>
-        </select>
-      </div>
-      <div id="grade-summary-body">${buildGradeSummaryHtml(courses, defaultYear)}</div>
-      <details class="gs-details">
-        <summary>สถิติเกรดรายวิชา (กราฟ)</summary>
-        <div id="grade-stats-body">${buildGradeStatsBodyHtml(courses, defaultYear)}</div>
-      </details>
     </div>
     ` : ''}
 
@@ -161,17 +145,6 @@ async function renderDashboard() {
     card.addEventListener('click', () => openCourseSection(card.dataset.courseId, card.dataset.sectionId));
   });
 
-  const yearFilterEl = document.getElementById('grade-year-filter');
-  if (yearFilterEl) {
-    yearFilterEl.addEventListener('change', () => {
-      document.getElementById('grade-summary-body').innerHTML = buildGradeSummaryHtml(courses, yearFilterEl.value);
-      document.getElementById('grade-stats-body').innerHTML = buildGradeStatsBodyHtml(courses, yearFilterEl.value);
-      wireGradeSummaryRows();
-      wireGradeRoomFilters(courses);
-    });
-  }
-  wireGradeSummaryRows();
-  wireGradeRoomFilters(courses);
 }
 
 // ==========================================================================

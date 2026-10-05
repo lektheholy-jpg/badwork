@@ -1,12 +1,11 @@
 // ==========================================================================
-// หน้ารายงาน (เมนูด้านข้าง): เลือกภาคเรียน แล้วกดส่งออกได้ทันทีจากทุกรายวิชา/ห้อง
+// หน้ารายงาน (เมนูด้านข้าง): เลือกภาคเรียน → ดู "สรุปผลการเรียน" และกดส่งออกได้ทันทีจากทุกรายวิชา/ห้อง
+//   • สรุปผลการเรียน → ตารางเกรดตามแบบฟอร์ม + สถิติเกรดรายวิชา (ย้ายมาจากหน้าแรก)
 //   • ส่งออกข้อมูล  → ไฟล์ CSV คะแนนจริงของห้อง
 //   • SGS           → แปลงคะแนนเป็น 30/20/30/20 (openNextSchoolModal ใน report.js)
 //   • Next School   → ใส่คะแนนลงไฟล์ฟอร์มของโรงเรียน (openNextSchoolFormModal ใน report.js)
 // ใช้ฟังก์ชันส่งออกตัวเดิมทั้งหมด ไม่ต้องเข้าไปที่แท็บรายงานในแต่ละวิชา
 // ==========================================================================
-
-const REPORT_PAGE_CACHE = {}; // courseId -> sections info (นับนักเรียน/ความคืบหน้า) กันโหลดซ้ำเมื่อสลับภาคเรียน
 
 const termKey = (c) => `${(c.year || '').toString().trim()}|${(c.semester || '').toString().trim()}`;
 function termLabel(key) {
@@ -100,10 +99,11 @@ async function renderReportPage() {
   const view = document.getElementById('view');
   view.innerHTML = `<div class="empty-state">กำลังโหลด...</div>`;
 
-  const courses = await loadCourseOptions(); // เฉพาะวิชาที่ยังเปิดใช้งาน (ไม่รวมที่เก็บเข้าคลัง)
+  // โหลดครั้งเดียว (รวมเกรดรายห้อง) แล้วสลับภาคเรียนจากข้อมูลในหน่วยความจำ ไม่ต้องโหลดซ้ำ
+  const { courses, sectionCards } = await loadCoursesWithGrades(); // เฉพาะวิชาที่ยังเปิดใช้งาน
   if (courses.length === 0) {
     view.innerHTML = `
-      <div class="page-header"><h1>📊 รายงาน</h1><div class="sub">ส่งออกข้อมูลและคะแนนเข้าฟอร์ม SGS / Next School</div></div>
+      <div class="page-header"><h1>📊 รายงาน</h1><div class="sub">สรุปผลการเรียน และส่งออกข้อมูลเข้าฟอร์ม SGS / Next School</div></div>
       <div class="card"><div class="empty-state"><div class="icon">📚</div>ยังไม่มีรายวิชา กรุณาสร้างรายวิชาก่อน</div></div>`;
     return;
   }
@@ -119,7 +119,7 @@ async function renderReportPage() {
   view.innerHTML = `
     <div class="page-header">
       <h1>📊 รายงาน</h1>
-      <div class="sub">เลือกภาคเรียน แล้วกดส่งออกข้อมูลหรือคะแนนเข้าฟอร์ม SGS / Next School ของแต่ละห้องได้ทันที</div>
+      <div class="sub">เลือกภาคเรียน เพื่อดูสรุปผลการเรียน และกดส่งออกข้อมูลหรือคะแนนเข้าฟอร์ม SGS / Next School ของแต่ละห้อง</div>
     </div>
     <div class="toolbar" style="margin-bottom:16px;">
       <div class="toolbar-left">
@@ -135,18 +135,29 @@ async function renderReportPage() {
   const body = document.getElementById('report-page-body');
   let cards = [];
 
-  async function drawBody() {
+  function drawBody() {
     AppState.reportPageTerm = currentTerm;
-    body.innerHTML = `<div class="empty-state">กำลังโหลด...</div>`;
     const list = currentTerm === '__all__' ? courses : courses.filter(c => termKey(c) === currentTerm);
-    const need = list.filter(c => !REPORT_PAGE_CACHE[c.id]);
-    if (need.length) {
-      const loaded = await loadScoresPickerCards(need);
-      loaded.forEach(l => { REPORT_PAGE_CACHE[l.course.id] = l.sections; });
-    }
-    if (document.getElementById('report-page-body') !== body) return; // ผู้ใช้เปลี่ยนหน้าไปแล้ว
-    cards = list.map(course => ({ course, sections: REPORT_PAGE_CACHE[course.id] || [] }));
-    body.innerHTML = reportPageBodyHtml(cards);
+    cards = list.map(course => ({
+      course,
+      sections: sectionCards.filter(sc => sc.courseId === course.id)
+        .map(sc => ({ section: { id: sc.sectionId, room: sc.room }, studentCount: sc.studentCount, progress: sc.progress })),
+    }));
+    body.innerHTML = `
+      <section class="report-section">
+        <h2 class="report-h2">สรุปผลการเรียน</h2>
+        <div id="grade-summary-body">${buildGradeSummaryHtml(list, '__all__')}</div>
+        <details class="gs-details">
+          <summary>สถิติเกรดรายวิชา (กราฟ)</summary>
+          <div id="grade-stats-body">${buildGradeStatsBodyHtml(list, '__all__')}</div>
+        </details>
+      </section>
+      <section class="report-section">
+        <h2 class="report-h2">ส่งออกข้อมูลรายห้อง</h2>
+        ${reportPageBodyHtml(cards)}
+      </section>`;
+    wireGradeSummaryRows();
+    wireGradeRoomFilters(list);
   }
 
   // delegation: ผูก event ครั้งเดียวที่ container (วาดซ้ำเมื่อเปลี่ยนภาคเรียนได้โดยไม่ต้องผูกใหม่)

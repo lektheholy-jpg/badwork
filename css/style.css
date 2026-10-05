@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+Thai:wght@400;500;600;700&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@500;600;700&family=Noto+Sans+Thai:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap');
 
 /* ==========================================================================
@@ -995,3 +996,147 @@ body { background: var(--canvas); }
 .report-room-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .report-room-empty { font-size: 12.5px; color: var(--ink-soft); }
 @media (max-width: 560px) { .report-room-actions { width: 100%; } .report-room-actions .btn { flex: 1; } }
+
+.report-section { margin-bottom: 34px; }
+.report-h2 { font-size: 18px; font-weight: 700; margin-bottom: 14px; }
+
+/* ==========================================================================
+   โหมดหนังสือ: ฟอนต์เซริฟแบบหนังสือเล่ม กระดาษสีนวล หัวข้อแบบบท ปุ่มเรียบแบบตัวพิมพ์
+   (ทับดีไซน์ก่อนหน้าทั้งหมดในบล็อกเดียว — ลบบล็อกนี้ทิ้งเพื่อกลับไปแบบเดิมได้)
+   ========================================================================== */
+:root {
+  --font: 'Noto Serif Thai', 'Sarabun', Georgia, 'Times New Roman', serif;
+  --font-head: 'Noto Serif Thai', 'Sarabun', Georgia, 'Times New Roman', serif;
+
+  --bg: #FBF7EC;
+  --surface: #FFFDF6;
+  --surface-sunken: #F4EEDD;
+  --primary: #4A3A2A;
+  --primary-dark: #2E2318;
+  --primary-tint: #EFE6D3;
+  --ink: #2B2620;
+  --ink-soft: #7B7062;
+  --border: #D9D0BC;
+  --radius-s: 2px;
+  --radius-m: 2px;
+  --shadow: 0 6px 18px rgba(60, 44, 24, 0.14);
+
+  --canvas: #CFC6B2;            /* พื้นโต๊ะ */
+  --paper: #FFFDF6;             /* หน้ากระดาษ */
+  --paper-edge: #CDC3AC;
+  --paper-rule: #E3DAC6;
+  --paper-shadow: 0 1px 2px rgba(60,44,24,.18), 0 10px 30px rgba(60,44,24,.20);
+
+  --sidebar-bg: #EFE7D4;        /* ปกหนังสือ / สารบัญ */
+  --sidebar-hover: #E6DCC5;
+}
+html, body { font-size: 16px; }
+body { line-height: 1.7; color: var(--ink); background: var(--canvas); }
+#app { background: var(--canvas); }
+
+/* ----- หน้ากระดาษ: มีสันหนังสือเงาๆ ทางซ้าย ----- */
+.main {
+  border-radius: 2px;
+  padding: 56px 64px 72px;
+  box-shadow:
+    inset 22px 0 26px -24px rgba(60,44,24,.38),
+    var(--paper-shadow);
+  background-image: linear-gradient(to right, rgba(0,0,0,0) 0, rgba(0,0,0,0) 100%);
+}
+
+/* ----- เมนูข้าง = สารบัญ ----- */
+.sidebar { background: var(--sidebar-bg); border-right: 3px double var(--paper-edge); }
+.brand { font-size: 17px; letter-spacing: .2px; }
+.brand .mark { border-radius: 2px; background: var(--paper); border: 1px solid var(--paper-edge); }
+.sidebar-toggle { border-radius: 2px; background: var(--paper); border-color: var(--paper-edge); }
+.nav-item {
+  border-radius: 0; font-weight: 500; font-size: 15px; color: var(--ink);
+  border-bottom: 1px dotted var(--paper-edge);
+  padding: 11px 10px;
+}
+.nav-list { gap: 0; }
+.nav-item:hover { background: var(--sidebar-hover); }
+.nav-item.active {
+  background: transparent; color: var(--ink); font-weight: 700;
+  box-shadow: inset 4px 0 0 var(--ink); padding-left: 14px;
+}
+.nav-item.active::after { display: none; }
+.nav-divider { background: transparent; border-top: 1px solid var(--paper-edge); margin: 12px 0; }
+#app.sidebar-collapsed .nav-item.active { padding-left: 11px; box-shadow: inset 3px 0 0 var(--ink); }
+.user-chip { border-radius: 2px; }
+
+/* ----- หัวข้อ: แบบชื่อบทในหนังสือ ----- */
+.page-header { text-align: center; margin-bottom: 38px; padding-bottom: 18px; border-bottom: 4px double var(--ink); }
+.page-header h1 { font-size: 30px; font-weight: 700; letter-spacing: .3px; line-height: 1.35; }
+.page-header .sub { font-size: 15px; font-style: italic; margin-top: 8px; color: var(--ink-soft); }
+.crumb { font-style: italic; color: var(--ink-soft); }
+
+h2, .chart-title, .report-h2, .gs-head h2, .main .struct-panel-header {
+  font-family: var(--font-head); font-weight: 700; color: var(--ink);
+}
+.report-h2, .gs-head h2 {
+  font-size: 21px; margin: 0 0 16px; padding-bottom: 6px;
+  border-bottom: 1px solid var(--ink);
+}
+.report-h2::before { content: '§ '; color: var(--ink-soft); font-weight: 400; }
+.chart-title { font-size: 16px; border-bottom: 1px solid var(--paper-rule); padding-bottom: 6px; margin-bottom: 12px; }
+.struct-group-header { border-radius: 0; border-top: 2px solid currentColor; border-bottom: 1px solid currentColor; background: transparent !important; font-weight: 700; letter-spacing: .3px; }
+.scores-subject-title .struct-course-name { font-size: 16px; }
+
+/* ----- ปุ่ม: เรียบแบบตัวพิมพ์ ขอบบาง มุมฉาก ----- */
+.btn {
+  border-radius: 0; font-weight: 600; font-size: 14.5px; letter-spacing: .2px;
+  border: 1px solid var(--ink); box-shadow: none;
+  transition: background .15s ease, color .15s ease;
+}
+.btn:hover { filter: none; }
+.btn:active { transform: none; }
+.btn-primary { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.btn-primary:hover { background: var(--primary-dark); }
+.btn-ghost { background: transparent; color: var(--ink); border-color: var(--ink); }
+.btn-ghost:hover { background: var(--ink); color: var(--paper); }
+.btn-danger-ghost { background: transparent; color: var(--danger); border-color: var(--danger); }
+.btn-danger-ghost:hover { background: var(--danger); color: var(--paper); }
+.btn-danger { background: var(--danger); border-color: var(--danger); }
+.btn-sm { padding: 5px 12px; font-size: 13.5px; }
+.chip { border-radius: 0; font-family: var(--font); }
+.room-mode-btn, .room-pick-btn { border-radius: 0; }
+
+/* ----- ช่องกรอก / ตัวเลือก: ขอบบาง สีกระดาษ ----- */
+.field label { font-weight: 600; color: var(--ink); font-size: 14px; }
+.field input, .field select, .field textarea,
+.gs-select, .grade-room-filter, .group-creator-row input, .struct-table select.row-group {
+  border: 1px solid var(--ink-soft); border-radius: 0; background: var(--paper);
+  font-family: var(--font); color: var(--ink);
+}
+.field input:focus, .field select:focus, .field textarea:focus { border-color: var(--ink); box-shadow: 0 0 0 2px var(--primary-tint); }
+.struct-table input.row-max { border-radius: 0; border-width: 1px; }
+
+/* ----- การ์ด / แถว / ป้าย: มุมฉาก เส้นบาง ----- */
+.main .card, .main .course-row, .section-card, .stat-card, .grade-stat-card,
+.main .struct-summary-box, .group-creator, .modal { border-radius: 0; }
+.section-card:hover { box-shadow: none; border-color: var(--ink); }
+.section-card-room, .badge, .struct-level-badge { border-radius: 0; }
+.progress-bar, .progress-bar .fill, .dist-row .g-bar-track, .progress-chart-row .progress-bar,
+.progress-chart-row .progress-bar .fill, .grade-stat-card .dist-row .g-bar-track { border-radius: 0; }
+.stat-card .value { font-family: var(--font-head); }
+
+/* ----- ตารางสรุปผล: เหมือนตารางในหนังสือ ตัวเลขแบบเซริฟ ----- */
+.gs-table { font-size: 14px; }
+.gs-table td.num { font-family: var(--font); }
+.gs-table thead th { background: var(--surface-sunken); }
+.gs-table tr.gs-course td { background: var(--primary-tint); }
+.gs-details > summary { font-style: italic; font-weight: 500; font-size: 14px; }
+.report-room-list { border-radius: 0; border-color: var(--ink-soft); }
+.report-room-name { font-size: 16px; }
+.report-room-meta { font-style: italic; }
+
+/* ----- ตารางบันทึกคะแนน: ตัวเลขยังใช้ monospace เพื่อให้ตรงหลัก ----- */
+table.sheet th, table.sheet td.name-cell { font-family: var(--font); }
+
+@media (max-width: 1100px) { .main { padding: 42px 38px 54px; } }
+@media (max-width: 720px) {
+  body, #app { background: var(--paper); }
+  .main { padding: 70px 18px 40px; box-shadow: none; }
+  .page-header h1 { font-size: 24px; }
+}
