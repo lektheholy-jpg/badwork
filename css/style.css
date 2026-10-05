@@ -1492,3 +1492,29 @@ table.sheet tbody tr:nth-child(even) td.sticky-col-1, table.sheet tbody tr:nth-c
   .oneui-title { font-size: 32px; }
   .stat-ico { width: 34px; height: 34px; margin-bottom: 6px; }
 }
+
+/* ----- หน้าแรก: ความคืบหน้าล่าสุดแต่ละห้อง (จัดกลุ่มตามรายวิชา) ----- */
+.prog-section { margin: 4px 0 28px; }
+.prog-h2 { font-size: 20px; margin: 0 0 12px 4px; }
+.prog-course { margin-bottom: 18px; }
+.prog-course-head { display: flex; align-items: center; gap: 10px; margin: 0 0 8px 6px; font-weight: 700; font-size: 15px; }
+.prog-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+.prog-level { margin-left: 4px; padding: 2px 10px; border-radius: 999px; background: var(--primary-tint); color: var(--primary-dark); font-size: 12.5px; font-weight: 600; }
+.prog-list { background: #fff; border-radius: var(--radius-m); overflow: hidden; }
+.prog-row { display: flex; align-items: center; gap: 16px; width: 100%; padding: 16px 20px; background: none; border: none; border-bottom: 1px solid #F3EEE5; font: inherit; color: var(--ink); text-align: left; cursor: pointer; }
+.prog-row:last-child { border-bottom: none; }
+.prog-row:hover { background: var(--surface-sunken); }
+.prog-row:focus-visible { outline: 3px solid var(--primary); outline-offset: -3px; }
+.prog-room { flex-shrink: 0; min-width: 64px; padding: 6px 14px; border-radius: 999px; background: var(--surface-sunken); font-weight: 700; font-size: 14px; text-align: center; }
+.prog-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.prog-item { font-weight: 600; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.prog-sub { font-size: 13px; color: var(--ink-soft); }
+.prog-row .progress-bar { width: 120px; flex-shrink: 0; display: block; }
+.prog-row .progress-bar .fill { display: block; }
+.prog-pct { width: 46px; flex-shrink: 0; text-align: right; font-weight: 700; font-size: 14px; color: var(--primary-dark); }
+@media (max-width: 720px) {
+  .prog-row { flex-wrap: wrap; gap: 8px 12px; padding: 14px 16px; }
+  .prog-main { flex-basis: calc(100% - 90px); }
+  .prog-row .progress-bar { order: 5; width: calc(100% - 58px); }
+  .prog-pct { order: 6; margin-left: auto; }
+}

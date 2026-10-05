@@ -3,6 +3,15 @@
 // ==========================================================================
 
 // โหลดรายวิชาที่เปิดใช้งานพร้อมข้อมูลห้อง/นักเรียน/เกรด — ใช้ร่วมกันระหว่างหน้าแรกและหน้ารายงาน
+// เรียงรายการคะแนนให้เหมือนตารางบันทึกคะแนน: คะแนนเก็บ (ตามหมวด) → กลางภาค → ปลายภาค
+function orderAssessmentsLikeSheet(assessments, groups) {
+  const byOrder = [...assessments].sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0));
+  const gi = (gid) => groups.findIndex(g => g.id === gid);
+  const collect = byOrder.filter(a => a.category === 'collect').map((a, i) => ({ a, i }))
+    .sort((x, y) => (gi(x.a.groupId) - gi(y.a.groupId)) || (x.i - y.i)).map(x => x.a);
+  return [...collect, ...byOrder.filter(a => a.category === 'midterm'), ...byOrder.filter(a => a.category === 'final')];
+}
+
 async function loadCoursesWithGrades() {
   const uid = AppState.user.uid;
   const coursesSnap = await db.collection('users').doc(uid).collection('courses')
@@ -17,12 +26,14 @@ async function loadCoursesWithGrades() {
   for (const doc of activeDocs) {
     const c = { id: doc.id, ...doc.data() };
     const courseBase = db.collection('users').doc(uid).collection('courses').doc(c.id);
-    const [sections, assessSnap, gradingDoc] = await Promise.all([
+    const [sections, assessSnap, gradingDoc, structDoc] = await Promise.all([
       loadSections(uid, c.id),
       courseBase.collection('assessments').get(),
       courseBase.collection('settings').doc('grading').get(),
+      courseBase.collection('settings').doc('structure').get(),
     ]);
     const assessments = assessSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const orderedItems = orderAssessmentsLikeSheet(assessments, structDoc.exists ? (structDoc.data().groups || []) : []);
     const assessmentIds = assessments.map(a => a.id);
     const gradeScale = gradingDoc.exists ? gradingDoc.data().scale : DEFAULT_GRADE_SCALE;
     let studentCount = 0;
@@ -45,6 +56,14 @@ async function loadCoursesWithGrades() {
           if (data[aid] !== undefined && data[aid] !== null && data[aid] !== '') filledCells++;
         });
       });
+      // รายการถัดไป = รายการแรก (ตามลำดับในตาราง) ที่ยังบันทึกไม่ครบทุกคน — ยังไม่เริ่มเลยจะเป็นรายการแรก
+      const sIds = studentsSnap.docs.map(d => d.id);
+      let nextItem = null, itemsDone = 0;
+      for (const a of orderedItems) {
+        const n = sIds.filter(id => { const v = (scoresByStudent[id] || {})[a.id]; return v !== undefined && v !== null && v !== ''; }).length;
+        if (sIds.length > 0 && n >= sIds.length) itemsDone++;
+        else if (!nextItem) nextItem = { name: a.name, filled: n };
+      }
       const secProgress = totalCells > 0 ? Math.round((filledCells / totalCells) * 100) : 0;
       studentCount += studentsSnap.size;
       progressSum += secProgress;
@@ -57,6 +76,8 @@ async function loadCoursesWithGrades() {
         room: s.room,
         studentCount: studentsSnap.size,
         progress: secProgress,
+        nextItem, itemsDone, itemsTotal: orderedItems.length,
+        state: sIds.length === 0 ? 'nostudents' : orderedItems.length === 0 ? 'nostructure' : !nextItem ? 'complete' : secProgress === 0 ? 'notstarted' : 'partial',
       });
 
       const gradedStudents = studentsSnap.docs.map(sd => {
@@ -111,6 +132,8 @@ async function renderDashboard() {
       <button class="oneui-tile" data-go="structure-page"><span class="tile-ico">${icon('sliders')}</span><span>โครงสร้างวิชา</span></button>
     </div>
 
+    ${renderLatestProgress(courses, sectionCards)}
+
     <!-- หน้าในเล่ม -->
     <section class="book-inside">
     ${courses.length > 0 ? `
@@ -136,6 +159,7 @@ async function renderDashboard() {
     </section>
   `;
 
+  view.querySelectorAll('.prog-row').forEach(el => el.addEventListener('click', () => openCourseSection(el.dataset.courseId, el.dataset.sectionId)));
   view.querySelectorAll('[data-go]').forEach(el => el.addEventListener('click', () => navigate(el.dataset.go)));
 }
 
@@ -309,6 +333,37 @@ function openCourseSection(courseId, sectionId) {
   AppState.currentTab = 'scores';
   setActiveNav(null);
   renderCourseShell();
+}
+
+// ความคืบหน้าล่าสุดของแต่ละห้อง จัดกลุ่มตามรายวิชา — บอกว่ารายการไหนบันทึกอยู่/ต้องบันทึกถัดไป
+function renderLatestProgress(courses, sectionCards) {
+  if (!courses.length) return '';
+  const detail = (r) => {
+    const n = r.studentCount;
+    if (r.state === 'nostudents') return { main: 'ยังไม่มีนักเรียน', sub: 'เพิ่มรายชื่อก่อนเริ่มบันทึกคะแนน' };
+    if (r.state === 'nostructure') return { main: 'ยังไม่ได้ตั้งโครงสร้างคะแนน', sub: 'ตั้งรายการคะแนนก่อนเริ่มบันทึก' };
+    if (r.state === 'complete') return { main: 'บันทึกครบทุกรายการแล้ว', sub: `${r.itemsDone}/${r.itemsTotal} รายการ` };
+    if (r.state === 'notstarted') return { main: r.nextItem.name, sub: `ยังไม่เริ่มบันทึก · รายการแรก` };
+    return { main: r.nextItem.name, sub: `รายการถัดไป · บันทึกแล้ว ${r.nextItem.filled}/${n} คน · เสร็จ ${r.itemsDone}/${r.itemsTotal} รายการ` };
+  };
+  const blocks = courses.map(c => {
+    const rooms = sectionCards.filter(r => r.courseId === c.id);
+    if (!rooms.length) return '';
+    return `
+      <div class="prog-course">
+        <div class="prog-course-head"><span class="prog-dot" style="background:${c.color || 'var(--primary)'}"></span>${escapeHtml(c.code ? c.code + ' ' : '')}${escapeHtml(c.name)}${c.level ? `<span class="prog-level">${escapeHtml(c.level)}</span>` : ''}</div>
+        <div class="prog-list">
+          ${rooms.map(r => { const d = detail(r); return `
+            <button class="prog-row" data-course-id="${r.courseId}" data-section-id="${r.sectionId}">
+              <span class="prog-room">ห้อง ${escapeHtml(r.room)}</span>
+              <span class="prog-main"><span class="prog-item">${escapeHtml(d.main)}</span><span class="prog-sub">${escapeHtml(d.sub)}</span></span>
+              <span class="progress-bar"><span class="fill" style="width:${r.progress}%; background:${c.color || 'var(--primary)'}"></span></span>
+              <span class="prog-pct">${r.progress}%</span>
+            </button>`; }).join('')}
+        </div>
+      </div>`;
+  }).join('');
+  return blocks ? `<section class="prog-section"><h2 class="prog-h2">ความคืบหน้าล่าสุดแต่ละห้อง</h2>${blocks}</section>` : '';
 }
 
 // ---------- Lightweight inline SVG charts (no external chart library) ----------
