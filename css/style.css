@@ -2042,3 +2042,25 @@ table.sheet td input.score-input:focus, .field input:focus, .field select:focus,
 }
 .gs-table tr.gs-total td:first-child { text-align: right; box-shadow: none; font-family: var(--font); }
 .gs-details > summary { font-weight: 700; color: var(--ink); font-size: 14px; }
+
+/* ==========================================================================
+   v7 — ลำดับความเข้มของพื้น: วิดเจ็ตหลัก (ทางลัด/เวลา/อากาศ) เข้มสุด
+   ส่วนรอง (แถวความคืบหน้า รายวิชา ห้อง กราฟ) อ่อนกว่า หัวกลุ่ม/ตารางอยู่กลาง
+   ========================================================================== */
+:root { --wmix-main: 38%; --wmix-head: 24%; --wmix-soft: 15%; }
+:root[data-theme="dark"] { --wmix-main: 34%; --wmix-head: 26%; --wmix-soft: 19%; }
+
+.oneui-shortcuts .oneui-tile, .cw-card { --wmix: var(--wmix-main); }
+
+.prog-list .prog-row, .main .course-row, .main .section-card, .stat-card,
+.chart-row .chart-card:nth-child(n), :root[data-theme="dark"] .chart-row .chart-card:nth-child(n) { --wmix: var(--wmix-soft); }
+
+.struct-group-header { background: color-mix(in oklab, currentColor var(--wmix-head), var(--card)) !important; }
+.gs-table tr.gs-course td { background: color-mix(in oklab, var(--cc, var(--primary)) var(--wmix-head), var(--card)); }
+.gs-table tr.gs-total td { background: color-mix(in oklab, var(--cc, var(--primary)) 10%, var(--card)); }
+
+/* แท่ง/ตัวเลขในแถวอ่อน: รางเป็นสีวิชาจาง ตัวเลข % ใช้สีเดียวกับแถว */
+.prog-list .prog-row .progress-bar, .section-card .progress-bar { background: color-mix(in oklab, var(--w) 24%, var(--card)); }
+.prog-list .prog-row .prog-pct, .section-card .section-card-pct { color: color-mix(in oklab, var(--w) 82%, var(--ink)); font-weight: 800; }
+.prog-list .prog-row:hover, .main .course-row:hover, .main .section-card:hover { background: color-mix(in oklab, var(--w) calc(var(--wmix-soft) + 6%), var(--card)); filter: none; }
+.main .course-row .btn-ghost, .section-card .section-card-room { background: var(--card); }
