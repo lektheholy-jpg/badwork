@@ -16,7 +16,7 @@
     var theme = resolve(pref);
     document.documentElement.dataset.theme = theme;
     var meta = document.querySelector('meta[name="theme-color"]');
-    if (meta) meta.setAttribute('content', theme === 'dark' ? '#000000' : '#3E91FF');
+    if (meta) meta.setAttribute('content', theme === 'dark' ? '#000000' : '#F4F4F6'); // ให้แถบสถานะมือถือกลืนกับสีพื้นหลัง (--bg) ของแต่ละโหมด
   }
 
   window.getThemePref = readPref;
