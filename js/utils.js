@@ -141,12 +141,21 @@ function uid4() {
 const LEVEL_OPTIONS = ['ม.1', 'ม.2', 'ม.3', 'ม.4', 'ม.5', 'ม.6'];
 const ROOM_OPTIONS = Array.from({ length: 13 }, (_, i) => String(i + 1));
 const LEVEL_COLORS = {
-  'ม.1': { tint: '#E5EEED', strong: '#5F8583' },
-  'ม.2': { tint: '#E6EFE2', strong: '#5E8650' },
-  'ม.3': { tint: '#F6EBD3', strong: '#A97A2E' },
-  'ม.4': { tint: '#F3E4DA', strong: '#A8643F' },
-  'ม.5': { tint: '#F2E0DC', strong: '#A5524A' },
-  'ม.6': { tint: '#ECE4DB', strong: '#6F5A48' },
+  'ม.1': { tint: '#E3EFFF', strong: '#2D80F2' },
+  'ม.2': { tint: '#DDF5F0', strong: '#0F8F7B' },
+  'ม.3': { tint: '#FFF0D2', strong: '#C77A00' },
+  'ม.4': { tint: '#FFE9DF', strong: '#D9582F' },
+  'ม.5': { tint: '#FFE3E4', strong: '#E5484D' },
+  'ม.6': { tint: '#EDE6FF', strong: '#7B52E6' },
+};
+// เวอร์ชันโหมดมืด: พื้นเข้ม ตัวเน้นสว่างขึ้นให้อ่านออกบนพื้นดำ
+const LEVEL_COLORS_DARK = {
+  'ม.1': { tint: '#16304F', strong: '#5AA2FF' },
+  'ม.2': { tint: '#0F2E2A', strong: '#2FC9AE' },
+  'ม.3': { tint: '#3A2A0C', strong: '#FFB84D' },
+  'ม.4': { tint: '#3D2218', strong: '#FF9A78' },
+  'ม.5': { tint: '#3D1B1E', strong: '#FF6B70' },
+  'ม.6': { tint: '#2A1F4D', strong: '#B79BFF' },
 };
 
 // ไอคอนเส้นบาง (แทนอีโมจิ) — ใช้เป็น ${icon('book')} ใน template
@@ -157,6 +166,9 @@ const ICONS = {
   sliders: '<line x1="4" y1="8" x2="20" y2="8"/><circle cx="9" cy="8" r="2"/><line x1="4" y1="16" x2="20" y2="16"/><circle cx="15" cy="16" r="2"/>',
   edit: '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>',
   report: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5"/><path d="M9 17v-3"/><path d="M12 17v-5"/><path d="M15 17v-2"/>',
+  sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.2M12 19.3v2.2M4.9 4.9l1.6 1.6M17.5 17.5l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.9 19.1l1.6-1.6M17.5 6.5l1.6-1.6"/>',
+  moon: '<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z"/>',
+  contrast: '<circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v17a8.5 8.5 0 0 0 0-17Z" fill="currentColor"/>',
   folder: '<path d="M3 7.5A1.5 1.5 0 0 1 4.5 6H9l2 2.5h8.5A1.5 1.5 0 0 1 21 10v8a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 18Z"/>',
 };
 function icon(name) {
@@ -164,7 +176,8 @@ function icon(name) {
 }
 const LEVEL_COLOR_FALLBACK = { tint: 'var(--surface-sunken)', strong: 'var(--ink-soft)' };
 function getLevelColor(level) {
-  return LEVEL_COLORS[level] || LEVEL_COLOR_FALLBACK;
+  const dark = document.documentElement.dataset.theme === 'dark';
+  return (dark ? LEVEL_COLORS_DARK : LEVEL_COLORS)[level] || LEVEL_COLOR_FALLBACK;
 }
 function levelSelectOptionsHtml(selected) {
   return `<option value="">— เลือกระดับชั้น —</option>` +

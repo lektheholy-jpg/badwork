@@ -349,7 +349,7 @@ async function renderArchivePage() {
       <div class="course-list">
         ${courses.map(c => `
           <div class="course-row" data-course-id="${c.id}" style="cursor:default;">
-            <div class="course-dot" style="background:${c.color || '#6B7A4F'}"></div>
+            <div class="course-dot" style="background:${c.color || '#3E91FF'}"></div>
             <div class="info">
               <div class="name">${escapeHtml(c.name)}</div>
               <div class="meta">${escapeHtml(c.code || '')} • ${escapeHtml(c.level || '')} • ${c.roomCount || 0} ห้อง • ภาคเรียน ${escapeHtml(c.semester || '-')}/${escapeHtml(c.year || '-')}</div>

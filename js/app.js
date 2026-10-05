@@ -28,7 +28,7 @@ function renderSettings() {
   const view = document.getElementById('view');
   const u = AppState.user;
   view.innerHTML = `
-    <div class="page-header"><h1>ตั้งค่า</h1><div class="sub">ข้อมูลบัญชีของคุณ</div></div>
+    <div class="page-header"><h1>ตั้งค่า</h1><div class="sub">บัญชีและหน้าตาของแอป</div></div>
     <div class="card card-pad" style="max-width:420px;">
       <div style="display:flex; align-items:center; gap:12px; margin-bottom:16px;">
         <img src="${u.photoURL || ''}" style="width:48px; height:48px; border-radius:50%;">
@@ -41,7 +41,25 @@ function renderSettings() {
         ข้อมูลรายวิชา ห้องเรียน นักเรียน และคะแนนของคุณจะถูกเก็บแยกจากครูคนอื่นโดยอัตโนมัติ ผ่านบัญชี Google ของคุณ
       </div>
     </div>
+    <div class="card card-pad" style="max-width:420px; margin-top:14px;">
+      <div style="font-weight:600;">ธีม</div>
+      <div style="font-size:13px; color:var(--ink-soft);">เลือกโหมดสว่าง โหมดมืด หรือให้ตามการตั้งค่าของอุปกรณ์</div>
+      <div class="theme-seg" role="group" aria-label="ธีม">
+        <button type="button" class="theme-opt" data-theme-pref="auto">${icon('contrast')}ตามระบบ</button>
+        <button type="button" class="theme-opt" data-theme-pref="light">${icon('sun')}สว่าง</button>
+        <button type="button" class="theme-opt" data-theme-pref="dark">${icon('moon')}มืด</button>
+      </div>
+    </div>
   `;
+  const syncThemeButtons = () => {
+    const cur = getThemePref();
+    view.querySelectorAll('.theme-opt').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.themePref === cur)));
+  };
+  view.querySelectorAll('.theme-opt').forEach(b => b.addEventListener('click', () => {
+    setThemePref(b.dataset.themePref);
+    syncThemeButtons();
+  }));
+  syncThemeButtons();
 }
 
 document.querySelectorAll('.nav-item[data-route]').forEach(el => {

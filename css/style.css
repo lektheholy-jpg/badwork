@@ -1517,96 +1517,191 @@ table.sheet tbody tr:nth-child(even) td.sticky-col-1, table.sheet tbody tr:nth-c
 }
 
 /* ==========================================================================
-   One UI 9 — โทนฟ้าพาสเทลสดใส: พื้นเทาอมฟ้า การ์ดขาวโค้งใหญ่ ปุ่ม/แท็บทรงแคปซูล
-   สีหลักฟ้า + สีรองม่วง/เขียวมินต์/ส้มพีช ใช้แยกหมวดคะแนนและสถานะ (ไม่จำกัดเอิร์ธโทน)
-   (ทับธีม One UI เอิร์ธโทนก่อนหน้าในบล็อกเดียว — ลบบล็อกนี้ทิ้งเพื่อกลับไปธีมเอิร์ธโทนได้)
-   ห้ามใช้ letter-spacing ติดลบกับข้อความไทย
+   One UI 9 — ฟ้า One UI (#3E91FF) บนเทากลาง ๆ + โหมดมืดดำสนิทแบบ One UI
+   การ์ดโค้งใหญ่ ปุ่ม/แท็บทรงแคปซูล สีรองม่วง/มินต์/พีชใช้แยกหมวดและสถานะ
+   สลับโหมดด้วย html[data-theme="light|dark"] (ตั้งจาก js/theme.js)
+   ลบบล็อกนี้ทิ้งเพื่อกลับไปธีมเอิร์ธโทนได้ — ห้ามใช้ letter-spacing ติดลบกับข้อความไทย
    ========================================================================== */
 :root {
-  --bg: #F1F3F8;  --canvas: #F1F3F8;
-  --surface: #FFFFFF;  --paper: #FFFFFF;
-  --surface-sunken: #EAEEF6;
-  --primary: #2B6FE6;  --primary-dark: #1B4FB5;  --primary-tint: #E1ECFF;
-  --ink: #1A1E2A;  --ink-soft: #667085;
-  --border: #E3E8F1;  --paper-edge: #E3E8F1;  --paper-rule: #E3E8F1;
-  --success: #17A06B;  --success-tint: #DCF5EA;
-  --warning: #D98A0B;  --warning-tint: #FFF0D2;
-  --danger: #E0414A;   --danger-tint: #FFE2E4;
-  --shadow: 0 8px 28px rgba(31, 63, 130, .10);
+  color-scheme: light;
+  --bg: #F4F4F6;  --canvas: #F4F4F6;
+  --surface: #FFFFFF;  --paper: #FFFFFF;  --card: #FFFFFF;
+  --surface-sunken: #ECECEF;
+  --primary: #3E91FF;  --primary-solid: #2D80F2;  --primary-dark: #1B67D6;  --primary-tint: #E3EFFF;
+  --on-primary: #FFFFFF;
+  --ink: #101114;  --ink-soft: #6B6E76;
+  --border: #E5E6EA;  --paper-edge: #E5E6EA;  --paper-rule: #E5E6EA;
+  --success: #12935F;  --success-tint: #DDF4E8;
+  --warning: #C77A00;  --warning-tint: #FFEFD0;
+  --danger: #E5484D;   --danger-tint: #FFE3E4;
+  --shadow: 0 8px 28px rgba(16, 17, 20, .10);
+  --scrim: rgba(16, 17, 20, .40);
+  --hover-wash: rgba(16, 17, 20, .05);
 
-  --col-collect: #E4EEFF;  --col-collect-strong: #3A78E8;
-  --col-mid: #DDF6F0;      --col-mid-strong: #11A38A;
-  --col-final: #F0E8FF;    --col-final-strong: #8559EE;
+  --col-collect: #E3EFFF;  --col-collect-strong: #2A78E8;
+  --col-mid: #DDF5F0;      --col-mid-strong: #0F8F7B;
+  --col-final: #EDE6FF;    --col-final-strong: #7B52E6;
+  --row-alt: #F8F8FA;  --row-hover: #F0F4FB;  --sheet-head: #1E3A6E;  --tip-bg: #101114;
 
-  --sidebar-bg: #FFFFFF;  --sidebar-hover: #EEF3FC;
-  --spine: #FFFFFF;  --spine-deep: #1B4FB5;
+  --sidebar-bg: #FFFFFF;  --sidebar-hover: #F0F1F4;
+  --spine: #FFFFFF;  --spine-deep: #1B67D6;
   --accent: #7C5CFF;  --sun: #FFB547;
-  --cream: #FFFFFF;  --cream-dim: #667085;
-  --peach: #FF8A65;  --mint: #20C7A8;  --lilac: #9B7BFF;
+  --cream: #FFFFFF;  --cream-dim: #6B6E76;
+
+  --hero-a: #DCEAFF;  --hero-b: #E9E4FF;  --hero-orb: rgba(255, 255, 255, .55);
+  --ic1-bg: #E3EFFF;  --ic1: #2D80F2;
+  --ic2-bg: #DDF5F0;  --ic2: #0F8F7B;
+  --ic3-bg: #FFE9DF;  --ic3: #D9582F;
+  --ic4-bg: #EDE6FF;  --ic4: #7B52E6;
+  --login-a: #E6F0FF;  --login-b: #F4F4F6;  --login-c: #EFE9FF;
 }
 
-/* ----- เมนูข้าง ----- */
-.sidebar { border-right: 1px solid var(--border); }
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #000000;  --canvas: #000000;
+  --surface: #1C1C1F;  --paper: #1C1C1F;  --card: #1C1C1F;
+  --surface-sunken: #2A2A2E;
+  --primary: #3E91FF;  --primary-solid: #3E91FF;  --primary-dark: #8DBDFF;  --primary-tint: #16304F;
+  --on-primary: #04122A;
+  --ink: #F2F3F5;  --ink-soft: #A0A3AB;
+  --border: #2E2E33;  --paper-edge: #2E2E33;  --paper-rule: #2E2E33;
+  --success: #3DD598;  --success-tint: #12301F;
+  --warning: #FFB84D;  --warning-tint: #3A2A0C;
+  --danger: #FF6B70;   --danger-tint: #3D1B1E;
+  --shadow: 0 8px 28px rgba(0, 0, 0, .6);
+  --scrim: rgba(0, 0, 0, .65);
+  --hover-wash: rgba(255, 255, 255, .07);
+
+  --col-collect: #14253D;  --col-collect-strong: #2F6FD0;
+  --col-mid: #0F2E2A;      --col-mid-strong: #138A78;
+  --col-final: #231B3D;    --col-final-strong: #7550D8;
+  --row-alt: #212125;  --row-hover: #262B36;  --sheet-head: #1B2F55;  --tip-bg: #3A3A40;
+
+  --sidebar-bg: #0E0E10;  --sidebar-hover: #222226;
+  --spine: #0E0E10;  --spine-deep: #8DBDFF;
+  --cream: #F2F3F5;  --cream-dim: #A0A3AB;
+
+  --hero-a: #14294A;  --hero-b: #261D4A;  --hero-orb: rgba(255, 255, 255, .06);
+  --ic1-bg: #16304F;  --ic1: #6FAEFF;
+  --ic2-bg: #0F2E2A;  --ic2: #3DD6BC;
+  --ic3-bg: #3D2218;  --ic3: #FF9A78;
+  --ic4-bg: #2A1F4D;  --ic4: #B79BFF;
+  --login-a: #0B1A30;  --login-b: #000000;  --login-c: #1A1230;
+}
+
+html, body { background: var(--bg); }
+body, #app { background: var(--bg); color: var(--ink); }
+
+/* ----- พื้นผิวที่เดิมฮาร์ดโค้ดสีขาว → ใช้ตัวแปรเพื่อให้สลับโหมดได้ ----- */
+.sidebar, .hamburger-btn, .sidebar-toggle, .field input, .field select, .field textarea,
+.picker-select, .sheet-wrap, table.sheet td, table.sheet td.total-cell.sticky-right-2,
+table.sheet tbody td.sticky-col-1, table.sheet tbody td.sticky-col-2, table.sheet tbody td.sticky-col-3,
+.struct-summary-box, .login-card, .google-btn, .modal, .group-creator-row input, .chip,
+.struct-table select.row-group, .main .card, .main .course-row, .section-card, .stat-card,
+.grade-stat-card, .main .struct-summary-box, .group-creator, .report-room-list, .room-pill,
+.cover-emblem, .oneui-stat, .save-status, .search-box input, .oneui-tile, .prog-list { background: var(--card); }
+.sidebar { background: var(--sidebar-bg); border-right: 1px solid var(--border); }
+.sidebar-toggle, .user-chip { background: var(--surface-sunken); }
+.struct-table input.group-name:hover, .struct-table input.group-name:focus { background: var(--card); }
+.field input:focus, .field select:focus, .field textarea:focus, table.sheet td input.score-input:focus { background: var(--card); }
+.field input, .field select, .field textarea, .gs-select, .grade-room-filter, .group-creator-row input,
+.struct-table select.row-group { background: var(--surface-sunken); color: var(--ink); }
+.picker-select { color: var(--ink); }
+.tab.active { background: var(--card); color: var(--primary-dark); }
+.hamburger-btn span { background: var(--primary-dark); }
+.switch-slider::before { background: #fff; }
+
+/* ----- เมนู ----- */
 .brand .mark { background: var(--primary-tint); }
 .sidebar-toggle { color: var(--primary-dark); }
 .nav-item:hover { background: var(--sidebar-hover); }
 .nav-item.active, #app.sidebar-collapsed .nav-item.active { background: var(--primary-tint); color: var(--primary-dark); }
 .nav-item.active .nav-icon { color: var(--primary); }
-.user-chip { background: var(--surface-sunken); }
-#app.sidebar-collapsed .nav-item:hover::before, #app.sidebar-collapsed .user-chip:hover::before { background: var(--ink); }
-.hamburger-btn span { background: var(--primary-dark); }
-.nav-overlay { background: rgba(20, 28, 48, .38); }
+#app.sidebar-collapsed .nav-item:hover::before, #app.sidebar-collapsed .user-chip:hover::before { background: var(--tip-bg); color: #fff; }
+.nav-overlay, .modal-backdrop { background: var(--scrim); }
 
-/* ----- การ์ด / ปุ่ม / ช่องกรอก ----- */
-.course-row:hover, .section-card:hover { border-color: #C9DCFF; }
-.btn-primary { background: var(--primary); }
-.btn-primary:hover { background: var(--primary-dark); }
+/* ----- ปุ่ม / ช่องกรอก ----- */
+.btn-primary { background: var(--primary-solid); color: var(--on-primary); }
+.btn-primary:hover { background: var(--primary-dark); color: var(--on-primary); }
+:root[data-theme="dark"] .btn-primary:hover { background: #5AA2FF; color: var(--on-primary); }
 .btn-ghost { background: var(--primary-tint); color: var(--primary-dark); }
-.btn-ghost:hover { background: #CFE0FF; color: var(--primary-dark); }
-.btn-danger-ghost:hover { background: #FFCDD1; }
+.btn-ghost:hover { background: var(--primary-tint); color: var(--primary-dark); filter: brightness(.96); }
+:root[data-theme="dark"] .btn-ghost:hover { filter: brightness(1.25); }
+.btn-danger-ghost:hover { background: var(--danger-tint); filter: brightness(.96); }
+.btn-danger { color: #fff; }
 .btn:focus-visible, .nav-item:focus-visible, .tab:focus-visible, .room-pill:focus-visible,
 .oneui-tile:focus-visible, .prog-row:focus-visible { outline-color: var(--primary); }
 .field input:focus, .field select:focus, .field textarea:focus,
 .search-box input:focus { border-color: var(--primary); box-shadow: 0 0 0 4px var(--primary-tint); }
-.tab.active { color: var(--primary-dark); box-shadow: 0 1px 6px rgba(31, 63, 130, .16); }
-.room-pill:hover { background: var(--primary-tint); }
-.room-pill.active { background: var(--primary); color: #fff; }
+.google-btn { color: var(--ink); border-color: var(--border); }
+.google-btn:hover { background: var(--surface-sunken); }
+.room-pill { color: var(--ink-soft); }
+.room-pill:hover { background: var(--primary-tint); color: var(--ink); }
+.room-pill.active { background: var(--primary-solid); color: var(--on-primary); }
 .room-pill-add { background: var(--surface-sunken); }
+.room-mode-btn.active, .room-pick-btn.active { background: var(--primary-solid); border-color: var(--primary-solid); color: var(--on-primary); }
+.course-row:hover, .section-card:hover { border-color: var(--primary-tint); }
 .gs-table tr.gs-course td { background: var(--primary-tint); }
+.gs-table tr.gs-total td { background: var(--row-alt); }
 .group-icon, .empty-state .icon { color: var(--primary); }
 .empty-state .icon { background: var(--primary-tint); }
+.toast { background: var(--tip-bg); color: #fff; }
+.tab.active { box-shadow: 0 1px 6px rgba(0, 0, 0, .18); }
 
-/* ----- โมดัล / โทสต์ / เข้าสู่ระบบ ----- */
-.modal-backdrop { background: rgba(20, 28, 48, .42); }
-.toast { background: #1A1E2A; }
-.login-screen { background: linear-gradient(160deg, #EAF2FF 0%, #F1F3F8 45%, #EFE9FF 100%); }
-.login-card { box-shadow: 0 12px 40px rgba(31, 63, 130, .12); }
+/* ----- เข้าสู่ระบบ ----- */
+.login-screen { background: linear-gradient(160deg, var(--login-a) 0%, var(--login-b) 45%, var(--login-c) 100%); }
+.login-card { box-shadow: var(--shadow); }
 
-/* ----- หน้าแรก: การ์ดฮีโร่ไล่สีฟ้า-ม่วงพาสเทล + การ์ดตัวเลขแยกสี ----- */
-.oneui-hero { background: linear-gradient(135deg, #DCE9FF 0%, #E9E4FF 100%); }
-.oneui-hero::before { background: rgba(255, 255, 255, .55); }
+/* ----- หน้าแรก ----- */
+.oneui-hero { background: linear-gradient(135deg, var(--hero-a) 0%, var(--hero-b) 100%); }
+.oneui-hero::before { background: var(--hero-orb); }
 .oneui-title .dots { color: var(--accent); }
 .oneui-stat .value { color: var(--ink); }
-.oneui-stat:nth-child(1) .stat-ico { background: #E1ECFF; color: #2B6FE6; }
-.oneui-stat:nth-child(2) .stat-ico { background: #DCF5EF; color: #0E9C84; }
-.oneui-stat:nth-child(3) .stat-ico { background: #EFE6FF; color: #7B4FE6; }
+.oneui-stat:nth-child(1) .stat-ico, .oneui-tile:nth-child(1) .tile-ico { background: var(--ic1-bg); color: var(--ic1); }
+.oneui-stat:nth-child(2) .stat-ico, .oneui-tile:nth-child(2) .tile-ico { background: var(--ic2-bg); color: var(--ic2); }
+.oneui-stat:nth-child(3) .stat-ico, .oneui-tile:nth-child(3) .tile-ico { background: var(--ic3-bg); color: var(--ic3); }
+.oneui-stat:nth-child(3) .stat-ico { background: var(--ic4-bg); color: var(--ic4); }
+.oneui-tile:nth-child(4) .tile-ico { background: var(--ic4-bg); color: var(--ic4); }
 .oneui-tile:hover { background: var(--primary-tint); }
-.tile-ico { background: var(--primary-tint); color: var(--primary); }
-.oneui-tile:nth-child(1) .tile-ico { background: #E1ECFF; color: #2B6FE6; }
-.oneui-tile:nth-child(2) .tile-ico { background: #DCF5EF; color: #0E9C84; }
-.oneui-tile:nth-child(3) .tile-ico { background: #FFE9DF; color: #E2603A; }
-.oneui-tile:nth-child(4) .tile-ico { background: #EFE6FF; color: #7B4FE6; }
-.oneui-tile:hover .tile-ico { background: #fff; }
+.oneui-tile:hover .tile-ico { background: var(--card); }
 .prog-row { border-bottom-color: var(--border); }
+.prog-row:hover { background: var(--surface-sunken); }
 .prog-pct { color: var(--primary-dark); }
+.oneui-logo { mix-blend-mode: multiply; }
+:root[data-theme="dark"] .oneui-logo { mix-blend-mode: screen; filter: invert(1) hue-rotate(180deg); }
+:root[data-theme="dark"] .brand .mark, :root[data-theme="dark"] .login-card .mark-lg { filter: invert(1) hue-rotate(180deg); background: #fff; }
 
-/* ----- ตารางคะแนน: หัวตารางกรมท่า แถวโปร่ง ----- */
-table.sheet th { background: #1F3566; }
-table.sheet tbody td { border-bottom-color: #EEF1F7; }
-table.sheet td input.score-input:hover { background: rgba(43, 111, 230, .07); }
+/* ----- ตารางคะแนน ----- */
+table.sheet th { background: var(--sheet-head); color: #fff; }
+table.sheet tbody td { border-bottom-color: var(--border); }
+table.sheet tbody tr:nth-child(even) td { background: var(--row-alt); }
+table.sheet tbody tr:hover td { background: var(--row-hover); }
+table.sheet tbody tr:nth-child(even) td.sticky-col-1, table.sheet tbody tr:nth-child(even) td.sticky-col-2,
+table.sheet tbody tr:nth-child(even) td.sticky-col-3, table.sheet tbody tr:nth-child(even) td.total-cell.sticky-right-2 { background: var(--row-alt); }
+table.sheet tbody tr:hover td.sticky-col-1, table.sheet tbody tr:hover td.sticky-col-2,
+table.sheet tbody tr:hover td.sticky-col-3, table.sheet tbody tr:hover td.total-cell.sticky-right-2 { background: var(--row-hover); }
+table.sheet td.total-cell.sticky-right-1, table.sheet tbody tr:hover td.total-cell.sticky-right-1 { background: var(--primary-solid); color: var(--on-primary); }
+table.sheet td input.score-input { color: var(--ink); }
+table.sheet td input.score-input:hover { background: var(--hover-wash); }
 table.sheet td input.score-input:focus { box-shadow: 0 0 0 3px var(--primary-tint); }
-table.sheet tbody tr:nth-child(even) td.sticky-col-1,
-table.sheet tbody tr:nth-child(even) td.sticky-col-2,
-table.sheet tbody tr:nth-child(even) td.sticky-col-3 { background: #F7F9FD; }
-.sheet .sticky-col-3 { box-shadow: 2px 0 8px rgba(31, 63, 130, .08); }
-.sheet .sticky-right-2 { box-shadow: -2px 0 8px rgba(31, 63, 130, .08); }
+.struct-panel-header { background: var(--sheet-head); color: #fff; }
+.sheet .sticky-col-3 { box-shadow: 2px 0 8px rgba(0, 0, 0, .10); }
+.sheet .sticky-right-2 { box-shadow: -2px 0 8px rgba(0, 0, 0, .10); }
+:root[data-theme="dark"] table.sheet td { color: var(--ink); }
+
+/* ----- สวิตช์เลือกธีมในหน้าตั้งค่า ----- */
+.theme-seg { display: flex; gap: 6px; padding: 4px; margin-top: 10px; background: var(--surface-sunken); border-radius: 999px; width: fit-content; max-width: 100%; }
+.theme-opt { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 8px 18px; border: none; border-radius: 999px; background: transparent; color: var(--ink-soft); font: inherit; font-size: 14.5px; font-weight: 600; cursor: pointer; }
+.theme-opt:hover { color: var(--ink); }
+.theme-opt[aria-pressed="true"] { background: var(--card); color: var(--primary-dark); box-shadow: 0 1px 6px rgba(0, 0, 0, .16); }
+.theme-opt:focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; }
+.theme-opt .ico { width: 20px; height: 20px; }
+@media (max-width: 420px) { .theme-opt { padding: 8px 12px; } }
+@media print { :root[data-theme="dark"] { --bg: #fff; --card: #fff; --surface: #fff; --ink: #000; --ink-soft: #444; --border: #ccc; } }
+
+/* ----- แก้เก็บรายละเอียดโหมดมืด ----- */
+.tab { background: transparent; color: var(--ink-soft); }
+.tab:hover { background: transparent; color: var(--ink); }
+.tab.active { background: var(--card); color: var(--primary-dark); }
+.oneui-logo { filter: contrast(1.3); }
+:root[data-theme="dark"] .oneui-logo { filter: contrast(1.3) invert(1) hue-rotate(180deg); }

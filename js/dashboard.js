@@ -201,7 +201,7 @@ function buildGradeSummaryHtml(courses, year) {
     const rooms = c.roomsData || [];
     const head = `
       <tr class="gs-course">
-        <td colspan="15"><span class="course-dot" style="background:${c.color || '#6B7A4F'}"></span>${escapeHtml(c.name)}${c.code ? ` <span class="gs-code">(${escapeHtml(c.code)})</span>` : ''}</td>
+        <td colspan="15"><span class="course-dot" style="background:${c.color || '#3E91FF'}"></span>${escapeHtml(c.name)}${c.code ? ` <span class="gs-code">(${escapeHtml(c.code)})</span>` : ''}</td>
       </tr>`;
     const rows = rooms.map(r => {
       no++;
@@ -272,7 +272,7 @@ function buildGradeStatsBodyHtml(courses, year) {
       <div class="grade-stat-card">
         <div class="gsc-head">
           <div class="gsc-title">
-            <span class="course-dot" style="background:${c.color || '#6B7A4F'}"></span>
+            <span class="course-dot" style="background:${c.color || '#3E91FF'}"></span>
             <span class="gsc-name">${escapeHtml(c.name)}</span>
           </div>
           <select class="grade-room-filter" data-course-id="${c.id}">
