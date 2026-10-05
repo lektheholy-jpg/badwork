@@ -89,6 +89,10 @@ async function renderDashboard() {
   const avgProgress = courses.length ? Math.round(totalProgressSum / courses.length) : 0;
   const firstName = (AppState.user.displayName || 'คุณครู').split(' ')[0];
 
+  // ห้องที่มีนักเรียนแต่ยังบันทึกไม่ครบ เรียงจากคืบหน้าน้อยสุดก่อน (แสดงสูงสุด 5 ห้อง)
+  const todoRooms = sectionCards.filter(r => r.studentCount > 0 && r.progress < 100)
+    .sort((a, b) => a.progress - b.progress).slice(0, 5);
+
   view.innerHTML = `
     <!-- หัวหน้าแรกแบบ One UI -->
     <header class="oneui-hero">
@@ -100,6 +104,34 @@ async function renderDashboard() {
       <div class="oneui-stat"><div class="value">${totalStudents}</div><div class="label">นักเรียนทั้งหมด</div></div>
       <div class="oneui-stat"><div class="value">${avgProgress}%</div><div class="label">ความคืบหน้าเฉลี่ย</div></div>
     </div>
+
+    <div class="oneui-shortcuts">
+      <button class="oneui-tile" data-go="scores-page"><span class="tile-ico">${icon('edit')}</span><span>บันทึกคะแนน</span></button>
+      <button class="oneui-tile" data-go="courses"><span class="tile-ico">${icon('book')}</span><span>รายวิชาของฉัน</span></button>
+      <button class="oneui-tile" data-go="report-page"><span class="tile-ico">${icon('report')}</span><span>รายงาน</span></button>
+      <button class="oneui-tile" data-go="structure-page"><span class="tile-ico">${icon('sliders')}</span><span>โครงสร้างวิชา</span></button>
+    </div>
+
+    ${todoRooms.length ? `
+    <section class="oneui-section">
+      <h2 class="oneui-h2">ห้องที่ควรบันทึกต่อ</h2>
+      <div class="oneui-list">
+        ${todoRooms.map(r => `
+          <button class="oneui-row" data-course-id="${r.courseId}" data-section-id="${r.sectionId}">
+            <span class="oneui-row-dot" style="background:${r.color || 'var(--primary)'}"></span>
+            <span class="oneui-row-main">
+              <span class="oneui-row-title">${escapeHtml(r.courseName)} · ห้อง ${escapeHtml(r.room)}</span>
+              <span class="oneui-row-sub">${escapeHtml(r.level || '')}${r.level ? ' · ' : ''}${r.studentCount} คน</span>
+            </span>
+            <span class="progress-bar"><span class="fill" style="width:${r.progress}%; background:${r.color || 'var(--primary)'}"></span></span>
+            <span class="oneui-row-pct">${r.progress}%</span>
+          </button>`).join('')}
+      </div>
+    </section>` : (sectionCards.length ? `
+    <section class="oneui-section">
+      <h2 class="oneui-h2">ห้องที่ควรบันทึกต่อ</h2>
+      <div class="oneui-list"><div class="oneui-done">บันทึกคะแนนครบทุกห้องที่มีนักเรียนแล้ว</div></div>
+    </section>` : '')}
 
     <!-- หน้าในเล่ม -->
     <section class="book-inside">
@@ -119,13 +151,15 @@ async function renderDashboard() {
     ${courses.length === 0 ? `
       <div class="card"><div class="empty-state">
         <div class="icon">${icon('book')}</div>
-        <div>ยังไม่มีรายวิชา ไปที่หน้า "ตั้งค่าโครงสร้างวิชา" เพื่อสร้างรายวิชาแรกของคุณ</div>
+        <div>ยังไม่มีรายวิชา เริ่มจากสร้างรายวิชาแรกของคุณ</div>
+        <button class="btn btn-primary" data-go="structure-page" style="margin-top:16px;">สร้างรายวิชา</button>
       </div></div>
     ` : ''}
     </section>
   `;
 
-
+  view.querySelectorAll('[data-go]').forEach(el => el.addEventListener('click', () => navigate(el.dataset.go)));
+  view.querySelectorAll('.oneui-row').forEach(el => el.addEventListener('click', () => openCourseSection(el.dataset.courseId, el.dataset.sectionId)));
 }
 
 // ==========================================================================
