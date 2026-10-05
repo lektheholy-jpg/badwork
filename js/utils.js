@@ -141,21 +141,21 @@ function uid4() {
 const LEVEL_OPTIONS = ['ม.1', 'ม.2', 'ม.3', 'ม.4', 'ม.5', 'ม.6'];
 const ROOM_OPTIONS = Array.from({ length: 13 }, (_, i) => String(i + 1));
 const LEVEL_COLORS = {
-  'ม.1': { tint: '#E3EFFF', strong: '#2D80F2' },
-  'ม.2': { tint: '#DDF5F0', strong: '#0F8F7B' },
-  'ม.3': { tint: '#FFF0D2', strong: '#C77A00' },
-  'ม.4': { tint: '#FFE9DF', strong: '#D9582F' },
-  'ม.5': { tint: '#FFE3E4', strong: '#E5484D' },
-  'ม.6': { tint: '#EDE6FF', strong: '#7B52E6' },
+  'ม.1': { tint: '#E3EFFF', strong: '#2D80F2' },   // ฟ้า
+  'ม.2': { tint: '#DDF6EC', strong: '#12A87A' },   // เขียว
+  'ม.3': { tint: '#EDE6FF', strong: '#7B52E6' },   // ม่วง
+  'ม.4': { tint: '#DCF1FA', strong: '#1A9FD0' },   // ฟ้าอมเขียว
+  'ม.5': { tint: '#E4F7DF', strong: '#3FB86B' },   // เขียวสด
+  'ม.6': { tint: '#F1E4FB', strong: '#A25BE0' },   // ม่วงกล้วยไม้
 };
 // เวอร์ชันโหมดมืด: พื้นเข้ม ตัวเน้นสว่างขึ้นให้อ่านออกบนพื้นดำ
 const LEVEL_COLORS_DARK = {
   'ม.1': { tint: '#16304F', strong: '#5AA2FF' },
-  'ม.2': { tint: '#0F2E2A', strong: '#2FC9AE' },
-  'ม.3': { tint: '#3A2A0C', strong: '#FFB84D' },
-  'ม.4': { tint: '#3D2218', strong: '#FF9A78' },
-  'ม.5': { tint: '#3D1B1E', strong: '#FF6B70' },
-  'ม.6': { tint: '#2A1F4D', strong: '#B79BFF' },
+  'ม.2': { tint: '#0F2E26', strong: '#2FD1A0' },
+  'ม.3': { tint: '#2A1F4D', strong: '#B79BFF' },
+  'ม.4': { tint: '#0F2E3D', strong: '#4CC3F0' },
+  'ม.5': { tint: '#16301A', strong: '#6FD98C' },
+  'ม.6': { tint: '#35204D', strong: '#CF9BFF' },
 };
 
 // ไอคอนเส้นบาง (แทนอีโมจิ) — ใช้เป็น ${icon('book')} ใน template

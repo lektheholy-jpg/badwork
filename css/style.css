@@ -2477,3 +2477,84 @@ html, body { overflow-x: clip; }
   .dash > .prog-section .prog-row { grid-template-columns: 12px minmax(0, 1.3fr) minmax(0, 1fr) 64px 40px; gap: 10px; padding: 9px 16px; }
 }
 .cw-row .cw-time { white-space: nowrap; }
+
+/* ==========================================================================
+   One UI 9 — ธีมตาราง + กราฟ (ม่วง · ฟ้า · เขียว · ขาว) ชุดเดียวกันทุกหน้า
+   ตัวแปร --viz-* คือชุดสีกลาง: ฟ้า = คะแนนเก็บ/ค่าเฉลี่ย, เขียว = กลางภาค/ค่าสูงสุด,
+   ม่วง = ปลายภาค/ค่าต่ำสุด · หัวตารางทุกแบบใช้ไล่สีม่วง→ฟ้าเหมือนกัน
+   ลบบล็อกนี้ทิ้งเพื่อกลับไปสีเดิม
+   ========================================================================== */
+:root {
+  --viz-blue: #2D80F2;  --viz-green: #12A87A;  --viz-purple: #7B52E6;
+  --viz-sky: #1A9FD0;   --viz-mint: #3FB86B;   --viz-orchid: #A25BE0;
+  --head-grad: linear-gradient(135deg, #7B52E6 0%, #4F6BEA 55%, #2D80F2 100%);
+  --head-solid: #5560E8;
+  --sheet-head: #5560E8;
+  --col-collect-strong: var(--viz-blue);   --col-collect: #E3EFFF;
+  --col-mid-strong: var(--viz-green);      --col-mid: #DDF6EC;
+  --col-final-strong: var(--viz-purple);   --col-final: #EDE6FF;
+  --zebra: #F7F6FE;  --row-on: #E8EEFF;
+  --viz-track: #E7E5F6;
+  --viz-bar: linear-gradient(90deg, #7B52E6, #2D80F2 55%, #12A87A);
+}
+:root[data-theme="dark"] {
+  --viz-blue: #5AA2FF;  --viz-green: #2FD1A0;  --viz-purple: #B79BFF;
+  --viz-sky: #4CC3F0;   --viz-mint: #6FD98C;   --viz-orchid: #CF9BFF;
+  --head-grad: linear-gradient(135deg, #4B37A8 0%, #3A4FB8 55%, #1F5FC4 100%);
+  --head-solid: #3A4FB8;
+  --sheet-head: #3A4FB8;
+  --col-collect: #14253D;  --col-mid: #0F2E26;  --col-final: #2A1F4D;
+  --zebra: #1F1F2A;  --row-on: #262C48;
+  --viz-track: #2C2C3E;
+  --viz-bar: linear-gradient(90deg, #B79BFF, #5AA2FF 55%, #2FD1A0);
+}
+
+/* ----- หัวตารางทุกแบบ: ไล่สีม่วง → ฟ้า ตัวหนังสือขาว ----- */
+table.sheet th, .gs-table thead th, .ns-table th, .struct-panel-header {
+  background: var(--head-grad); color: #fff;
+}
+table.sheet td.total-cell.sticky-right-1, table.sheet tbody tr:hover td.total-cell.sticky-right-1 {
+  background: var(--head-solid); color: #fff;
+}
+.struct-table th { background: color-mix(in oklab, var(--viz-purple) 12%, var(--card)); color: var(--ink); }
+
+/* ----- หัวกลุ่มคะแนน: ฟ้า / เขียว / ม่วง ----- */
+table.sheet th.grp-collect { background: color-mix(in oklab, var(--viz-blue) 30%, var(--card)); color: var(--ink); }
+table.sheet th.grp-mid     { background: color-mix(in oklab, var(--viz-green) 30%, var(--card)); color: var(--ink); }
+table.sheet th.grp-final   { background: color-mix(in oklab, var(--viz-purple) 30%, var(--card)); color: var(--ink); }
+table.sheet td.grp-collect, table.sheet tbody tr:nth-child(even) td.grp-collect { background: color-mix(in oklab, var(--viz-blue) 14%, var(--card)); }
+table.sheet td.grp-mid,     table.sheet tbody tr:nth-child(even) td.grp-mid     { background: color-mix(in oklab, var(--viz-green) 14%, var(--card)); }
+table.sheet td.grp-final,   table.sheet tbody tr:nth-child(even) td.grp-final   { background: color-mix(in oklab, var(--viz-purple) 14%, var(--card)); }
+
+/* ----- แถวสลับสี / แถวที่ชี้ / แถวสรุป: โทนม่วง-ฟ้าอ่อนบนพื้นขาว ----- */
+.ns-table tbody tr:nth-child(even) td, .report-room-row:nth-child(even) { background: var(--zebra); }
+.ns-table tbody tr:hover td, .struct-table tbody tr:hover td, .gs-table tr.gs-row:hover td,
+.report-room-row:hover, .report-room-row:nth-child(even):hover { background: var(--row-on); }
+.gs-table tr.gs-total td { background: color-mix(in oklab, var(--cc, var(--viz-purple)) 12%, var(--card)); border-top-color: color-mix(in oklab, var(--cc, var(--viz-purple)) 55%, transparent); }
+.gs-table tr.gs-course td { background: color-mix(in oklab, var(--cc, var(--viz-blue)) 22%, var(--card)); }
+.ns-table-wrap, .gs-wrap, .report-room-list { background: var(--card); }
+
+/* ----- กราฟแท่ง: รางม่วงอ่อน แท่งไล่ม่วง → ฟ้า → เขียว ----- */
+.dist-row .g-bar-track, .progress-chart-row .progress-bar, .prog-list .prog-row .progress-bar, .section-card .progress-bar { background: var(--viz-track); }
+.dist-row .g-bar-fill { background: var(--viz-bar); filter: none; }
+.progress-chart-row .progress-bar .fill, .prog-list .prog-row .progress-bar .fill { filter: none; box-shadow: none; }
+.grade-stat-card { background: color-mix(in oklab, var(--viz-purple) 10%, var(--card)); }
+.chart-row .chart-card:nth-child(1) { --w: var(--viz-blue); }
+.chart-row .chart-card:nth-child(2) { --w: var(--viz-purple); }
+
+/* ----- โดนัท: ขอบขาวคั่นชิ้น ----- */
+.donut-wrap svg circle { filter: none; stroke-linecap: butt; }
+
+/* ----- กราฟเส้นรายห้อง: สูงสุด = เขียว · เฉลี่ย = ฟ้า · ต่ำสุด = ม่วง ----- */
+.main .rc-card { --rc-max: var(--viz-green); --rc-avg: var(--viz-blue); --rc-min: var(--viz-purple); }
+:root[data-theme="dark"] .main .rc-card { --rc-max: var(--viz-green); --rc-avg: var(--viz-blue); --rc-min: var(--viz-purple); }
+.main .rc-card { background: color-mix(in oklab, var(--viz-purple) 6%, rgba(255, 255, 255, .72)); }
+:root[data-theme="dark"] .main .rc-card { background: color-mix(in oklab, var(--viz-purple) 10%, rgba(0, 0, 0, .42)); }
+.rc-tab.is-on { box-shadow: 0 6px 14px -8px var(--tc); }
+.rc-table th { color: var(--ink); }
+.rc-table th, .rc-table td { border-bottom-color: color-mix(in srgb, var(--viz-purple) 16%, transparent); }
+.rc-table tbody tr:nth-child(even) td { background: color-mix(in srgb, var(--viz-purple) 6%, transparent); }
+
+@media print {
+  table.sheet th, .gs-table thead th, .ns-table th { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}

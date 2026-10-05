@@ -573,7 +573,7 @@ function renderProgressChart(courses) {
 
 function renderStudentDonut(courses, totalStudents) {
   if (!totalStudents) return `<div class="empty-state" style="padding:20px 0;">ยังไม่มีนักเรียน</div>`;
-  const palette = ['#2B6FE6', '#17A98F', '#8559EE', '#F08A3C', '#E0414A', '#F2B134'];
+  const palette = ['#2D80F2', '#12A87A', '#7B52E6', '#1A9FD0', '#3FB86B', '#A25BE0'];  // ฟ้า เขียว ม่วง
   const r = 46, cx = 60, cy = 60, circumference = 2 * Math.PI * r;
   let offset = 0;
   const segs = courses.filter(c => c.studentCount > 0).map((c, i) => {
