@@ -121,37 +121,15 @@ async function renderDashboard() {
     </div>
     ` : ''}
 
-    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
-      <h2 style="font-size:15px; font-weight:700;">รายวิชาของฉัน</h2>
-    </div>
-
-    ${sectionCards.length === 0 ? `
+    ${courses.length === 0 ? `
       <div class="card"><div class="empty-state">
         <div class="icon">📚</div>
         <div>ยังไม่มีรายวิชา ไปที่หน้า ⚙️ ตั้งค่าโครงสร้างวิชา เพื่อสร้างรายวิชาแรกของคุณ</div>
       </div></div>
-    ` : `
-      <div class="section-card-grid">
-        ${sectionCards.map(sc => `
-          <div class="section-card" data-course-id="${sc.courseId}" data-section-id="${sc.sectionId}">
-            <div class="section-card-top">
-              <span class="course-dot" style="background:${sc.color || '#6B7A4F'}"></span>
-              <span class="section-card-room">ห้อง ${escapeHtml(sc.room)}</span>
-            </div>
-            <div class="section-card-name">${escapeHtml(sc.courseName)}</div>
-            <div class="section-card-meta">${escapeHtml(sc.level || '')} • ${sc.studentCount} คน</div>
-            <div class="progress-bar"><div class="fill" style="width:${sc.progress}%"></div></div>
-            <div class="section-card-pct">${sc.progress}% บันทึกแล้ว</div>
-          </div>
-        `).join('')}
-      </div>
-    `}
+    ` : ''}
     </section>
   `;
 
-  view.querySelectorAll('.section-card').forEach(card => {
-    card.addEventListener('click', () => openCourseSection(card.dataset.courseId, card.dataset.sectionId));
-  });
 
 }
 
