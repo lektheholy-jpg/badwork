@@ -108,14 +108,17 @@ function openCreateCourseModal(onCreated, sourceCourse = null) {
     if (sourceCourse) {
       // คัดลอกโครงสร้างคะแนน (assessments) และเกณฑ์เกรดจากวิชาต้นทาง
       const srcBase = db.collection('users').doc(uid).collection('courses').doc(sourceCourse.id);
-      const [assessSnap, gradingDoc] = await Promise.all([
+      const [assessSnap, gradingDoc, structDoc] = await Promise.all([
         srcBase.collection('assessments').orderBy('order', 'asc').get(),
         srcBase.collection('settings').doc('grading').get(),
+        srcBase.collection('settings').doc('structure').get(),
       ]);
       const copyBatch = db.batch();
       assessSnap.docs.forEach(d => {
         copyBatch.set(courseRef.collection('assessments').doc(), d.data());
       });
+      // คัดลอกหมวดหมู่หลักของคะแนนเก็บ (groupId ในแต่ละรายการอ้างถึงหมวดเหล่านี้)
+      if (structDoc.exists) copyBatch.set(courseRef.collection('settings').doc('structure'), structDoc.data());
       copyBatch.set(courseRef.collection('settings').doc('grading'), {
         scale: gradingDoc.exists ? gradingDoc.data().scale : DEFAULT_GRADE_SCALE,
       });

@@ -839,3 +839,68 @@ table.sheet tbody tr:nth-child(even) td.sticky-col-3 { background: #FAFAFD; }
 .ns-table td { padding: 6px 8px; text-align: center; border-top: 1px solid var(--border); white-space: nowrap; }
 .ns-table .ns-left { text-align: left; }
 .ns-table tr.ns-bad td { background: var(--danger-tint); color: var(--danger); }
+
+/* ---------- หมวดหมู่หลักของคะแนนเก็บ (หน้าโครงสร้างคะแนน) ---------- */
+.group-creator {
+  background: var(--surface-sunken); border: 1px solid var(--border);
+  border-radius: 10px; padding: 12px 14px; margin-bottom: 14px;
+}
+.group-creator-label { font-size: 13px; font-weight: 700; margin-bottom: 8px; }
+.group-creator-label span { font-weight: 400; font-size: 12px; color: var(--ink-soft); margin-left: 6px; }
+.group-creator-row { display: flex; gap: 8px; }
+.group-creator-row input {
+  flex: 1; min-width: 0; border: 1.5px solid var(--border); border-radius: 8px;
+  padding: 8px 10px; font-size: 13.5px; background: #fff;
+}
+.group-quick { margin-top: 8px; font-size: 12px; color: var(--ink-soft); display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.chip {
+  border: 1px dashed var(--col-collect-strong); background: #fff; color: var(--col-collect-strong);
+  border-radius: 999px; padding: 3px 10px; font-size: 12px; font-weight: 600; cursor: pointer;
+}
+.chip:hover { background: var(--col-collect); }
+
+.struct-table-wrap { overflow-x: auto; }
+.struct-table tr.group-row td { padding: 0; background: var(--col-collect); border-bottom: 1px solid var(--border); }
+.struct-table tr.group-row.ungrouped td { background: var(--surface-sunken); }
+.struct-table tr.group-row.drop-target td { outline: 2px solid var(--primary); outline-offset: -2px; background: var(--primary-tint); }
+.group-bar { display: flex; align-items: center; gap: 10px; padding: 8px 10px; flex-wrap: wrap; }
+.group-icon { font-size: 15px; }
+.group-title { font-weight: 700; font-size: 13px; }
+.group-title.muted { color: var(--ink-soft); }
+.struct-table input.group-name {
+  flex: 1 1 180px; min-width: 120px; border: 1.5px solid transparent; border-radius: 6px;
+  background: transparent; font-size: 14px; font-weight: 700; color: var(--col-collect-strong); padding: 4px 6px;
+}
+.struct-table input.group-name:hover { border-color: var(--border); background: #fff; }
+.struct-table input.group-name:focus { outline: none; border-color: var(--primary); background: #fff; }
+.group-stat { font-size: 12px; color: var(--ink-soft); }
+.group-actions { margin-left: auto; display: flex; gap: 6px; }
+.struct-table td.group-col { width: 170px; }
+.struct-table select.row-group {
+  width: 100%; border: 1.5px solid var(--border); border-radius: 6px;
+  padding: 6px 6px; font-size: 12.5px; background: #fff; color: var(--ink);
+}
+.struct-table tr[data-type="item"] td.handle-col:active { cursor: grabbing; }
+.struct-table.has-groups tr[data-type="item"] td:first-child { border-left: 3px solid var(--col-collect-strong); }
+
+@media (max-width: 720px) {
+  .group-creator-label span { display: block; margin: 2px 0 0; }
+  .group-actions { margin-left: 0; width: 100%; }
+}
+
+/* ---------- ตารางบันทึกคะแนน: หัวหมวดย่อย + คะแนนรวมรายหมวด ---------- */
+table.sheet th.grp-sub {
+  background: var(--col-collect); color: var(--col-collect-strong);
+  font-size: 11.5px; font-weight: 700; padding: 6px 8px; text-align: center;
+  border-left: 2px solid var(--col-collect-strong); border-right: 2px solid var(--col-collect-strong);
+}
+table.sheet th.grp-sub-total {
+  background: var(--col-collect-strong); color: #fff; opacity: .85;
+}
+table.sheet td.grp-sub-total {
+  background: var(--col-collect); color: var(--col-collect-strong);
+  font-weight: 700; font-family: var(--font-mono); text-align: center;
+  border-right: 2px solid var(--col-collect-strong);
+}
+table.sheet tbody tr:nth-child(even) td.grp-sub-total,
+table.sheet tbody tr:hover td.grp-sub-total { background: var(--col-collect); }

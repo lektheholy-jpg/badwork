@@ -10,11 +10,12 @@ async function renderScoresTab(container, course, section) {
   const courseBase = db.collection('users').doc(uid).collection('courses').doc(course.id);
   const secBase = sectionRef(uid, course.id, section.id);
 
-  const [studentsSnap, assessSnap, scoresSnap, gradingDoc] = await Promise.all([
+  const [studentsSnap, assessSnap, scoresSnap, gradingDoc, structDoc] = await Promise.all([
     secBase.collection('students').orderBy('no', 'asc').get(),
     courseBase.collection('assessments').orderBy('order', 'asc').get(),
     secBase.collection('scores').get(),
     courseBase.collection('settings').doc('grading').get(),
+    courseBase.collection('settings').doc('structure').get(),
   ]);
 
   const students = studentsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -24,7 +25,24 @@ async function renderScoresTab(container, course, section) {
   scoresSnap.docs.forEach(d => { scores[d.id] = d.data(); });
   const gradeScale = gradingDoc.exists ? gradingDoc.data().scale : DEFAULT_GRADE_SCALE;
 
-  const collectItems = assessments.filter(a => a.category === 'collect');
+  // หมวดหมู่หลักของคะแนนเก็บ (ตั้งไว้ที่หน้าโครงสร้างคะแนน) — ใช้จัดกลุ่มคอลัมน์ให้ดูคะแนนง่ายขึ้น
+  const groups = structDoc.exists ? (structDoc.data().groups || []) : [];
+  const groupIndex = (gid) => groups.findIndex(g => g.id === gid); // -1 = ยังไม่จัดหมวด
+  const collectItems = assessments.filter(a => a.category === 'collect')
+    .map((a, i) => ({ a, i }))
+    .sort((x, y) => (groupIndex(x.a.groupId) - groupIndex(y.a.groupId)) || (x.i - y.i))
+    .map(x => x.a);
+  const hasGroups = groups.length > 0 && collectItems.length > 0;
+  const collectRuns = [];
+  if (hasGroups) {
+    const loose = collectItems.filter(a => groupIndex(a.groupId) < 0);
+    if (loose.length) collectRuns.push({ gid: '', name: 'ยังไม่จัดหมวด', items: loose });
+    groups.forEach(g => {
+      const items = collectItems.filter(a => a.groupId === g.id);
+      if (items.length) collectRuns.push({ gid: g.id, name: g.name, items });
+    });
+  }
+  const runMax = (r) => r.items.reduce((s, a) => s + (Number(a.max) || 0), 0);
   const midItems = assessments.filter(a => a.category === 'midterm');
   const finalItems = assessments.filter(a => a.category === 'final');
   const collectMax = collectItems.reduce((s, a) => s + (Number(a.max) || 0), 0);
@@ -61,6 +79,28 @@ async function renderScoresTab(container, course, section) {
     <div class="sheet-wrap">
       <table class="sheet" id="score-sheet">
         <thead>
+          ${hasGroups ? `
+          <tr>
+            <th rowspan="3" class="sticky-col-1">เลขที่</th>
+            <th rowspan="3" class="sticky-col-2">รหัส</th>
+            <th rowspan="3" class="sticky-col-3" style="text-align:left;">นักเรียน</th>
+            <th class="grp-label grp-collect" colspan="${collectItems.length + collectRuns.length + 1}">คะแนนเก็บ</th>
+            ${midItems.length ? `<th class="grp-label grp-mid" rowspan="2" colspan="${midItems.length}">กลางภาค</th>` : ''}
+            ${finalItems.length ? `<th class="grp-label grp-final" rowspan="2" colspan="${finalItems.length}">ปลายภาค</th>` : ''}
+            <th rowspan="3" class="sticky-right-1">รวม<span class="max">/${maxTotal}</span></th>
+            <th rowspan="3" class="sticky-right-2">เกรด</th>
+          </tr>
+          <tr>
+            ${collectRuns.map(r => `<th class="grp-sub" colspan="${r.items.length + 1}">${escapeHtml(r.name)}</th>`).join('')}
+            <th rowspan="2" class="grp-collect-total">รวมเก็บ<span class="max">/${collectMax}</span></th>
+          </tr>
+          <tr>
+            ${collectRuns.map(r => r.items.map(a => `<th class="grp-collect">${escapeHtml(a.name)}<span class="max">/${a.max}</span></th>`).join('')
+              + `<th class="grp-sub-total">รวม<span class="max">/${runMax(r)}</span></th>`).join('')}
+            ${midItems.map(a => `<th class="grp-mid">${escapeHtml(a.name)}<span class="max">/${a.max}</span></th>`).join('')}
+            ${finalItems.map(a => `<th class="grp-final">${escapeHtml(a.name)}<span class="max">/${a.max}</span></th>`).join('')}
+          </tr>
+          ` : `
           <tr>
             <th rowspan="2" class="sticky-col-1">เลขที่</th>
             <th rowspan="2" class="sticky-col-2">รหัส</th>
@@ -77,9 +117,10 @@ async function renderScoresTab(container, course, section) {
             ${midItems.map(a => `<th class="grp-mid">${escapeHtml(a.name)}<span class="max">/${a.max}</span></th>`).join('')}
             ${finalItems.map(a => `<th class="grp-final">${escapeHtml(a.name)}<span class="max">/${a.max}</span></th>`).join('')}
           </tr>
+          `}
         </thead>
         <tbody id="score-tbody">
-          ${students.map(s => renderScoreRow(s, collectItems, midItems, finalItems, scores[s.id] || {}, collectMax, maxTotal, gradeScale)).join('')}
+          ${students.map(s => renderScoreRow(s, collectItems, midItems, finalItems, scores[s.id] || {}, collectMax, maxTotal, gradeScale, hasGroups ? collectRuns : null)).join('')}
         </tbody>
       </table>
     </div>
@@ -93,7 +134,7 @@ async function renderScoresTab(container, course, section) {
     });
   }, 150));
 
-  wireScoreInputs(container, course, section, students, collectItems, midItems, finalItems, scores, collectMax, maxTotal, gradeScale);
+  wireScoreInputs(container, course, section, students, collectItems, midItems, finalItems, scores, collectMax, maxTotal, gradeScale, groups);
 }
 
 function gradeBadgeClass(grade) {
@@ -104,7 +145,7 @@ function gradeBadgeClass(grade) {
   return 'badge-grade-low';
 }
 
-function renderScoreRow(student, collectItems, midItems, finalItems, studentScores, collectMax, maxTotal, gradeScale) {
+function renderScoreRow(student, collectItems, midItems, finalItems, studentScores, collectMax, maxTotal, gradeScale, collectRuns) {
   const collectSum = collectItems.reduce((s, a) => s + (Number(studentScores[a.id]) || 0), 0);
   const midSum = midItems.reduce((s, a) => s + (Number(studentScores[a.id]) || 0), 0);
   const finalSum = finalItems.reduce((s, a) => s + (Number(studentScores[a.id]) || 0), 0);
@@ -124,7 +165,10 @@ function renderScoreRow(student, collectItems, midItems, finalItems, studentScor
       <td class="name-cell no-cell sticky-col-1">${escapeHtml(student.no)}</td>
       <td class="name-cell code-cell sticky-col-2">${escapeHtml(student.code || '–')}</td>
       <td class="name-cell sticky-col-3" title="${escapeHtml(student.firstName)} ${escapeHtml(student.lastName)}">${escapeHtml(student.firstName)} ${escapeHtml(student.lastName)}</td>
-      ${collectItems.map(cellFor).join('')}
+      ${collectRuns
+        ? collectRuns.map(r => r.items.map(cellFor).join('')
+            + `<td class="total-cell grp-sub-total" data-group-sum="${r.gid}" data-student-id="${student.id}">${r.items.reduce((s, a) => s + (Number(studentScores[a.id]) || 0), 0)}</td>`).join('')
+        : collectItems.map(cellFor).join('')}
       <td class="total-cell grp-collect-total" data-collect-for="${student.id}">${collectSum}</td>
       ${midItems.map(cellFor).join('')}
       ${finalItems.map(cellFor).join('')}
@@ -134,7 +178,7 @@ function renderScoreRow(student, collectItems, midItems, finalItems, studentScor
   `;
 }
 
-function wireScoreInputs(container, course, section, students, collectItems, midItems, finalItems, scores, collectMax, maxTotal, gradeScale) {
+function wireScoreInputs(container, course, section, students, collectItems, midItems, finalItems, scores, collectMax, maxTotal, gradeScale, groups) {
   const uid = AppState.user.uid;
   const base = sectionRef(uid, course.id, section.id);
   const statusEl = document.getElementById('save-status');
@@ -195,14 +239,24 @@ function wireScoreInputs(container, course, section, students, collectItems, mid
   window.addEventListener('beforeunload', flushPendingSaves);
   AppState.flushScoreSaves = flushPendingSaves;
 
+  // รหัสรายการคะแนนเก็บ -> รหัสหมวดหมู่ ('' = ยังไม่จัดหมวด) ใช้รวมคะแนนรายหมวด
+  const groupIdSet = new Set(groups.map(g => g.id));
+  const collectGroupOf = new Map(collectItems.map(a => [a.id, groupIdSet.has(a.groupId) ? a.groupId : '']));
+
   function recalcRow(studentId) {
     const row = container.querySelector(`tr[data-student-id="${studentId}"]`);
     let collectSum = 0, total = 0;
+    const groupSums = {};
     row.querySelectorAll('.score-input').forEach(inp => {
       const val = Number(inp.value) || 0;
       total += val;
-      if (collectItems.some(a => a.id === inp.dataset.assessmentId)) collectSum += val;
+      if (collectGroupOf.has(inp.dataset.assessmentId)) {
+        collectSum += val;
+        const gid = collectGroupOf.get(inp.dataset.assessmentId);
+        groupSums[gid] = (groupSums[gid] || 0) + val;
+      }
     });
+    row.querySelectorAll('[data-group-sum]').forEach(td => { td.textContent = groupSums[td.dataset.groupSum] || 0; });
     row.querySelector(`[data-collect-for="${studentId}"]`).textContent = collectSum;
     row.querySelector(`[data-total-for="${studentId}"]`).textContent = total;
     const grade = calcGrade(total, gradeScale);
