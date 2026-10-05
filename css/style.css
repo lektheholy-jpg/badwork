@@ -2141,3 +2141,11 @@ button.brand:hover .mark { transform: rotate(-6deg) scale(1.04); }
   .more-ico { display: grid; place-items: center; flex-shrink: 0; width: 44px; height: 44px; border-radius: 15px; background: var(--w); color: var(--on-w); }
   .more-ico svg { width: 24px; height: 24px; }
 }
+
+/* v9.1 — แถบเมนูล่าง: เห็นชัดว่าอยู่หน้าไหน (ปุ่มที่เปิดอยู่เป็นสีทึบ ตัวขาว) และไม่มีกรอบดำค้างหลังแตะ */
+@media (max-width: 860px) {
+  .tab-item:focus, .tab-item:focus-visible, .more-tile:focus, .more-tile:focus-visible { outline: none; }
+  .tab-item.active { background: var(--w); color: var(--on-w); box-shadow: 0 6px 14px -6px var(--w); }
+  .tab-item.active .tab-label { font-weight: 800; }
+  .tab-item:not(.active) { background: transparent; }
+}

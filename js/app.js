@@ -8,7 +8,9 @@ function setActiveNav(routeId) {
   });
   const MORE = ['structure-page', 'archive-page', 'settings'];
   document.querySelectorAll('.tab-item').forEach(el => {
-    el.classList.toggle('active', el.dataset.route === routeId || (el.dataset.more && MORE.includes(routeId)));
+    const on = el.dataset.route === routeId || (!!el.dataset.more && MORE.includes(routeId));
+    el.classList.toggle('active', on); // ต้องส่ง boolean จริง ไม่งั้น toggle จะสลับค่าแทนการกำหนดค่า
+    if (on) el.setAttribute('aria-current', 'page'); else el.removeAttribute('aria-current');
   });
 }
 
