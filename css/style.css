@@ -2347,24 +2347,24 @@ html, body { overflow-x: clip; }
 
 /* ----- อากาศ ----- */
 .cw-row .cw-weather {
-  --sky: linear-gradient(160deg, #3F8EF5 0%, #5AA9FA 52%, #7DBEFF 100%);
+  --sky: none;
   background: linear-gradient(rgba(0, 18, 60, var(--sky-shade)), rgba(0, 18, 60, var(--sky-shade))), var(--sky);
   color: #fff; position: relative; overflow: hidden;
   display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 16px;
   transition: background .4s ease;
 }
-.cw-weather[data-sky="clear-day"]  { --sky: linear-gradient(160deg, #3F8EF5 0%, #5AA9FA 52%, #7DBEFF 100%); }
-.cw-weather[data-sky="part-day"]   { --sky: linear-gradient(160deg, #4B88DC 0%, #6C9FDB 55%, #8DB4DC 100%); }
-.cw-weather[data-sky="cloud-day"]  { --sky: linear-gradient(160deg, #5F7794 0%, #7E92AB 55%, #9AAABD 100%); }
-.cw-weather[data-sky="rain-day"]   { --sky: linear-gradient(160deg, #3F5F86 0%, #58779B 55%, #7490AE 100%); }
-.cw-weather[data-sky="fog-day"]    { --sky: linear-gradient(160deg, #70859A 0%, #8A9CAD 55%, #A2B0BE 100%); }
-.cw-weather[data-sky="snow"]       { --sky: linear-gradient(160deg, #6A93C0 0%, #86AAD0 55%, #A3C0DB 100%); }
-.cw-weather[data-sky="storm"]      { --sky: linear-gradient(160deg, #2F3459 0%, #464C78 55%, #646A94 100%); }
-.cw-weather[data-sky="clear-night"]{ --sky: linear-gradient(160deg, #0B1636 0%, #172A5E 55%, #2A4088 100%); }
-.cw-weather[data-sky="part-night"] { --sky: linear-gradient(160deg, #15213F 0%, #27385F 55%, #41547F 100%); }
-.cw-weather[data-sky="cloud-night"]{ --sky: linear-gradient(160deg, #232B3D 0%, #384359 55%, #4F5B73 100%); }
-.cw-weather[data-sky="rain-night"] { --sky: linear-gradient(160deg, #18233A 0%, #2A3B57 55%, #3F5373 100%); }
-.cw-weather[data-sky="fog-night"]  { --sky: linear-gradient(160deg, #2F3946 0%, #465160 55%, #5C6776 100%); }
+.cw-weather[data-sky="clear-day"]  { --sky: none; }
+.cw-weather[data-sky="part-day"]   { --sky: none; }
+.cw-weather[data-sky="cloud-day"]  { --sky: none; }
+.cw-weather[data-sky="rain-day"]   { --sky: none; }
+.cw-weather[data-sky="fog-day"]    { --sky: none; }
+.cw-weather[data-sky="snow"]       { --sky: none; }
+.cw-weather[data-sky="storm"]      { --sky: none; }
+.cw-weather[data-sky="clear-night"]{ --sky: none; }
+.cw-weather[data-sky="part-night"] { --sky: none; }
+.cw-weather[data-sky="cloud-night"]{ --sky: none; }
+.cw-weather[data-sky="rain-night"] { --sky: none; }
+.cw-weather[data-sky="fog-night"]  { --sky: none; }
 
 .cw-row .cw-wx-main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: .12em; text-shadow: 0 1px 8px rgba(0, 20, 60, .22); }
 .cw-row .cw-temp { font-size: clamp(40px, 15cqi, 112px); line-height: 1.05; font-weight: 700; color: #fff; letter-spacing: -.02em; }
@@ -2479,81 +2479,109 @@ html, body { overflow-x: clip; }
 .cw-row .cw-time { white-space: nowrap; }
 
 /* ==========================================================================
-   One UI 9 — ธีมตาราง + กราฟ (ม่วง · ฟ้า · เขียว · ขาว) ชุดเดียวกันทุกหน้า
-   ตัวแปร --viz-* คือชุดสีกลาง: ฟ้า = คะแนนเก็บ/ค่าเฉลี่ย, เขียว = กลางภาค/ค่าสูงสุด,
-   ม่วง = ปลายภาค/ค่าต่ำสุด · หัวตารางทุกแบบใช้ไล่สีม่วง→ฟ้าเหมือนกัน
-   ลบบล็อกนี้ทิ้งเพื่อกลับไปสีเดิม
+   v11 — ตาราง + กราฟ แบบเรียบ อ่านง่าย: สีทึบล้วน ไม่ใช้ gradient ทุกหน้า
+   หัวตาราง = เทาอ่อน + ตัวหนังสือเข้ม · กลุ่มคะแนน เก็บ=ฟ้า / กลางภาค=เขียว / ปลายภาค=ม่วง (สีพาสเทลทึบ)
    ========================================================================== */
 :root {
   --viz-blue: #2D80F2;  --viz-green: #12A87A;  --viz-purple: #7B52E6;
   --viz-sky: #1A9FD0;   --viz-mint: #3FB86B;   --viz-orchid: #A25BE0;
-  --head-grad: linear-gradient(135deg, #7B52E6 0%, #4F6BEA 55%, #2D80F2 100%);
-  --head-solid: #5560E8;
-  --sheet-head: #5560E8;
-  --col-collect-strong: var(--viz-blue);   --col-collect: #E3EFFF;
-  --col-mid-strong: var(--viz-green);      --col-mid: #DDF6EC;
-  --col-final-strong: var(--viz-purple);   --col-final: #EDE6FF;
-  --zebra: #F7F6FE;  --row-on: #E8EEFF;
-  --viz-track: #E7E5F6;
-  --viz-bar: linear-gradient(90deg, #7B52E6, #2D80F2 55%, #12A87A);
+  --th-bg: #EBEEF3;  --th-ink: #1B2130;  --th-line: #C9D0DB;
+  --head-grad: var(--th-bg);  --head-solid: #2B3345;  --sheet-head: var(--th-bg);
+  --col-collect-strong: #1F66D6;  --col-collect: #E6F0FF;
+  --col-mid-strong: #0E8A63;      --col-mid: #E1F5EC;
+  --col-final-strong: #6740CC;    --col-final: #EEE8FD;
+  --grp-collect-h: #CFE2FF;  --grp-mid-h: #C8EBDB;  --grp-final-h: #DDD2FA;
+  --zebra: #F7F8FA;  --row-on: #E8F0FE;
+  --viz-track: #E3E6EC;
+  --viz-bar: var(--viz-blue);
 }
 :root[data-theme="dark"] {
   --viz-blue: #5AA2FF;  --viz-green: #2FD1A0;  --viz-purple: #B79BFF;
   --viz-sky: #4CC3F0;   --viz-mint: #6FD98C;   --viz-orchid: #CF9BFF;
-  --head-grad: linear-gradient(135deg, #4B37A8 0%, #3A4FB8 55%, #1F5FC4 100%);
-  --head-solid: #3A4FB8;
-  --sheet-head: #3A4FB8;
-  --col-collect: #14253D;  --col-mid: #0F2E26;  --col-final: #2A1F4D;
-  --zebra: #1F1F2A;  --row-on: #262C48;
-  --viz-track: #2C2C3E;
-  --viz-bar: linear-gradient(90deg, #B79BFF, #5AA2FF 55%, #2FD1A0);
+  --th-bg: #2A2D38;  --th-ink: #F1F3F8;  --th-line: #444A5A;
+  --head-grad: var(--th-bg);  --head-solid: #3A4156;  --sheet-head: var(--th-bg);
+  --col-collect-strong: #7DB4FF;  --col-collect: #162A44;
+  --col-mid-strong: #4FDDB0;      --col-mid: #102E26;
+  --col-final-strong: #C5ADFF;    --col-final: #2A2050;
+  --grp-collect-h: #1F3B63;  --grp-mid-h: #164336;  --grp-final-h: #3A2E6E;
+  --zebra: #1D1F28;  --row-on: #28324A;
+  --viz-track: #343848;
+  --viz-bar: var(--viz-blue);
 }
 
-/* ----- หัวตารางทุกแบบ: ไล่สีม่วง → ฟ้า ตัวหนังสือขาว ----- */
-table.sheet th, .gs-table thead th, .ns-table th, .struct-panel-header {
-  background: var(--head-grad); color: #fff;
+/* ----- หัวตารางทุกแบบ (ทุกหน้า): พื้นเทาทึบ ตัวหนังสือเข้ม เส้นใต้ชัด ----- */
+table.sheet th, .gs-table thead th, .ns-table th, .struct-table th, .rc-table th {
+  background: var(--th-bg); color: var(--th-ink); font-weight: 700;
+  border-bottom: 2px solid var(--th-line); text-shadow: none;
+}
+.gs-table thead th { border-right: 1px solid var(--th-line); }
+.struct-panel-header { background: var(--th-bg); color: var(--th-ink); border-bottom: 2px solid var(--th-line); }
+table.sheet th span.max, .ns-table th span { opacity: .8; }
+
+/* ----- กลุ่มคะแนนในตารางบันทึกคะแนน: หัวพาสเทลทึบ + พื้นเซลล์อ่อนมาก ----- */
+table.sheet th.grp-label.grp-collect, table.sheet th.grp-collect { background: var(--grp-collect-h); color: var(--th-ink); }
+table.sheet th.grp-label.grp-mid,     table.sheet th.grp-mid     { background: var(--grp-mid-h);     color: var(--th-ink); }
+table.sheet th.grp-label.grp-final,   table.sheet th.grp-final   { background: var(--grp-final-h);   color: var(--th-ink); }
+table.sheet th.grp-sub, table.sheet th.grp-sub-total { background: var(--grp-collect-h); color: var(--th-ink); }
+table.sheet th.grp-collect-total { background: var(--grp-collect-h); color: var(--th-ink); box-shadow: inset 0 -3px 0 var(--col-collect-strong); }
+table.sheet td.grp-collect, table.sheet tbody tr:nth-child(even) td.grp-collect { background: var(--col-collect); }
+table.sheet td.grp-mid,     table.sheet tbody tr:nth-child(even) td.grp-mid     { background: var(--col-mid); }
+table.sheet td.grp-final,   table.sheet tbody tr:nth-child(even) td.grp-final   { background: var(--col-final); }
+table.sheet td.grp-collect-total, table.sheet tbody tr:nth-child(even) td.grp-collect-total,
+table.sheet td.grp-sub-total, table.sheet tbody tr:hover td.grp-collect-total, table.sheet tbody tr:hover td.grp-sub-total {
+  background: var(--grp-collect-h); color: var(--th-ink); font-weight: 700;
 }
 table.sheet td.total-cell.sticky-right-1, table.sheet tbody tr:hover td.total-cell.sticky-right-1 {
   background: var(--head-solid); color: #fff;
 }
-.struct-table th { background: color-mix(in oklab, var(--viz-purple) 12%, var(--card)); color: var(--ink); }
+table.sheet td { border-bottom: 1px solid var(--border); }
+table.sheet td.over-max { background: var(--danger-tint) !important; }
 
-/* ----- หัวกลุ่มคะแนน: ฟ้า / เขียว / ม่วง ----- */
-table.sheet th.grp-collect { background: color-mix(in oklab, var(--viz-blue) 30%, var(--card)); color: var(--ink); }
-table.sheet th.grp-mid     { background: color-mix(in oklab, var(--viz-green) 30%, var(--card)); color: var(--ink); }
-table.sheet th.grp-final   { background: color-mix(in oklab, var(--viz-purple) 30%, var(--card)); color: var(--ink); }
-table.sheet td.grp-collect, table.sheet tbody tr:nth-child(even) td.grp-collect { background: color-mix(in oklab, var(--viz-blue) 14%, var(--card)); }
-table.sheet td.grp-mid,     table.sheet tbody tr:nth-child(even) td.grp-mid     { background: color-mix(in oklab, var(--viz-green) 14%, var(--card)); }
-table.sheet td.grp-final,   table.sheet tbody tr:nth-child(even) td.grp-final   { background: color-mix(in oklab, var(--viz-purple) 14%, var(--card)); }
-
-/* ----- แถวสลับสี / แถวที่ชี้ / แถวสรุป: โทนม่วง-ฟ้าอ่อนบนพื้นขาว ----- */
+/* ----- แถวสลับสี / แถวที่ชี้ / แถวสรุป ----- */
 .ns-table tbody tr:nth-child(even) td, .report-room-row:nth-child(even) { background: var(--zebra); }
 .ns-table tbody tr:hover td, .struct-table tbody tr:hover td, .gs-table tr.gs-row:hover td,
 .report-room-row:hover, .report-room-row:nth-child(even):hover { background: var(--row-on); }
-.gs-table tr.gs-total td { background: color-mix(in oklab, var(--cc, var(--viz-purple)) 12%, var(--card)); border-top-color: color-mix(in oklab, var(--cc, var(--viz-purple)) 55%, transparent); }
-.gs-table tr.gs-course td { background: color-mix(in oklab, var(--cc, var(--viz-blue)) 22%, var(--card)); }
+.gs-table tr.gs-total td { background: var(--th-bg); border-top: 2px solid var(--th-line); color: var(--th-ink); }
+.gs-table tr.gs-course td { background: color-mix(in oklab, var(--cc, var(--viz-blue)) 16%, var(--card)); color: var(--ink); }
 .ns-table-wrap, .gs-wrap, .report-room-list { background: var(--card); }
+.ns-table tr.ns-bad td { background: var(--danger-tint); color: var(--danger); }
 
-/* ----- กราฟแท่ง: รางม่วงอ่อน แท่งไล่ม่วง → ฟ้า → เขียว ----- */
+/* ----- กราฟแท่ง/ความคืบหน้า: รางเทา แท่งสีเดียวทึบ ----- */
 .dist-row .g-bar-track, .progress-chart-row .progress-bar, .prog-list .prog-row .progress-bar, .section-card .progress-bar { background: var(--viz-track); }
 .dist-row .g-bar-fill { background: var(--viz-bar); filter: none; }
 .progress-chart-row .progress-bar .fill, .prog-list .prog-row .progress-bar .fill { filter: none; box-shadow: none; }
-.grade-stat-card { background: color-mix(in oklab, var(--viz-purple) 10%, var(--card)); }
+.grade-stat-card { background: var(--card); }
 .chart-row .chart-card:nth-child(1) { --w: var(--viz-blue); }
 .chart-row .chart-card:nth-child(2) { --w: var(--viz-purple); }
-
-/* ----- โดนัท: ขอบขาวคั่นชิ้น ----- */
 .donut-wrap svg circle { filter: none; stroke-linecap: butt; }
 
-/* ----- กราฟเส้นรายห้อง: สูงสุด = เขียว · เฉลี่ย = ฟ้า · ต่ำสุด = ม่วง ----- */
-.main .rc-card { --rc-max: var(--viz-green); --rc-avg: var(--viz-blue); --rc-min: var(--viz-purple); }
-:root[data-theme="dark"] .main .rc-card { --rc-max: var(--viz-green); --rc-avg: var(--viz-blue); --rc-min: var(--viz-purple); }
-.main .rc-card { background: color-mix(in oklab, var(--viz-purple) 6%, rgba(255, 255, 255, .72)); }
-:root[data-theme="dark"] .main .rc-card { background: color-mix(in oklab, var(--viz-purple) 10%, rgba(0, 0, 0, .42)); }
-.rc-tab.is-on { box-shadow: 0 6px 14px -8px var(--tc); }
-.rc-table th { color: var(--ink); }
-.rc-table th, .rc-table td { border-bottom-color: color-mix(in srgb, var(--viz-purple) 16%, transparent); }
-.rc-table tbody tr:nth-child(even) td { background: color-mix(in srgb, var(--viz-purple) 6%, transparent); }
+/* ----- กราฟเส้นรายห้อง ----- */
+.main .rc-card { --rc-max: var(--viz-green); --rc-avg: var(--viz-blue); --rc-min: var(--viz-purple); background: var(--card); }
+:root[data-theme="dark"] .main .rc-card { background: var(--card); }
+.rc-tab.is-on { box-shadow: none; }
+.rc-table th, .rc-table td { border-bottom: 1px solid var(--border); }
+.rc-table tbody tr:nth-child(even) td { background: var(--zebra); }
+
+/* ==========================================================================
+   ไม่ใช้ gradient ทุกหน้า: หน้าเข้าสู่ระบบ, หัวหน้าแรก, วิดเจ็ตนาฬิกา/อากาศ → สีทึบ
+   (วงแหวนความคืบหน้าแบบ conic ยังอยู่ เพราะเป็นเส้นสีทึบไม่ใช่การไล่สี)
+   ========================================================================== */
+.login-screen { background: var(--login-b); }
+.oneui-hero { background: var(--hero-a); }
+.cw-row .cw-clock, :root[data-theme="dark"] .cw-row .cw-clock { background: color-mix(in oklab, var(--hue-blue) 14%, var(--card)); }
+.cw-row .cw-weather { background: color-mix(in srgb, rgb(0 18 60) calc(var(--sky-shade, 0) * 100%), var(--sky-solid, #5AA9FA)); }
+.cw-weather[data-sky="clear-day"]   { --sky-solid: #4A9AF7; }
+.cw-weather[data-sky="part-day"]    { --sky-solid: #6C9FDB; }
+.cw-weather[data-sky="cloud-day"]   { --sky-solid: #7E92AB; }
+.cw-weather[data-sky="rain-day"]    { --sky-solid: #58779B; }
+.cw-weather[data-sky="fog-day"]     { --sky-solid: #8A9CAD; }
+.cw-weather[data-sky="snow"]        { --sky-solid: #86AAD0; }
+.cw-weather[data-sky="storm"]       { --sky-solid: #464C78; }
+.cw-weather[data-sky="clear-night"] { --sky-solid: #172A5E; }
+.cw-weather[data-sky="part-night"]  { --sky-solid: #27385F; }
+.cw-weather[data-sky="cloud-night"] { --sky-solid: #384359; }
+.cw-weather[data-sky="rain-night"]  { --sky-solid: #2A3B57; }
+.cw-weather[data-sky="fog-night"]   { --sky-solid: #465160; }
 
 @media print {
   table.sheet th, .gs-table thead th, .ns-table th { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
