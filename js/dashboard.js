@@ -136,13 +136,6 @@ async function renderDashboard() {
         </div>
       </div>
     </div>
-    <div class="oneui-shortcuts">
-      <button class="oneui-tile" data-go="scores-page" aria-label="บันทึกคะแนน" title="บันทึกคะแนน"><span class="tile-ico">${icon('edit')}</span></button>
-      <button class="oneui-tile" data-go="courses" aria-label="รายวิชาของฉัน" title="รายวิชาของฉัน"><span class="tile-ico">${icon('book')}</span></button>
-      <button class="oneui-tile" data-go="report-page" aria-label="รายงาน" title="รายงาน"><span class="tile-ico">${icon('report')}</span></button>
-      <button class="oneui-tile" data-go="structure-page" aria-label="โครงสร้างวิชา" title="โครงสร้างวิชา"><span class="tile-ico">${icon('sliders')}</span></button>
-    </div>
-
     ${renderLatestProgress(courses, sectionCards)}
 
     <!-- หน้าในเล่ม -->
