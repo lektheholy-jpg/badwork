@@ -173,8 +173,8 @@ function courseListGroupsHtml(courses) {
 function courseRowHtml(c) {
   const col = getLevelColor(c.level);
   return `
-    <div class="course-row" data-course-id="${c.id}" style="border-left:4px solid ${c.color || col.strong};">
-      <div class="course-dot" style="background:${c.color || col.strong}"></div>
+    <div class="course-row" data-course-id="${c.id}" style="--w:${c.color || col.strong};">
+      <div class="course-chip">${icon('book')}</div>
       <div class="info">
         <div class="name">${escapeHtml(c.code ? c.code + ' - ' : '')}${escapeHtml(c.name)}</div>
         <div class="meta">${c.roomCount || 0} ห้อง • ภาคเรียน ${escapeHtml(c.semester || '-')}/${escapeHtml(c.year || '-')}</div>

@@ -1705,3 +1705,139 @@ table.sheet td input.score-input:focus { box-shadow: 0 0 0 3px var(--primary-tin
 .tab.active { background: var(--card); color: var(--primary-dark); }
 .oneui-logo { filter: contrast(1.3); }
 :root[data-theme="dark"] .oneui-logo { filter: contrast(1.3) invert(1) hue-rotate(180deg); }
+
+/* ==========================================================================
+   วิดเจ็ตแบบ One UI — การ์ดสีพาสเทลต่อหมวด ไอคอนทรงสควิร์เคิลสีสด ตัวเลขใหญ่
+   ตัวแปร --w = สีประจำการ์ด (ผสมกับสีพื้นอัตโนมัติ ทั้งโหมดสว่าง/มืด)
+   ========================================================================== */
+:root {
+  --wmix: 17%;
+  --on-w: #FFFFFF;
+  --hue-blue: #2D80F2;  --hue-violet: #7B52E6;  --hue-teal: #0F9F88;  --hue-orange: #F0731F;
+  --hue-pink: #E83E7A;  --hue-amber: #D98E00;   --hue-gray: #6B6E76;  --hue-red: #E5484D;
+  --hero-c: #FFD9E8;
+}
+:root[data-theme="dark"] {
+  --wmix: 26%;
+  --on-w: #0B0B0D;
+  --hue-blue: #5AA2FF;  --hue-violet: #B79BFF;  --hue-teal: #2FC9AE;  --hue-orange: #FF9A5C;
+  --hue-pink: #FF7BA5;  --hue-amber: #FFC247;   --hue-gray: #A0A3AB;  --hue-red: #FF6B70;
+  --hero-c: #4A1F44;
+}
+.oneui-hero { background: linear-gradient(135deg, var(--hero-a) 0%, var(--hero-b) 58%, var(--hero-c) 100%); }
+:root { --hero-a: #CFE3FF; --hero-b: #DCD2FF; }
+:root[data-theme="dark"] { --hero-a: #17325C; --hero-b: #2B2160; }
+
+/* ----- พื้นการ์ดวิดเจ็ต: สี --w ผสมเข้าพื้นการ์ด ----- */
+.oneui-stats .oneui-stat, .oneui-shortcuts .oneui-tile, .main .course-row, .main .section-card,
+.prog-list .prog-row, .chart-row .chart-card {
+  background: var(--primary-tint);
+  background: color-mix(in srgb, var(--w, var(--primary)) var(--wmix), var(--card));
+  border: none; box-shadow: none;
+  transition: transform .12s ease, filter .15s ease;
+}
+.oneui-shortcuts .oneui-tile:hover, .main .course-row:hover, .main .section-card:hover, .prog-list .prog-row:hover {
+  border: none; filter: brightness(.97);
+}
+:root[data-theme="dark"] .oneui-shortcuts .oneui-tile:hover, :root[data-theme="dark"] .main .course-row:hover,
+:root[data-theme="dark"] .main .section-card:hover, :root[data-theme="dark"] .prog-list .prog-row:hover { filter: brightness(1.15); }
+.oneui-tile:active, .section-card:active, .prog-row:active, .course-row:active { transform: scale(.98); }
+
+/* ----- ไอคอนทรงสควิร์เคิล สีสด ไอคอนสีตัดกัน ----- */
+.oneui-stats .oneui-stat .stat-ico, .oneui-shortcuts .oneui-tile .tile-ico, .course-chip {
+  display: grid; place-items: center; flex-shrink: 0;
+  background: var(--w, var(--primary)); color: var(--on-w);
+}
+.oneui-stats .oneui-stat .stat-ico { width: 46px; height: 46px; border-radius: 16px; margin-bottom: 14px; }
+.oneui-stats .oneui-stat .stat-ico .ico { width: 24px; height: 24px; }
+.oneui-shortcuts .oneui-tile .tile-ico { width: 52px; height: 52px; border-radius: 18px; }
+.oneui-shortcuts .oneui-tile:hover .tile-ico { background: var(--w, var(--primary)); }
+.course-chip { width: 46px; height: 46px; border-radius: 16px; }
+.course-chip .ico { width: 24px; height: 24px; }
+
+/* ----- วิดเจ็ตตัวเลขหน้าแรก: ไอคอนบน ตัวเลขใหญ่ล่าง ----- */
+.oneui-stats .oneui-stat { position: relative; min-height: 156px; padding: 20px 22px; border-radius: 30px; }
+.oneui-stats .oneui-stat:nth-child(1) { --w: var(--hue-teal); }
+.oneui-stats .oneui-stat:nth-child(2) { --w: var(--hue-blue); }
+.oneui-stats .oneui-stat:nth-child(3) { --w: var(--hue-orange); }
+.oneui-stat .value { margin-top: auto; font-size: 40px; font-weight: 700; line-height: 1.2; color: var(--ink); }
+.oneui-stat .label { font-size: 14px; font-weight: 600; color: var(--ink-soft); }
+.oneui-stat.stat-ring::after {
+  content: ''; position: absolute; top: 20px; right: 20px; width: 52px; height: 52px; border-radius: 50%;
+  background: conic-gradient(var(--w) calc(var(--p, 0) * 1%), color-mix(in srgb, var(--w) 28%, transparent) 0);
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 8px), #000 calc(100% - 7px));
+          mask: radial-gradient(farthest-side, transparent calc(100% - 8px), #000 calc(100% - 7px));
+}
+
+/* ----- ทางลัดเป็นวิดเจ็ตสี่เหลี่ยมโค้ง ไอคอนซ้ายบน ชื่อซ้ายล่าง ----- */
+.oneui-shortcuts .oneui-tile { align-items: flex-start; justify-content: space-between; gap: 18px; min-height: 124px; padding: 18px 18px 16px; border-radius: 28px; text-align: left; font-size: 15px; font-weight: 700; }
+.oneui-shortcuts .oneui-tile:nth-child(1) { --w: var(--hue-orange); }
+.oneui-shortcuts .oneui-tile:nth-child(2) { --w: var(--hue-teal); }
+.oneui-shortcuts .oneui-tile:nth-child(3) { --w: var(--hue-pink); }
+.oneui-shortcuts .oneui-tile:nth-child(4) { --w: var(--hue-violet); }
+
+/* ----- ความคืบหน้าล่าสุด: แถวละวิดเจ็ต ไม่รวมกล่องเดียว ----- */
+.prog-list { background: transparent; border-radius: 0; overflow: visible; display: grid; gap: 10px; }
+.prog-list .prog-row { border-radius: 24px; padding: 16px 22px; }
+.prog-list .prog-row .progress-bar { background: color-mix(in srgb, var(--w, var(--primary)) 24%, transparent); }
+.prog-list .prog-row:hover { background: color-mix(in srgb, var(--w, var(--primary)) var(--wmix), var(--card)); }
+
+/* ----- รายวิชา / ห้องเรียน ----- */
+.main .course-row { padding: 16px 20px; gap: 16px; border-radius: 28px; }
+.main .course-row .name { font-size: 16px; }
+.main .course-row .meta { font-size: 13.5px; }
+.course-row .btn-ghost { background: var(--card); color: var(--ink); }
+.main .section-card { padding: 18px 20px; border-radius: 28px; }
+.section-card .section-card-room { background: var(--card); color: var(--ink); }
+.section-card .progress-bar { background: color-mix(in srgb, var(--w, var(--primary)) 26%, transparent); }
+.section-card-name { font-size: 16px; }
+.section-card-pct { color: var(--ink); }
+.section-card .course-dot { width: 14px; height: 14px; }
+
+/* ----- กราฟหน้าแรก: การ์ดฟ้า/ม่วง ----- */
+.chart-row .chart-card { border-radius: 30px; }
+.chart-row .chart-card:nth-child(1) { --w: var(--hue-blue); --wmix: 11%; }
+.chart-row .chart-card:nth-child(2) { --w: var(--hue-violet); --wmix: 11%; }
+:root[data-theme="dark"] .chart-row .chart-card { --wmix: 16%; }
+.stat-card { border-radius: 26px; background: color-mix(in srgb, var(--hue-blue) var(--wmix), var(--card)); }
+.stat-card:nth-child(2) { background: color-mix(in srgb, var(--hue-teal) var(--wmix), var(--card)); }
+.stat-card:nth-child(3) { background: color-mix(in srgb, var(--hue-orange) var(--wmix), var(--card)); }
+.stat-card:nth-child(4) { background: color-mix(in srgb, var(--hue-violet) var(--wmix), var(--card)); }
+.empty-state .icon { border-radius: 24px; background: var(--hue-blue); color: var(--on-w); }
+
+/* ----- ไอคอนเมนูข้าง: สควิร์เคิลสีประจำหมวด ----- */
+.nav-item { --w: var(--hue-blue); gap: 14px; }
+.nav-item[data-route="dashboard"] { --w: var(--hue-blue); }
+.nav-item[data-route="structure-page"] { --w: var(--hue-violet); }
+.nav-item[data-route="courses"] { --w: var(--hue-teal); }
+.nav-item[data-route="scores-page"] { --w: var(--hue-orange); }
+.nav-item[data-route="report-page"] { --w: var(--hue-pink); }
+.nav-item[data-route="archive-page"] { --w: var(--hue-amber); }
+.nav-item[data-route="settings"] { --w: var(--hue-gray); }
+#logout-btn { --w: var(--hue-red); }
+.nav-item .nav-icon, .nav-item .nav-icon svg { width: auto; height: auto; }
+.nav-item .nav-icon { width: 38px; height: 38px; border-radius: 13px; color: var(--w); background: color-mix(in srgb, var(--w) 17%, transparent); transition: background .15s ease, color .15s ease; }
+.nav-item .nav-icon svg { width: 22px; height: 22px; }
+.nav-item { padding: 5px 10px; min-height: 52px; }
+.nav-item.active, #app.sidebar-collapsed .nav-item.active { background: color-mix(in srgb, var(--w) 14%, var(--sidebar-bg)); padding-left: 10px; }
+.nav-item.active .nav-icon { background: var(--w); color: var(--on-w); }
+.nav-item.active::after { display: none; }
+@media (min-width: 861px) {
+  #app.sidebar-collapsed .nav-item { padding: 5px; justify-content: center; gap: 0; }
+  #app.sidebar-collapsed .nav-item.active { padding-left: 5px; }
+}
+@media (max-width: 860px) { #app.sidebar-collapsed .nav-item { padding: 5px 10px; gap: 14px; } }
+
+/* ----- มือถือ ----- */
+@media (max-width: 720px) {
+  .oneui-stats .oneui-stat { min-height: 128px; padding: 14px 14px 14px; border-radius: 24px; }
+  .oneui-stats .oneui-stat .stat-ico { width: 38px; height: 38px; border-radius: 13px; margin-bottom: 8px; }
+  .oneui-stats .oneui-stat .stat-ico .ico { width: 20px; height: 20px; }
+  .oneui-stat .value { font-size: 28px; }
+  .oneui-stat .label { font-size: 12.5px; }
+  .oneui-stat.stat-ring::after { width: 34px; height: 34px; top: 14px; right: 14px; -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 6px), #000 calc(100% - 5px)); mask: radial-gradient(farthest-side, transparent calc(100% - 6px), #000 calc(100% - 5px)); }
+  .oneui-shortcuts .oneui-tile { min-height: 108px; padding: 14px; border-radius: 24px; font-size: 14px; }
+  .oneui-shortcuts .oneui-tile .tile-ico { width: 44px; height: 44px; border-radius: 15px; }
+  .prog-list .prog-row { border-radius: 20px; padding: 12px 16px; }
+  .main .course-row, .main .section-card { border-radius: 24px; }
+}

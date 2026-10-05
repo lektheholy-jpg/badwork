@@ -304,7 +304,7 @@ function scoresSubjectBlockHtml({ course, sections }) {
       ` : `
         <div class="section-card-grid">
           ${sections.map(({ section, studentCount, progress }) => `
-            <div class="section-card" data-course-id="${course.id}" data-section-id="${section.id}">
+            <div class="section-card" style="--w:${course.color || col.strong}" data-course-id="${course.id}" data-section-id="${section.id}">
               <div class="section-card-top">
                 <span class="course-dot" style="background:${course.color || col.strong}"></span>
                 <span class="section-card-room">ห้อง ${escapeHtml(section.room)}</span>

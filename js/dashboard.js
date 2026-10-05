@@ -124,7 +124,7 @@ async function renderDashboard() {
     <div class="oneui-stats">
       <div class="oneui-stat"><span class="stat-ico">${icon('book')}</span><div class="value">${courses.length}</div><div class="label">รายวิชา</div></div>
       <div class="oneui-stat"><span class="stat-ico">${icon('user')}</span><div class="value">${totalStudents}</div><div class="label">นักเรียนทั้งหมด</div></div>
-      <div class="oneui-stat"><span class="stat-ico">${icon('report')}</span><div class="value">${avgProgress}%</div><div class="label">ความคืบหน้าเฉลี่ย</div></div>
+      <div class="oneui-stat stat-ring" style="--p:${avgProgress}"><span class="stat-ico">${icon('report')}</span><div class="value">${avgProgress}%</div><div class="label">ความคืบหน้าเฉลี่ย</div></div>
     </div>
 
     <div class="oneui-shortcuts">
@@ -354,7 +354,7 @@ function renderLatestProgress(courses, sectionCards) {
       <h2 class="prog-h2">ความคืบหน้าล่าสุด</h2>
       <div class="prog-list">
         ${rows.map(({ c, r }) => `
-          <button class="prog-row" data-course-id="${r.courseId}" data-section-id="${r.sectionId}">
+          <button class="prog-row" style="--w:${c.color || 'var(--primary)'}" data-course-id="${r.courseId}" data-section-id="${r.sectionId}">
             <span class="prog-dot" style="background:${c.color || 'var(--primary)'}"></span>
             <span class="prog-title">${escapeHtml(c.name)} · ห้อง ${escapeHtml(r.room)}</span>
             <span class="prog-item">${escapeHtml(item(r))}</span>
