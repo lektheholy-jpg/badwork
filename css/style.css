@@ -2160,3 +2160,30 @@ button.brand:hover .mark { transform: rotate(-6deg) scale(1.04); }
   .oneui-shortcuts .oneui-tile .tile-ico { width: 54px; height: 54px; border-radius: 19px; }
   .oneui-shortcuts .oneui-tile .tile-ico .ico { width: 28px; height: 28px; }
 }
+
+/* ===== ทางลัดขนาดเล็ก กึ่งกลาง + ช่องไฟหน้าแรกกระชับขึ้น ===== */
+.oneui-shortcuts { display: flex; justify-content: center; flex-wrap: wrap; gap: 10px; margin: 10px 0 16px; }
+.oneui-shortcuts .oneui-tile { flex: 0 0 auto; width: 84px; height: 84px; min-height: 0; padding: 0; border-radius: 26px; }
+.oneui-shortcuts .oneui-tile .tile-ico { width: 54px; height: 54px; border-radius: 19px; box-shadow: 0 6px 14px -7px var(--w); }
+.oneui-shortcuts .oneui-tile .tile-ico .ico { width: 28px; height: 28px; }
+
+.oneui-hero { margin: 4px 0 10px; min-height: 190px; }
+.cw-row { gap: 10px; margin-bottom: 10px; }
+.cw-card { min-height: 136px; padding: 18px 26px; }
+.book-inside, .book-inside:has(*) { padding-top: 10px; }
+.chart-row { gap: 12px; margin: 10px 0 18px; }
+.prog-list { gap: 8px; }
+.prog-list .prog-row { padding: 13px 20px; }
+
+@media (max-width: 640px) {
+  .oneui-shortcuts { gap: 8px; margin: 8px 0 12px; }
+  .oneui-shortcuts .oneui-tile { width: 72px; height: 72px; border-radius: 22px; }
+  .oneui-shortcuts .oneui-tile .tile-ico { width: 46px; height: 46px; border-radius: 16px; }
+  .oneui-shortcuts .oneui-tile .tile-ico .ico { width: 24px; height: 24px; }
+  .oneui-hero { min-height: 130px; margin-bottom: 8px; }
+  .cw-row { gap: 8px; margin-bottom: 8px; }
+  .cw-card { min-height: 104px; padding: 14px 18px; }
+  .chart-row { gap: 10px; margin: 8px 0 14px; }
+  .prog-list { gap: 6px; }
+  .prog-list .prog-row { padding: 12px 16px; }
+}
