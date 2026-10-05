@@ -2187,3 +2187,19 @@ button.brand:hover .mark { transform: rotate(-6deg) scale(1.04); }
   .prog-list { gap: 6px; }
   .prog-list .prog-row { padding: 12px 16px; }
 }
+
+/* ----- เปรียบเทียบคะแนนเฉลี่ยรายห้อง (หน้าแรก) ----- */
+.rc-card { margin: 4px 0 22px; border-radius: 30px; }
+.rc-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+.rc-head .chart-title { margin: 0; }
+.rc-course { font-size: 13px; font-weight: 700; color: var(--ink-soft); }
+.rc-plot { display: flex; gap: 10px; height: 200px; }
+.rc-axis { display: flex; flex-direction: column; justify-content: space-between; padding: 22px 0 26px; font-size: 11px; font-weight: 600; color: var(--ink-soft); text-align: right; min-width: 26px; font-variant-numeric: tabular-nums; }
+.rc-bars { flex: 1; display: flex; align-items: stretch; gap: clamp(6px, 2vw, 18px); overflow-x: auto; padding-bottom: 0; }
+.rc-col { flex: 1 1 0; min-width: 34px; max-width: 96px; display: flex; flex-direction: column; margin: 0 auto; }
+.rc-val { height: 22px; font-size: 12px; font-weight: 700; color: var(--ink); text-align: center; font-variant-numeric: tabular-nums; }
+.rc-bar-wrap { flex: 1; display: flex; align-items: flex-end; border-bottom: 1px solid var(--surface-sunken); background: repeating-linear-gradient(to top, transparent 0, transparent calc(50% - 1px), var(--surface-sunken) calc(50% - 1px), var(--surface-sunken) 50%); }
+.rc-bar { width: 100%; border-radius: 10px 10px 0 0; min-height: 3px; opacity: .85; transition: height .3s ease; }
+.rc-col.is-best .rc-bar { opacity: 1; }
+.rc-label { height: 26px; line-height: 26px; font-size: 12px; font-weight: 600; color: var(--ink-soft); text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rc-foot { margin-top: 8px; font-size: 11.5px; color: var(--ink-soft); }

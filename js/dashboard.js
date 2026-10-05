@@ -94,6 +94,7 @@ async function loadCoursesWithGrades() {
     c.roomCount = sections.length;
     c.progress = sections.length > 0 ? Math.round(progressSum / sections.length) : 0;
     c.gradeScale = gradeScale;
+    c.maxTotal = assessments.reduce((sum, a) => sum + (Number(a.max) || 0), 0) || 100;
     c.roomsData = roomsData;
     totalStudents += studentCount;
     totalProgressSum += c.progress;
@@ -136,6 +137,8 @@ async function renderDashboard() {
         </div>
       </div>
     </div>
+    ${renderRoomCompare(courses)}
+
     ${renderLatestProgress(courses, sectionCards)}
 
     <!-- หน้าในเล่ม -->
@@ -165,6 +168,7 @@ async function renderDashboard() {
 
   view.querySelectorAll('.prog-row').forEach(el => el.addEventListener('click', () => openCourseSection(el.dataset.courseId, el.dataset.sectionId)));
   view.querySelectorAll('[data-go]').forEach(el => el.addEventListener('click', () => navigate(el.dataset.go)));
+  wireRoomCompare(courses);
   initClockWeather();
 }
 
@@ -366,6 +370,63 @@ function renderLatestProgress(courses, sectionCards) {
           </button>`).join('')}
       </div>
     </section>`;
+}
+
+// ==========================================================================
+// กราฟแท่งเทียบคะแนนเฉลี่ยรายห้อง (ในวิชาเดียวกัน) — แสดงเฉพาะวิชาที่มี 2 ห้องขึ้นไป
+// เฉลี่ยจากนักเรียนที่มีคะแนนบันทึกแล้วเท่านั้น
+// ==========================================================================
+function roomCompareCourses(courses) {
+  return courses.filter(c => (c.roomsData || []).length >= 2);
+}
+
+function renderRoomCompareChart(course) {
+  const max = course.maxTotal || 100;
+  const color = courseColor(course) || 'var(--primary)';
+  const rooms = course.roomsData.map(r => {
+    const scored = r.students.filter(s => s.hasScore);
+    const avg = scored.length ? scored.reduce((sum, s) => sum + s.total, 0) / scored.length : null;
+    return { room: r.room, avg, n: scored.length };
+  });
+  const withData = rooms.filter(r => r.avg !== null);
+  const best = withData.length ? Math.max(...withData.map(r => r.avg)) : null;
+  return `
+    <div class="rc-plot" role="img" aria-label="คะแนนเฉลี่ยรายห้อง เต็ม ${max}">
+      <div class="rc-axis"><span>${max}</span><span>${Math.round(max / 2)}</span><span>0</span></div>
+      <div class="rc-bars" style="--rc-n:${rooms.length}">
+        ${rooms.map(r => `
+          <div class="rc-col${r.avg !== null && r.avg === best && withData.length > 1 ? ' is-best' : ''}" title="ห้อง ${escapeHtml(r.room)} · ${r.avg === null ? 'ยังไม่มีคะแนน' : 'เฉลี่ย ' + r.avg.toFixed(1) + ' จาก ' + r.n + ' คน'}">
+            <div class="rc-val">${r.avg === null ? '–' : r.avg.toFixed(1)}</div>
+            <div class="rc-bar-wrap">${r.avg === null ? '' : `<div class="rc-bar" style="height:${Math.min(100, (r.avg / max) * 100)}%; background:${color}"></div>`}</div>
+            <div class="rc-label">${escapeHtml(r.room)}</div>
+          </div>`).join('')}
+      </div>
+    </div>
+    <div class="rc-foot">คะแนนเฉลี่ยจากคะแนนเต็ม ${max} · เฉพาะนักเรียนที่มีคะแนนแล้ว</div>`;
+}
+
+function renderRoomCompare(courses) {
+  const list = roomCompareCourses(courses);
+  if (!list.length) return '';
+  return `
+    <section class="card chart-card rc-card">
+      <div class="rc-head">
+        <div class="chart-title">เปรียบเทียบคะแนนเฉลี่ยรายห้อง</div>
+        ${list.length > 1
+          ? `<select class="grade-room-filter" id="rc-select" aria-label="เลือกวิชา">${list.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('')}</select>`
+          : `<span class="rc-course">${escapeHtml(list[0].name)}</span>`}
+      </div>
+      <div id="rc-body">${renderRoomCompareChart(list[0])}</div>
+    </section>`;
+}
+
+function wireRoomCompare(courses) {
+  const sel = document.getElementById('rc-select');
+  if (!sel) return;
+  sel.addEventListener('change', () => {
+    const c = courses.find(x => x.id === sel.value);
+    if (c) document.getElementById('rc-body').innerHTML = renderRoomCompareChart(c);
+  });
 }
 
 // ---------- Lightweight inline SVG charts (no external chart library) ----------
