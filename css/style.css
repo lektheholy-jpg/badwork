@@ -2392,29 +2392,27 @@ html, body { overflow-x: clip; }
 /* ----- ขยายตามหน้าจอ: ใช้พื้นที่เต็ม ไม่เหลือขอบว่างสองข้าง ----- */
 @media (min-width: 861px) {
   .main { max-width: none; margin: 0; padding: 32px clamp(24px, 3vw, 72px) 64px; }
-}
-@media (min-width: 1360px) {
-  .dash { column-gap: clamp(24px, 2vw, 44px); grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); }
-  /* แบนเนอร์ขึ้นแถวเดียวกับวิดเจ็ต แทนที่จะลอยขวาโดยมีที่ว่างทางซ้าย */
-  .dash > .site-banner { grid-column: 2; grid-row: 1; margin: 0 0 clamp(12px, 1.2vw, 22px); align-self: stretch; justify-content: center; align-items: center; padding: 0; }
-  .dash > .site-banner img { width: auto; max-width: 100%; height: 100%; max-height: clamp(220px, 17vw, 380px); }
-  .dash > .cw-row { grid-column: 1; grid-row: 1; align-self: stretch; }
-  .dash > .cw-row .cw-card { min-height: clamp(220px, 17vw, 380px); }
-  .dash > .rc-card { grid-column: 1; grid-row: 2; }
-  .dash > .prog-section { grid-column: 2; grid-row: 2; margin: 4px 0 20px; }
-  .dash > .book-inside { grid-column: 1 / -1; grid-row: 3; }
-}
-@media (min-width: 1360px) {
-  .dash > .rc-card { padding: clamp(20px, 1.6vw, 34px) clamp(22px, 1.9vw, 40px) 14px; }
-  .chart-row { gap: clamp(14px, 1.4vw, 28px); }
-}
-
-/* จอกลาง (861–1359px): แบนเนอร์เล็กลง ชิดขวา ไม่กินพื้นที่แนวตั้งเกินจำเป็น */
-@media (min-width: 861px) and (max-width: 1359px) {
   .site-banner img { width: min(100%, 380px); }
 }
-/* จอใหญ่: ความสูงการ์ดพอดีกับเนื้อหา ไม่โล่งเกิน */
 @media (min-width: 1360px) {
-  .dash > .site-banner img { max-height: clamp(200px, 13.5vw, 320px); }
-  .dash > .cw-row .cw-card { min-height: clamp(200px, 13.5vw, 320px); }
+  /* แถว 1: แบนเนอร์แมว (เต็มความกว้าง) · แถว 2-3: ซ้าย = วิดเจ็ต + กราฟ, ขวา = ความคืบหน้าล่าสุด */
+  .dash { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); column-gap: clamp(24px, 2vw, 44px); align-items: start; }
+  .dash > .site-banner { grid-column: 1 / -1; grid-row: 1; justify-content: flex-end; margin: 0 0 clamp(8px, .8vw, 16px); padding: 0; }
+  .dash > .site-banner img { width: auto; height: clamp(150px, 10.5vw, 240px); max-width: 100%; }
+  .dash > .cw-row { grid-column: 1; grid-row: 2; }
+  .dash > .cw-row .cw-card { min-height: clamp(150px, 10vw, 230px); }
+  .dash > .rc-card { grid-column: 1; grid-row: 3; margin-bottom: 0; padding: clamp(20px, 1.6vw, 34px) clamp(22px, 1.9vw, 40px) 14px; }
+  .dash > .book-inside { grid-column: 1 / -1; grid-row: 4; }
+  .chart-row { gap: clamp(14px, 1.4vw, 28px); }
+
+  /* ความคืบหน้าล่าสุด: สูงเท่าคอลัมน์ซ้ายพอดี (ไม่ดันให้หน้ายาว) เกินแล้วเลื่อนในกล่อง */
+  .dash > .prog-section { grid-column: 2; grid-row: 2 / span 2; align-self: stretch; margin: 0; display: flex; flex-direction: column; min-height: 0; }
+  .dash > .prog-section .prog-h2 { flex: none; margin-bottom: 10px; }
+  .dash > .prog-section .prog-list { contain: size; position: relative; flex: 1 1 auto; min-height: 340px; overflow-y: auto; overscroll-behavior: contain; padding-right: 4px; scrollbar-width: thin; display: flex; flex-direction: column; gap: 8px; }
+  .dash > .prog-section .prog-row { flex: none; grid-template-columns: 12px minmax(0, 1fr) 96px 46px; grid-template-areas: "dot title title pct" ". item bar bar"; gap: 3px 12px; padding: 9px 18px; min-height: 0; border-radius: 22px; }
+  .dash > .prog-section .prog-dot { grid-area: dot; }
+  .dash > .prog-section .prog-title { grid-area: title; font-size: 14px; }
+  .dash > .prog-section .prog-pct { grid-area: pct; }
+  .dash > .prog-section .prog-item { grid-area: item; font-size: 12.5px; }
+  .dash > .prog-section .progress-bar { grid-area: bar; }
 }
