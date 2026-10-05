@@ -2395,19 +2395,19 @@ html, body { overflow-x: clip; }
   .site-banner img { width: min(100%, 380px); }
 }
 @media (min-width: 1360px) {
-  /* แถว 1: แบนเนอร์แมว (เต็มความกว้าง) · แถว 2-3: ซ้าย = วิดเจ็ต + กราฟ, ขวา = ความคืบหน้าล่าสุด */
-  .dash { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); column-gap: clamp(24px, 2vw, 44px); align-items: start; }
-  .dash > .site-banner { grid-column: 1 / -1; grid-row: 1; justify-content: flex-end; margin: 0 0 clamp(8px, .8vw, 16px); padding: 0; }
-  .dash > .site-banner img { width: auto; height: clamp(150px, 10.5vw, 240px); max-width: 100%; }
-  .dash > .cw-row { grid-column: 1; grid-row: 2; }
-  .dash > .cw-row .cw-card { min-height: clamp(150px, 10vw, 230px); }
-  .dash > .rc-card { grid-column: 1; grid-row: 3; margin-bottom: 0; padding: clamp(20px, 1.6vw, 34px) clamp(22px, 1.9vw, 40px) 14px; }
-  .dash > .book-inside { grid-column: 1 / -1; grid-row: 4; }
+  /* แถว 1: ซ้าย = วิดเจ็ตเวลา+อากาศ · ขวา = แบนเนอร์แมว (ขยายใหญ่ ความสูงเท่ากัน)
+     แถว 2: ซ้าย = กราฟรายห้อง · ขวา = ความคืบหน้าล่าสุด */
+  .dash { --hero-h: clamp(200px, 14.5vw, 380px); display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(500px, 1fr); grid-template-rows: auto auto auto; column-gap: clamp(24px, 2vw, 44px); align-items: start; }
+  .dash > .cw-row { grid-column: 1; grid-row: 1; align-self: stretch; margin-bottom: clamp(12px, 1.2vw, 22px); }
+  .dash > .cw-row .cw-card { min-height: var(--hero-h); }
+  .dash > .site-banner { grid-column: 2; grid-row: 1; align-self: stretch; justify-content: center; align-items: center; margin: 0 0 clamp(12px, 1.2vw, 22px); padding: 0; }
+  .dash > .site-banner img { width: auto; height: var(--hero-h); max-width: 100%; object-fit: contain; }
+  .dash > .rc-card { grid-column: 1; grid-row: 2; margin-bottom: 0; padding: clamp(20px, 1.6vw, 34px) clamp(22px, 1.9vw, 40px) 14px; }
+  .dash > .book-inside { grid-column: 1 / -1; grid-row: 3; }
   .chart-row { gap: clamp(14px, 1.4vw, 28px); }
 
   /* ความคืบหน้าล่าสุด: 1 ห้อง 1 บรรทัด ไม่เลื่อนแยก — ความสูงของคอลัมน์ซ้าย (กราฟ) ปรับตามให้พอดีเอง */
-  .dash { grid-template-columns: minmax(0, 1.25fr) minmax(500px, 1fr); grid-template-rows: auto auto minmax(0, 1fr) auto; }
-  .dash > .prog-section { grid-column: 2; grid-row: 2 / span 2; align-self: stretch; margin: 0; }
+  .dash > .prog-section { grid-column: 2; grid-row: 2; align-self: stretch; margin: 0; }
   .dash > .prog-section .prog-h2 { margin: 0 0 10px 4px; }
   .dash > .prog-section .prog-list { display: flex; flex-direction: column; gap: 8px; background: none; overflow: visible; }
   .dash > .prog-section .prog-row {
@@ -2425,3 +2425,55 @@ html, body { overflow-x: clip; }
   .dash > .rc-card .rc-plot { flex: 1 1 auto; min-height: 240px; }
   .dash > .rc-card .rc-plot svg { position: absolute; inset: 0; width: 100%; height: 100%; }
 }
+
+/* ==========================================================================
+   v10 — วิดเจ็ตนาฬิกาแบบ One UI 9: ตัวเลขดิจิทัลหนา + หน้าปัดอนาล็อกโทนเดียวกัน
+   พื้นการ์ดไล่โทนฟ้าอ่อน (โหมดมืดไล่โทนน้ำเงินเข้ม) หน้าปัดเป็นวงนุ่มพร้อมเข็มสีหลัก
+   ========================================================================== */
+.cw-row .cw-clock {
+  flex-direction: row; align-items: center; justify-content: space-between; gap: clamp(12px, 3cqi, 28px);
+  background: linear-gradient(150deg, color-mix(in oklab, var(--hue-blue) 9%, var(--card)) 0%, color-mix(in oklab, var(--hue-blue) 22%, var(--card)) 100%);
+}
+:root[data-theme="dark"] .cw-row .cw-clock {
+  background: linear-gradient(150deg, color-mix(in oklab, var(--hue-blue) 14%, var(--card)) 0%, color-mix(in oklab, var(--hue-blue) 28%, var(--card)) 100%);
+}
+.cw-clock-txt { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; flex: 1 1 auto; }
+.cw-row .cw-time { font-size: clamp(38px, 11.5cqi, 92px); letter-spacing: -.02em; }
+.cw-row .cw-time small {
+  display: inline-block; margin-left: .22em; padding: .06em .42em; border-radius: 999px; vertical-align: .55em;
+  font-size: .3em; font-weight: 800; letter-spacing: 0;
+  background: color-mix(in oklab, var(--hue-blue) 20%, transparent); color: color-mix(in oklab, var(--hue-blue) 80%, var(--ink));
+}
+.cw-row .cw-date { margin-top: .1em; }
+
+.cw-analog { flex: none; width: clamp(84px, 31cqi, 210px); height: auto; aspect-ratio: 1; filter: drop-shadow(0 10px 18px color-mix(in oklab, var(--hue-blue) 28%, transparent)); }
+.cw-face { fill: color-mix(in oklab, var(--card) 88%, var(--hue-blue)); stroke: color-mix(in oklab, var(--hue-blue) 22%, transparent); stroke-width: 1.2; }
+:root[data-theme="dark"] .cw-face { fill: color-mix(in oklab, var(--card) 70%, var(--hue-blue)); }
+.cw-tick { stroke: color-mix(in oklab, var(--ink) 34%, transparent); stroke-width: 1.4; stroke-linecap: round; }
+.cw-tick.maj { stroke: var(--ink); stroke-width: 2.4; opacity: .75; }
+.cw-hand { stroke-linecap: round; fill: none; }
+.cw-hh { stroke: var(--ink); stroke-width: 5.2; }
+.cw-mm { stroke: var(--hue-blue); stroke-width: 4; }
+.cw-ss { stroke: var(--hue-orange); stroke-width: 1.7; }
+.cw-cap { fill: var(--hue-orange); stroke: var(--card); stroke-width: 1.6; }
+
+/* การ์ดแคบมาก (มือถือ/จอเล็ก): ซ่อนหน้าปัด เหลือตัวเลข */
+@container (max-width: 250px) { .cw-analog { display: none; } }
+@media (max-width: 640px) {
+  .cw-row .cw-clock { min-height: 118px; }
+  .cw-row .cw-time { font-size: clamp(38px, 12cqi, 56px); }
+  .cw-analog { width: 92px; }
+}
+
+/* จอกว้าง: การ์ดนาฬิกากว้างกว่าอากาศเล็กน้อย ให้ตัวเลข + หน้าปัดไม่แน่น */
+@media (min-width: 1360px) {
+  .dash > .cw-row { grid-template-columns: 1.4fr 1fr; }
+  .dash > .cw-row .cw-time { font-size: clamp(44px, 15cqi, 96px); }
+}
+
+/* จอ 1360–1599px: คอลัมน์ขวาแคบลงเล็กน้อยให้คอลัมน์ซ้าย (นาฬิกา/อากาศ) ไม่แน่น */
+@media (min-width: 1360px) and (max-width: 1599px) {
+  .dash { grid-template-columns: minmax(0, 1.3fr) minmax(430px, 1fr); }
+  .dash > .prog-section .prog-row { grid-template-columns: 12px minmax(0, 1.3fr) minmax(0, 1fr) 64px 40px; gap: 10px; padding: 9px 16px; }
+}
+.cw-row .cw-time { white-space: nowrap; }
