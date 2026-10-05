@@ -90,17 +90,25 @@ async function renderDashboard() {
   const firstName = (AppState.user.displayName || 'คุณครู').split(' ')[0];
 
   view.innerHTML = `
-    <div class="page-header">
-      <h1>สวัสดีครับ คุณครู ${escapeHtml(firstName)} 👋</h1>
-      <div class="sub">ภาพรวมการสอนและการบันทึกคะแนนของคุณ</div>
-    </div>
+    <!-- ปกหนังสือ -->
+    <section class="book-cover">
+      <div class="cover-frame">
+        <i class="cover-corner tl"></i><i class="cover-corner tr"></i><i class="cover-corner bl"></i><i class="cover-corner br"></i>
+        <div class="cover-kicker">สวัสดีครับ คุณครู ${escapeHtml(firstName)}</div>
+        <div class="cover-emblem"><img src="assets/icons/android-chrome-512x512.png" alt="โลโก้"></div>
+        <h1 class="cover-title">งานน่าเบื่อ..</h1>
+        <div class="cover-orn"><span></span><i></i><span></span></div>
+        <p class="cover-sub">สมุดบันทึกคะแนนสำหรับครู</p>
+        <div class="cover-stats">
+          <div class="cover-stat"><div class="value">${courses.length}</div><div class="label">รายวิชา</div></div>
+          <div class="cover-stat"><div class="value">${totalStudents}</div><div class="label">นักเรียนทั้งหมด</div></div>
+          <div class="cover-stat"><div class="value">${avgProgress}%</div><div class="label">ความคืบหน้าเฉลี่ย</div></div>
+        </div>
+      </div>
+    </section>
 
-    <div class="stat-row">
-      <div class="stat-card"><div class="label">รายวิชา</div><div class="value">${courses.length}</div></div>
-      <div class="stat-card"><div class="label">นักเรียนทั้งหมด</div><div class="value">${totalStudents}</div></div>
-      <div class="stat-card"><div class="label">ความคืบหน้าเฉลี่ย</div><div class="value">${avgProgress}%</div></div>
-    </div>
-
+    <!-- หน้าในเล่ม -->
+    <section class="book-inside">
     ${courses.length > 0 ? `
     <div class="chart-row">
       <div class="card chart-card">
@@ -139,6 +147,7 @@ async function renderDashboard() {
         `).join('')}
       </div>
     `}
+    </section>
   `;
 
   view.querySelectorAll('.section-card').forEach(card => {
