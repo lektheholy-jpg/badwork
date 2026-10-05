@@ -3,6 +3,8 @@
 // ==========================================================================
 
 // โหลดรายวิชาที่เปิดใช้งานพร้อมข้อมูลห้อง/นักเรียน/เกรด — ใช้ร่วมกันระหว่างหน้าแรกและหน้ารายงาน
+const ITEM_DONE_RATIO = 0.7; // สัดส่วนนักเรียนที่มีคะแนนแล้ว ที่ถือว่ารายการนั้น "บันทึกแล้ว"
+
 // เรียงรายการคะแนนให้เหมือนตารางบันทึกคะแนน: คะแนนเก็บ (ตามหมวด) → กลางภาค → ปลายภาค
 function orderAssessmentsLikeSheet(assessments, groups) {
   const byOrder = [...assessments].sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0));
@@ -61,7 +63,7 @@ async function loadCoursesWithGrades() {
       let nextItem = null, itemsDone = 0;
       for (const a of orderedItems) {
         const n = sIds.filter(id => { const v = (scoresByStudent[id] || {})[a.id]; return v !== undefined && v !== null && v !== ''; }).length;
-        if (sIds.length > 0 && n >= sIds.length) itemsDone++;
+        if (sIds.length > 0 && n / sIds.length > ITEM_DONE_RATIO) itemsDone++; // นับว่าบันทึกแล้วเมื่อมากกว่า 70% ของนักเรียนในห้อง
         else if (!nextItem) nextItem = { name: a.name, filled: n };
       }
       const secProgress = totalCells > 0 ? Math.round((filledCells / totalCells) * 100) : 0;
@@ -335,35 +337,32 @@ function openCourseSection(courseId, sectionId) {
   renderCourseShell();
 }
 
-// ความคืบหน้าล่าสุดของแต่ละห้อง จัดกลุ่มตามรายวิชา — บอกว่ารายการไหนบันทึกอยู่/ต้องบันทึกถัดไป
+// ความคืบหน้าล่าสุด: 1 แถวต่อ 1 ห้อง (วิชา · ห้อง → รายการที่กำลังบันทึก/ถัดไป → แถบความคืบหน้า)
 function renderLatestProgress(courses, sectionCards) {
-  if (!courses.length) return '';
-  const detail = (r) => {
-    const n = r.studentCount;
-    if (r.state === 'nostudents') return { main: 'ยังไม่มีนักเรียน', sub: 'เพิ่มรายชื่อก่อนเริ่มบันทึกคะแนน' };
-    if (r.state === 'nostructure') return { main: 'ยังไม่ได้ตั้งโครงสร้างคะแนน', sub: 'ตั้งรายการคะแนนก่อนเริ่มบันทึก' };
-    if (r.state === 'complete') return { main: 'บันทึกครบทุกรายการแล้ว', sub: `${r.itemsDone}/${r.itemsTotal} รายการ` };
-    if (r.state === 'notstarted') return { main: r.nextItem.name, sub: `ยังไม่เริ่มบันทึก · รายการแรก` };
-    return { main: r.nextItem.name, sub: `รายการถัดไป · บันทึกแล้ว ${r.nextItem.filled}/${n} คน · เสร็จ ${r.itemsDone}/${r.itemsTotal} รายการ` };
+  const rows = [];
+  courses.forEach(c => sectionCards.filter(r => r.courseId === c.id).forEach(r => rows.push({ c, r })));
+  if (!rows.length) return '';
+  const item = (r) => {
+    if (r.state === 'nostudents') return 'ยังไม่มีนักเรียน';
+    if (r.state === 'nostructure') return 'ยังไม่ตั้งโครงสร้างคะแนน';
+    if (r.state === 'complete') return 'บันทึกครบทุกรายการ';
+    if (r.state === 'notstarted') return `เริ่มที่ ${r.nextItem.name}`;
+    return `ถัดไป ${r.nextItem.name} (${r.nextItem.filled}/${r.studentCount})`;
   };
-  const blocks = courses.map(c => {
-    const rooms = sectionCards.filter(r => r.courseId === c.id);
-    if (!rooms.length) return '';
-    return `
-      <div class="prog-course">
-        <div class="prog-course-head"><span class="prog-dot" style="background:${c.color || 'var(--primary)'}"></span>${escapeHtml(c.code ? c.code + ' ' : '')}${escapeHtml(c.name)}${c.level ? `<span class="prog-level">${escapeHtml(c.level)}</span>` : ''}</div>
-        <div class="prog-list">
-          ${rooms.map(r => { const d = detail(r); return `
-            <button class="prog-row" data-course-id="${r.courseId}" data-section-id="${r.sectionId}">
-              <span class="prog-room">ห้อง ${escapeHtml(r.room)}</span>
-              <span class="prog-main"><span class="prog-item">${escapeHtml(d.main)}</span><span class="prog-sub">${escapeHtml(d.sub)}</span></span>
-              <span class="progress-bar"><span class="fill" style="width:${r.progress}%; background:${c.color || 'var(--primary)'}"></span></span>
-              <span class="prog-pct">${r.progress}%</span>
-            </button>`; }).join('')}
-        </div>
-      </div>`;
-  }).join('');
-  return blocks ? `<section class="prog-section"><h2 class="prog-h2">ความคืบหน้าล่าสุดแต่ละห้อง</h2>${blocks}</section>` : '';
+  return `
+    <section class="prog-section">
+      <h2 class="prog-h2">ความคืบหน้าล่าสุด</h2>
+      <div class="prog-list">
+        ${rows.map(({ c, r }) => `
+          <button class="prog-row" data-course-id="${r.courseId}" data-section-id="${r.sectionId}">
+            <span class="prog-dot" style="background:${c.color || 'var(--primary)'}"></span>
+            <span class="prog-title">${escapeHtml(c.name)} · ห้อง ${escapeHtml(r.room)}</span>
+            <span class="prog-item">${escapeHtml(item(r))}</span>
+            <span class="progress-bar"><span class="fill" style="width:${r.progress}%; background:${c.color || 'var(--primary)'}"></span></span>
+            <span class="prog-pct">${r.progress}%</span>
+          </button>`).join('')}
+      </div>
+    </section>`;
 }
 
 // ---------- Lightweight inline SVG charts (no external chart library) ----------
