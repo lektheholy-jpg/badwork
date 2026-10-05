@@ -415,7 +415,6 @@ function openNextSchoolModal(course, section, students, assessments, scores, gra
   const collectItems = assessments.filter(a => a.category !== 'midterm' && a.category !== 'final');
   const canSplit = collectItems.length >= 2;
   const opts = { mode: canSplit ? 'order' : 'equal', splitN: Math.max(1, Math.ceil(collectItems.length / 2)), decimals: false };
-  const fmt = v => (Number.isInteger(v) ? String(v) : v.toFixed(1));
   const maxTotal = assessments.reduce((s, a) => s + (Number(a.max) || 0), 0) || 100;
 
   openModal(`
@@ -454,7 +453,7 @@ function openNextSchoolModal(course, section, students, assessments, scores, gra
 
   let rows = [];
 
-  function redraw() {
+  function redrawSgsPreview() {
     document.getElementById('ns-n-field').classList.toggle('hidden', opts.mode !== 'order');
     const n = Math.min(Math.max(1, opts.splitN), Math.max(1, collectItems.length - 1));
     document.getElementById('ns-split-hint').textContent = opts.mode === 'order'
@@ -508,9 +507,9 @@ function openNextSchoolModal(course, section, students, assessments, scores, gra
     return true;
   }
 
-  document.getElementById('ns-mode').addEventListener('change', (e) => { opts.mode = e.target.value; redraw(); });
-  document.getElementById('ns-n').addEventListener('input', (e) => { opts.splitN = Number(e.target.value) || 1; redraw(); });
-  document.getElementById('ns-dec').addEventListener('change', (e) => { opts.decimals = e.target.value === '1'; redraw(); });
+  document.getElementById('ns-mode').addEventListener('change', (e) => { opts.mode = e.target.value; redrawSgsPreview(); });
+  document.getElementById('ns-n').addEventListener('input', (e) => { opts.splitN = Number(e.target.value) || 1; redrawSgsPreview(); });
+  document.getElementById('ns-dec').addEventListener('change', (e) => { opts.decimals = e.target.value === '1'; redrawSgsPreview(); });
   document.getElementById('ns-cancel').addEventListener('click', closeModal);
 
   document.getElementById('ns-csv').addEventListener('click', () => {
@@ -528,7 +527,7 @@ function openNextSchoolModal(course, section, students, assessments, scores, gra
     showToast('ส่งออกไฟล์ Excel สำเร็จ');
   });
 
-  redraw();
+  redrawSgsPreview();
 }
 
 // ==========================================================================
@@ -573,7 +572,6 @@ function openNextSchoolFormModal(course, section, students, assessments, scores,
   const collectItems = assessments.filter(a => a.category !== 'midterm' && a.category !== 'final');
   const canSplit = collectItems.length >= 2;
   const opts = { mode: canSplit ? 'order' : 'equal', splitN: Math.max(1, Math.ceil(collectItems.length / 2)), decimals: false };
-  const fmt = v => (Number.isInteger(v) ? String(v) : v.toFixed(1));
 
   openModal(`
     <h2>แปลงคะแนน Next School</h2>
@@ -623,7 +621,7 @@ function openNextSchoolFormModal(course, section, students, assessments, scores,
     return map;
   }
 
-  function redraw() {
+  function redrawFormPreview() {
     document.getElementById('nsf-n-field').classList.toggle('hidden', opts.mode !== 'order');
     const bodyEl = document.getElementById('nsf-body');
     const confirmBtn = document.getElementById('nsf-confirm');
@@ -703,15 +701,15 @@ function openNextSchoolFormModal(course, section, students, assessments, scores,
       ws = wb.Sheets[wb.SheetNames[0]];
       aoa = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
       cols = parseNsFormColumns(aoa);
-      redraw();
+      redrawFormPreview();
     } catch (err) {
       wb = ws = aoa = null;
       bodyEl.innerHTML = `<div class="card card-pad"><div class="check-row warn">✕ อ่านไฟล์ไม่สำเร็จ: ${escapeHtml(err.message || String(err))}</div></div>`;
     }
   });
-  document.getElementById('nsf-mode').addEventListener('change', (e) => { opts.mode = e.target.value; redraw(); });
-  document.getElementById('nsf-n').addEventListener('input', (e) => { opts.splitN = Number(e.target.value) || 1; redraw(); });
-  document.getElementById('nsf-dec').addEventListener('change', (e) => { opts.decimals = e.target.value === '1'; redraw(); });
+  document.getElementById('nsf-mode').addEventListener('change', (e) => { opts.mode = e.target.value; redrawFormPreview(); });
+  document.getElementById('nsf-n').addEventListener('input', (e) => { opts.splitN = Number(e.target.value) || 1; redrawFormPreview(); });
+  document.getElementById('nsf-dec').addEventListener('change', (e) => { opts.decimals = e.target.value === '1'; redrawFormPreview(); });
 
   document.getElementById('nsf-confirm').addEventListener('click', () => {
     if (!wb || !ws || !aoa) { showToast('กรุณาอัปโหลดไฟล์ก่อน'); return; }

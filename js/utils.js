@@ -29,6 +29,24 @@ function closeModal() {
   document.getElementById('modal-root').innerHTML = '';
 }
 
+// --------------------------------------------------------------------------
+// helper ทั่วไป
+// --------------------------------------------------------------------------
+
+// แสดงคะแนน: จำนวนเต็มแสดงตามเดิม ส่วนทศนิยมแสดง 1 ตำแหน่ง
+const fmt = v => (Number.isInteger(v) ? String(v) : v.toFixed(1));
+
+// คืนค่าที่ซ้ำ (ทุกครั้งที่ปรากฏซ้ำหลังครั้งแรก) เช่น ['a','b','a','a'] → ['a','a']
+function findDuplicates(arr) {
+  return arr.filter((c, i) => arr.indexOf(c) !== i);
+}
+
+// ตัดข้อความให้ไม่เกิน n ตัวอักษร แล้วต่อด้วย …
+function truncateLabel(str, n) {
+  if (!str) return '';
+  return str.length > n ? str.slice(0, n) + '…' : str;
+}
+
 function openConfirmModal({ title, body, confirmLabel = 'ยืนยัน', cancelLabel = 'ยกเลิก', danger = false, onConfirm }) {
   openModal(`
     <h2>${title}</h2>
@@ -272,6 +290,10 @@ const IMPORT_HEADER_ALIASES = {
   lastName: ['นามสกุล', 'สกุล', 'lastname', 'last name'],
   room: ['ห้อง', 'ห้องเรียน', 'room', 'section'],
 };
+// ลำดับนี้มีผลต่อการตัดสินใจของ matchImportHeaderField: ถ้าหัวคอลัมน์จับคู่ได้หลาย field
+// field ที่อยู่ก่อนจะชนะ จึงต้องให้ 'fullName' มาก่อน 'firstName'
+// (เช่น "ชื่อ-สกุล" มีคำว่า "ชื่อ" อยู่ข้างใน ถ้า firstName มาก่อนจะถูกจับเป็น firstName ผิดคอลัมน์)
+// ห้ามเรียงลำดับใหม่โดยไม่ทดสอบ — ถ้าผิดจะไม่มี error แต่นำเข้าข้อมูลผิดช่อง
 const IMPORT_FIELD_ORDER = ['fullName', 'no', 'code', 'studentId', 'firstName', 'lastName', 'room'];
 
 function normalizeHeaderCell(v) {

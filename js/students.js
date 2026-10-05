@@ -154,7 +154,7 @@ function openImportAllRoomsModal(course, existingSections, onDone) {
       groups = grouped;
 
       const codes = validRows.map(r => r.code).filter(Boolean);
-      const dupCodes = codes.filter((c, i) => codes.indexOf(c) !== i);
+      const dupCodes = findDuplicates(codes);
       const emptyNames = validRows.filter(r => !r.firstName.trim()).length;
       const roomList = Object.keys(grouped).sort((a, b) => Number(a) - Number(b));
       const newRooms = roomList.filter(r => !existingByRoom.has(r));
@@ -302,7 +302,7 @@ function openImportStudentsModal(course, section) {
   function showPreview(rows, meta) {
     parsedRows = rows;
     const codes = rows.map(r => r.code).filter(Boolean);
-    const dupCodes = codes.filter((c, i) => codes.indexOf(c) !== i);
+    const dupCodes = findDuplicates(codes);
     const emptyNames = rows.filter(r => !r.firstName.trim()).length;
 
     const checks = [

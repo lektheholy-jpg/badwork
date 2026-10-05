@@ -669,11 +669,6 @@ function renderStudentDonut(courses, totalStudents) {
     </div>`;
 }
 
-function truncateLabel(str, n) {
-  if (!str) return '';
-  return str.length > n ? str.slice(0, n) + '…' : str;
-}
-
 // ==========================================================================
 // วิดเจ็ตวัน/วันที่/เวลา + สภาพอากาศ (Open-Meteo ไม่ต้องใช้คีย์)
 // ตำแหน่ง: ใช้ตำแหน่งของเบราว์เซอร์ ถ้าไม่อนุญาตจะใช้ค่าเริ่มต้น (นครราชสีมา)
