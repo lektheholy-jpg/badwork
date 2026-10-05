@@ -418,3 +418,23 @@ function toggleSidebarCollapse() {
 
 window.addEventListener('resize', debounce(applyStoredSidebarState, 150));
 applyStoredSidebarState();
+
+// ทำสีวิชาที่บันทึกไว้ (อาจหม่นจากธีมเก่า) ให้สดพอดีกับโหมดปัจจุบัน — คืนค่าว่างถ้าไม่มีสี
+function vividColor(hex) {
+  const m = /^#?([0-9a-f]{6})$/i.exec(String(hex || '').trim());
+  if (!m) return hex || '';
+  const n = parseInt(m[1], 16), r = (n >> 16) / 255, g = ((n >> 8) & 255) / 255, b = (n & 255) / 255;
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn;
+  let h = 0, l = (mx + mn) / 2, s = d === 0 ? 0 : d / (1 - Math.abs(2 * l - 1));
+  if (d) {
+    if (mx === r) h = ((g - b) / d) % 6; else if (mx === g) h = (b - r) / d + 2; else h = (r - g) / d + 4;
+    h *= 60; if (h < 0) h += 360;
+  }
+  if (s < 0.08) return hex; // เทา/ดำ/ขาว คงเดิม
+  const dark = document.documentElement.dataset.theme === 'dark';
+  s = Math.max(s, 0.68);
+  l = dark ? Math.min(Math.max(l, 0.60), 0.70) : Math.min(Math.max(l, 0.44), 0.54);
+  const f = k => { const a = s * Math.min(l, 1 - l), t = (k + h / 30) % 12; return l - a * Math.max(-1, Math.min(t - 3, 9 - t, 1)); };
+  const x = v => Math.round(v * 255).toString(16).padStart(2, '0');
+  return '#' + x(f(0)) + x(f(8)) + x(f(4));
+}

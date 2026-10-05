@@ -74,7 +74,7 @@ async function loadCoursesWithGrades() {
         sectionId: s.id,
         courseName: c.name,
         level: c.level,
-        color: c.color,
+        color: vividColor(c.color),
         room: s.room,
         studentCount: studentsSnap.size,
         progress: secProgress,
@@ -211,7 +211,7 @@ function buildGradeSummaryHtml(courses, year) {
     const rooms = c.roomsData || [];
     const head = `
       <tr class="gs-course">
-        <td colspan="15"><span class="course-dot" style="background:${c.color || '#3E91FF'}"></span>${escapeHtml(c.name)}${c.code ? ` <span class="gs-code">(${escapeHtml(c.code)})</span>` : ''}</td>
+        <td colspan="15"><span class="course-dot" style="background:${vividColor(c.color) || '#3E91FF'}"></span>${escapeHtml(c.name)}${c.code ? ` <span class="gs-code">(${escapeHtml(c.code)})</span>` : ''}</td>
       </tr>`;
     const rows = rooms.map(r => {
       no++;
@@ -282,7 +282,7 @@ function buildGradeStatsBodyHtml(courses, year) {
       <div class="grade-stat-card">
         <div class="gsc-head">
           <div class="gsc-title">
-            <span class="course-dot" style="background:${c.color || '#3E91FF'}"></span>
+            <span class="course-dot" style="background:${vividColor(c.color) || '#3E91FF'}"></span>
             <span class="gsc-name">${escapeHtml(c.name)}</span>
           </div>
           <select class="grade-room-filter" data-course-id="${c.id}">
@@ -364,11 +364,11 @@ function renderLatestProgress(courses, sectionCards) {
       <h2 class="prog-h2">ความคืบหน้าล่าสุด</h2>
       <div class="prog-list">
         ${rows.map(({ c, r }) => `
-          <button class="prog-row" style="--w:${c.color || 'var(--primary)'}" data-course-id="${r.courseId}" data-section-id="${r.sectionId}">
-            <span class="prog-dot" style="background:${c.color || 'var(--primary)'}"></span>
+          <button class="prog-row" style="--w:${vividColor(c.color) || 'var(--primary)'}" data-course-id="${r.courseId}" data-section-id="${r.sectionId}">
+            <span class="prog-dot" style="background:${vividColor(c.color) || 'var(--primary)'}"></span>
             <span class="prog-title">${escapeHtml(c.name)} · ห้อง ${escapeHtml(r.room)}</span>
             <span class="prog-item">${escapeHtml(item(r))}</span>
-            <span class="progress-bar"><span class="fill" style="width:${r.progress}%; background:${c.color || 'var(--primary)'}"></span></span>
+            <span class="progress-bar"><span class="fill" style="width:${r.progress}%; background:${vividColor(c.color) || 'var(--primary)'}"></span></span>
             <span class="prog-pct">${r.progress}%</span>
           </button>`).join('')}
       </div>
@@ -384,11 +384,11 @@ function renderProgressChart(courses) {
       ${courses.map(c => `
         <div class="progress-chart-row">
           <div class="progress-chart-label" title="${escapeHtml(c.name)}">
-            <span class="progress-chart-dot" style="background:${c.color || 'var(--primary)'}"></span>
+            <span class="progress-chart-dot" style="background:${vividColor(c.color) || 'var(--primary)'}"></span>
             <span class="progress-chart-label-text">${escapeHtml(c.name)}</span>
           </div>
-          <div class="progress-bar"><div class="fill" style="width:${c.progress || 0}%; background:${c.color || 'var(--primary)'}"></div></div>
-          <div class="progress-pct" style="color:${c.color || 'var(--primary)'};">${c.progress || 0}%</div>
+          <div class="progress-bar"><div class="fill" style="width:${c.progress || 0}%; background:${vividColor(c.color) || 'var(--primary)'}"></div></div>
+          <div class="progress-pct" style="color:${vividColor(c.color) || 'var(--primary)'};">${c.progress || 0}%</div>
         </div>
       `).join('')}
     </div>
@@ -403,14 +403,14 @@ function renderStudentDonut(courses, totalStudents) {
   const segs = courses.filter(c => c.studentCount > 0).map((c, i) => {
     const frac = c.studentCount / totalStudents;
     const len = frac * circumference;
-    const seg = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${c.color || palette[i % palette.length]}"
+    const seg = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${vividColor(c.color) || palette[i % palette.length]}"
       stroke-width="16" stroke-dasharray="${len} ${circumference - len}" stroke-dashoffset="${-offset}" transform="rotate(-90 ${cx} ${cy})"></circle>`;
     offset += len;
     return seg;
   }).join('');
   const legend = courses.filter(c => c.studentCount > 0).map((c, i) => `
     <div class="donut-legend-item">
-      <span class="dot" style="background:${c.color || palette[i % palette.length]}"></span>
+      <span class="dot" style="background:${vividColor(c.color) || palette[i % palette.length]}"></span>
       ${escapeHtml(truncateLabel(c.name, 16))} <b>${c.studentCount}</b>
     </div>`).join('');
   return `

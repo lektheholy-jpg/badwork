@@ -1942,54 +1942,63 @@ table.sheet th.grp-final { background: color-mix(in oklab, var(--col-final-stron
   .cw-time { font-size: 38px; } .cw-temp { font-size: 34px; }
 }
 
-/* ===== วิดเจ็ตหน้าแรก v3: พื้นเข้ม ตัวอักษรขาว (ทั้งโหมดสว่าง/มืด) ===== */
-.cw-card, .oneui-shortcuts .oneui-tile {
-  --wd: color-mix(in oklab, var(--w) 55%, #0a0b10);
-  background: linear-gradient(145deg, color-mix(in oklab, var(--wd) 100%, #fff 8%), var(--wd));
-  color: #fff;
-}
-:root[data-theme="dark"] .cw-card, :root[data-theme="dark"] .oneui-shortcuts .oneui-tile { --wd: color-mix(in oklab, var(--w) 42%, #050508); }
-.oneui-shortcuts .oneui-tile:hover, .oneui-shortcuts .oneui-tile:focus-visible { background: linear-gradient(145deg, color-mix(in oklab, var(--wd) 100%, #fff 14%), var(--wd)); filter: none; }
-.oneui-shortcuts .oneui-tile .tile-ico { background: rgba(255, 255, 255, .20); color: #fff; }
-.oneui-shortcuts .oneui-tile:hover .tile-ico { background: rgba(255, 255, 255, .30); }
-.cw-day, .cw-time small, .cw-date, .cw-wx-meta { color: rgba(255, 255, 255, .78); filter: none; }
-.cw-wx-ico { background: rgba(255, 255, 255, .20); }
+/* ==========================================================================
+   One UI พาสเทลเข้มขึ้น (v5) — พื้นการ์ดเข้มขึ้นแต่ยังนุ่ม ไอคอน/ตัวเลขเด่น
+   โหมดมืดคงแบบเดิม ตารางและกราฟทุกหน้าใช้ตัวแปรชุดเดียวกัน
+   ========================================================================== */
+:root { --wmix: 38%; --track: color-mix(in oklab, var(--ink) 12%, transparent); --zebra: #F5F6FA; --row-on: #E6EFFD; }
+:root[data-theme="dark"] { --wmix: 34%; --track: color-mix(in oklab, #fff 15%, transparent); --zebra: #222227; --row-on: #26303F; }
+.chart-row .chart-card:nth-child(n) { --wmix: 30%; }
+:root[data-theme="dark"] .chart-row .chart-card:nth-child(n) { --wmix: 30%; }
 
-/* ขนาด: ไม่มีการ์ดตัวเลขแล้ว ให้เวลา/อากาศเด่น ทางลัดเตี้ยลง */
-.cw-row { grid-template-columns: 1.2fr 1fr; gap: 12px; margin-bottom: 12px; }
-.cw-card { min-height: 158px; padding: 24px 30px; border-radius: 32px; }
-.cw-time { font-size: 56px; }
-.cw-time small { font-size: 24px; }
-.cw-day { font-size: 15px; } .cw-date { font-size: 15px; }
-.cw-wx-ico { width: 72px; height: 72px; border-radius: 24px; font-size: 38px; }
-.cw-temp { font-size: 46px; } .cw-wx-desc { font-size: 16px; } .cw-wx-meta { font-size: 13px; }
-.oneui-shortcuts .oneui-tile { min-height: 112px; padding: 16px 18px; gap: 12px; border-radius: 26px; }
-.oneui-shortcuts .oneui-tile .tile-ico { width: 46px; height: 46px; border-radius: 16px; }
+/* วิดเจ็ตเวลา/อากาศ แบบพาสเทลเดียวกับทางลัด */
+.cw-card {
+  background: color-mix(in oklab, var(--w) var(--wmix), var(--card)); color: var(--ink);
+  min-height: 150px; padding: 22px 28px; border-radius: 30px; box-shadow: none;
+}
+.cw-clock { --w: var(--hue-blue) !important; }
+.cw-weather { --w: var(--hue-amber) !important; }
+.cw-day { color: color-mix(in oklab, var(--w) 75%, var(--ink)); font-size: 15px; font-weight: 800; filter: none; }
+.cw-time { font-size: 54px; font-weight: 800; color: var(--ink); }
+.cw-time small { font-size: 24px; color: var(--ink-soft); }
+.cw-date, .cw-wx-meta { color: var(--ink-soft); font-size: 14px; font-weight: 600; }
+.cw-wx-ico { width: 68px; height: 68px; border-radius: 23px; font-size: 36px; background: var(--w); box-shadow: 0 6px 14px -6px var(--w); }
+.cw-temp { font-size: 46px; font-weight: 800; }
+.cw-wx-desc { font-size: 16px; font-weight: 800; }
+
+/* ไอคอน + ตัวเลข/ป้ายเด่นขึ้น */
+.oneui-shortcuts .oneui-tile { min-height: 116px; font-size: 16px; font-weight: 800; color: var(--ink); }
+.oneui-shortcuts .oneui-tile .tile-ico { width: 54px; height: 54px; border-radius: 19px; box-shadow: 0 6px 14px -6px var(--w); }
+.oneui-shortcuts .oneui-tile .tile-ico .ico { width: 28px; height: 28px; stroke-width: 2; }
+.prog-list .prog-row .progress-bar .fill, .progress-chart-row .progress-bar .fill { filter: saturate(1.15); }
+.course-chip, .section-card .course-dot, .course-dot { box-shadow: 0 4px 10px -5px currentColor; }
+.course-chip { width: 50px; height: 50px; border-radius: 17px; }
+
+/* ----- ตารางทุกหน้า: ล้างสีขาวที่ฮาร์ดโค้ด ----- */
+.gs-table tr.gs-total td { background: var(--zebra); color: var(--ink); }
+.gs-table th { background: var(--sheet-head); color: #fff; }
+.gs-table td { border-color: var(--border); color: var(--ink); }
+.struct-table th { background: var(--surface-sunken); color: var(--ink-soft); }
+.struct-table td { border-color: var(--border); }
+.struct-table tbody tr:hover td { background: var(--row-on); }
+.struct-table input.group-name:hover, .struct-table input.group-name:focus,
+table.sheet td input.score-input:focus, .field input:focus, .field select:focus, .field textarea:focus { background: var(--card); color: var(--ink); }
+.tab.active { background: var(--card); color: var(--primary-dark); }
+.room-pill.active { background: var(--primary); color: var(--on-primary); }
+
+/* ----- กราฟ: ค่ากลางเดียวกันทุกหน้า (รางสีกลาง แท่งสด ตัวเลขเข้ม) ----- */
+.dist-row .g-bar-track { background: var(--track); }
+.dist-row .g-bar-fill { background: var(--primary); filter: saturate(1.15); }
+.dist-row .g-label, .dist-row .g-count { color: var(--ink); }
+.chart-title { font-weight: 800; color: var(--ink); }
+.progress-chart-row .progress-pct { color: var(--ink); filter: none; }
+:root:not([data-theme="dark"]) .progress-chart-row .progress-pct { filter: none; }
+.grade-stat-card { background: color-mix(in oklab, var(--hue-blue) 12%, var(--card)); }
+
 @media (max-width: 640px) {
-  .cw-card { min-height: 116px; padding: 16px 20px; border-radius: 26px; }
-  .cw-time { font-size: 42px; } .cw-temp { font-size: 38px; }
-  .cw-wx-ico { width: 60px; height: 60px; font-size: 32px; }
-  .oneui-shortcuts .oneui-tile { min-height: 96px; padding: 12px 14px; border-radius: 22px; }
-  .oneui-shortcuts .oneui-tile .tile-ico { width: 40px; height: 40px; border-radius: 14px; }
+  .cw-card { min-height: 112px; padding: 16px 20px; border-radius: 26px; }
+  .cw-time { font-size: 40px; } .cw-temp { font-size: 36px; }
+  .cw-wx-ico { width: 58px; height: 58px; font-size: 30px; }
+  .oneui-shortcuts .oneui-tile { min-height: 98px; font-size: 14px; }
+  .oneui-shortcuts .oneui-tile .tile-ico { width: 44px; height: 44px; border-radius: 16px; }
 }
-
-/* ===== วิดเจ็ต v4: สีสดไล่เฉด (แทนสีผสมดำที่หม่น) ตัวอักษรขาว ===== */
-.cw-card, .oneui-shortcuts .oneui-tile, :root[data-theme="dark"] .cw-card, :root[data-theme="dark"] .oneui-shortcuts .oneui-tile {
-  background: linear-gradient(135deg, var(--g1), var(--g2));
-  box-shadow: 0 12px 26px -14px var(--g2);
-  color: #fff;
-}
-.cw-clock   { --g1: #5C86FF; --g2: #7B3FF2; }
-.cw-weather { --g1: #FFB020; --g2: #F2641A; }
-.oneui-shortcuts .oneui-tile:nth-child(1) { --g1: #FF8A3D; --g2: #F2501E; }
-.oneui-shortcuts .oneui-tile:nth-child(2) { --g1: #19C9A6; --g2: #0A9488; }
-.oneui-shortcuts .oneui-tile:nth-child(3) { --g1: #FF5C9A; --g2: #D92A6E; }
-.oneui-shortcuts .oneui-tile:nth-child(4) { --g1: #9A7BFF; --g2: #6B45F0; }
-.oneui-shortcuts .oneui-tile:hover, .oneui-shortcuts .oneui-tile:focus-visible {
-  background: linear-gradient(135deg, var(--g1), var(--g2)); filter: brightness(1.07) saturate(1.05);
-}
-:root[data-theme="dark"] .oneui-shortcuts .oneui-tile:hover { filter: brightness(1.1); }
-.cw-card .cw-day, .cw-card .cw-date, .cw-card .cw-time small, .cw-card .cw-wx-meta { color: rgba(255, 255, 255, .9); }
-.cw-day, .cw-wx-desc { font-weight: 700; }
-.cw-card, .oneui-shortcuts .oneui-tile { text-shadow: 0 1px 2px rgba(0, 0, 0, .12); }
-.oneui-shortcuts .oneui-tile .tile-ico, .cw-wx-ico { background: rgba(255, 255, 255, .24); text-shadow: none; }

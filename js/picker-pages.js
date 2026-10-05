@@ -304,14 +304,14 @@ function scoresSubjectBlockHtml({ course, sections }) {
       ` : `
         <div class="section-card-grid">
           ${sections.map(({ section, studentCount, progress }) => `
-            <div class="section-card" style="--w:${course.color || col.strong}" data-course-id="${course.id}" data-section-id="${section.id}">
+            <div class="section-card" style="--w:${vividColor(course.color) || col.strong}" data-course-id="${course.id}" data-section-id="${section.id}">
               <div class="section-card-top">
-                <span class="course-dot" style="background:${course.color || col.strong}"></span>
+                <span class="course-dot" style="background:${vividColor(course.color) || col.strong}"></span>
                 <span class="section-card-room">ห้อง ${escapeHtml(section.room)}</span>
               </div>
               <div class="section-card-name">${escapeHtml(course.name)}</div>
               <div class="section-card-meta">${studentCount} คน</div>
-              <div class="progress-bar"><div class="fill" style="width:${progress}%; background:${course.color || col.strong}"></div></div>
+              <div class="progress-bar"><div class="fill" style="width:${progress}%; background:${vividColor(course.color) || col.strong}"></div></div>
               <div class="section-card-pct">${progress}% บันทึกแล้ว</div>
             </div>
           `).join('')}
