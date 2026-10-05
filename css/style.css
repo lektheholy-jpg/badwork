@@ -1252,3 +1252,169 @@ table.sheet th, table.sheet td.name-cell { font-family: var(--font); }
 }
 .main:has(.book-cover) { background: var(--paper); min-height: 0; }
 .book-inside { box-shadow: none; background: transparent; }
+
+/* ==========================================================================
+   One UI — ขาว + เอิร์ธโทน: มุมโค้งใหญ่ หัวเรื่องใหญ่ชิดซ้าย การ์ดขาวบนพื้นอุ่น ปุ่มทรงแคปซูล
+   (ทับดีไซน์ก่อนหน้าทั้งหมดในบล็อกเดียว — ลบบล็อกนี้ทิ้งเพื่อกลับไปแบบ "ปกหนังสือ" ได้)
+   ห้ามใช้ letter-spacing ติดลบกับข้อความไทย
+   ========================================================================== */
+:root {
+  --font: 'One UI Sans', 'SamsungOne', 'Noto Sans Thai', system-ui, sans-serif;
+  --font-head: 'One UI Sans', 'SamsungOne', 'IBM Plex Sans Thai', 'Noto Sans Thai', system-ui, sans-serif;
+  --font-modern: var(--font-head);
+
+  --bg: #F7F4EE;  --canvas: #F7F4EE;
+  --surface: #FFFFFF;  --paper: #FFFFFF;
+  --surface-sunken: #F4EFE6;
+  --primary: #7A6550;  --primary-dark: #5C4A39;  --primary-tint: #EEE6D9;
+  --ink: #2B2620;  --ink-soft: #7F766A;
+  --border: #ECE5D9;  --paper-edge: #ECE5D9;  --paper-rule: #ECE5D9;
+  --success: #6B8A5A;  --success-tint: #E8EFE1;
+  --warning: #B58638;  --warning-tint: #F4EAD5;
+  --danger: #B05A48;   --danger-tint: #F5E3DD;
+  --radius-s: 16px;  --radius-m: 26px;
+  --shadow: 0 6px 24px rgba(92, 74, 57, .10);
+  --paper-shadow: none;
+
+  --col-collect: #F3EEE4;  --col-collect-strong: #8A7258;
+  --col-mid: #EEF0E6;      --col-mid-strong: #7A8B62;
+  --col-final: #F6ECE3;    --col-final-strong: #B0724F;
+
+  --sidebar-bg: #FFFFFF;  --sidebar-hover: #F4EFE6;
+  --spine: #FFFFFF;  --spine-deep: #5C4A39;
+  --accent: #B0724F;  --sun: #D9B98A;
+  --cream: #FFFFFF;  --cream-dim: #7F766A;
+}
+html, body { font-size: 16px; }
+body, #app { background: var(--bg); color: var(--ink); line-height: 1.6; }
+
+/* ----- เมนูข้าง: ขาวสะอาด ตัวที่เลือกเป็นแคปซูลสีทราย ----- */
+.sidebar { background: #fff; color: var(--ink); border-right: 1px solid var(--border); box-shadow: none; }
+.sidebar-top { border-bottom: none; }
+.brand { color: var(--ink); font-size: 18px; }
+.brand .mark { background: var(--surface-sunken); border: none; }
+.sidebar-toggle { background: var(--surface-sunken); color: var(--primary-dark); border: none; width: 36px; height: 36px; }
+.sidebar-toggle:hover { background: var(--primary-tint); }
+.nav-list { gap: 4px; }
+.nav-item { color: var(--ink); border: none; border-radius: 999px; padding: 12px 16px; font-size: 15px; font-weight: 500; min-height: 48px; }
+.nav-item .nav-icon { color: var(--ink-soft); }
+.nav-item:hover { background: var(--sidebar-hover); }
+.nav-item.active, #app.sidebar-collapsed .nav-item.active { background: var(--primary-tint); color: var(--primary-dark); font-weight: 700; box-shadow: none; padding-left: 16px; }
+.nav-item.active .nav-icon { color: var(--primary-dark); }
+#app.sidebar-collapsed .nav-item { padding-left: 14px; padding-right: 14px; }
+.nav-divider { background: var(--border); border: none; height: 1px; margin: 12px 8px; }
+.sidebar-footer { border-top: none; }
+.user-chip { background: var(--surface-sunken); border-radius: 22px; }
+.user-chip .name { color: var(--ink); }
+.user-chip .email { color: var(--ink-soft); }
+#app.sidebar-collapsed .nav-item:hover::before, #app.sidebar-collapsed .user-chip:hover::before { background: var(--primary-dark); color: #fff; border-radius: 12px; }
+.hamburger-btn { background: #fff; border-radius: 50%; width: 46px; height: 46px; box-shadow: var(--shadow); }
+.hamburger-btn span { background: var(--primary-dark); }
+.nav-overlay { background: rgba(43, 38, 32, .35); }
+
+/* ----- พื้นที่เนื้อหา: ไม่มีกระดาษ ไม่มีสันหนังสือ ----- */
+.main, .main:has(.book-cover) { background: transparent; border: none; border-radius: 0; box-shadow: none; overflow: visible; padding: 40px 48px 64px; }
+.main:has(.book-cover) { padding: 28px 40px 64px; }
+
+/* ----- หัวเรื่องใหญ่ชิดซ้ายแบบ One UI ----- */
+.page-header { text-align: left; border-bottom: none; padding: 20px 0 0; margin-bottom: 24px; }
+.page-header h1 { font-size: 34px; font-weight: 700; line-height: 1.35; letter-spacing: 0; }
+.page-header .sub { font-style: normal; font-size: 15px; color: var(--ink-soft); margin-top: 6px; }
+.crumb { font-style: normal; color: var(--ink-soft); }
+.report-h2, .gs-head h2 { font-size: 20px; border-bottom: none; padding-bottom: 0; margin: 0 0 14px; }
+.report-h2::before { content: none; }
+.chart-title { border-bottom: none; padding-bottom: 0; font-size: 16px; }
+.struct-group-header { border: none; border-radius: 14px; background: var(--surface-sunken) !important; letter-spacing: 0; }
+
+/* ----- การ์ด: ขาว มุมโค้งใหญ่ ไม่มีเส้นขอบ ----- */
+.main .card, .main .course-row, .section-card, .stat-card, .grade-stat-card, .main .struct-summary-box, .group-creator, .report-room-list {
+  background: #fff; border: none; border-radius: var(--radius-m); box-shadow: none;
+}
+.card-pad { padding: 24px 26px; }
+.stat-card { padding: 20px 22px; }
+.stat-card .value { font-family: var(--font-head); }
+.course-row { border: 2px solid transparent; }
+.course-row:hover, .section-card:hover { border: 2px solid var(--primary-tint); box-shadow: none; }
+.section-card { border: 2px solid transparent; }
+.section-card-room, .badge, .struct-level-badge, .chip { border-radius: 999px; }
+.progress-bar, .progress-bar .fill, .dist-row .g-bar-track, .progress-chart-row .progress-bar, .progress-chart-row .progress-bar .fill, .grade-stat-card .dist-row .g-bar-track { border-radius: 999px; }
+.gs-table thead th { background: var(--surface-sunken); }
+.gs-table tr.gs-course td { background: var(--primary-tint); }
+.gs-table td.num { font-family: var(--font-mono); }
+.gs-details > summary { font-style: normal; }
+.report-room-meta { font-style: normal; }
+table.sheet th, table.sheet td.name-cell { font-family: var(--font); }
+
+/* ----- ปุ่มแคปซูล พื้นทึบ ไม่มีขอบ ----- */
+.btn { border: none; border-radius: 999px; min-height: 44px; padding: 10px 22px; font-size: 15px; font-weight: 600; letter-spacing: 0; box-shadow: none; justify-content: center; }
+.btn-sm { min-height: 36px; padding: 6px 16px; font-size: 14px; }
+.btn-primary { background: var(--primary); color: #fff; }
+.btn-primary:hover { background: var(--primary-dark); }
+.btn-ghost { background: var(--primary-tint); color: var(--primary-dark); }
+.btn-ghost:hover { background: #E4D8C5; color: var(--primary-dark); }
+.btn-danger-ghost { background: var(--danger-tint); color: var(--danger); }
+.btn-danger-ghost:hover { background: #EFD2CA; color: var(--danger); }
+.btn-danger { background: var(--danger); color: #fff; }
+.btn:focus-visible, .nav-item:focus-visible, .tab:focus-visible, .room-pill:focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; }
+.google-btn { background: #fff; border: 1.5px solid var(--border); border-radius: 999px; min-height: 48px; }
+.google-btn:hover { background: var(--surface-sunken); }
+
+/* ----- ช่องกรอก: พื้นทรายอ่อน โค้งมน ----- */
+.field label { color: var(--ink-soft); font-weight: 600; font-size: 13.5px; }
+.field input, .field select, .field textarea, .gs-select, .grade-room-filter, .group-creator-row input, .struct-table select.row-group {
+  background: var(--surface-sunken); border: 1.5px solid transparent; border-radius: var(--radius-s); color: var(--ink); font-family: var(--font); padding: 12px 14px;
+}
+.field input:focus, .field select:focus, .field textarea:focus { background: #fff; border-color: var(--primary); box-shadow: 0 0 0 4px var(--primary-tint); }
+.struct-table input.row-max { border-radius: 12px; border-width: 1.5px; }
+
+/* ----- แท็บ = ตัวเลือกแบบแคปซูล / ห้อง = แคปซูล ----- */
+.tabs { background: var(--surface-sunken); padding: 4px; border-radius: 999px; width: fit-content; max-width: 100%; gap: 2px; }
+.tab { border: none; border-radius: 999px; margin: 0; padding: 9px 18px; }
+.tab:hover { background: transparent; color: var(--ink); }
+.tab.active { background: #fff; color: var(--primary-dark); box-shadow: 0 1px 4px rgba(92, 74, 57, .14); }
+.room-pill { border: none; background: #fff; color: var(--ink-soft); }
+.room-pill:hover { background: var(--primary-tint); color: var(--ink); }
+.room-pill.active { background: var(--primary); color: #fff; }
+.room-pill-add { background: var(--surface-sunken); border: 1.5px dashed var(--border); }
+.room-mode-btn, .room-pick-btn { border-radius: 18px; }
+
+/* ----- โมดัล / โทสต์ / หน้าเข้าสู่ระบบ ----- */
+.modal-backdrop { background: rgba(43, 38, 32, .38); }
+.modal { border-radius: 32px; padding: 30px 30px 26px; box-shadow: var(--shadow); }
+.modal h2 { font-size: 20px; }
+.toast { background: var(--primary-dark); color: #fff; border-radius: 999px; padding: 13px 22px; box-shadow: var(--shadow); }
+.login-screen { background: var(--bg); }
+.login-card { border-radius: 36px; box-shadow: none; padding: 52px 36px; }
+.login-card .mark-lg { border-radius: 24px; width: 72px; height: 72px; }
+.login-card h1 { font-size: 24px; }
+
+/* ----- หน้าแรก: การ์ดใหญ่โค้งสีทรายอุ่น แทนปกหนังสือสีเขียวเข้ม ----- */
+.main:has(.book-cover) { min-height: 0; }
+.book-cover { background: var(--primary-tint); color: var(--ink); border-radius: 36px; box-shadow: none; min-height: min(62vh, 520px); padding: 40px 44px 32px; }
+.cv-circle { background: #D9C7AA; opacity: .75; }
+.cv-ring { border-color: rgba(122, 101, 80, .22); }
+.cv-dot { background: var(--accent); }
+.cover-emblem { background: #fff; box-shadow: none; }
+.cover-kicker, .cover-stat .label { color: var(--ink-soft); }
+.cover-kicker::before { background: var(--accent); }
+.cover-title { color: var(--ink); font-size: clamp(44px, 8vw, 88px); }
+.cover-title .dots { color: var(--accent); }
+.cover-sub { color: var(--ink); }
+.cover-sub::before { background: var(--accent); height: 4px; border-radius: 4px; }
+.cover-stats { border-top: 1px solid rgba(122, 101, 80, .25); }
+.cover-stat .value { color: var(--ink); }
+.book-inside { background: transparent; box-shadow: none; padding: 32px 4px 0; }
+
+@media (max-width: 1100px) { .main, .main:has(.book-cover) { padding: 32px 28px 56px; } .book-inside { padding: 28px 0 0; } }
+@media (max-width: 860px) { .book-cover { padding-top: 76px; } }
+@media (max-width: 720px) {
+  body, #app { background: var(--bg); }
+  .main, .main:has(.book-cover) { padding: 76px 16px 40px; margin: 0; }
+  .page-header { padding-top: 4px; }
+  .page-header h1 { font-size: 28px; }
+  .book-cover { border-radius: 30px; min-height: 76vh; padding: 76px 24px 24px; box-shadow: none; }
+  .modal { border-radius: 28px; }
+  .card-pad { padding: 20px; }
+}
+@media print { body, #app { background: #fff; } .main { padding: 0; } }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
