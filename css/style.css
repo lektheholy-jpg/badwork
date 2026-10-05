@@ -2282,3 +2282,11 @@ html, body { overflow-x: clip; }
 .rc-tab.is-on { background: var(--tc); color: #fff; box-shadow: 0 6px 14px -8px var(--tc); }
 .rc-tab:focus-visible { outline: 2px solid var(--tc); outline-offset: 2px; }
 .rc-course { margin: 0 0 8px; font-size: 13px; font-weight: 700; color: var(--ink-soft); }
+
+/* ===== หัวเว็บ (แบนเนอร์แมวอวกาศ): ขนาดตามหน้าจอ ===== */
+.site-banner { display: flex; justify-content: center; margin: 0 0 10px; padding: 4px 0 0; }
+.site-banner img { display: block; width: min(100%, 500px); height: auto; aspect-ratio: 590 / 350; user-select: none; -webkit-user-drag: none; }
+/* ธีมมืด: ภาพต้นฉบับเป็นเส้นดำบนพื้นโปร่งใส → กลับสี (หมุนเฉดกลับให้สีฟ้ายังเป็นฟ้า) */
+:root[data-theme="dark"] .site-banner img { filter: invert(1) hue-rotate(180deg); }
+@media (min-width: 1100px) { .site-banner img { width: min(100%, 540px); } }
+@media (max-width: 640px) { .site-banner { margin-bottom: 4px; } .site-banner img { width: 100%; } }

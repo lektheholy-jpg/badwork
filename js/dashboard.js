@@ -111,16 +111,11 @@ async function renderDashboard() {
   AppState.courses = courses;
 
   const avgProgress = courses.length ? Math.round(totalProgressSum / courses.length) : 0;
-  const firstName = (AppState.user.displayName || 'คุณครู').split(' ')[0];
 
   view.innerHTML = `
     <!-- หัวหน้าแรกแบบ One UI -->
-    <header class="oneui-hero">
-      <p class="oneui-hello">สวัสดีครับ คุณครู ${escapeHtml(firstName)}</p>
-      <div class="oneui-titlewrap">
-        <img class="oneui-logo" src="assets/icons/android-chrome-512x512.png" alt="">
-        <h1 class="oneui-title">งานน่าเบื่อ<span class="dots">..</span></h1>
-      </div>
+    <header class="site-banner">
+      <img src="assets/banner.webp" width="590" height="350" decoding="async" alt="กมฺมุนา วตฺตตี โลโก — สัตว์โลกย่อมเป็นไปตามกรรม">
     </header>
     <div class="cw-row">
       <div class="cw-card cw-clock" style="--w: var(--hue-violet)">
