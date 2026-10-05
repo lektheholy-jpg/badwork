@@ -68,4 +68,7 @@ document.querySelectorAll('.nav-item[data-route]').forEach(el => {
 
 document.getElementById('hamburger-btn')?.addEventListener('click', toggleMobileNav);
 document.getElementById('nav-overlay')?.addEventListener('click', closeMobileNav);
-document.getElementById('sidebar-toggle')?.addEventListener('click', toggleSidebarCollapse);
+document.getElementById('sidebar-toggle')?.addEventListener('click', () => {
+  // เดสก์ท็อป: ย่อ/ขยายเมนู · มือถือ: แตะโลโก้เพื่อปิดลิ้นชักเมนู
+  if (window.innerWidth <= SIDEBAR_BREAKPOINT) closeMobileNav(); else toggleSidebarCollapse();
+});
