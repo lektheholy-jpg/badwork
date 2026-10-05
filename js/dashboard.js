@@ -92,18 +92,17 @@ async function renderDashboard() {
   view.innerHTML = `
     <!-- ปกหนังสือ -->
     <section class="book-cover">
-      <div class="cover-frame">
-        <i class="cover-corner tl"></i><i class="cover-corner tr"></i><i class="cover-corner bl"></i><i class="cover-corner br"></i>
-        <div class="cover-kicker">สวัสดีครับ คุณครู ${escapeHtml(firstName)}</div>
-        <div class="cover-emblem"><img src="assets/icons/android-chrome-512x512.png" alt="โลโก้"></div>
-        <h1 class="cover-title">งานน่าเบื่อ..</h1>
-        <div class="cover-orn"><span></span><i></i><span></span></div>
+      <i class="cv-ring"></i><i class="cv-circle"></i><i class="cv-dot"></i>
+      <div class="cover-emblem"><img src="assets/icons/android-chrome-512x512.png" alt="โลโก้"></div>
+      <div class="cover-kicker">สวัสดีครับ คุณครู ${escapeHtml(firstName)}</div>
+      <div class="cv-main">
+        <h1 class="cover-title">งานน่าเบื่อ<span class="dots">..</span></h1>
         <p class="cover-sub">สมุดบันทึกคะแนนสำหรับครู</p>
-        <div class="cover-stats">
-          <div class="cover-stat"><div class="value">${courses.length}</div><div class="label">รายวิชา</div></div>
-          <div class="cover-stat"><div class="value">${totalStudents}</div><div class="label">นักเรียนทั้งหมด</div></div>
-          <div class="cover-stat"><div class="value">${avgProgress}%</div><div class="label">ความคืบหน้าเฉลี่ย</div></div>
-        </div>
+      </div>
+      <div class="cover-stats">
+        <div class="cover-stat"><div class="value">${courses.length}</div><div class="label">รายวิชา</div></div>
+        <div class="cover-stat"><div class="value">${totalStudents}</div><div class="label">นักเรียนทั้งหมด</div></div>
+        <div class="cover-stat"><div class="value">${avgProgress}%</div><div class="label">ความคืบหน้าเฉลี่ย</div></div>
       </div>
     </section>
 
