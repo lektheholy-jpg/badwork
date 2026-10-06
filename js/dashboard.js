@@ -193,21 +193,6 @@ async function renderDashboard() {
       </picture>
     </header>
     <div class="cw-row">
-      <div class="cw-card cw-clock">
-        <div class="cw-clock-txt">
-          <div class="cw-day" id="cw-day"></div>
-          <div class="cw-time" id="cw-time">--:--<small>:--</small></div>
-          <div class="cw-date" id="cw-date"></div>
-        </div>
-        <svg class="cw-analog" viewBox="0 0 100 100" aria-hidden="true">
-          <circle class="cw-face" cx="50" cy="50" r="48"/>
-          <line class="cw-tick maj" x1="50" y1="5" x2="50" y2="11" transform="rotate(0 50 50)"/><line class="cw-tick" x1="50" y1="6" x2="50" y2="9" transform="rotate(30 50 50)"/><line class="cw-tick" x1="50" y1="6" x2="50" y2="9" transform="rotate(60 50 50)"/><line class="cw-tick maj" x1="50" y1="5" x2="50" y2="11" transform="rotate(90 50 50)"/><line class="cw-tick" x1="50" y1="6" x2="50" y2="9" transform="rotate(120 50 50)"/><line class="cw-tick" x1="50" y1="6" x2="50" y2="9" transform="rotate(150 50 50)"/><line class="cw-tick maj" x1="50" y1="5" x2="50" y2="11" transform="rotate(180 50 50)"/><line class="cw-tick" x1="50" y1="6" x2="50" y2="9" transform="rotate(210 50 50)"/><line class="cw-tick" x1="50" y1="6" x2="50" y2="9" transform="rotate(240 50 50)"/><line class="cw-tick maj" x1="50" y1="5" x2="50" y2="11" transform="rotate(270 50 50)"/><line class="cw-tick" x1="50" y1="6" x2="50" y2="9" transform="rotate(300 50 50)"/><line class="cw-tick" x1="50" y1="6" x2="50" y2="9" transform="rotate(330 50 50)"/>
-          <line class="cw-hand cw-hh" id="cw-hh" x1="50" y1="54" x2="50" y2="29"/>
-          <line class="cw-hand cw-mm" id="cw-mm" x1="50" y1="56" x2="50" y2="17"/>
-          <line class="cw-hand cw-ss" id="cw-ss" x1="50" y1="60" x2="50" y2="12"/>
-          <circle class="cw-cap" cx="50" cy="50" r="3.6"/>
-        </svg>
-      </div>
       <div class="cw-card cw-weather" data-sky="clear-day">
         <div class="cw-wx-ico" id="cw-wx-ico" aria-hidden="true">…</div>
         <div class="cw-wx-main">
@@ -250,7 +235,7 @@ async function renderDashboard() {
   view.querySelectorAll('.prog-row').forEach(el => el.addEventListener('click', () => openCourseSection(el.dataset.courseId, el.dataset.sectionId)));
   view.querySelectorAll('[data-go]').forEach(el => el.addEventListener('click', () => navigate(el.dataset.go)));
   wireRoomCompare(courses);
-  initClockWeather();
+  initWeather();
 }
 
 // ==========================================================================
@@ -728,24 +713,8 @@ async function loadWeather() {
   return d;
 }
 
-function initClockWeather() {
+function initWeather() {
   const $ = id => document.getElementById(id);
-  const tick = () => {
-    const elTime = $('cw-time');
-    if (!elTime) { clearInterval(timer); return; } // ออกจากหน้าแรกแล้ว
-    const now = new Date();
-    const hm = now.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', hour12: false });
-    const sec = String(now.getSeconds()).padStart(2, '0');
-    elTime.innerHTML = `${hm}<small>:${sec}</small>`;
-    $('cw-day').textContent = now.toLocaleDateString('th-TH', { weekday: 'long' });
-    $('cw-date').textContent = now.toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' });
-    const sN = now.getSeconds(), mN = now.getMinutes() + sN / 60, hN = (now.getHours() % 12) + mN / 60;
-    const rot = (id, deg) => { const el = $(id); if (el) el.setAttribute('transform', `rotate(${deg} 50 50)`); };
-    rot('cw-hh', hN * 30); rot('cw-mm', mN * 6); rot('cw-ss', sN * 6);
-  };
-  const timer = setInterval(tick, 1000);
-  tick();
-
   loadWeather().then(w => {
     if (!$('cw-temp')) return;
     const info = wxDescribe(w.weather_code, w.is_day);

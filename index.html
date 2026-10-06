@@ -128,10 +128,12 @@
 </div>
 
 <div id="modal-root"></div>
-<!-- Dynamic Island: แคปซูลดำกลางบนจอ — พัก = วัน·เวลา / ใช้งาน = แจ้งเตือน บันทึกอัตโนมัติ เลิกทำ ความคืบหน้า (ควบคุมโดย js/island.js) -->
+<!-- Dynamic Island: แคปซูลดำกลางบนจอ — พัก = วัน·เวลา (ชี้เมาส์ = ขยายนิดหน่อย + ไอคอนและชื่อหน้าที่เปิดอยู่ ยกเว้นหน้าหลัก) / ใช้งาน = แจ้งเตือน บันทึกอัตโนมัติ เลิกทำ ความคืบหน้า (ควบคุมโดย js/island.js) -->
 <div id="island" class="island" role="status" aria-live="polite" aria-atomic="true">
   <div class="island-idle" aria-hidden="true">
+    <span class="island-idle-ico"><span></span></span>
     <span class="island-idle-date"></span><span class="island-idle-sep">·</span><span class="island-idle-time"></span>
+    <span class="island-idle-page"><span></span></span>
     <span class="island-idle-off"><i></i>ออฟไลน์</span>
   </div>
   <div class="island-body">

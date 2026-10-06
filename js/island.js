@@ -1,9 +1,11 @@
 // ==========================================================================
 // Dynamic Island — แคปซูลดำกลางบนจอ
 //   ตอนพัก     : แสดงวัน · เวลา (มือถือแสดงเฉพาะวัน เพราะแถบสถานะของเครื่องมีเวลาอยู่แล้ว)
+//                ชี้เมาส์ = ขยายนิดหน่อย แล้วขึ้นไอคอน + ชื่อหน้าที่เปิดอยู่ต่อท้าย เช่น "จ. 6 ต.ค. · 14:30 - บันทึกคะแนน" (หน้าหลักไม่แสดงไอคอน/ชื่อ)
 //   ตอนใช้งาน : ขยายเป็นแจ้งเตือน / สถานะบันทึกอัตโนมัติ / เลิกทำ / แถบความคืบหน้า / ออนไลน์-ออฟไลน์
 //
 //   showToast('ข้อความ', 'success|warn|error|info|loading')   แจ้งเตือนทั่วไป (เดาชนิดจากข้อความได้ ข้อความลงท้าย ... = กำลังโหลด)
+//   islandSetPage(route)   ตั้งชื่อ/ไอคอนหน้าที่ขึ้นตอนชี้เมาส์ (setActiveNav ใน app.js เรียกให้เองทุกครั้งที่เปลี่ยนหน้า — ดึงจากปุ่มเมนูข้าง)
 //   islandSave('saving' | 'saved' | 'error', { count, retry })  สถานะบันทึกอัตโนมัติ
 //   islandUndo('ลบนักเรียนแล้ว', async () => { ...กู้คืน... }, 5000)  ปุ่มเลิกทำ พร้อมแถบนับถอยหลัง
 //   const p = islandProgress({ label: 'นำเข้า', total: 45, unit: 'คน' });  p.update(32); p.finish('นำเข้าแล้ว'); p.fail('ไม่สำเร็จ')
@@ -43,6 +45,10 @@ const IslandUI = (() => {
   const idleEl = el.querySelector('.island-idle');
   const idleDate = el.querySelector('.island-idle-date');
   const idleTime = el.querySelector('.island-idle-time');
+  const idleIco = el.querySelector('.island-idle-ico');      // กล่องนอก: ย่อ/ขยายด้วย CSS
+  const idleIcoIn = idleIco.firstElementChild;                // เนื้อใน: ไอคอนหน้า
+  const idlePage = el.querySelector('.island-idle-page');
+  const idlePageIn = idlePage.firstElementChild;              // เนื้อใน: "- ชื่อหน้า"
 
   // ลำดับความสำคัญ (เลขมาก = สำคัญกว่า)
   const PRIO = { save: 1, info: 2, success: 2, warn: 3, loading: 3, undo: 4, progress: 5, error: 5, net: 6 };
@@ -54,7 +60,23 @@ const IslandUI = (() => {
   // ---------- ตอนพัก: วัน · เวลา ----------
   const pad2 = n => String(n).padStart(2, '0');
   function sizeIdle() {
-    el.style.setProperty('--iw', (Math.ceil(idleEl.offsetWidth) + 30) + 'px');
+    // ความกว้างตอนพักจริง = ทั้งแถว หักส่วนไอคอน/ชื่อหน้าที่ขยายอยู่ตอนนี้ออก (วัดถูกแม้เมาส์ชี้อยู่หรือกำลังแอนิเมชัน)
+    const base = Math.ceil(idleEl.offsetWidth - idleIco.offsetWidth - idlePage.offsetWidth);
+    el.style.setProperty('--iw', (base + 30) + 'px');
+    // ตอนชี้เมาส์: เพิ่มความกว้างของไอคอน + ชื่อหน้า (หน้าหลักไม่มี = ขยายนิดเดียว)
+    const extra = Math.ceil(idleIcoIn.scrollWidth + idlePageIn.scrollWidth);
+    el.style.setProperty('--ih', (base + (extra || 18) + 30) + 'px');
+  }
+  // info = { icon: '<svg…>', label: 'บันทึกคะแนน' } หรือ null (หน้าหลัก)
+  function setPage(info) {
+    idleIcoIn.innerHTML = info ? info.icon : '';
+    idlePageIn.innerHTML = '';
+    if (info) {
+      const dash = document.createElement('i'); dash.className = 'island-idle-dash'; dash.textContent = '-';
+      const name = document.createElement('b'); name.className = 'island-idle-name'; name.textContent = info.label;
+      idlePageIn.append(dash, name);
+    }
+    sizeIdle();
   }
   function tick() {
     const d = new Date();
@@ -159,8 +181,19 @@ const IslandUI = (() => {
   // ปิดข้อความของ key นั้นทันที (ใช้เมื่องานจบแล้วแต่ไม่อยากขึ้นข้อความซ้ำ)
   function clear(key) { if (cur && cur.key === key) end(); }
 
-  return { present, clear };
+  return { present, clear, setPage };
 })();
+
+// ---------- ชื่อ/ไอคอนหน้าที่เปิดอยู่ (ขึ้นตอนชี้เมาส์) — ดึงจากปุ่มเมนูข้างตาม data-route จึงตรงกับเมนูเสมอ ----------
+const ISLAND_PAGE_ALIAS = { course: 'courses' }; // หน้าภายในวิชา นับเป็น "รายวิชาของฉัน"
+function islandSetPage(route) {
+  if (!IslandUI) return;
+  const key = ISLAND_PAGE_ALIAS[route] || route;
+  const nav = key && key !== 'dashboard' ? document.querySelector(`.nav-item[data-route="${key}"]`) : null;
+  const label = nav && (nav.querySelector('.nav-label')?.textContent || '').trim();
+  const icon = nav && nav.querySelector('.nav-icon')?.innerHTML;
+  IslandUI.setPage(label ? { label, icon: icon || '' } : null);
+}
 
 // ---------- API ที่ส่วนอื่นของแอปเรียกใช้ ----------
 function showToast(msg, kind) {

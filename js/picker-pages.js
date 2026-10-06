@@ -65,12 +65,8 @@ async function renderStructureList(view) {
   const courses = await loadAllCoursesForStructure();
 
   view.innerHTML = `
-    <div class="page-header u-flex u-items-start u-between u-wrap u-gap-10">
-      <div>
-        <h1>ตั้งค่าโครงสร้างวิชา</h1>
-        <div class="sub">รายวิชาทั้งหมดของคุณ อ้างอิงด้วยรหัสวิชา — เปิด/ปิดใช้งานเพื่อกำหนดว่าจะใช้วิชาไหนในเทอมนี้ หรือกดแก้ไขเพื่อจัดการห้องเรียนและสัดส่วนคะแนน</div>
-      </div>
-      <button class="btn btn-primary btn-sm" id="struct-new-course-btn">+ สร้างรายวิชาใหม่</button>
+    <div class="page-header u-flex u-wrap u-gap-10">
+      <button class="btn btn-primary btn-sm u-ml-auto" id="struct-new-course-btn">+ สร้างรายวิชาใหม่</button>
     </div>
     ${courses.length === 0 ? `
       <div class="card"><div class="empty-state">
@@ -275,20 +271,12 @@ async function renderScoresPage() {
 
     if (courses.length === 0) {
       view.innerHTML = `
-        <div class="page-header">
-          <h1>บันทึกคะแนน</h1>
-          <div class="sub">บันทึกคะแนนรายบุคคลแบบตาราง พร้อมคำนวณรวมและเกรดอัตโนมัติ</div>
-        </div>
         <div class="card"><div class="empty-state"><div class="icon">${icon('book')}</div>ยังไม่มีรายวิชา กรุณาสร้างรายวิชาก่อน</div></div>
       `;
       return;
     }
 
     view.innerHTML = `
-      <div class="page-header">
-        <h1>บันทึกคะแนน</h1>
-        <div class="sub">เลือกรายวิชาและห้องที่ต้องการบันทึกคะแนน</div>
-      </div>
       ${scoresPickerGroupsHtml(cards)}
     `;
 
@@ -323,7 +311,7 @@ async function renderScoresPage() {
     <div class="crumb"><a href="#" id="scores-back-to-picker" class="u-link-plain">บันทึกคะแนน</a> / <b>${escapeHtml(course.code ? course.code + ' - ' : '')}${escapeHtml(course.name)} • ห้อง ${escapeHtml(section.room)}</b></div>
     <div class="page-header">
       <h1>${escapeHtml(course.code ? course.code + ' • ' : '')}${escapeHtml(course.name)}</h1>
-      <div class="sub">${escapeHtml(course.level || '')} • ห้อง ${escapeHtml(section.room)} • บันทึกคะแนนรายบุคคลแบบตาราง พร้อมคำนวณรวมและเกรดอัตโนมัติ</div>
+      <div class="sub">${escapeHtml(course.level || '')} • ห้อง ${escapeHtml(section.room)}</div>
     </div>
     <div id="scores-page-body"></div>
   `;

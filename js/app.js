@@ -3,6 +3,7 @@
 // ==========================================================================
 
 function setActiveNav(routeId) {
+  if (typeof islandSetPage === 'function') islandSetPage(routeId || AppState.currentRoute); // ชื่อหน้าบน Dynamic Island (หน้าในวิชา routeId=null → ใช้ currentRoute)
   document.querySelectorAll('.nav-item[data-route]').forEach(el => {
     el.classList.toggle('active', el.dataset.route === routeId);
   });
@@ -56,7 +57,6 @@ function renderSettings() {
   const view = document.getElementById('view');
   const u = AppState.user;
   view.innerHTML = `
-    <div class="page-header"><h1>ตั้งค่า</h1><div class="sub">บัญชีและหน้าตาของแอป</div></div>
     <div class="card card-pad u-maxw-420">
       <div class="u-flex u-items-center u-gap-12 u-mb-16">
         <img src="${escapeHtml(safePhotoUrl(u.photoURL, u.displayName))}" alt="" referrerpolicy="no-referrer" class="u-avatar-48">

@@ -62,7 +62,6 @@ async function renderReportPage() {
   const { courses, sectionCards } = await loadCoursesWithGrades(); // เฉพาะวิชาที่ยังเปิดใช้งาน
   if (courses.length === 0) {
     view.innerHTML = `
-      <div class="page-header"><h1>รายงาน</h1><div class="sub">สรุปผลการเรียน และส่งออกข้อมูลเข้าฟอร์ม SGS / Next School</div></div>
       <div class="card"><div class="empty-state"><div class="icon">${icon('book')}</div>ยังไม่มีรายวิชา กรุณาสร้างรายวิชาก่อน</div></div>`;
     return;
   }
@@ -76,10 +75,6 @@ async function renderReportPage() {
     ? AppState.reportPageTerm : terms[0];
 
   view.innerHTML = `
-    <div class="page-header">
-      <h1>รายงาน</h1>
-      <div class="sub">เลือกภาคเรียน เพื่อดูสรุปผลการเรียน และกดส่งออกข้อมูลหรือคะแนนเข้าฟอร์ม SGS / Next School ของแต่ละห้อง</div>
-    </div>
     <div class="toolbar u-mb-16">
       <div class="toolbar-left">
         <label for="report-term" class="u-fs-13 u-semibold">ภาคเรียน</label>

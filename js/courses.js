@@ -176,10 +176,6 @@ async function renderCoursesList() {
   const courses = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(c => !c.archived);
 
   view.innerHTML = `
-    <div class="page-header">
-      <h1>รายวิชาของฉัน</h1>
-      <div class="sub">รายวิชาทั้งหมดที่คุณสอนในภาคเรียนนี้ — จบเทอมแล้วกดเก็บเข้า <a href="#" id="goto-archive" class="u-link-primary">คลังรายวิชา</a> ได้จากหน้ารายวิชานั้น</div>
-    </div>
     ${courses.length === 0 ? `
       <div class="card"><div class="empty-state">
         <div class="icon">${icon('book')}</div>
@@ -190,7 +186,6 @@ async function renderCoursesList() {
   view.querySelectorAll('.course-row').forEach(row => {
     row.addEventListener('click', () => openCourse(row.dataset.courseId));
   });
-  document.getElementById('goto-archive')?.addEventListener('click', (e) => { e.preventDefault(); navigate('archive-page'); });
 }
 
 function openCourse(courseId) {
@@ -327,10 +322,6 @@ async function renderArchivePage() {
   const courses = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(c => c.archived);
 
   view.innerHTML = `
-    <div class="page-header">
-      <h1>คลังรายวิชา</h1>
-      <div class="sub">วิชาจากเทอมก่อนหน้าที่เก็บไว้ — ข้อมูลนักเรียนและคะแนนยังอยู่ครบ ดู แก้ไข หรือคัดลอกไปใช้เทอมใหม่ได้ทุกเมื่อ</div>
-    </div>
     ${courses.length === 0 ? `
       <div class="card"><div class="empty-state">
         <div class="icon">${icon('archive')}</div>

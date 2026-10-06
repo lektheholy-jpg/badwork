@@ -602,13 +602,27 @@ table.sheet thead th.sticky-right-2 { z-index: 3; }
 /* ตอนพัก */
 .island-idle {
   position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: max-content;
-  display: flex; align-items: center; gap: 6px; white-space: nowrap;
+  display: flex; align-items: center; white-space: nowrap;
   font-family: var(--font-modern); font-size: 12.5px; font-weight: 600; line-height: 1; font-variant-numeric: tabular-nums;
   color: rgba(255, 255, 255, .9); transition: opacity .18s ease;
 }
 .island.open .island-idle { opacity: 0; }
 .island-idle-date, .island-idle-sep { color: rgba(255, 255, 255, .6); }
-.island-idle-sep { opacity: .6; }
+.island-idle-sep { opacity: .6; margin: 0 6px; }
+/* ชี้เมาส์: แคปซูลขยายนิดหน่อย + ไอคอน/ชื่อหน้าค่อยๆ คลี่ออก (ความกว้างปลายทาง --ih js/island.js วัดจากเนื้อหาจริง · หน้าหลักไม่มีไอคอน/ชื่อ) */
+.island-idle-ico, .island-idle-page {
+  display: grid; grid-template-columns: 0fr; opacity: 0;
+  transition: grid-template-columns .5s cubic-bezier(.3, 1.2, .5, 1), opacity .25s ease;
+}
+.island-idle-ico > span, .island-idle-page > span { min-width: 0; overflow: hidden; display: flex; align-items: center; }
+.island-idle-ico svg { flex: none; width: 14px; height: 14px; margin-right: 6px; color: var(--viz-sky); }
+.island-idle-dash { flex: none; margin: 0 6px; font-style: normal; color: rgba(255, 255, 255, .6); }
+.island-idle-name { flex: none; font-weight: 700; color: var(--white); }
+@media (hover: hover) {
+  .island:not(.open) { pointer-events: auto; }
+  .island:not(.open):hover { width: var(--ih, 150px); height: 36px; border-radius: 18px; }
+  .island:not(.open):hover .island-idle-ico, .island:not(.open):hover .island-idle-page { grid-template-columns: 1fr; opacity: 1; }
+}
 .island-idle-off { display: none; align-items: center; gap: 7px; color: var(--hue-amber); }
 .island-idle-off i { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
 .island.is-offline .island-idle-off { display: inline-flex; }
@@ -1147,7 +1161,7 @@ body, #app { background: var(--bg); color: var(--ink); }
 
 /* ----- พื้นผิวที่เดิมฮาร์ดโค้ดสีขาว → ใช้ตัวแปรเพื่อให้สลับโหมดได้ ----- */
 .hamburger-btn, .sheet-wrap, table.sheet td, .struct-summary-box, .login-card, .google-btn, .modal, .chip, .main .card, .section-card, .main .struct-summary-box, .group-creator, .room-pill, .save-status, .search-box input { background: var(--card); }
-.sidebar { background: color-mix(in srgb, var(--sidebar-bg) var(--glass, 80%), transparent); border-right: 1px solid var(--border); }
+.sidebar { background: color-mix(in srgb, var(--sidebar-bg) var(--glass, 60%), transparent); border-right: 1px solid var(--border); }
 .sidebar-toggle, .user-chip { background: var(--surface-sunken); }
 .field input, .field select, .field textarea, .gs-select, .grade-room-filter, .group-creator-row input,
 .struct-table select.row-group { background: var(--surface-sunken); color: var(--ink); }
@@ -1331,15 +1345,12 @@ table.sheet td input.score-input:hover { background: var(--hover-wash); }
 .ns-table-wrap { border-color: var(--border); border-radius: var(--radius-s); }
 
 /* ===== วิดเจ็ตวัน/เวลา + สภาพอากาศ ===== */
-.cw-row { display: grid; grid-template-columns: 1.15fr 1fr; }
+.cw-row { display: grid; grid-template-columns: 1fr; }
 .cw-card {
   display: flex; align-items: center; gap: 18px;
   background: color-mix(in oklab, var(--w) var(--wmix), var(--card)); color: var(--ink); border-radius: var(--radius-l); box-shadow: none;
 }
-.cw-clock { flex-direction: column; align-items: flex-start; justify-content: center; gap: 0; --w: var(--hue-blue); }
 :root[data-theme="dark"] .cw-card { --cw-b: 1.1; }
-.cw-time { font-family: var(--font-head); line-height: 1.2; font-variant-numeric: tabular-nums; }
-.cw-time small { font-weight: 600; font-size: 24px; color: var(--ink-soft); }
 .cw-wx-ico { display: grid; place-items: center; flex-shrink: 0; }
 .cw-wx-main { min-width: 0; }
 .cw-temp { font-family: var(--font-head); line-height: 1.2; }
@@ -1351,9 +1362,7 @@ table.sheet td input.score-input:hover { background: var(--hover-wash); }
 
 /* วิดเจ็ตเวลา/อากาศ แบบพาสเทลเดียวกับทางลัด */
 .cw-weather { --w: var(--hue-amber); }
-.cw-day { color: color-mix(in oklab, var(--w) 75%, var(--ink)); font-size: 15px; font-weight: 800; filter: none; }
-.cw-time { font-size: 54px; font-weight: 800; color: var(--ink); }
-.cw-date, .cw-wx-meta { color: var(--ink-soft); font-size: 14px; font-weight: 600; }
+.cw-wx-meta { color: var(--ink-soft); font-size: 14px; font-weight: 600; }
 .cw-wx-ico { width: 68px; height: 68px; border-radius: var(--radius-m); font-size: 36px; background: var(--w); box-shadow: 0 6px 14px -6px var(--w); }
 .cw-temp { font-size: 46px; font-weight: 800; }
 .cw-wx-desc { font-size: 16px; font-weight: 800; }
@@ -1378,7 +1387,7 @@ table.sheet td input.score-input:focus, .field input:focus, .field select:focus,
 
 @media (max-width: 640px) {
   .cw-card { border-radius: var(--radius-m); }
-  .cw-time { font-size: 40px; } .cw-temp { font-size: 36px; }
+  .cw-temp { font-size: 36px; }
   .cw-wx-ico { width: 58px; height: 58px; font-size: 30px; }
 }
 
@@ -1462,7 +1471,7 @@ button.brand:hover .mark { transform: rotate(-6deg) scale(1.04); }
 
   .tabbar {
     display: flex; position: fixed; z-index: 45; left: 12px; right: 12px; bottom: calc(10px + env(safe-area-inset-bottom, 0px));
-    gap: 4px; padding: 6px; border-radius: var(--radius-l); background: color-mix(in srgb, var(--card) var(--glass, 80%), transparent); box-shadow: 0 10px 30px var(--shadow-ink-md), inset 0 0 0 1px var(--border);
+    gap: 4px; padding: 6px; border-radius: var(--radius-l); background: color-mix(in srgb, var(--card) var(--glass, 60%), transparent); box-shadow: 0 10px 30px var(--shadow-ink-md), inset 0 0 0 1px var(--border);
   }
   .tab-item {
     --w: var(--hue-blue); flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
@@ -1480,7 +1489,7 @@ button.brand:hover .mark { transform: rotate(-6deg) scale(1.04); }
   .more-scrim { display: block; position: fixed; inset: 0; z-index: 46; background: var(--scrim); opacity: 0; pointer-events: none; transition: opacity .2s ease; }
   .more-sheet {
     display: block; position: fixed; z-index: 47; left: 0; right: 0; bottom: 0; padding: 10px 16px calc(96px + env(safe-area-inset-bottom, 0px));
-    border-radius: var(--radius-xl) var(--radius-xl) 0 0; background: color-mix(in srgb, var(--card) 90%, transparent); box-shadow: 0 -10px 40px var(--shadow-ink-md);
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0; background: color-mix(in srgb, var(--card) var(--glass, 60%), transparent); box-shadow: 0 -10px 40px var(--shadow-ink-md);
     transform: translateY(105%); transition: transform .26s cubic-bezier(.2, .8, .2, 1);
   }
   #app.more-open .more-scrim { opacity: 1; pointer-events: auto; }
@@ -1627,15 +1636,6 @@ button.brand:hover .mark { transform: rotate(-6deg) scale(1.04); }
   border: 0; box-shadow: none;
 }
 
-/* ----- วันที่/เวลา ----- */
-.cw-row .cw-day {
-  display: inline-block; padding: .28em .9em; border-radius: var(--radius-pill); margin-bottom: .35em;
-  font-size: clamp(14px, 3.6cqi, 22px); font-weight: 800; letter-spacing: 0;
-  background: var(--hue-blue); color: var(--on-w); filter: none;
-}
-.cw-row .cw-time { line-height: 1.08; font-weight: 800; white-space: nowrap; }
-.cw-row .cw-date { font-size: clamp(14px, 3.7cqi, 24px); font-weight: 600; }
-
 /* ----- อากาศ ----- */
 .cw-row .cw-weather {
   --sky: none;
@@ -1668,11 +1668,9 @@ button.brand:hover .mark { transform: rotate(-6deg) scale(1.04); }
 }
 
 @media (max-width: 640px) {
-  .cw-row { grid-template-columns: 1fr; gap: 10px; }
+  .cw-row { gap: 10px; }
   .cw-row .cw-card { min-height: 118px; padding: 16px 20px; border-radius: var(--radius-m); }
   .cw-row .cw-temp { font-size: clamp(38px, 14cqi, 60px); }
-  .cw-row .cw-day { font-size: 14px; }
-  .cw-row .cw-date { font-size: 14px; }
   .cw-row .cw-wx-desc { font-size: 16px; }
   .cw-row .cw-wx-meta { font-size: 12.5px; }
   .cw-row .cw-wx-ico { width: 60px; height: 60px; font-size: 32px; }
@@ -1716,48 +1714,7 @@ button.brand:hover .mark { transform: rotate(-6deg) scale(1.04); }
   .dash > .rc-card .rc-plot svg { position: absolute; inset: 0; width: 100%; height: 100%; }
 }
 
-/* ==========================================================================
-   v10 — วิดเจ็ตนาฬิกาแบบ One UI 9: ตัวเลขดิจิทัลหนา + หน้าปัดอนาล็อกโทนเดียวกัน
-   พื้นการ์ดไล่โทนฟ้าอ่อน (โหมดมืดไล่โทนน้ำเงินเข้ม) หน้าปัดเป็นวงนุ่มพร้อมเข็มสีหลัก
-   ========================================================================== */
-.cw-row .cw-clock {
-  flex-direction: row; align-items: center; justify-content: space-between; gap: clamp(12px, 3cqi, 28px);
-}
-.cw-clock-txt { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; flex: 1 1 auto; }
-.cw-row .cw-time { font-size: clamp(38px, 11.5cqi, 92px); letter-spacing: -.02em; }
-.cw-row .cw-time small {
-  display: inline-block; margin-left: .22em; padding: .06em .42em; border-radius: var(--radius-pill); vertical-align: .55em;
-  font-size: .3em; font-weight: 800; letter-spacing: 0;
-  background: color-mix(in oklab, var(--hue-blue) 20%, transparent); color: color-mix(in oklab, var(--hue-blue) 80%, var(--ink));
-}
-.cw-row .cw-date { margin-top: .1em; }
-
-.cw-analog { flex: none; width: clamp(84px, 31cqi, 210px); height: auto; aspect-ratio: 1; filter: drop-shadow(0 10px 18px color-mix(in oklab, var(--hue-blue) 28%, transparent)); }
-.cw-face { fill: color-mix(in oklab, var(--card) 88%, var(--hue-blue)); stroke: color-mix(in oklab, var(--hue-blue) 22%, transparent); stroke-width: 1.2; }
-:root[data-theme="dark"] .cw-face { fill: color-mix(in oklab, var(--card) 70%, var(--hue-blue)); }
-.cw-tick { stroke: color-mix(in oklab, var(--ink) 34%, transparent); stroke-width: 1.4; stroke-linecap: round; }
-.cw-tick.maj { stroke: var(--ink); stroke-width: 2.4; opacity: .75; }
-.cw-hand { stroke-linecap: round; fill: none; }
-.cw-hh { stroke: var(--ink); stroke-width: 5.2; }
-.cw-mm { stroke: var(--hue-blue); stroke-width: 4; }
-.cw-ss { stroke: var(--hue-orange); stroke-width: 1.7; }
-.cw-cap { fill: var(--hue-orange); stroke: var(--card); stroke-width: 1.6; }
-
-/* การ์ดแคบมาก (มือถือ/จอเล็ก): ซ่อนหน้าปัด เหลือตัวเลข */
-@container (max-width: 250px) { .cw-analog { display: none; } }
-@media (max-width: 640px) {
-  .cw-row .cw-clock { min-height: 118px; }
-  .cw-row .cw-time { font-size: clamp(38px, 12cqi, 56px); }
-  .cw-analog { width: 92px; }
-}
-
-/* จอกว้าง: การ์ดนาฬิกากว้างกว่าอากาศเล็กน้อย ให้ตัวเลข + หน้าปัดไม่แน่น */
-@media (min-width: 1360px) {
-  .dash > .cw-row { grid-template-columns: 1.4fr 1fr; }
-  .dash > .cw-row .cw-time { font-size: clamp(44px, 15cqi, 96px); }
-}
-
-/* จอ 1360–1699px: คอลัมน์ขวาแคบลงเล็กน้อยให้คอลัมน์ซ้าย (นาฬิกา/อากาศ) ไม่แน่น */
+/* จอ 1360–1699px: คอลัมน์ขวาแคบลงเล็กน้อยให้คอลัมน์ซ้าย (อากาศ) ไม่แน่น */
 @media (min-width: 1360px) and (max-width: 1699px) {
   .dash { grid-template-columns: minmax(0, 1.3fr) minmax(430px, 1fr); }
   .dash > .prog-section .prog-row { grid-template-columns: 12px minmax(0, 1.3fr) minmax(0, 1fr) 64px 40px; gap: 10px; padding: 9px 16px; }
@@ -1820,11 +1777,10 @@ table.sheet tbody tr:nth-child(n) td.over-max { background: var(--danger-tint); 
 .rc-table tbody tr:nth-child(even) td { background: var(--zebra); }
 
 /* ==========================================================================
-   ไม่ใช้ gradient ทุกหน้า: หน้าเข้าสู่ระบบ, หัวหน้าแรก, วิดเจ็ตนาฬิกา/อากาศ → สีทึบ
+   ไม่ใช้ gradient ทุกหน้า: หน้าเข้าสู่ระบบ, หัวหน้าแรก, วิดเจ็ตอากาศ → สีทึบ
    (วงแหวนความคืบหน้าแบบ conic ยังอยู่ เพราะเป็นเส้นสีทึบไม่ใช่การไล่สี)
    ========================================================================== */
 .login-screen { background: var(--login-b); }
-.cw-row .cw-clock, :root[data-theme="dark"] .cw-row .cw-clock { background: color-mix(in oklab, var(--hue-blue) 14%, var(--card)); }
 .cw-row .cw-weather { background: color-mix(in srgb, rgb(0 18 60) calc(var(--sky-shade, 0) * 100%), var(--sky-solid, #5AA9FA)); }
 
 @media print {
@@ -1835,9 +1791,6 @@ table.sheet tbody tr:nth-child(n) td.over-max { background: var(--danger-tint); 
 /* ==========================================================================
    หน้า "บันทึกคะแนน": แบบกระชับ (จำกัดขอบเขตเฉพาะหน้านี้ ไม่กระทบการ์ดห้องหน้าอื่น)
    ========================================================================== */
-.main:has(.scores-subject-list) .page-header { margin-bottom: 14px; }
-.main:has(.scores-subject-list) .page-header h1 { font-size: 24px; }
-.main:has(.scores-subject-list) .page-header .sub { font-size: 13px; margin-top: 2px; }
 .struct-group:has(.scores-subject-list) .struct-group-header { padding: 8px 16px; border-radius: var(--radius-s); }
 .struct-group:has(.scores-subject-list) .struct-group-title { font-size: 15px; }
 .scores-subject-list { gap: 12px; }
@@ -2021,7 +1974,7 @@ table.sheet tbody tr:nth-child(n) td.over-max { background: var(--danger-tint); 
    สีพื้นโปร่งแสงอยู่ที่กฎเดิมของ .sidebar / .tabbar / .more-sheet (ใช้ --glass) · ที่นี่เพิ่มเฉพาะเอฟเฟกต์เบลอพื้นหลัง
    ปรับความโปร่งที่ --glass (ยิ่งน้อยยิ่งโปร่ง)
    ========================================================================== */
-:root { --glass: 80%; --glass-blur: 22px; }
+:root { --glass: 60%; --glass-blur: 26px; }
 .sidebar { -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.6); backdrop-filter: blur(var(--glass-blur)) saturate(1.6); }
 @media (max-width: 860px) {
   .tabbar, .more-sheet { -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.6); backdrop-filter: blur(var(--glass-blur)) saturate(1.6); }
