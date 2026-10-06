@@ -1,0 +1,17 @@
+{
+  "name": "badwork",
+  "private": true,
+  "description": "เครื่องมือ build/ตรวจ CSS ของโปรเจกต์ — ล็อกเวอร์ชันแบบเป๊ะ (ไม่ใช้ ^ หรือ ~) เพื่อให้ผลลัพธ์เหมือนเดิมทุกเครื่อง",
+  "engines": { "node": ">=18" },
+  "scripts": {
+    "build:css": "sh build-css.sh",
+    "check:css": "sh build-css.sh --check",
+    "test": "node tests/score-logic.test.js",
+    "prepare": "git config core.hooksPath .githooks || true"
+  },
+  "devDependencies": {
+    "csso-cli": "4.0.2",
+    "jsdom": "24.1.3",
+    "postcss": "8.4.47"
+  }
+}

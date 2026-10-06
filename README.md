@@ -127,4 +127,18 @@ JS ที่ไม่ถูกเรียกใช้: parseRoomList ใน uti
 - **ค่าที่มาจากข้อมูล** ส่งผ่านตัวแปร CSS เท่านั้น: `--c` = สี (จุดสีวิชา, แท่งความคืบหน้า, ป้ายระดับชั้น), `--p` = ความกว้าง % (แท่งกราฟ), `--w` = สีวิดเจ็ต แล้วให้ CSS เป็นคนกำหนดว่านำไปใช้กับ property ไหน
 - **ซ่อน/แสดง** ใช้คลาส `.hidden` ส่วนสถานะใช้คลาส (`is-ok`, `is-bad`, `is-clickable`) แทนการตั้ง `el.style.*`
 - **`!important` อนุญาตเฉพาะ** `.hidden` และ `prefers-reduced-motion` — นอกนั้นให้แก้ที่ต้นทาง (ลำดับ/specificity หรือเอา inline ที่ชนกันออก)
-- รัน `./build-css.sh` ก่อน deploy: จะตรวจกฎนี้ (`tools/check-inline.js`) และกฎซ้อนทับ (`tools/check-css.js`) แล้วค่อย minify
+- ตรวจกฎนี้ด้วย `tools/check-inline.js` (รันอัตโนมัติใน `build-css.sh`)
+
+## การ build CSS
+
+หน้าเว็บโหลด `css/style.min.css` แต่ให้แก้ที่ `css/style.css` เท่านั้น (`.min` เป็นไฟล์ที่สร้างขึ้น ห้ามแก้มือ)
+
+```sh
+npm install              # ครั้งแรก: ติดตั้งเครื่องมือเวอร์ชันที่ล็อกไว้ + เปิด git hook อัตโนมัติ
+./build-css.sh           # ตรวจกฎ แล้วสร้าง css/style.min.css
+./build-css.sh --check   # ตรวจว่า .min ตรงกับ style.css (ไม่เขียนไฟล์) — ใช้ก่อน deploy / ใน CI
+npm test                 # tests/score-logic.test.js
+```
+
+- **ล็อกเวอร์ชัน**: `csso-cli`, `postcss`, `jsdom` ระบุเวอร์ชันเป๊ะใน `package.json` และต้อง commit `package-lock.json` (สร้างตอน `npm install` ครั้งแรก) — `build-css.sh` ไม่ใช้ `npx --yes` แบบดึงตัวล่าสุดอีกแล้ว ถ้าจะอัปเกรดให้แก้เวอร์ชันใน `package.json` แล้วรัน build + commit `.min` ที่เปลี่ยน
+- **กันลืม build**: `.githooks/pre-commit` จะสร้าง `.min` ใหม่และ stage ให้เองทุกครั้งที่ commit แตะ `style.css` (ถ้ามีการแก้ที่ยังไม่ได้ `git add` จะหยุดและเตือน) เปิดใช้อัตโนมัติจาก `npm install` หรือสั่งเอง `git config core.hooksPath .githooks`
