@@ -871,7 +871,8 @@ table.sheet tbody tr:nth-child(even) td.grp-sub-total { background: var(--col-co
 /* ตารางบันทึกคะแนนกว้างกว่ากระดาษ → ให้เลื่อนในกรอบตัวเอง ไม่ดันแผ่นกระดาษให้ล้น */
 .main .sheet-wrap { border: 1px solid var(--paper-rule); border-radius: 2px; box-shadow: none; max-width: 100%; }
 
-@media (max-width: 1100px) {
+/* เฉพาะจอกลาง: บนมือถือ (<=860px) ให้ใช้ระยะขอบของกฎมือถือด้านบน ไม่ให้กฎนี้มาทับ */
+@media (min-width: 861px) and (max-width: 1100px) {
   .main { margin: 18px 18px 40px; padding: 32px 28px 56px; }
 }
 @media (max-width: 860px) {
