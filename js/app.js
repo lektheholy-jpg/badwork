@@ -2,6 +2,29 @@
 // Router
 // ==========================================================================
 
+const navPills = []; // ฟังก์ชันวางแถบเลื่อนของเมนูข้าง/แถบล่าง (สร้างใน initNavPill)
+
+// แถบสีเลื่อนไปหาปุ่มที่ active (ใช้ทั้งเมนูข้างและแถบเมนูล่าง) — คืนฟังก์ชัน place(animate)
+function initNavPill(container, itemSel, cls) {
+  if (!container) return;
+  const pill = document.createElement('span');
+  pill.className = cls; pill.setAttribute('aria-hidden', 'true');
+  container.prepend(pill);
+  const place = (animate) => {
+    const t = container.querySelector(itemSel + '.active');
+    if (!t || !t.offsetWidth) { pill.style.opacity = '0'; return; } // ไม่มีปุ่ม active หรือเมนูถูกซ่อนอยู่
+    pill.classList.toggle('no-anim', !animate || !pill.dataset.placed); // ครั้งแรก/ปรับขนาดจอ: วางทันที ไม่เลื่อนมาจากมุม
+    pill.style.setProperty('--w', getComputedStyle(t).getPropertyValue('--w'));
+    pill.style.width = t.offsetWidth + 'px';
+    pill.style.height = t.offsetHeight + 'px';
+    pill.style.transform = `translate(${t.offsetLeft}px, ${t.offsetTop}px)`;
+    pill.style.opacity = '1';
+    pill.dataset.placed = '1';
+  };
+  if (typeof ResizeObserver === 'function') new ResizeObserver(() => place(false)).observe(container);
+  navPills.push(place);
+}
+
 function setActiveNav(routeId) {
   if (typeof islandSetPage === 'function') islandSetPage(routeId || AppState.currentRoute); // ชื่อหน้าบน Dynamic Island (หน้าในวิชา routeId=null → ใช้ currentRoute)
   document.querySelectorAll('.nav-item[data-route]').forEach(el => {
@@ -13,7 +36,20 @@ function setActiveNav(routeId) {
     el.classList.toggle('active', on); // ต้องส่ง boolean จริง ไม่งั้น toggle จะสลับค่าแทนการกำหนดค่า
     if (on) el.setAttribute('aria-current', 'page'); else el.removeAttribute('aria-current');
   });
+  navPills.forEach(place => place(true));
 }
+
+// เปลี่ยนหน้า: เล่นเฟดเข้าครั้งเดียวต่อการกดหนึ่งครั้ง (CSS ปิดเองเมื่อผู้ใช้ตั้ง reduced-motion)
+function playViewEnter() {
+  const v = document.getElementById('view');
+  if (!v) return;
+  v.classList.remove('view-enter');
+  void v.offsetWidth; // รีสตาร์ทแอนิเมชันถ้ากดซ้ำ
+  v.classList.add('view-enter');
+}
+document.getElementById('view')?.addEventListener('animationend', e => {
+  if (e.target === e.currentTarget) e.currentTarget.classList.remove('view-enter');
+});
 
 // หน้าที่ต้องโหลดสคริปต์เพิ่มก่อนวาด (ดู LAZY_MODULES ใน utils.js)
 const ROUTE_MODULES = { 'report-page': 'report', tools: 'tools' };
@@ -27,13 +63,13 @@ function navigate(route) {
   document.getElementById('app')?.classList.remove('more-open');
 
   const mod = ROUTE_MODULES[route];
-  if (!mod) { renderRoute(route); return; }
+  if (!mod) { renderRoute(route); playViewEnter(); return; }
 
   // โหลดสคริปต์ของหน้านั้นครั้งแรก — ถ้าผู้ใช้เปลี่ยนหน้าไปก่อนโหลดเสร็จ ไม่ต้องวาดทับ
   const view = document.getElementById('view');
   if (view) view.innerHTML = `<div class="empty-state">กำลังโหลด...</div>`;
   loadModule(mod).then(() => {
-    if (AppState.currentRoute === route) renderRoute(route);
+    if (AppState.currentRoute === route) { renderRoute(route); playViewEnter(); }
   }).catch(err => {
     console.error(err);
     if (AppState.currentRoute !== route) return;
@@ -109,6 +145,8 @@ function renderSettings() {
   syncThemeButtons();
 }
 
+initNavPill(document.querySelector('.nav-list'), '.nav-item', 'nav-pill');
+
 document.querySelectorAll('.nav-item[data-route]').forEach(el => {
   el.addEventListener('click', () => navigate(el.dataset.route));
 });
@@ -154,6 +192,7 @@ document.getElementById('sidebar-toggle')?.addEventListener('click', () => {
     grid.appendChild(b);
   });
 
+  initNavPill(bar, '.tab-item', 'tab-pill');
   document.getElementById('more-scrim')?.addEventListener('click', () => setMore(false));
   setActiveNav((typeof AppState !== 'undefined' && AppState.currentRoute) || 'dashboard');
 })();
