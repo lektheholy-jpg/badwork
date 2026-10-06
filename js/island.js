@@ -1,11 +1,12 @@
 // ==========================================================================
 // Dynamic Island — แคปซูลดำกลางบนจอ
-//   ตอนพัก     : แสดงวัน · เวลา (มือถือแสดงเฉพาะวัน เพราะแถบสถานะของเครื่องมีเวลาอยู่แล้ว)
-//                ชี้เมาส์ = ขยายนิดหน่อย แล้วขึ้นไอคอน + ชื่อหน้าที่เปิดอยู่ต่อท้าย เช่น "จ. 6 ต.ค. · 14:30 - บันทึกคะแนน" (หน้าหลักไม่แสดงไอคอน/ชื่อ)
-//   ตอนใช้งาน : ขยายเป็นแจ้งเตือน / สถานะบันทึกอัตโนมัติ / เลิกทำ / แถบความคืบหน้า / ออนไลน์-ออฟไลน์
+//   ตอนพัก     : แสดงวัน · เวลา (มือถือแสดงเฉพาะวัน เพราะแถบสถานะของเครื่องมีเวลาอยู่แล้ว) | ไอคอน ชื่อหน้าที่เปิดอยู่ เช่น "จ. 6 ต.ค. · 14:30 | ✎ บันทึกคะแนน"
+//                แสดงตลอด ไม่ต้องชี้เมาส์ · เปลี่ยนหน้า = ไอคอน/ชื่อเก่าเลื่อนขึ้นจางหาย อันใหม่เลื่อนขึ้นมาแทน พร้อมแคปซูลยืด/หดลื่นๆ (หน้าหลักไม่แสดงไอคอน/ชื่อ)
+//   ตอนใช้งาน : เปลี่ยนเป็นแจ้งเตือน / สถานะบันทึกอัตโนมัติ / เลิกทำ / แถบความคืบหน้า / ออนไลน์-ออฟไลน์
+//                ความสูงคงที่เท่าตอนพัก บรรทัดเดียว — เปลี่ยนสถานะ = เปลี่ยนข้อความ ถ้ายาวขึ้นจะขยายออกด้านข้างเท่านั้น (สุดจอแล้วตัดด้วย …)
 //
 //   showToast('ข้อความ', 'success|warn|error|info|loading')   แจ้งเตือนทั่วไป (เดาชนิดจากข้อความได้ ข้อความลงท้าย ... = กำลังโหลด)
-//   islandSetPage(route)   ตั้งชื่อ/ไอคอนหน้าที่ขึ้นตอนชี้เมาส์ (setActiveNav ใน app.js เรียกให้เองทุกครั้งที่เปลี่ยนหน้า — ดึงจากปุ่มเมนูข้าง)
+//   islandSetPage(route)   ตั้งชื่อ/ไอคอนหน้าที่เปิดอยู่ (setActiveNav ใน app.js เรียกให้เองทุกครั้งที่เปลี่ยนหน้า — ดึงจากปุ่มเมนูข้าง)
 //   islandSave('saving' | 'saved' | 'error', { count, retry })  สถานะบันทึกอัตโนมัติ
 //   islandUndo('ลบนักเรียนแล้ว', async () => { ...กู้คืน... }, 5000)  ปุ่มเลิกทำ พร้อมแถบนับถอยหลัง
 //   const p = islandProgress({ label: 'นำเข้า', total: 45, unit: 'คน' });  p.update(32); p.finish('นำเข้าแล้ว'); p.fail('ไม่สำเร็จ')
@@ -42,13 +43,11 @@ const IslandUI = (() => {
   const iconEl = el.querySelector('.island-icon');
   const textEl = el.querySelector('.island-text');
   const actionEl = el.querySelector('.island-action');
-  const idleEl = el.querySelector('.island-idle');
+  const idleMain = el.querySelector('.island-idle-main');   // วัน · เวลา (· ออฟไลน์)
   const idleDate = el.querySelector('.island-idle-date');
   const idleTime = el.querySelector('.island-idle-time');
-  const idleIco = el.querySelector('.island-idle-ico');      // กล่องนอก: ย่อ/ขยายด้วย CSS
-  const idleIcoIn = idleIco.firstElementChild;                // เนื้อใน: ไอคอนหน้า
-  const idlePage = el.querySelector('.island-idle-page');
-  const idlePageIn = idlePage.firstElementChild;              // เนื้อใน: "- ชื่อหน้า"
+  const pageSlot = el.querySelector('.island-idle-page');   // ช่องชื่อหน้า: กว้างตาม --pw
+  const layers = pageSlot.querySelectorAll('.pg');          // 2 ชั้นสลับกัน (ชั้นเก่าออก ชั้นใหม่เข้า)
 
   // ลำดับความสำคัญ (เลขมาก = สำคัญกว่า)
   const PRIO = { save: 1, info: 2, success: 2, warn: 3, loading: 3, undo: 4, progress: 5, error: 5, net: 6 };
@@ -57,26 +56,43 @@ const IslandUI = (() => {
   let actionFn = null;
   let offline = typeof navigator !== 'undefined' && navigator.onLine === false;
 
-  // ---------- ตอนพัก: วัน · เวลา ----------
+  // ---------- ตอนพัก: วัน · เวลา | ไอคอน ชื่อหน้า ----------
   const pad2 = n => String(n).padStart(2, '0');
+  let activeLayer = 0;   // ชั้นที่กำลังแสดงชื่อหน้าอยู่
+  let pageKey = null;    // ชื่อหน้าที่แสดงอยู่ ('' = หน้าหลัก ไม่แสดง) · null = ยังไม่เคยตั้ง
+  let pageW = 0;         // ความกว้างจริงของไอคอน + ชื่อหน้าที่แสดงอยู่
   function sizeIdle() {
-    // ความกว้างตอนพักจริง = ทั้งแถว หักส่วนไอคอน/ชื่อหน้าที่ขยายอยู่ตอนนี้ออก (วัดถูกแม้เมาส์ชี้อยู่หรือกำลังแอนิเมชัน)
-    const base = Math.ceil(idleEl.offsetWidth - idleIco.offsetWidth - idlePage.offsetWidth);
-    el.style.setProperty('--iw', (base + 30) + 'px');
-    // ตอนชี้เมาส์: เพิ่มความกว้างของไอคอน + ชื่อหน้า (หน้าหลักไม่มี = ขยายนิดเดียว)
-    const extra = Math.ceil(idleIcoIn.scrollWidth + idlePageIn.scrollWidth);
-    el.style.setProperty('--ih', (base + (extra || 18) + 30) + 'px');
+    // วัดความกว้างจริงทุกครั้ง (ฟอนต์โหลดเสร็จ / ย่อขยายจอ / ออฟไลน์ / ขึ้นนาทีใหม่ ก็ถูกต้อง)
+    pageW = pageKey ? Math.ceil(layers[activeLayer].offsetWidth) : 0;
+    const base = Math.ceil(idleMain.offsetWidth);
+    el.style.setProperty('--pw', pageW + 'px');
+    el.style.setProperty('--iw', (base + pageW + 30) + 'px'); // 30 = ขอบซ้าย-ขวาด้านละ 15
   }
   // info = { icon: '<svg…>', label: 'บันทึกคะแนน' } หรือ null (หน้าหลัก)
   function setPage(info) {
-    idleIcoIn.innerHTML = info ? info.icon : '';
-    idlePageIn.innerHTML = '';
+    const key = info ? info.label : '';
+    if (key === pageKey) return;
+    const instant = pageKey === null;                 // ครั้งแรกตอนเปิดแอป: ตั้งเลย ไม่ต้องแอนิเมชัน
+    const prev = layers[activeLayer], next = layers[1 - activeLayer];
+
+    // เตรียมชั้นใหม่ที่ตำแหน่งเริ่มต้น (ปิด transition ชั่วคราวไม่ให้เห็นการรีเซ็ต)
+    next.classList.add('no-t'); next.classList.remove('on', 'out');
+    next.textContent = '';
     if (info) {
-      const dash = document.createElement('i'); dash.className = 'island-idle-dash'; dash.textContent = '-';
-      const name = document.createElement('b'); name.className = 'island-idle-name'; name.textContent = info.label;
-      idlePageIn.append(dash, name);
+      const div = document.createElement('i'); div.className = 'pg-div';
+      const ico = document.createElement('span'); ico.className = 'pg-ico'; ico.innerHTML = info.icon;
+      const name = document.createElement('b'); name.className = 'pg-name'; name.textContent = info.label;
+      next.append(div, ico, name);
     }
-    sizeIdle();
+    void next.offsetWidth;
+    next.classList.remove('no-t');
+
+    if (instant) el.classList.add('island-instant');
+    pageKey = key; activeLayer = 1 - activeLayer;
+    prev.classList.remove('on'); prev.classList.add('out');   // ของเก่าเลื่อนขึ้นแล้วจาง
+    if (info) next.classList.add('on');                       // ของใหม่เลื่อนขึ้นมาแทน
+    sizeIdle();                                               // แคปซูล + ช่องชื่อหน้ายืด/หดพร้อมกัน
+    if (instant) requestAnimationFrame(() => requestAnimationFrame(() => el.classList.remove('island-instant')));
   }
   function tick() {
     const d = new Date();
@@ -134,11 +150,8 @@ const IslandUI = (() => {
     if (o.action) actionEl.textContent = o.action.label;
     setBar(o, quiet);
 
-    // วัดขนาดเนื้อหาจริง แล้วส่งให้ CSS เป็นขนาดปลายทางของการขยาย (CSS transition ทำแอนิเมชันให้)
-    const w = Math.ceil(body.offsetWidth), h = Math.ceil(body.offsetHeight);
-    el.style.setProperty('--ow', w + 'px');
-    el.style.setProperty('--oh', h + 'px');
-    el.style.setProperty('--or', Math.min(h / 2, 28) + 'px');
+    // วัดความกว้างเนื้อหาจริง แล้วส่งให้ CSS เป็นความกว้างปลายทาง (CSS transition ทำแอนิเมชันให้) — ความสูงคงที่ ไม่วัด/ไม่เปลี่ยน
+    el.style.setProperty('--ow', Math.ceil(body.offsetWidth) + 'px');
     if (!quiet) { body.classList.remove('pop'); void body.offsetWidth; body.classList.add('pop'); }
     el.classList.add('open');
 
@@ -184,7 +197,7 @@ const IslandUI = (() => {
   return { present, clear, setPage };
 })();
 
-// ---------- ชื่อ/ไอคอนหน้าที่เปิดอยู่ (ขึ้นตอนชี้เมาส์) — ดึงจากปุ่มเมนูข้างตาม data-route จึงตรงกับเมนูเสมอ ----------
+// ---------- ชื่อ/ไอคอนหน้าที่เปิดอยู่ (แสดงตลอด) — ดึงจากปุ่มเมนูข้างตาม data-route จึงตรงกับเมนูเสมอ ----------
 const ISLAND_PAGE_ALIAS = { course: 'courses' }; // หน้าภายในวิชา นับเป็น "รายวิชาของฉัน"
 function islandSetPage(route) {
   if (!IslandUI) return;

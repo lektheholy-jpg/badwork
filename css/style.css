@@ -587,19 +587,23 @@ table.sheet thead th.sticky-right-2 { z-index: 3; }
 .check-row.ok { color: var(--success); }
 .check-row.warn { color: var(--danger); }
 
-/* ---------- Dynamic Island: แคปซูลดำกลางบนจอ — พัก = วัน·เวลา · ใช้งาน = แจ้งเตือน/บันทึก/เลิกทำ/ความคืบหน้า ----------
-   ขนาดตอนพัก (--iw) และตอนขยาย (--ow/--oh/--or) js/island.js วัดจากเนื้อหาจริงแล้วใส่ให้ */
+/* ---------- Dynamic Island: แคปซูลดำกลางบนจอ — พัก = วัน·เวลา | ไอคอน ชื่อหน้า · ใช้งาน = แจ้งเตือน/บันทึก/เลิกทำ/ความคืบหน้า ----------
+   ความสูงคงที่เสมอ (--island-h) — เปลี่ยนสถานะ/แจ้งเตือน = เปลี่ยนข้อความ ถ้ายาวก็ขยายออกด้านข้างเท่านั้น (ไม่สูงขึ้น ไม่ขึ้นบรรทัดใหม่)
+   ความกว้างตอนพัก (--iw) ตอนขยาย (--ow) และช่องชื่อหน้า (--pw) js/island.js วัดจากเนื้อหาจริงแล้วใส่ให้ */
 .island {
+  --island-h: 32px; --island-t: .55s cubic-bezier(.3, 1.4, .5, 1);
   position: fixed; top: calc(10px + env(safe-area-inset-top, 0px)); left: 50%; z-index: 80;
   display: flex; align-items: center; justify-content: center; overflow: hidden;
-  width: var(--iw, 132px); height: 32px; border-radius: 16px; transform: translateX(-50%);
+  width: var(--iw, 132px); max-width: calc(100vw - 24px); height: var(--island-h); border-radius: calc(var(--island-h) / 2); transform: translateX(-50%);
   background: #000; color: var(--white); pointer-events: none;
   box-shadow: 0 0 0 1px rgba(255, 255, 255, .12), 0 8px 24px rgba(0, 0, 0, .22);
-  transition: width .55s cubic-bezier(.3, 1.4, .5, 1), height .55s cubic-bezier(.3, 1.4, .5, 1), border-radius .55s ease;
+  transition: width var(--island-t);
 }
-.island.open { width: var(--ow, 240px); height: var(--oh, 44px); border-radius: var(--or, 22px); }
+.island.open { width: var(--ow, 240px); }
+/* ตั้งค่าครั้งแรกตอนโหลดหน้า: ไม่ต้องมีแอนิเมชัน (ใช้ความจำเพาะสูงกว่าแทน !important ตามกฎของโปรเจกต์) */
+.island.island-instant, .island.island-instant .island-idle, .island.island-instant .island-idle-page, .island.island-instant .island-idle-page .pg, .island.island-instant .island-body { transition: none; }
 
-/* ตอนพัก */
+/* ตอนพัก: วัน · เวลา | ไอคอน ชื่อหน้า (แสดงตลอด ไม่ต้องชี้เมาส์) */
 .island-idle {
   position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: max-content;
   display: flex; align-items: center; white-space: nowrap;
@@ -607,51 +611,53 @@ table.sheet thead th.sticky-right-2 { z-index: 3; }
   color: rgba(255, 255, 255, .9); transition: opacity .18s ease;
 }
 .island.open .island-idle { opacity: 0; }
+.island-idle-main { flex: none; display: flex; align-items: center; }
 .island-idle-date, .island-idle-sep { color: rgba(255, 255, 255, .6); }
 .island-idle-sep { opacity: .6; margin: 0 6px; }
-/* ชี้เมาส์: แคปซูลขยายนิดหน่อย + ไอคอน/ชื่อหน้าค่อยๆ คลี่ออก (ความกว้างปลายทาง --ih js/island.js วัดจากเนื้อหาจริง · หน้าหลักไม่มีไอคอน/ชื่อ) */
-.island-idle-ico, .island-idle-page {
-  display: grid; grid-template-columns: 0fr; opacity: 0;
-  transition: grid-template-columns .5s cubic-bezier(.3, 1.2, .5, 1), opacity .25s ease;
+/* ช่องชื่อหน้า: กว้างตาม --pw (ความกว้างจริงของหน้านั้น) แล้ว transition ด้วยจังหวะเดียวกับแคปซูล · มี 2 ชั้นสลับกัน:
+   ชั้นเก่าเลื่อนขึ้นแล้วจางหาย ชั้นใหม่เลื่อนขึ้นมาแทน ระหว่างที่แคปซูลยืด/หดไปพร้อมกัน */
+.island-idle-page { position: relative; flex: none; display: block; height: 18px; width: var(--pw, 0px); overflow: hidden; transition: width var(--island-t); }
+.island-idle-page .pg {
+  position: absolute; left: 0; top: 0; height: 100%; width: max-content; display: flex; align-items: center;
+  opacity: 0; transform: translateY(7px);
+  transition: opacity .22s ease, transform .5s cubic-bezier(.3, 1.2, .5, 1);
 }
-.island-idle-ico > span, .island-idle-page > span { min-width: 0; overflow: hidden; display: flex; align-items: center; }
-.island-idle-ico svg { flex: none; width: 14px; height: 14px; margin-right: 6px; color: var(--viz-sky); }
-.island-idle-dash { flex: none; margin: 0 6px; font-style: normal; color: rgba(255, 255, 255, .6); }
-.island-idle-name { flex: none; font-weight: 700; color: var(--white); }
-@media (hover: hover) {
-  .island:not(.open) { pointer-events: auto; }
-  .island:not(.open):hover { width: var(--ih, 150px); height: 36px; border-radius: 18px; }
-  .island:not(.open):hover .island-idle-ico, .island:not(.open):hover .island-idle-page { grid-template-columns: 1fr; opacity: 1; }
-}
+.island-idle-page .pg.on { opacity: 1; transform: none; }
+.island-idle-page .pg.out { opacity: 0; transform: translateY(-7px); }
+.island-idle-page .pg.no-t { transition: none; }
+.pg-div { flex: none; width: 1px; height: 12px; margin: 0 9px; background: rgba(255, 255, 255, .28); }
+.pg-ico { flex: none; display: flex; align-items: center; margin-right: 6px; }
+.pg-ico svg { display: block; width: 14px; height: 14px; color: var(--viz-sky); }
+.pg-name { flex: none; font-weight: 700; color: var(--white); }
 .island-idle-off { display: none; align-items: center; gap: 7px; color: var(--hue-amber); }
 .island-idle-off i { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
 .island.is-offline .island-idle-off { display: inline-flex; }
 .island.is-offline .island-idle-date, .island.is-offline .island-idle-sep, .island.is-offline .island-idle-time { display: none; }
 @media (max-width: 640px) { .island-idle-sep, .island-idle-time { display: none; } }
 
-/* ตอนขยาย */
+/* ตอนขยาย: บรรทัดเดียว สูงเท่าตอนพัก ยาวเกินจะขยายด้านข้าง (สุดจอแล้วตัดด้วย …) */
 .island-body {
-  flex: none; box-sizing: border-box; display: flex; align-items: center; gap: 10px;
-  width: max-content; max-width: min(92vw, 460px); min-height: 44px; padding: 10px 20px;
-  font-family: var(--font-modern); font-size: 14px; font-weight: 600; line-height: 1.45;
+  flex: none; box-sizing: border-box; display: flex; align-items: center; gap: 8px;
+  width: max-content; max-width: min(calc(100vw - 24px), 520px); height: 100%; padding: 0 16px;
+  font-family: var(--font-modern); font-size: 13.5px; font-weight: 600; line-height: 1; white-space: nowrap;
   opacity: 0; transition: opacity .15s ease;
 }
 .island.open .island-body { opacity: 1; }
 .island-body.pop { animation: island-pop .4s cubic-bezier(.3, 1.3, .5, 1) .08s backwards; }
-.island-text { min-width: 0; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.island-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .island[data-mode="progress"] .island-body { min-width: 220px; }
-.island-icon { flex: none; display: flex; align-items: center; justify-content: center; width: 20px; height: 20px; color: var(--viz-sky); }
+.island-icon { flex: none; display: flex; align-items: center; justify-content: center; width: 18px; height: 18px; color: var(--viz-sky); }
 .island-icon svg { display: block; width: 100%; height: 100%; }
 .island[data-kind="success"] .island-icon { color: var(--viz-mint); }
 .island[data-kind="warn"] .island-icon, .island[data-kind="offline"] .island-icon { color: var(--hue-amber); }
 .island[data-kind="error"] .island-icon, .island[data-kind="trash"] .island-icon { color: var(--hue-red); }
 .island-check { stroke-dasharray: 14; stroke-dashoffset: 14; animation: island-check .35s .15s ease forwards; }
-.island-spin { width: 18px; height: 18px; border-radius: 50%; border: 2.5px solid rgba(255, 255, 255, .22); border-top-color: var(--viz-sky); animation: island-spin .8s linear infinite; }
+.island-spin { width: 16px; height: 16px; border-radius: 50%; border: 2.5px solid rgba(255, 255, 255, .22); border-top-color: var(--viz-sky); animation: island-spin .8s linear infinite; }
 
 /* ปุ่มในแคปซูล (เลิกทำ / ลองใหม่) — แคปซูลทั้งก้อนไม่รับคลิก เฉพาะปุ่มนี้รับ */
 .island-action {
-  pointer-events: auto; flex: none; appearance: none; border: 0; border-radius: 999px; margin: -3px -10px -3px 0; padding: 6px 14px;
-  background: rgba(255, 255, 255, .14); color: var(--viz-sky); font: inherit; font-size: 13px; font-weight: 700; cursor: pointer;
+  pointer-events: auto; flex: none; appearance: none; border: 0; border-radius: 999px; margin: 0 -8px 0 0; padding: 4px 12px;
+  background: rgba(255, 255, 255, .14); color: var(--viz-sky); font: inherit; font-size: 12.5px; font-weight: 700; line-height: 1.4; cursor: pointer;
   -webkit-tap-highlight-color: transparent; transition: background .15s ease;
 }
 .island-action:hover { background: rgba(255, 255, 255, .24); }
@@ -659,7 +665,7 @@ table.sheet thead th.sticky-right-2 { z-index: 3; }
 .island-action[hidden] { display: none; }
 
 /* แถบเล็กชิดขอบล่าง: ความคืบหน้า / นับถอยหลังเลิกทำ / วิ่งไม่รู้ความยาว */
-.island-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: rgba(255, 255, 255, .14); opacity: 0; transition: opacity .2s ease; }
+.island-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: rgba(255, 255, 255, .14); opacity: 0; transition: opacity .2s ease; }
 .island-bar i { display: block; height: 100%; width: 100%; background: var(--viz-sky); transform-origin: left center; transform: scaleX(0); }
 .island[data-bar="progress"] .island-bar, .island[data-bar="indeterminate"] .island-bar, .island[data-bar="countdown"] .island-bar { opacity: 1; }
 .island[data-bar="progress"] .island-bar i { transform: scaleX(var(--p, 0)); transition: transform .3s ease; }
@@ -1972,9 +1978,9 @@ table.sheet tbody tr:nth-child(n) td.over-max { background: var(--danger-tint); 
 /* ==========================================================================
    v10 — เมนูบาร์โปร่งแสงนิดๆ (เมนูข้างบนจอปกติ + ลิ้นชักเมนู / แถบเมนูล่าง / แผงเพิ่มเติมบนมือถือ)
    สีพื้นโปร่งแสงอยู่ที่กฎเดิมของ .sidebar / .tabbar / .more-sheet (ใช้ --glass) · ที่นี่เพิ่มเฉพาะเอฟเฟกต์เบลอพื้นหลัง
-   ปรับความโปร่งที่ --glass (ยิ่งน้อยยิ่งโปร่ง)
+   ปรับความโปร่งที่ --glass (ยิ่งน้อยยิ่งโปร่ง · ตอนนี้ 42%)
    ========================================================================== */
-:root { --glass: 60%; --glass-blur: 26px; }
+:root { --glass: 42%; --glass-blur: 30px; }
 .sidebar { -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.6); backdrop-filter: blur(var(--glass-blur)) saturate(1.6); }
 @media (max-width: 860px) {
   .tabbar, .more-sheet { -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.6); backdrop-filter: blur(var(--glass-blur)) saturate(1.6); }
