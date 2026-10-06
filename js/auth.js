@@ -37,7 +37,7 @@ auth.onAuthStateChanged(async (user) => {
     app.classList.remove('hidden');
     document.getElementById('user-name').textContent = user.displayName || 'ครู';
     document.getElementById('user-email').textContent = user.email || '';
-    document.getElementById('user-photo').src = user.photoURL || 'https://api.dicebear.com/7.x/initials/svg?seed=' + encodeURIComponent(user.displayName || 'T');
+    document.getElementById('user-photo').src = safePhotoUrl(user.photoURL, user.displayName);
 
     // สร้าง/อัปเดต profile document ของครูคนนี้
     await db.collection('users').doc(user.uid).set({

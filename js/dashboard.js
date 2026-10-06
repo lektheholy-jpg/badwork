@@ -184,7 +184,11 @@ async function renderDashboard() {
   view.innerHTML = `
     <div class="dash">
     <header class="site-banner">
-      <img src="assets/banner.webp" width="590" height="350" decoding="async" alt="กมฺมุนา วตฺตตี โลโก — สัตว์โลกย่อมเป็นไปตามกรรม">
+      <picture>
+        <source media="(prefers-reduced-motion: reduce)" srcset="assets/banner-still.webp">
+        <source media="(max-width: 640px)" srcset="assets/banner-sm.webp">
+        <img src="assets/banner.webp" width="590" height="350" decoding="async" alt="กมฺมุนา วตฺตตี โลโก — สัตว์โลกย่อมเป็นไปตามกรรม">
+      </picture>
     </header>
     <div class="cw-row">
       <div class="cw-card cw-clock">
@@ -699,7 +703,7 @@ function getWxPosition() {
   return new Promise(resolve => {
     if (!navigator.geolocation) return resolve(WX_DEFAULT);
     navigator.geolocation.getCurrentPosition(
-      p => resolve({ lat: p.coords.latitude, lon: p.coords.longitude, name: 'ตำแหน่งของคุณ' }),
+      p => resolve({ lat: +p.coords.latitude.toFixed(2), lon: +p.coords.longitude.toFixed(2), name: 'ตำแหน่งของคุณ' }),
       () => resolve(WX_DEFAULT),
       { timeout: 4000, maximumAge: 3600000 });
   });

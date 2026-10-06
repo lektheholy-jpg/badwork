@@ -169,9 +169,18 @@ function calcGrade(total, scale) {
   return s.length ? s[s.length - 1].grade : '0';
 }
 
+// กัน CSV/formula injection: ข้อความที่ขึ้นต้นด้วย = + - @ (หรือ tab/CR) จะถูก Excel ตีความเป็นสูตร
+// จึงนำหน้าด้วย ' ให้เป็นข้อความธรรมดา (ยกเว้นตัวเลขจริง เช่น -5 หรือ 12.5)
+function csvSafeCell(cell) {
+  if (typeof cell === 'number') return String(cell);
+  const v = String(cell ?? '');
+  if (/^[=+\-@\t\r]/.test(v) && !/^[-+]?\d+(\.\d+)?$/.test(v)) return "'" + v;
+  return v;
+}
+
 function downloadCsv(filename, rows) {
   const csv = rows.map(r => r.map(cell => {
-    const v = String(cell ?? '');
+    const v = csvSafeCell(cell);
     return /[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
   }).join(',')).join('\r\n');
   const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
@@ -441,6 +450,33 @@ function parseImportSheetMultiRoom(aoa) {
   return parseImportSheetCore(aoa, { multiRoom: true });
 }
 
+// โหลด SheetJS (~270 KB) เฉพาะตอนที่ต้องนำเข้า/ส่งออก Excel จริง ๆ ไม่โหลดตอนเปิดแอป
+let _xlsxPromise = null;
+function loadXLSX() {
+  if (window.XLSX) return Promise.resolve(window.XLSX);
+  if (!_xlsxPromise) {
+    _xlsxPromise = new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = 'js/vendor/xlsx.mini.min.js?v=0.20.3';
+      s.onload = () => resolve(window.XLSX);
+      s.onerror = () => { _xlsxPromise = null; reject(new Error('โหลดตัวอ่านไฟล์ Excel ไม่สำเร็จ ตรวจสอบอินเทอร์เน็ตแล้วลองอีกครั้ง')); };
+      document.head.appendChild(s);
+    });
+  }
+  return _xlsxPromise;
+}
+
+// URL รูปโปรไฟล์ที่ปลอดภัย (เฉพาะ https) ไม่งั้นใช้รูปตัวอักษรย่อที่สร้างในเครื่อง ไม่ส่งชื่อไปเว็บภายนอก
+function initialsAvatar(name) {
+  const ch = (String(name || 'T').trim()[0] || 'T').toUpperCase();
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" fill="#5B7CFA"/><text x="32" y="43" font-size="30" text-anchor="middle" fill="#fff" font-family="sans-serif">${escapeHtml(ch)}</text></svg>`;
+  return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+}
+function safePhotoUrl(url, name) {
+  try { if (new URL(url).protocol === 'https:') return url; } catch (e) {}
+  return initialsAvatar(name);
+}
+
 function readFileAsRows(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -449,8 +485,9 @@ function readFileAsRows(file) {
       reader.onload = () => resolve(parseDelimitedText(String(reader.result)));
       reader.readAsText(file, 'UTF-8');
     } else {
-      reader.onload = () => {
+      reader.onload = async () => {
         try {
+          await loadXLSX();
           const data = new Uint8Array(reader.result);
           const wb = XLSX.read(data, { type: 'array' });
           const ws = wb.Sheets[wb.SheetNames[0]];

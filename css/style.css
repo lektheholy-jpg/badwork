@@ -1,5 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+Thai:wght@400;500;600;700&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@500;600;700&family=Noto+Sans+Thai:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap');
 
 /* ==========================================================================
    MyScore — bold / modern theme
@@ -7,39 +5,52 @@
    by color and weight rather than hairline borders.
    ========================================================================== */
 :root {
-  --bg: #F7F7F9;
-  --surface: #FFFFFF;
-  --surface-sunken: #F1F1F4;
-  --primary: #4A4A68;
-  --primary-dark: #33334A;
-  --primary-tint: #ECECF1;
-  --ink: #2A2A35;
-  --ink-soft: #85859A;
-  --border: #E7E7EC;
-  --success: #4E9E77;
-  --success-tint: #E7F3ED;
-  --warning: #C1873C;
-  --warning-tint: #F6ECDD;
-  --danger: #C15B54;
-  --danger-tint: #F5E7E5;
-  --radius-s: 8px;
-  --radius-m: 14px;
-  --shadow: 0 8px 24px rgba(30, 30, 40, 0.08);
-  --font: 'Noto Sans Thai', system-ui, sans-serif;
-  --font-head: 'IBM Plex Sans Thai', 'Noto Sans Thai', system-ui, sans-serif;
   --font-mono: 'IBM Plex Mono', monospace;
-
-  --col-collect: #F1F0F6;
-  --col-collect-strong: #6C6C95;
-  --col-mid: #EEF3F5;
-  --col-mid-strong: #5C8A9B;
-  --col-final: #F6F1E9;
-  --col-final-strong: #B08A4E;
-
-  --sidebar-bg: #FFFFFF;
-  --sidebar-hover: #F5F5F8;
   --sidebar-w: 240px;
   --sidebar-w-collapsed: 78px;
+  --font: 'One UI Sans', 'SamsungOne', 'Noto Sans Thai', system-ui, sans-serif;
+  --font-head: 'One UI Sans', 'SamsungOne', 'IBM Plex Sans Thai', 'Noto Sans Thai', system-ui, sans-serif;
+  --font-modern: var(--font-head);
+  --radius-s: 16px;  --radius-m: 26px;
+  --paper-shadow: none;
+  --bg: #F4F4F6;  --canvas: #F4F4F6;
+  --surface: #FFFFFF;  --paper: #FFFFFF;  --card: #FFFFFF;
+  --surface-sunken: #ECECEF;
+  --primary: #3E91FF;  --primary-solid: #2D80F2;  --primary-dark: #1B67D6;  --primary-tint: #E3EFFF;
+  --on-primary: #FFFFFF;
+  --ink: #101114;  --ink-soft: #6B6E76;
+  --border: #E5E6EA;  --paper-edge: #E5E6EA;  --paper-rule: #E5E6EA;
+  --success: #12935F;  --success-tint: #DDF4E8;
+  --warning: #C77A00;  --warning-tint: #FFEFD0;
+  --danger: #E5484D;   --danger-tint: #FFE3E4;
+  --shadow: 0 8px 28px rgba(16, 17, 20, .10);
+  --scrim: rgba(16, 17, 20, .40);
+  --hover-wash: rgba(16, 17, 20, .05);
+  --row-alt: #F8F8FA;  --row-hover: #F0F4FB;  --tip-bg: #101114;
+
+  --sidebar-bg: #FFFFFF;  --sidebar-hover: #F0F1F4;
+  --spine: #FFFFFF;  --spine-deep: #1B67D6;
+  --accent: #7C5CFF;  --sun: #FFB547;
+  --cream: #FFFFFF;  --cream-dim: #6B6E76;  --hero-orb: rgba(255, 255, 255, .55);
+  --ic1-bg: #E3EFFF;  --ic1: #2D80F2;
+  --ic2-bg: #DDF5F0;  --ic2: #0F8F7B;
+  --ic3-bg: #FFE9DF;  --ic3: #D9582F;
+  --ic4-bg: #EDE6FF;  --ic4: #7B52E6;
+  --login-a: #E6F0FF;  --login-b: #F4F4F6;  --login-c: #EFE9FF;
+  --on-w: #FFFFFF;
+  --hue-blue: #2D80F2;  --hue-violet: #7B52E6;  --hue-teal: #0F9F88;  --hue-orange: #F0731F;
+  --hue-pink: #E83E7A;  --hue-amber: #D98E00;   --hue-gray: #6B6E76;  --hue-red: #E5484D; --hero-a: #B9D3FF; --hero-b: #CDBFFF; --hero-c: #F2C4DC; --wmix: 38%; --track: color-mix(in oklab, var(--ink) 12%, transparent); --wmix-main: 38%; --wmix-head: 24%; --wmix-soft: 15%; --sky-shade: .08;
+  --viz-blue: #2D80F2;  --viz-green: #12A87A;  --viz-purple: #7B52E6;
+  --viz-sky: #1A9FD0;   --viz-mint: #3FB86B;   --viz-orchid: #A25BE0;
+  --th-bg: #EBEEF3;  --th-ink: #1B2130;  --th-line: #C9D0DB;
+  --head-grad: var(--th-bg);  --head-solid: #2B3345;  --sheet-head: var(--th-bg);
+  --col-collect-strong: #1F66D6;  --col-collect: #E6F0FF;
+  --col-mid-strong: #0E8A63;      --col-mid: #E1F5EC;
+  --col-final-strong: #6740CC;    --col-final: #EEE8FD;
+  --grp-collect-h: #CFE2FF;  --grp-mid-h: #C8EBDB;  --grp-final-h: #DDD2FA;
+  --zebra: #F7F8FA;  --row-on: #E8F0FE;
+  --viz-track: #E3E6EC;
+  --viz-bar: var(--viz-blue);
 }
 
 * { box-sizing: border-box; }
@@ -910,13 +921,6 @@ table.sheet tbody tr:hover td.grp-sub-total { background: var(--col-collect); }
    โหมดหน้าเอกสาร: เนื้อหาหลักเป็น "แผ่นกระดาษ" บนพื้นหลังสีเทา เหมือนเปิดใน Word / Google Docs
    (ทับกฎด้านบนทั้งหมดไว้ในบล็อกเดียว — ลบบล็อกนี้ทิ้งเพื่อกลับไปดีไซน์เดิมได้)
    ========================================================================== */
-:root {
-  --canvas: #E4E3DF;
-  --paper: #FFFFFF;
-  --paper-edge: #D6D4CE;
-  --paper-rule: #E9E7E2;
-  --paper-shadow: 0 1px 2px rgba(40,36,28,.10), 0 8px 28px rgba(40,36,28,.12);
-}
 body { background: var(--canvas); }
 #app { background: var(--canvas); }
 
@@ -1004,32 +1008,6 @@ body { background: var(--canvas); }
    โหมดหนังสือ: ฟอนต์เซริฟแบบหนังสือเล่ม กระดาษสีนวล หัวข้อแบบบท ปุ่มเรียบแบบตัวพิมพ์
    (ทับดีไซน์ก่อนหน้าทั้งหมดในบล็อกเดียว — ลบบล็อกนี้ทิ้งเพื่อกลับไปแบบเดิมได้)
    ========================================================================== */
-:root {
-  --font: 'Noto Serif Thai', 'Sarabun', Georgia, 'Times New Roman', serif;
-  --font-head: 'Noto Serif Thai', 'Sarabun', Georgia, 'Times New Roman', serif;
-
-  --bg: #FBF7EC;
-  --surface: #FFFDF6;
-  --surface-sunken: #F4EEDD;
-  --primary: #4A3A2A;
-  --primary-dark: #2E2318;
-  --primary-tint: #EFE6D3;
-  --ink: #2B2620;
-  --ink-soft: #7B7062;
-  --border: #D9D0BC;
-  --radius-s: 2px;
-  --radius-m: 2px;
-  --shadow: 0 6px 18px rgba(60, 44, 24, 0.14);
-
-  --canvas: #CFC6B2;            /* พื้นโต๊ะ */
-  --paper: #FFFDF6;             /* หน้ากระดาษ */
-  --paper-edge: #CDC3AC;
-  --paper-rule: #E3DAC6;
-  --paper-shadow: 0 1px 2px rgba(60,44,24,.18), 0 10px 30px rgba(60,44,24,.20);
-
-  --sidebar-bg: #EFE7D4;        /* ปกหนังสือ / สารบัญ */
-  --sidebar-hover: #E6DCC5;
-}
 html, body { font-size: 16px; }
 body { line-height: 1.7; color: var(--ink); background: var(--canvas); }
 #app { background: var(--canvas); }
@@ -1145,12 +1123,6 @@ table.sheet th, table.sheet td.name-cell { font-family: var(--font); }
    สันปก + ปกหนังสือแบบสมัยใหม่: สีเรียบ ตัวอักษรหนาใหญ่ รูปทรงเรขาคณิต
    โลโก้แสดงตลอด (แม้ย่อเมนู) — ลบบล็อกนี้ทิ้งเพื่อกลับไปแบบก่อนหน้าได้
    ========================================================================== */
-:root {
-  --spine: #21433B;  --spine-deep: #17302A;
-  --accent: #F0735A; --sun: #F2C35B;
-  --cream: #F6EFDF;  --cream-dim: #B8C8BD;
-  --font-modern: 'IBM Plex Sans Thai', 'Noto Sans Thai', system-ui, sans-serif;
-}
 
 /* ---------- สันปก (sidebar) ---------- */
 .sidebar { background: var(--spine); color: var(--cream); border-right: none;
@@ -1258,33 +1230,6 @@ table.sheet th, table.sheet td.name-cell { font-family: var(--font); }
    (ทับดีไซน์ก่อนหน้าทั้งหมดในบล็อกเดียว — ลบบล็อกนี้ทิ้งเพื่อกลับไปแบบ "ปกหนังสือ" ได้)
    ห้ามใช้ letter-spacing ติดลบกับข้อความไทย
    ========================================================================== */
-:root {
-  --font: 'One UI Sans', 'SamsungOne', 'Noto Sans Thai', system-ui, sans-serif;
-  --font-head: 'One UI Sans', 'SamsungOne', 'IBM Plex Sans Thai', 'Noto Sans Thai', system-ui, sans-serif;
-  --font-modern: var(--font-head);
-
-  --bg: #F7F4EE;  --canvas: #F7F4EE;
-  --surface: #FFFFFF;  --paper: #FFFFFF;
-  --surface-sunken: #F4EFE6;
-  --primary: #7A6550;  --primary-dark: #5C4A39;  --primary-tint: #EEE6D9;
-  --ink: #2B2620;  --ink-soft: #7F766A;
-  --border: #ECE5D9;  --paper-edge: #ECE5D9;  --paper-rule: #ECE5D9;
-  --success: #6B8A5A;  --success-tint: #E8EFE1;
-  --warning: #B58638;  --warning-tint: #F4EAD5;
-  --danger: #B05A48;   --danger-tint: #F5E3DD;
-  --radius-s: 16px;  --radius-m: 26px;
-  --shadow: 0 6px 24px rgba(92, 74, 57, .10);
-  --paper-shadow: none;
-
-  --col-collect: #F3EEE4;  --col-collect-strong: #8A7258;
-  --col-mid: #EEF0E6;      --col-mid-strong: #7A8B62;
-  --col-final: #F6ECE3;    --col-final-strong: #B0724F;
-
-  --sidebar-bg: #FFFFFF;  --sidebar-hover: #F4EFE6;
-  --spine: #FFFFFF;  --spine-deep: #5C4A39;
-  --accent: #B0724F;  --sun: #D9B98A;
-  --cream: #FFFFFF;  --cream-dim: #7F766A;
-}
 html, body { font-size: 16px; }
 body, #app { background: var(--bg); color: var(--ink); line-height: 1.6; }
 
@@ -1524,36 +1469,6 @@ table.sheet tbody tr:nth-child(even) td.sticky-col-1, table.sheet tbody tr:nth-c
    ========================================================================== */
 :root {
   color-scheme: light;
-  --bg: #F4F4F6;  --canvas: #F4F4F6;
-  --surface: #FFFFFF;  --paper: #FFFFFF;  --card: #FFFFFF;
-  --surface-sunken: #ECECEF;
-  --primary: #3E91FF;  --primary-solid: #2D80F2;  --primary-dark: #1B67D6;  --primary-tint: #E3EFFF;
-  --on-primary: #FFFFFF;
-  --ink: #101114;  --ink-soft: #6B6E76;
-  --border: #E5E6EA;  --paper-edge: #E5E6EA;  --paper-rule: #E5E6EA;
-  --success: #12935F;  --success-tint: #DDF4E8;
-  --warning: #C77A00;  --warning-tint: #FFEFD0;
-  --danger: #E5484D;   --danger-tint: #FFE3E4;
-  --shadow: 0 8px 28px rgba(16, 17, 20, .10);
-  --scrim: rgba(16, 17, 20, .40);
-  --hover-wash: rgba(16, 17, 20, .05);
-
-  --col-collect: #E3EFFF;  --col-collect-strong: #2A78E8;
-  --col-mid: #DDF5F0;      --col-mid-strong: #0F8F7B;
-  --col-final: #EDE6FF;    --col-final-strong: #7B52E6;
-  --row-alt: #F8F8FA;  --row-hover: #F0F4FB;  --sheet-head: #1E3A6E;  --tip-bg: #101114;
-
-  --sidebar-bg: #FFFFFF;  --sidebar-hover: #F0F1F4;
-  --spine: #FFFFFF;  --spine-deep: #1B67D6;
-  --accent: #7C5CFF;  --sun: #FFB547;
-  --cream: #FFFFFF;  --cream-dim: #6B6E76;
-
-  --hero-a: #DCEAFF;  --hero-b: #E9E4FF;  --hero-orb: rgba(255, 255, 255, .55);
-  --ic1-bg: #E3EFFF;  --ic1: #2D80F2;
-  --ic2-bg: #DDF5F0;  --ic2: #0F8F7B;
-  --ic3-bg: #FFE9DF;  --ic3: #D9582F;
-  --ic4-bg: #EDE6FF;  --ic4: #7B52E6;
-  --login-a: #E6F0FF;  --login-b: #F4F4F6;  --login-c: #EFE9FF;
 }
 
 :root[data-theme="dark"] {
@@ -1571,22 +1486,30 @@ table.sheet tbody tr:nth-child(even) td.sticky-col-1, table.sheet tbody tr:nth-c
   --shadow: 0 8px 28px rgba(0, 0, 0, .6);
   --scrim: rgba(0, 0, 0, .65);
   --hover-wash: rgba(255, 255, 255, .07);
-
-  --col-collect: #14253D;  --col-collect-strong: #2F6FD0;
-  --col-mid: #0F2E2A;      --col-mid-strong: #138A78;
-  --col-final: #231B3D;    --col-final-strong: #7550D8;
-  --row-alt: #212125;  --row-hover: #262B36;  --sheet-head: #1B2F55;  --tip-bg: #3A3A40;
+  --row-alt: #212125;  --row-hover: #262B36;  --tip-bg: #3A3A40;
 
   --sidebar-bg: #0E0E10;  --sidebar-hover: #222226;
   --spine: #0E0E10;  --spine-deep: #8DBDFF;
-  --cream: #F2F3F5;  --cream-dim: #A0A3AB;
-
-  --hero-a: #14294A;  --hero-b: #261D4A;  --hero-orb: rgba(255, 255, 255, .06);
+  --cream: #F2F3F5;  --cream-dim: #A0A3AB;  --hero-orb: rgba(255, 255, 255, .06);
   --ic1-bg: #16304F;  --ic1: #6FAEFF;
   --ic2-bg: #0F2E2A;  --ic2: #3DD6BC;
   --ic3-bg: #3D2218;  --ic3: #FF9A78;
   --ic4-bg: #2A1F4D;  --ic4: #B79BFF;
   --login-a: #0B1A30;  --login-b: #000000;  --login-c: #1A1230;
+  --on-w: #0B0B0D;
+  --hue-blue: #5AA2FF;  --hue-violet: #B79BFF;  --hue-teal: #2FC9AE;  --hue-orange: #FF9A5C;
+  --hue-pink: #FF7BA5;  --hue-amber: #FFC247;   --hue-gray: #A0A3AB;  --hue-red: #FF6B70; --hero-a: #1D3F78; --hero-b: #38297D; --hero-c: #5A2A55; --wmix: 34%; --track: color-mix(in oklab, #fff 15%, transparent); --wmix-main: 34%; --wmix-head: 26%; --wmix-soft: 19%; --sky-shade: .28;
+  --viz-blue: #5AA2FF;  --viz-green: #2FD1A0;  --viz-purple: #B79BFF;
+  --viz-sky: #4CC3F0;   --viz-mint: #6FD98C;   --viz-orchid: #CF9BFF;
+  --th-bg: #2A2D38;  --th-ink: #F1F3F8;  --th-line: #444A5A;
+  --head-grad: var(--th-bg);  --head-solid: #3A4156;  --sheet-head: var(--th-bg);
+  --col-collect-strong: #7DB4FF;  --col-collect: #162A44;
+  --col-mid-strong: #4FDDB0;      --col-mid: #102E26;
+  --col-final-strong: #C5ADFF;    --col-final: #2A2050;
+  --grp-collect-h: #1F3B63;  --grp-mid-h: #164336;  --grp-final-h: #3A2E6E;
+  --zebra: #1D1F28;  --row-on: #28324A;
+  --viz-track: #343848;
+  --viz-bar: var(--viz-blue);
 }
 
 html, body { background: var(--bg); }
@@ -1710,23 +1633,7 @@ table.sheet td input.score-input:focus { box-shadow: 0 0 0 3px var(--primary-tin
    วิดเจ็ตแบบ One UI — การ์ดสีพาสเทลต่อหมวด ไอคอนทรงสควิร์เคิลสีสด ตัวเลขใหญ่
    ตัวแปร --w = สีประจำการ์ด (ผสมกับสีพื้นอัตโนมัติ ทั้งโหมดสว่าง/มืด)
    ========================================================================== */
-:root {
-  --wmix: 17%;
-  --on-w: #FFFFFF;
-  --hue-blue: #2D80F2;  --hue-violet: #7B52E6;  --hue-teal: #0F9F88;  --hue-orange: #F0731F;
-  --hue-pink: #E83E7A;  --hue-amber: #D98E00;   --hue-gray: #6B6E76;  --hue-red: #E5484D;
-  --hero-c: #FFD9E8;
-}
-:root[data-theme="dark"] {
-  --wmix: 26%;
-  --on-w: #0B0B0D;
-  --hue-blue: #5AA2FF;  --hue-violet: #B79BFF;  --hue-teal: #2FC9AE;  --hue-orange: #FF9A5C;
-  --hue-pink: #FF7BA5;  --hue-amber: #FFC247;   --hue-gray: #A0A3AB;  --hue-red: #FF6B70;
-  --hero-c: #4A1F44;
-}
 .oneui-hero { background: linear-gradient(135deg, var(--hero-a) 0%, var(--hero-b) 58%, var(--hero-c) 100%); }
-:root { --hero-a: #CFE3FF; --hero-b: #DCD2FF; }
-:root[data-theme="dark"] { --hero-a: #17325C; --hero-b: #2B2160; }
 
 /* ----- พื้นการ์ดวิดเจ็ต: สี --w ผสมเข้าพื้นการ์ด ----- */
 .oneui-stats .oneui-stat, .oneui-shortcuts .oneui-tile, .main .course-row, .main .section-card,
@@ -1847,8 +1754,6 @@ table.sheet td input.score-input:focus { box-shadow: 0 0 0 3px var(--primary-tin
    ผสมสี --w เข้ากับพื้นการ์ดแบบ oklab (สีไม่เพี้ยนเทา) ตารางทุกแบบใช้ตัวแปรธีม
    ลบบล็อกนี้ทิ้งเพื่อกลับไปดีไซน์พาสเทลเดิม
    ========================================================================== */
-:root { --wmix: 30%; --track: color-mix(in oklab, var(--ink) 11%, transparent); --zebra: #F6F7FA; --row-on: #E8F0FD; }
-:root[data-theme="dark"] { --wmix: 34%; --track: color-mix(in oklab, #fff 14%, transparent); --zebra: #222227; --row-on: #26303F; }
 
 .oneui-stats .oneui-stat, .oneui-shortcuts .oneui-tile, .main .course-row, .main .section-card,
 .prog-list .prog-row, .chart-row .chart-card, .stat-card {
@@ -1865,8 +1770,6 @@ table.sheet td input.score-input:focus { box-shadow: 0 0 0 3px var(--primary-tin
 .chart-row .chart-card h3, .chart-row .chart-card .card-title { color: var(--ink); font-weight: 700; }
 
 /* ฮีโร่: ไล่สีเข้มขึ้น */
-:root { --hero-a: #B9D3FF; --hero-b: #CDBFFF; --hero-c: #F2C4DC; }
-:root[data-theme="dark"] { --hero-a: #1D3F78; --hero-b: #38297D; --hero-c: #5A2A55; }
 
 /* กราฟ: รางแท่งเป็นกลางที่เห็นชัดทั้งสองโหมด + แท่งสีสด */
 .progress-chart-row .progress-bar, .prog-list .prog-row .progress-bar, .section-card .progress-bar { background: var(--track); }
@@ -1946,8 +1849,6 @@ table.sheet th.grp-final { background: color-mix(in oklab, var(--col-final-stron
    One UI พาสเทลเข้มขึ้น (v5) — พื้นการ์ดเข้มขึ้นแต่ยังนุ่ม ไอคอน/ตัวเลขเด่น
    โหมดมืดคงแบบเดิม ตารางและกราฟทุกหน้าใช้ตัวแปรชุดเดียวกัน
    ========================================================================== */
-:root { --wmix: 38%; --track: color-mix(in oklab, var(--ink) 12%, transparent); --zebra: #F5F6FA; --row-on: #E6EFFD; }
-:root[data-theme="dark"] { --wmix: 34%; --track: color-mix(in oklab, #fff 15%, transparent); --zebra: #222227; --row-on: #26303F; }
 .chart-row .chart-card:nth-child(n) { --wmix: 30%; }
 :root[data-theme="dark"] .chart-row .chart-card:nth-child(n) { --wmix: 30%; }
 
@@ -2047,8 +1948,6 @@ table.sheet td input.score-input:focus, .field input:focus, .field select:focus,
    v7 — ลำดับความเข้มของพื้น: วิดเจ็ตหลัก (ทางลัด/เวลา/อากาศ) เข้มสุด
    ส่วนรอง (แถวความคืบหน้า รายวิชา ห้อง กราฟ) อ่อนกว่า หัวกลุ่ม/ตารางอยู่กลาง
    ========================================================================== */
-:root { --wmix-main: 38%; --wmix-head: 24%; --wmix-soft: 15%; }
-:root[data-theme="dark"] { --wmix-main: 34%; --wmix-head: 26%; --wmix-soft: 19%; }
 
 .oneui-shortcuts .oneui-tile, .cw-card { --wmix: var(--wmix-main); }
 
@@ -2318,8 +2217,6 @@ html, body { overflow-x: clip; }
    - วันที่: การ์ดโทนฟ้าอ่อนของระบบ ป้ายวันเป็นแคปซูลสีหลัก
    - ขนาดตัวอักษรในการ์ดใช้ container query (cqi) จึงโตตามความกว้างการ์ดจริง
    ========================================================================== */
-:root { --sky-shade: .08; }
-:root[data-theme="dark"] { --sky-shade: .28; }
 
 .cw-row { gap: clamp(10px, 1.1vw, 20px); margin-bottom: clamp(12px, 1.2vw, 22px); }
 .cw-row .cw-card {
@@ -2482,32 +2379,6 @@ html, body { overflow-x: clip; }
    v11 — ตาราง + กราฟ แบบเรียบ อ่านง่าย: สีทึบล้วน ไม่ใช้ gradient ทุกหน้า
    หัวตาราง = เทาอ่อน + ตัวหนังสือเข้ม · กลุ่มคะแนน เก็บ=ฟ้า / กลางภาค=เขียว / ปลายภาค=ม่วง (สีพาสเทลทึบ)
    ========================================================================== */
-:root {
-  --viz-blue: #2D80F2;  --viz-green: #12A87A;  --viz-purple: #7B52E6;
-  --viz-sky: #1A9FD0;   --viz-mint: #3FB86B;   --viz-orchid: #A25BE0;
-  --th-bg: #EBEEF3;  --th-ink: #1B2130;  --th-line: #C9D0DB;
-  --head-grad: var(--th-bg);  --head-solid: #2B3345;  --sheet-head: var(--th-bg);
-  --col-collect-strong: #1F66D6;  --col-collect: #E6F0FF;
-  --col-mid-strong: #0E8A63;      --col-mid: #E1F5EC;
-  --col-final-strong: #6740CC;    --col-final: #EEE8FD;
-  --grp-collect-h: #CFE2FF;  --grp-mid-h: #C8EBDB;  --grp-final-h: #DDD2FA;
-  --zebra: #F7F8FA;  --row-on: #E8F0FE;
-  --viz-track: #E3E6EC;
-  --viz-bar: var(--viz-blue);
-}
-:root[data-theme="dark"] {
-  --viz-blue: #5AA2FF;  --viz-green: #2FD1A0;  --viz-purple: #B79BFF;
-  --viz-sky: #4CC3F0;   --viz-mint: #6FD98C;   --viz-orchid: #CF9BFF;
-  --th-bg: #2A2D38;  --th-ink: #F1F3F8;  --th-line: #444A5A;
-  --head-grad: var(--th-bg);  --head-solid: #3A4156;  --sheet-head: var(--th-bg);
-  --col-collect-strong: #7DB4FF;  --col-collect: #162A44;
-  --col-mid-strong: #4FDDB0;      --col-mid: #102E26;
-  --col-final-strong: #C5ADFF;    --col-final: #2A2050;
-  --grp-collect-h: #1F3B63;  --grp-mid-h: #164336;  --grp-final-h: #3A2E6E;
-  --zebra: #1D1F28;  --row-on: #28324A;
-  --viz-track: #343848;
-  --viz-bar: var(--viz-blue);
-}
 
 /* ----- หัวตารางทุกแบบ (ทุกหน้า): พื้นเทาทึบ ตัวหนังสือเข้ม เส้นใต้ชัด ----- */
 table.sheet th, .gs-table thead th, .ns-table th, .struct-table th, .rc-table th {
@@ -2586,3 +2457,4 @@ table.sheet td.over-max { background: var(--danger-tint) !important; }
 @media print {
   table.sheet th, .gs-table thead th, .ns-table th { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
+.login-note { margin: 18px 0 0; font-size: 12px; line-height: 1.6; color: var(--ink-soft); }

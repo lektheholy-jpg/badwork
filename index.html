@@ -20,7 +20,11 @@
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#F4F4F6">
 
-<link rel="stylesheet" href="css/style.css">
+<!-- ฟอนต์: รวมเป็นคำขอเดียว ไม่ใช้ @import (ไม่บล็อกการแสดงผลต่อเนื่อง) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans+Thai:wght@500;600;700&family=Noto+Sans+Thai:wght@400;500;600;700&family=Noto+Serif+Thai:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="css/style.min.css">
 <script src="js/theme.js"></script>
 </head>
 <body>
@@ -35,6 +39,7 @@
       <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84c-.21 1.13-.84 2.09-1.8 2.73v2.27h2.91c1.7-1.57 2.69-3.88 2.69-6.64z"/><path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.17l-2.91-2.27c-.81.54-1.84.86-3.05.86-2.34 0-4.33-1.58-5.04-3.71H.96v2.34C2.44 15.98 5.48 18 9 18z"/><path fill="#FBBC05" d="M3.96 10.71A5.4 5.4 0 013.68 9c0-.59.1-1.17.28-1.71V4.95H.96A9 9 0 000 9c0 1.45.35 2.83.96 4.05l3-2.34z"/><path fill="#EA4335" d="M9 3.58c1.32 0 2.51.45 3.44 1.35l2.58-2.58C13.46.89 11.43 0 9 0 5.48 0 2.44 2.02.96 4.95l3 2.34C4.67 5.16 6.66 3.58 9 3.58z"/></svg>
       เข้าสู่ระบบด้วย Google
     </button>
+    <p class="login-note">ข้อมูลนักเรียนที่บันทึกเป็นข้อมูลส่วนบุคคล เก็บบน Google Firebase ผูกกับบัญชีของครูเท่านั้น ส่งออกหรือลบข้อมูลได้ที่ ตั้งค่า &gt; ความเป็นส่วนตัว</p>
   </div>
 </div>
 
@@ -122,22 +127,22 @@
 <div id="toast" class="toast"></div>
 
 <!-- Firebase SDK (compat, ง่ายต่อการใช้กับ HTML/JS ธรรมดา) -->
-<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+<script defer src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script defer src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+<script defer src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
 
-<script src="js/firebase-config.js"></script>
-<script src="js/utils.js"></script>
-<script src="js/vendor/xlsx.mini.min.js"></script>
-<script src="js/auth.js"></script>
-<script src="js/dashboard.js"></script>
-<script src="js/courses.js"></script>
-<script src="js/students.js"></script>
-<script src="js/structure.js"></script>
-<script src="js/scores.js"></script>
-<script src="js/report.js"></script>
-<script src="js/picker-pages.js"></script>
-<script src="js/report-page.js"></script>
-<script src="js/app.js"></script>
+<script defer src="js/firebase-config.js"></script>
+<script defer src="js/utils.js"></script>
+<script defer src="js/auth.js"></script>
+<script defer src="js/dashboard.js"></script>
+<script defer src="js/courses.js"></script>
+<script defer src="js/students.js"></script>
+<script defer src="js/structure.js"></script>
+<script defer src="js/scores.js"></script>
+<script defer src="js/report.js"></script>
+<script defer src="js/picker-pages.js"></script>
+<script defer src="js/report-page.js"></script>
+<script defer src="js/privacy.js"></script>
+<script defer src="js/app.js"></script>
 </body>
 </html>

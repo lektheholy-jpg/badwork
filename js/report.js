@@ -211,6 +211,7 @@ function openPp5ExportModal(course, section, students, assessments, scores) {
     if (!file) return;
     bodyEl.innerHTML = `<div class="empty-state">กำลังอ่านไฟล์...</div>`;
     try {
+      await loadXLSX();
       const data = await file.arrayBuffer();
       wb = XLSX.read(data, { type: 'array' });
       const sheetName = wb.SheetNames[0];
@@ -277,6 +278,7 @@ function openPp5ExportModal(course, section, students, assessments, scores) {
   }
 
   document.getElementById('pp5-confirm').addEventListener('click', async () => {
+    try { await loadXLSX(); } catch (err) { showToast(err.message); return; }
     if (!wb || !ws || !aoa || targetCols.length === 0) { showToast('กรุณาอัปโหลดไฟล์ก่อน'); return; }
 
     const dataRows = aoa.slice(PP5_HEADER_ROWS);
@@ -517,8 +519,9 @@ function openNextSchoolModal(course, section, students, assessments, scores, gra
     downloadCsv(`SGS-${course.code || course.name}-ห้อง${section.room}.csv`, buildTable());
     showToast('ส่งออกไฟล์ CSV สำเร็จ');
   });
-  document.getElementById('ns-xlsx').addEventListener('click', () => {
+  document.getElementById('ns-xlsx').addEventListener('click', async () => {
     if (!checkBeforeExport()) return;
+    try { await loadXLSX(); } catch (err) { showToast(err.message); return; }
     const ws = XLSX.utils.aoa_to_sheet(buildTable());
     ws['!cols'] = [{ wch: 8 }, { wch: 16 }, { wch: 18 }, { wch: 18 }, { wch: 20 }, { wch: 14 }, { wch: 20 }, { wch: 14 }, { wch: 11 }, { wch: 8 }];
     const wb = XLSX.utils.book_new();
@@ -697,6 +700,7 @@ function openNextSchoolFormModal(course, section, students, assessments, scores,
     if (!file) { bodyEl.innerHTML = ''; return; }
     bodyEl.innerHTML = `<div class="empty-state">กำลังอ่านไฟล์...</div>`;
     try {
+      await loadXLSX();
       wb = XLSX.read(await file.arrayBuffer(), { type: 'array' });
       ws = wb.Sheets[wb.SheetNames[0]];
       aoa = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
@@ -712,7 +716,7 @@ function openNextSchoolFormModal(course, section, students, assessments, scores,
   document.getElementById('nsf-dec').addEventListener('change', (e) => { opts.decimals = e.target.value === '1'; redrawFormPreview(); });
 
   document.getElementById('nsf-confirm').addEventListener('click', () => {
-    if (!wb || !ws || !aoa) { showToast('กรุณาอัปโหลดไฟล์ก่อน'); return; }
+    if (!wb || !ws || !aoa) { showToast('กรุณาอัปโหลดไฟล์ก่อน'); return; } // XLSX โหลดแล้วตอนอ่านไฟล์
     const usable = cols.filter(c => c.bucket);
     const k = opts.decimals ? 10 : 1;
     const byCode = rowIndexByCode();
