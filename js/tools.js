@@ -82,6 +82,7 @@ async function renderToolsPage() {
     </div>
     <div id="tools-body" class="tools-stage" data-stage="${ToolsState.tool}"></div>
   `;
+  initNavPill(view.querySelector('.tools-tabs'), '.theme-opt', 'seg-pill', { activeSel: '[aria-pressed="true"]', watch: true });
   view.querySelectorAll('[data-tool]').forEach(b => b.addEventListener('click', () => {
     ToolsState.tool = b.dataset.tool;
     view.querySelectorAll('[data-tool]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));

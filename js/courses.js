@@ -285,13 +285,17 @@ async function renderCourseShell() {
     p.addEventListener('click', () => {
       AppState.flushScoreSaves?.(); // กันคะแนนหายถ้าเพิ่งพิมพ์แล้วรีบสลับห้อง
       AppState.currentSectionId = p.dataset.sectionId;
+      pillSlideNext('course-rooms');
       renderCourseShell();
     });
   });
+  initNavPill(view.querySelector('#room-pills'), '.room-pill', 'seg-pill', { key: 'course-rooms' });
+  initNavPill(view.querySelector('.tabs'), '.tab', 'seg-pill', { key: 'course-tabs' });
   view.querySelectorAll('.tab').forEach(t => {
     t.addEventListener('click', () => {
       AppState.flushScoreSaves?.(); // กันคะแนนหายถ้าเพิ่งพิมพ์แล้วรีบสลับแท็บ
       AppState.currentTab = t.dataset.tab;
+      pillSlideNext('course-tabs');
       renderCourseShell();
     });
   });

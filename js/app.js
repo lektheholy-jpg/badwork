@@ -4,25 +4,51 @@
 
 const navPills = []; // ฟังก์ชันวางแถบเลื่อนของเมนูข้าง/แถบล่าง (สร้างใน initNavPill)
 
-// แถบสีเลื่อนไปหาปุ่มที่ active (ใช้ทั้งเมนูข้างและแถบเมนูล่าง) — คืนฟังก์ชัน place(animate)
-function initNavPill(container, itemSel, cls) {
+// แถบสีเลื่อนไปหาปุ่มที่ active — ใช้กับเมนูข้าง แถบเมนูล่าง และแท็บ/ห้อง/ตัวเลือกสลับในหน้า
+//   opt.activeSel  ตัวเลือกของปุ่ม active (ค่าเริ่มต้น '.active'; ตัวเลือกสลับใช้ '[aria-pressed="true"]')
+//   opt.key        ระบุเมื่อหน้านั้นวาด container ใหม่ทุกครั้งที่กด (innerHTML) — เรียก pillSlideNext(key) ก่อนวาด
+//                  แถบใหม่จะเริ่มจากตำแหน่งเดิมแล้วเลื่อนไปที่ใหม่ แทนการโผล่ทันที
+//   opt.watch      true = เฝ้าดู aria-pressed ที่เปลี่ยนในที่เดิม (ไม่ต้องวาดใหม่) แล้วเลื่อนตาม
+//   opt.global     true = ลงทะเบียนให้ setActiveNav สั่งเลื่อน (เมนูข้าง/ล่างเท่านั้น)
+const pillGeom = {}, pillPending = {};
+function pillSlideNext(key) { pillPending[key] = true; }
+
+function initNavPill(container, itemSel, cls, opt = {}) {
   if (!container) return;
+  const { activeSel = '.active', key = null, watch = false, global = false } = opt;
   const pill = document.createElement('span');
   pill.className = cls; pill.setAttribute('aria-hidden', 'true');
   container.prepend(pill);
+  const apply = g => {
+    pill.style.width = g.w + 'px';
+    pill.style.height = g.h + 'px';
+    pill.style.transform = `translate(${g.x}px, ${g.y}px)`;
+  };
   const place = (animate) => {
-    const t = container.querySelector(itemSel + '.active');
+    const t = container.querySelector(itemSel + activeSel);
     if (!t || !t.offsetWidth) { pill.style.opacity = '0'; return; } // ไม่มีปุ่ม active หรือเมนูถูกซ่อนอยู่
-    pill.classList.toggle('no-anim', !animate || !pill.dataset.placed); // ครั้งแรก/ปรับขนาดจอ: วางทันที ไม่เลื่อนมาจากมุม
+    const g = { x: t.offsetLeft, y: t.offsetTop, w: t.offsetWidth, h: t.offsetHeight };
     pill.style.setProperty('--w', getComputedStyle(t).getPropertyValue('--w'));
-    pill.style.width = t.offsetWidth + 'px';
-    pill.style.height = t.offsetHeight + 'px';
-    pill.style.transform = `translate(${t.offsetLeft}px, ${t.offsetTop}px)`;
     pill.style.opacity = '1';
-    pill.dataset.placed = '1';
+    if (!pill.dataset.placed) {
+      pill.dataset.placed = '1';
+      pill.classList.add('no-anim'); // ครั้งแรก: วางทันที ไม่เลื่อนมาจากมุม
+      const from = key && pillPending[key] && pillGeom[key];
+      if (key) pillPending[key] = false;
+      apply(from || g);
+      if (from) { void pill.offsetWidth; pill.classList.remove('no-anim'); apply(g); } // หน้าวาดใหม่: เลื่อนจากตำแหน่งเดิม
+    } else {
+      pill.classList.toggle('no-anim', !animate); // ปรับขนาดจอ: วางทันที
+      apply(g);
+    }
+    if (key) pillGeom[key] = g;
   };
   if (typeof ResizeObserver === 'function') new ResizeObserver(() => place(false)).observe(container);
-  navPills.push(place);
+  if (watch && typeof MutationObserver === 'function') {
+    new MutationObserver(() => place(true)).observe(container, { attributes: true, subtree: true, attributeFilter: ['aria-pressed'] });
+  }
+  if (global) navPills.push(place);
+  place(false);
 }
 
 function setActiveNav(routeId) {
@@ -143,9 +169,10 @@ function renderSettings() {
     syncThemeButtons();
   }));
   syncThemeButtons();
+  initNavPill(view.querySelector('.theme-seg'), '.theme-opt', 'seg-pill', { activeSel: '[aria-pressed="true"]', watch: true });
 }
 
-initNavPill(document.querySelector('.nav-list'), '.nav-item', 'nav-pill');
+initNavPill(document.querySelector('.nav-list'), '.nav-item', 'nav-pill', { global: true });
 
 document.querySelectorAll('.nav-item[data-route]').forEach(el => {
   el.addEventListener('click', () => navigate(el.dataset.route));
@@ -192,7 +219,7 @@ document.getElementById('sidebar-toggle')?.addEventListener('click', () => {
     grid.appendChild(b);
   });
 
-  initNavPill(bar, '.tab-item', 'tab-pill');
+  initNavPill(bar, '.tab-item', 'tab-pill', { global: true });
   document.getElementById('more-scrim')?.addEventListener('click', () => setMore(false));
   setActiveNav((typeof AppState !== 'undefined' && AppState.currentRoute) || 'dashboard');
 })();
