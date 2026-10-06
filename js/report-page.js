@@ -101,7 +101,7 @@ async function renderReportPage() {
     }));
     body.innerHTML = `
       <section class="report-section">
-        <h2 class="report-h2">สรุปผลการเรียน</h2>
+        <h2 class="section-title">สรุปผลการเรียน</h2>
         <div id="grade-summary-body">${buildGradeSummaryHtml(list, '__all__')}</div>
         <details class="gs-details">
           <summary>สถิติเกรดรายวิชา (กราฟ)</summary>
@@ -109,7 +109,7 @@ async function renderReportPage() {
         </details>
       </section>
       <section class="report-section">
-        <h2 class="report-h2">ส่งออกข้อมูลรายห้อง</h2>
+        <h2 class="section-title">ส่งออกข้อมูลรายห้อง</h2>
         ${reportPageBodyHtml(cards)}
       </section>`;
     wireGradeSummaryRows();

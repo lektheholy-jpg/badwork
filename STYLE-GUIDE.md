@@ -42,6 +42,8 @@
 ## 3. ข้อความ
 
 - หัวหน้า: `<div class="page-header">` + `<h1>` (34px/700 ชิดซ้าย) ถ้ามีปุ่มด้านขวาใช้ `u-flex u-items-start u-between u-wrap u-gap-16`
+- หัวหน้าทำผ่าน helper ใน `js/utils.js` ไม่เขียน HTML เอง: หน้าหลักของเมนู `pageHeaderHtml('ชื่อเดียวกับเมนูข้าง')` (หน้าหลักคงแบนเนอร์) · หน้าที่เปิดเข้าไปในวิชา `courseHeaderHtml({ crumbId, crumbLabel, crumbCurrent, title, badge, sub, actions })` (ส่งข้อความล้วน helper escape ให้ ส่วน `badge`/`actions` เป็น HTML ที่ประกอบเองในแอป)
+- หัวข้อย่อย: นอกการ์ดใช้ `<h2 class="section-title">` (20px) · ในการ์ดใช้ `<h2 class="card-title">` (14.5px) ระยะห่างใส่ `u-mb-*` ตามบริบท ไม่ใช้ `u-fs-145` แทนหัวข้ออีก
 - ฟอนต์: ตัวหนังสือทั่วไป `--font` (Noto Sans Thai), หัวเรื่อง/เมนู `--font-head` (IBM Plex Sans Thai) ไม่ต้องตั้งเอง
 - ข้อความรอง `u-note` / `u-note-sm` · ตัวหนา `u-semibold` · ขนาด `u-fs-13/135/145` · ระยะ `u-mb-*` `u-mt-*` `u-gap-*`
 - หา utility ที่มีทั้งหมดด้วย `grep -o "\.u-[a-z0-9-]*" css/style.css | sort -u` ถ้าไม่มีให้เพิ่มเป็น `u-xxx` ที่เดียว ไม่ฝัง style

@@ -211,6 +211,20 @@ function icon(name) {
 function pageHeaderHtml(title) {
   return `<div class="page-header"><h1>${escapeHtml(title)}</h1></div>`;
 }
+// หัวหน้าระดับวิชา (crumb + ชื่อ + ป้าย + บรรทัดรอง + ปุ่มด้านขวา) — ใช้ร่วมกันทุกหน้าที่เปิดเข้าไปในวิชา
+//   crumbId/crumbLabel = ลิงก์ย้อนกลับ · crumbCurrent/title/sub = ข้อความล้วน (ฟังก์ชันนี้ escape ให้เอง)
+//   badge/actions = HTML ที่ประกอบเองในแอป (ไม่ใส่ข้อมูลผู้ใช้ที่ยังไม่ escape)
+function courseHeaderHtml({ crumbId, crumbLabel, crumbCurrent, title, badge = '', sub = '', actions = '' }) {
+  return `
+    <div class="crumb"><a href="#" id="${crumbId}" class="u-link-plain">${escapeHtml(crumbLabel)}</a> / <b>${escapeHtml(crumbCurrent)}</b></div>
+    <div class="page-header u-flex u-items-start u-between u-wrap u-gap-16">
+      <div>
+        <h1>${escapeHtml(title)} ${badge}</h1>
+        <div class="sub">${escapeHtml(sub)}</div>
+      </div>
+      ${actions ? `<div>${actions}</div>` : ''}
+    </div>`;
+}
 function levelSelectOptionsHtml(selected) {
   return `<option value="">— เลือกระดับชั้น —</option>` +
     LEVEL_OPTIONS.map(l => `<option value="${l}" ${l === selected ? 'selected' : ''}>${l}</option>`).join('');

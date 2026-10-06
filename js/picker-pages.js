@@ -142,14 +142,14 @@ async function renderStructureEditor(view, courseId) {
   AppState.sections = sections; // ใช้โดย openAddRoomModal/confirmDeleteSection เพื่อคำนวณลำดับห้อง/ข้อความยืนยัน
 
   view.innerHTML = `
-    <div class="crumb"><a href="#" id="struct-back-to-list" class="u-link-plain">ตั้งค่าโครงสร้างวิชา</a> / <b>${escapeHtml(course.code ? course.code + ' - ' : '')}${escapeHtml(course.name)}</b></div>
-    <div class="page-header u-flex u-items-start u-between u-wrap u-gap-10">
-      <div>
-        <h1>${escapeHtml(course.code ? course.code + ' • ' : '')}${escapeHtml(course.name)} ${course.archived ? '<span class="badge badge-neutral u-badge-inline">ปิดใช้งาน</span>' : '<span class="badge badge-success u-badge-inline">กำลังใช้งาน</span>'}</h1>
-        <div class="sub">${escapeHtml(course.level || 'ไม่ระบุระดับชั้น')} • ภาคเรียน ${escapeHtml(course.semester || '-')}/${escapeHtml(course.year || '-')}</div>
-      </div>
-      <button class="btn btn-danger-ghost btn-sm" id="struct-del-course-btn">ลบวิชานี้</button>
-    </div>
+    ${courseHeaderHtml({
+      crumbId: 'struct-back-to-list', crumbLabel: 'ตั้งค่าโครงสร้างวิชา',
+      crumbCurrent: (course.code ? course.code + ' - ' : '') + course.name,
+      title: (course.code ? course.code + ' • ' : '') + course.name,
+      badge: course.archived ? '<span class="badge badge-neutral u-badge-inline">ปิดใช้งาน</span>' : '<span class="badge badge-success u-badge-inline">กำลังใช้งาน</span>',
+      sub: `${course.level || 'ไม่ระบุระดับชั้น'} • ภาคเรียน ${course.semester || '-'}/${course.year || '-'}`,
+      actions: '<button class="btn btn-danger-ghost btn-sm" id="struct-del-course-btn">ลบวิชานี้</button>',
+    })}
     <div class="card card-pad u-mb-16">
       <div class="u-flex u-items-center u-between u-mb-10 u-wrap u-gap-8">
         <div class="u-semibold u-fs-135">ห้องเรียนของวิชานี้</div>
@@ -311,11 +311,12 @@ async function renderScoresPage() {
   }
 
   view.innerHTML = `
-    <div class="crumb"><a href="#" id="scores-back-to-picker" class="u-link-plain">บันทึกคะแนน</a> / <b>${escapeHtml(course.code ? course.code + ' - ' : '')}${escapeHtml(course.name)} • ห้อง ${escapeHtml(section.room)}</b></div>
-    <div class="page-header">
-      <h1>${escapeHtml(course.code ? course.code + ' • ' : '')}${escapeHtml(course.name)}</h1>
-      <div class="sub">${escapeHtml(course.level || '')} • ห้อง ${escapeHtml(section.room)}</div>
-    </div>
+    ${courseHeaderHtml({
+      crumbId: 'scores-back-to-picker', crumbLabel: 'บันทึกคะแนน',
+      crumbCurrent: `${course.code ? course.code + ' - ' : ''}${course.name} • ห้อง ${section.room}`,
+      title: (course.code ? course.code + ' • ' : '') + course.name,
+      sub: `${course.level || ''} • ห้อง ${section.room}`,
+    })}
     <div id="scores-page-body"></div>
   `;
 

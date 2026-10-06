@@ -425,7 +425,7 @@ function renderLatestProgress(courses, sectionCards) {
   };
   return `
     <section class="prog-section">
-      <h2 class="prog-h2">ความคืบหน้าล่าสุด</h2>
+      <h2 class="section-title">ความคืบหน้าล่าสุด</h2>
       <div class="prog-list">
         ${rows.map(({ c, r }) => `
           <button class="prog-row" style="--w:${courseColor(c) || 'var(--primary)'}" data-course-id="${r.courseId}" data-section-id="${r.sectionId}">

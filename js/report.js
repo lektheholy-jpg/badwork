@@ -68,7 +68,7 @@ async function renderReportTab(container, course, section) {
 
     <div class="card card-pad u-mb-16">
       <div class="u-flex u-items-center u-between u-mb-14">
-        <h2 class="u-fs-145">การกระจายเกรด</h2>
+        <h2 class="card-title">การกระจายเกรด</h2>
         <button class="btn btn-ghost btn-sm" id="edit-grade-scale">ตั้งเกณฑ์เกรด</button>
       </div>
       ${gradeScale.map(g => `
@@ -81,7 +81,7 @@ async function renderReportTab(container, course, section) {
     </div>
 
     <div class="card card-pad">
-      <h2 class="u-fs-145 u-mb-12">ส่งออกข้อมูล</h2>
+      <h2 class="card-title u-mb-12">ส่งออกข้อมูล</h2>
       <div class="u-flex u-gap-8 u-wrap">
         <button class="btn btn-ghost btn-sm" id="export-csv-btn">Export CSV</button>
         <button class="btn btn-ghost btn-sm" id="export-pp5-btn">Export เข้าฟอร์ม ปพ.5</button>
@@ -89,7 +89,7 @@ async function renderReportTab(container, course, section) {
     </div>
 
     <div class="card card-pad u-mt-16">
-      <h2 class="u-fs-145 u-mb-4">แปลงคะแนน SGS</h2>
+      <h2 class="card-title u-mb-4">แปลงคะแนน SGS</h2>
       <div class="u-note-sm u-mb-12">ส่งออกคะแนนเป็น เก็บก่อนกลางภาค 30 · กลางภาค 20 · เก็บหลังกลางภาค 30 · ปลายภาค 20 — คะแนนจริงและเกรดในระบบไม่เปลี่ยน · ปุ่ม "แปลงคะแนน Next School" นำคะแนนนี้ไปใส่ในไฟล์ฟอร์มที่โรงเรียนส่งให้</div>
       <div class="u-flex u-gap-8 u-wrap">
         <button class="btn btn-primary btn-sm" id="export-nextschool-btn">แปลงคะแนน SGS</button>

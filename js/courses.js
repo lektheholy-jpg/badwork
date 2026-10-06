@@ -231,18 +231,15 @@ async function renderCourseShell() {
 
   const view = document.getElementById('view');
   view.innerHTML = `
-    <div class="crumb"><a href="#" id="back-to-courses" class="u-link-plain">รายวิชาของฉัน</a> / <b>${escapeHtml(course.name)}</b></div>
-    <div class="page-header u-flex u-items-start u-between u-wrap u-gap-16">
-      <div>
-        <h1>${escapeHtml(course.code ? course.code + ' • ' : '')}${escapeHtml(course.name)} ${course.archived ? '<span class="badge badge-neutral u-badge-inline">อยู่ในคลัง</span>' : ''}</h1>
-        <div class="sub">${escapeHtml(course.level || '')} • ภาคเรียน ${escapeHtml(course.semester || '-')}/${escapeHtml(course.year || '-')} • ${sections.length} ห้อง</div>
-      </div>
-      <div>
-        ${course.archived
-          ? `<button class="btn btn-ghost btn-sm" id="unarchive-course-btn">นำกลับมาใช้งาน</button>`
-          : `<button class="btn btn-ghost btn-sm" id="archive-course-btn">จบเทอมนี้แล้ว เก็บเข้าคลัง</button>`}
-      </div>
-    </div>
+    ${courseHeaderHtml({
+      crumbId: 'back-to-courses', crumbLabel: 'รายวิชาของฉัน', crumbCurrent: course.name,
+      title: (course.code ? course.code + ' • ' : '') + course.name,
+      badge: course.archived ? '<span class="badge badge-neutral u-badge-inline">อยู่ในคลัง</span>' : '',
+      sub: `${course.level || ''} • ภาคเรียน ${course.semester || '-'}/${course.year || '-'} • ${sections.length} ห้อง`,
+      actions: course.archived
+        ? '<button class="btn btn-ghost btn-sm" id="unarchive-course-btn">นำกลับมาใช้งาน</button>'
+        : '<button class="btn btn-ghost btn-sm" id="archive-course-btn">จบเทอมนี้แล้ว เก็บเข้าคลัง</button>',
+    })}
 
     ${sections.length > 0 ? `
       <div class="room-pills" id="room-pills">
@@ -583,7 +580,7 @@ async function renderCourseOverview(container, course, sections) {
       </div>
     ` : ''}
     <div class="card card-pad">
-      <h2 class="u-fs-145 u-mb-10">ขั้นตอนถัดไป</h2>
+      <h2 class="card-title u-mb-10">ขั้นตอนถัดไป</h2>
       <div class="u-flex u-col u-gap-8 u-fs-135 u-soft">
         <div>1. เพิ่มห้องเรียน ${sections.length > 0 ? '✓' : '— ยังไม่มีห้อง'}</div>
         <div>2. เพิ่มรายชื่อนักเรียนแต่ละห้อง ${totalStudents > 0 ? '✓' : '— ยังไม่มีนักเรียน'}</div>

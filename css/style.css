@@ -911,14 +911,13 @@ table.sheet tbody tr:nth-child(even) td.grp-sub-total { background: var(--col-co
 
 /* ----- หัวข้อ: แบบชื่อบทในหนังสือ ----- */
 
-h2, .report-h2, .main .struct-panel-header {
+h2, .main .struct-panel-header {
   font-family: var(--font-head); font-weight: 700; color: var(--ink);
 }
 
 .chart-title {
   font-family: var(--font-head); margin-bottom: 12px;
 }
-.report-h2::before { color: var(--ink-soft); font-weight: 400; }
 .scores-subject-title .struct-course-name { font-size: 16px; }
 
 /* ----- ปุ่ม: เรียบแบบตัวพิมพ์ ขอบบาง มุมฉาก ----- */
@@ -1010,8 +1009,9 @@ body, #app { line-height: 1.6; }
 .page-header h1 { font-size: 34px; font-weight: 700; line-height: 1.35; letter-spacing: 0; }
 .page-header .sub { font-style: normal; font-size: 15px; color: var(--ink-soft); margin-top: 6px; }
 .crumb { font-style: normal; color: var(--ink-soft); }
-.report-h2 { font-size: 20px; border-bottom: none; padding-bottom: 0; margin: 0 0 14px; }
-.report-h2::before { content: none; }
+/* หัวข้อย่อยของส่วนในหน้า (นอกการ์ด) = .section-title · หัวข้อในการ์ด = .card-title (ระยะห่างใส่ u-mb-* ตามบริบท) */
+.section-title { font-size: 20px; border-bottom: none; padding-bottom: 0; margin: 0 0 14px; }
+.card-title { font-size: 14.5px; }
 .chart-title { border-bottom: none; padding-bottom: 0; font-size: 16px; }
 
 /* ----- การ์ด: ขาว มุมโค้งใหญ่ ไม่มีเส้นขอบ ----- */
@@ -1140,7 +1140,7 @@ table.sheet td input.score-input { border-radius: var(--radius-xs); min-height: 
 
 /* ----- หน้าแรก: ความคืบหน้าล่าสุด 1 แถวต่อห้อง ----- */
 .prog-section { margin: 4px 0 28px; }
-.prog-h2 { font-size: 20px; margin: 0 0 12px 4px; }
+.prog-section .section-title { margin: 0 0 12px 4px; }
 .prog-row { display: grid; grid-template-columns: 12px minmax(0, 1fr) minmax(0, 1.3fr) 110px 44px; align-items: center; gap: 14px; width: 100%; padding: 14px 20px; background: none; border: none; border-bottom: 1px solid var(--border); font: inherit; color: var(--ink); text-align: left; cursor: pointer; }
 .prog-row:last-child { border-bottom: none; }
 .prog-row:focus-visible { outline: 3px solid var(--primary); outline-offset: -3px; }
@@ -1748,7 +1748,7 @@ button.brand:hover .mark { transform: rotate(-6deg) scale(1.04); }
 
   /* ความคืบหน้าล่าสุด: 1 ห้อง 1 บรรทัด ไม่เลื่อนแยก — ความสูงของคอลัมน์ซ้าย (กราฟ) ปรับตามให้พอดีเอง */
   .dash > .prog-section { grid-column: 2; grid-row: 2; align-self: stretch; margin: 0; }
-  .dash > .prog-section .prog-h2 { margin: 0 0 10px 4px; }
+  .dash > .prog-section .section-title { margin: 0 0 10px 4px; }
   .dash > .prog-section .prog-list { display: flex; flex-direction: column; gap: 8px; background: none; overflow: visible; }
   .dash > .prog-section .prog-row {
     grid-template-columns: 12px minmax(0, 1.15fr) minmax(0, 1fr) 84px 42px; grid-template-areas: none;
