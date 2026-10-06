@@ -18,6 +18,21 @@ const ToolsState = {
   rooms: null,           // [{ key, label }] แคชรายการห้อง
 };
 
+const TOOL_SVG = (d) => `<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
+const TOOL_ICONS = {
+  pick: TOOL_SVG('<rect x="4" y="4" width="16" height="16" rx="4"/><circle cx="9" cy="9" r="1" fill="currentColor"/><circle cx="15" cy="9" r="1" fill="currentColor"/><circle cx="12" cy="12" r="1" fill="currentColor"/><circle cx="9" cy="15" r="1" fill="currentColor"/><circle cx="15" cy="15" r="1" fill="currentColor"/>'),
+  group: TOOL_SVG('<circle cx="9" cy="8.5" r="3"/><path d="M3.5 19c.6-3 2.8-4.6 5.5-4.6s4.9 1.6 5.5 4.6"/><circle cx="17" cy="9.5" r="2.4"/><path d="M16.5 14.6c2.4 0 4 1.3 4.5 3.9"/>'),
+  timer: TOOL_SVG('<circle cx="12" cy="13.5" r="7.5"/><path d="M12 9.5v4l2.6 1.6"/><path d="M9.5 3h5"/>'),
+  list: TOOL_SVG('<path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4" cy="6" r=".8" fill="currentColor"/><circle cx="4" cy="12" r=".8" fill="currentColor"/><circle cx="4" cy="18" r=".8" fill="currentColor"/>'),
+};
+const TOOL_HUES = ['violet', 'teal', 'orange', 'blue', 'pink', 'amber']; // สีไล่วนให้แต่ละกลุ่ม
+const RING_LEN = 2 * Math.PI * 52;
+
+function toolsRing() {
+  const r = document.getElementById('timer-ring');
+  if (r) r.style.strokeDashoffset = String(RING_LEN * (1 - ToolsState.timerLeft / ToolsState.timerTotal));
+}
+
 function toolsNameList() {
   return ToolsState.names.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
 }
@@ -60,17 +75,18 @@ async function renderToolsPage() {
   let rooms = [];
   try { rooms = await toolsLoadRooms(); } catch (err) { console.error(err); }
 
-  const tab = (id, label) => `<button type="button" class="theme-opt" data-tool="${id}" aria-pressed="${ToolsState.tool === id}">${label}</button>`;
+  const tab = (id, label) => `<button type="button" class="theme-opt" data-tool="${id}" aria-pressed="${ToolsState.tool === id}">${TOOL_ICONS[id]}${label}</button>`;
   view.innerHTML = `
     <div class="page-header"><h1>เครื่องมือ</h1><div class="sub">ตัวช่วยใช้ในห้องเรียน</div></div>
     <div class="theme-seg tools-tabs" role="group" aria-label="เครื่องมือ">
       ${tab('pick', 'สุ่มเรียกชื่อ')}${tab('group', 'แบ่งกลุ่ม')}${tab('timer', 'จับเวลา')}
     </div>
-    <div id="tools-body"></div>
+    <div id="tools-body" class="tools-stage" data-stage="${ToolsState.tool}"></div>
   `;
   view.querySelectorAll('[data-tool]').forEach(b => b.addEventListener('click', () => {
     ToolsState.tool = b.dataset.tool;
     view.querySelectorAll('[data-tool]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+    document.getElementById('tools-body').dataset.stage = ToolsState.tool;
     drawToolBody(rooms);
   }));
   drawToolBody(rooms);
@@ -84,17 +100,20 @@ function drawToolBody(rooms) {
   const roomOpts = rooms.map(r => `<option value="${escapeHtml(r.key)}" ${r.key === ToolsState.roomKey ? 'selected' : ''}>${escapeHtml(r.label)}</option>`).join('');
   body.innerHTML = `
     <div class="tools-grid">
-      <div class="card card-pad tools-names">
-        <div class="tools-label">รายชื่อ <span id="tools-count" class="tools-muted"></span></div>
+      <div class="card tools-card tools-names">
+        <div class="tools-card-head">
+          <span class="tools-ico">${TOOL_ICONS.list}</span>
+          <div><div class="tools-title">รายชื่อ</div><div class="tools-pill" id="tools-count"></div></div>
+        </div>
         <select id="tools-room"><option value="">— เลือกห้อง หรือพิมพ์เอง —</option>${roomOpts}</select>
         <textarea id="tools-names" rows="10" placeholder="พิมพ์หรือวางรายชื่อ บรรทัดละ 1 คน"></textarea>
       </div>
-      <div class="card card-pad" id="tools-main"></div>
+      <div class="card tools-card tools-main" id="tools-main"></div>
     </div>`;
 
   const ta = document.getElementById('tools-names');
   ta.value = ToolsState.names;
-  const count = () => { document.getElementById('tools-count').textContent = `(${toolsNameList().length} คน)`; };
+  const count = () => { document.getElementById('tools-count').textContent = `${toolsNameList().length} คน`; };
   count();
   ta.addEventListener('input', () => { ToolsState.names = ta.value; ToolsState.picked = []; count(); });
   document.getElementById('tools-room').addEventListener('change', async (e) => {
@@ -112,16 +131,16 @@ function drawToolBody(rooms) {
 function drawPicker() {
   const main = document.getElementById('tools-main');
   const pickedHtml = () => ToolsState.picked.length
-    ? ToolsState.picked.map((n, i) => `<span class="tools-chip">${i + 1}. ${escapeHtml(n)}</span>`).join('')
+    ? ToolsState.picked.map((n, i) => `<span class="tools-chip"><b>${i + 1}</b>${escapeHtml(n)}</span>`).join('')
     : '<span class="tools-muted">ยังไม่มีประวัติ</span>';
   main.innerHTML = `
-    <div class="tools-big" id="pick-out" aria-live="polite">—</div>
-    <div class="tools-row">
-      <button type="button" class="btn btn-primary" id="pick-go">สุ่ม</button>
+    <div class="tools-display"><div class="tools-big" id="pick-out" aria-live="polite">—</div></div>
+    <div class="tools-row" style="justify-content:center;">
+      <button type="button" class="btn tools-btn" id="pick-go">สุ่มเลย</button>
       <label class="tools-check"><input type="checkbox" id="pick-norepeat" ${ToolsState.noRepeat ? 'checked' : ''}> ไม่สุ่มซ้ำ</label>
       <button type="button" class="btn btn-ghost btn-sm" id="pick-reset">ล้างประวัติ</button>
     </div>
-    <div class="tools-label" style="margin-top:14px;">ที่สุ่มได้แล้ว</div>
+    <div class="tools-label" style="margin-top:18px;">ที่สุ่มได้แล้ว</div>
     <div class="tools-chips" id="pick-hist">${pickedHtml()}</div>`;
   document.getElementById('pick-norepeat').addEventListener('change', (e) => { ToolsState.noRepeat = e.target.checked; });
   document.getElementById('pick-reset').addEventListener('click', () => { ToolsState.picked = []; drawPicker(); });
@@ -150,15 +169,15 @@ function drawGroups() {
   main.innerHTML = `
     <div class="tools-row">
       <label class="tools-label" for="grp-n" style="margin:0;">จำนวนกลุ่ม</label>
-      <input type="number" id="grp-n" min="2" max="30" value="${ToolsState.groupCount}" style="width:80px;">
-      <button type="button" class="btn btn-primary" id="grp-go">แบ่งกลุ่ม</button>
+      <input type="number" id="grp-n" class="tools-input" min="2" max="30" value="${ToolsState.groupCount}" style="width:84px;">
+      <button type="button" class="btn tools-btn" id="grp-go">แบ่งกลุ่ม</button>
       <button type="button" class="btn btn-ghost btn-sm" id="grp-copy">คัดลอก</button>
     </div>
     <div class="tools-groups" id="grp-out"></div>`;
   const show = () => {
     document.getElementById('grp-out').innerHTML = ToolsState.groups.length
-      ? ToolsState.groups.map((g, i) => `<div class="tools-group"><div class="tools-group-title">กลุ่ม ${i + 1} <span class="tools-muted">(${g.length})</span></div>${g.map(n => `<div>${escapeHtml(n)}</div>`).join('')}</div>`).join('')
-      : '<div class="tools-muted" style="margin-top:12px;">ใส่รายชื่อ แล้วกด "แบ่งกลุ่ม"</div>';
+      ? ToolsState.groups.map((g, i) => `<div class="tools-group" style="--w:var(--hue-${TOOL_HUES[i % TOOL_HUES.length]})"><div class="tools-group-title"><span class="tools-dot"></span>กลุ่ม ${i + 1}<span class="tools-pill">${g.length} คน</span></div>${g.map(n => `<div class="tools-name">${escapeHtml(n)}</div>`).join('')}</div>`).join('')
+      : '<div class="tools-empty">ใส่รายชื่อ แล้วกด "แบ่งกลุ่ม"</div>';
   };
   show();
   document.getElementById('grp-go').addEventListener('click', () => {
@@ -201,14 +220,17 @@ function toolsBeep() {
 function drawTimer(body) {
   const presets = [1, 3, 5, 10, 15, 30];
   body.innerHTML = `
-    <div class="card card-pad" style="max-width:460px;">
-      <div class="tools-big" id="timer-out" aria-live="off">${toolsFmtTime(ToolsState.timerLeft)}</div>
-      <div class="tools-chips" style="justify-content:center; margin-bottom:12px;">
-        ${presets.map(m => `<button type="button" class="btn btn-ghost btn-sm" data-min="${m}">${m} นาที</button>`).join('')}
+    <div class="card tools-card tools-timer">
+      <div class="tools-ring">
+        <svg viewBox="0 0 120 120" aria-hidden="true"><circle class="tools-ring-track" cx="60" cy="60" r="52"/><circle class="tools-ring-bar" id="timer-ring" cx="60" cy="60" r="52" stroke-dasharray="${RING_LEN}" stroke-dashoffset="0"/></svg>
+        <div class="tools-big" id="timer-out" aria-live="off">${toolsFmtTime(ToolsState.timerLeft)}</div>
+      </div>
+      <div class="tools-chips" style="justify-content:center; margin:4px 0 14px;">
+        ${presets.map(m => `<button type="button" class="tools-preset" data-min="${m}" aria-pressed="${Math.round(ToolsState.timerTotal / 60) === m}">${m} นาที</button>`).join('')}
       </div>
       <div class="tools-row" style="justify-content:center;">
-        <input type="number" id="timer-min" min="1" max="180" value="${Math.round(ToolsState.timerTotal / 60)}" style="width:80px;" aria-label="นาที"> <span class="tools-muted">นาที</span>
-        <button type="button" class="btn btn-primary" id="timer-toggle">${ToolsState.timerId ? 'หยุดชั่วคราว' : 'เริ่ม'}</button>
+        <input type="number" id="timer-min" class="tools-input" min="1" max="180" value="${Math.round(ToolsState.timerTotal / 60)}" style="width:84px;" aria-label="นาที"> <span class="tools-muted">นาที</span>
+        <button type="button" class="btn tools-btn" id="timer-toggle">${ToolsState.timerId ? 'หยุดชั่วคราว' : 'เริ่ม'}</button>
         <button type="button" class="btn btn-ghost" id="timer-reset">รีเซ็ต</button>
       </div>
     </div>`;
@@ -216,18 +238,22 @@ function drawTimer(body) {
   const toggle = document.getElementById('timer-toggle');
   const setTotal = (min) => {
     stop(); ToolsState.timerTotal = ToolsState.timerLeft = Math.min(180, Math.max(1, min)) * 60;
-    out.textContent = toolsFmtTime(ToolsState.timerLeft); toggle.textContent = 'เริ่ม';
+    out.textContent = toolsFmtTime(ToolsState.timerLeft); toggle.textContent = 'เริ่ม'; toolsRing();
+    body.querySelectorAll('[data-min]').forEach(b => b.setAttribute('aria-pressed', String(Number(b.dataset.min) * 60 === ToolsState.timerTotal)));
+    document.getElementById('timer-min').value = Math.round(ToolsState.timerTotal / 60);
   };
   function stop() { if (ToolsState.timerId) clearInterval(ToolsState.timerId); ToolsState.timerId = null; }
   function tick() {
     if (!document.getElementById('timer-out')) { stop(); return; }   // ออกจากหน้านี้แล้ว
     ToolsState.timerLeft = Math.max(0, Math.ceil((ToolsState.timerEndAt - Date.now()) / 1000));
     document.getElementById('timer-out').textContent = toolsFmtTime(ToolsState.timerLeft);
+    toolsRing();
     if (ToolsState.timerLeft <= 0) {
       stop(); toolsBeep(); showToast('หมดเวลา');
       const t = document.getElementById('timer-toggle'); if (t) t.textContent = 'เริ่ม';
     }
   }
+  toolsRing();
   if (ToolsState.timerId) { clearInterval(ToolsState.timerId); ToolsState.timerId = setInterval(tick, 250); } // กลับมาที่แท็บนี้ระหว่างนับ
   body.querySelectorAll('[data-min]').forEach(b => b.addEventListener('click', () => setTotal(Number(b.dataset.min))));
   document.getElementById('timer-min').addEventListener('change', (e) => setTotal(Number(e.target.value) || 1));
