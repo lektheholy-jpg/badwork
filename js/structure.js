@@ -9,7 +9,7 @@ const MIDTERM_NAME = 'สอบกลางภาค';
 const FINAL_NAME = 'สอบปลายภาค';
 
 async function renderStructureTab(container, course) {
-  container.innerHTML = `<div class="empty-state">กำลังโหลด...</div>`;
+  showLoading('cat-sm', container);
   const uid = AppState.user.uid;
   const courseRef = db.collection('users').doc(uid).collection('courses').doc(course.id);
   const colRef = courseRef.collection('assessments');

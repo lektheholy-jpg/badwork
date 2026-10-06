@@ -5,7 +5,7 @@
 // ==========================================================================
 
 async function renderScoresTab(container, course, section) {
-  container.innerHTML = `<div class="empty-state">กำลังโหลด...</div>`;
+  showLoading('cat-sm', container);
   const uid = AppState.user.uid;
   const courseBase = db.collection('users').doc(uid).collection('courses').doc(course.id);
   const secBase = sectionRef(uid, course.id, section.id);

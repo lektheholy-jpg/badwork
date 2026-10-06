@@ -610,3 +610,48 @@ function courseColor(c) {
   if (c && c.level && getLevelColor(c.level) !== LEVEL_COLOR_FALLBACK) return getLevelColor(c.level).strong;
   return vividColor(c && c.color) || getLevelColor(c && c.level).strong;
 }
+
+
+// ==========================================================================
+// ตัวโหลด (แทนข้อความ "กำลังโหลด...")
+//   showLoading('list' | 'dash' | 'cat' | 'cat-sm', target = #view)
+//   - รอ 180ms ก่อนค่อยแสดง: ถ้าข้อมูลมาเร็วกว่านั้นจะไม่เห็นตัวโหลดเลย (ไม่แฟลช)
+//   - ระหว่างรอ หน้าเดิมค้างอยู่ (#view จางลงเล็กน้อย) ไม่ถูกลบทิ้งทันที
+//   - ถ้าเนื้อหาจริงถูกวาดทับไปแล้ว (firstChild เปลี่ยน) จะไม่เขียนตัวโหลดทับ
+//   list = โครงรายการวิชา · dash = โครงหน้าแรก · cat = น้องแมวโยกหัว · cat-sm = แบบเล็กสำหรับแท็บในวิชา
+// ==========================================================================
+const LOAD_DELAY_MS = 180;
+const _loadTimers = new WeakMap();
+
+function loaderHtml(kind) {
+  if (kind === 'list') {
+    const row = '<div class="sk-row"><i class="sk sk-chip"></i><div class="sk-lines"><i class="sk sk-line"></i><i class="sk sk-line sk-short"></i></div><i class="sk sk-btn"></i></div>';
+    return `<div class="sk-list" role="status" aria-label="กำลังโหลด">${row.repeat(4)}</div>`;
+  }
+  if (kind === 'dash') {
+    return '<div class="sk-dash" role="status" aria-label="กำลังโหลด"><i class="sk sk-banner"></i>'
+      + '<div class="sk-grid"><i class="sk sk-card"></i><i class="sk sk-card"></i></div>'
+      + '<div class="sk-grid"><i class="sk sk-card sk-card-lg"></i><i class="sk sk-card sk-card-lg"></i></div></div>';
+  }
+  return `<div class="loader${kind === 'cat-sm' ? ' loader-sm' : ''}" role="status" aria-live="polite">`
+    + '<img class="loader-cat" src="assets/head-cat-still.webp" width="84" height="117" alt="" decoding="async">'
+    + '<div>กำลังโหลด<span class="loader-dots" aria-hidden="true"><i></i><i></i><i></i></span></div></div>';
+}
+
+function clearLoading(target) {
+  const t = _loadTimers.get(target);
+  if (t) { clearTimeout(t); _loadTimers.delete(target); }
+}
+
+function showLoading(kind = 'cat', target = document.getElementById('view')) {
+  if (!target) return;
+  clearLoading(target);
+  const isView = target.id === 'view';
+  const first = target.firstChild;
+  if (isView && first) target.classList.add('view-pending');
+  _loadTimers.set(target, setTimeout(() => {
+    _loadTimers.delete(target);
+    if (isView) target.classList.remove('view-pending');
+    if (target.firstChild === first) target.innerHTML = loaderHtml(kind);
+  }, LOAD_DELAY_MS));
+}

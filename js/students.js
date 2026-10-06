@@ -8,7 +8,7 @@ function sectionRef(uid, courseId, sectionId) {
 }
 
 async function renderStudentsTab(container, course, section) {
-  container.innerHTML = `<div class="empty-state">กำลังโหลด...</div>`;
+  showLoading('cat-sm', container);
   const uid = AppState.user.uid;
   const snap = await sectionRef(uid, course.id, section.id).collection('students').orderBy('no', 'asc').get();
   const students = snap.docs.map(d => ({ id: d.id, ...d.data() }));

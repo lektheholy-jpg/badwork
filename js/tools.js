@@ -71,7 +71,7 @@ async function toolsLoadStudents(roomKey) {
 async function renderToolsPage() {
   toolsStopTimerIfDetached();
   const view = document.getElementById('view');
-  view.innerHTML = `<div class="empty-state">กำลังโหลด...</div>`;
+  showLoading('cat');
   let rooms = [];
   try { rooms = await toolsLoadRooms(); } catch (err) { console.error(err); }
 

@@ -16,7 +16,7 @@ async function loadAllCoursesForStructure() {
 
 async function renderStructurePage() {
   const view = document.getElementById('view');
-  view.innerHTML = `<div class="empty-state">กำลังโหลด...</div>`;
+  showLoading('cat');
 
   if (AppState.structureEditingCourseId) {
     return renderStructureEditor(view, AppState.structureEditingCourseId);
@@ -259,7 +259,7 @@ function scoresSubjectBlockHtml({ course, sections }) {
 
 async function renderScoresPage() {
   const view = document.getElementById('view');
-  view.innerHTML = `<div class="empty-state">กำลังโหลด...</div>`;
+  showLoading('cat');
 
   const selCourseId = AppState.scoresPageCourseId;
   const selSectionId = AppState.scoresPageSectionId;

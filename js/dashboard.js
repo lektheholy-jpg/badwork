@@ -174,7 +174,7 @@ async function loadCoursesWithGrades({ force = false } = {}) {
 
 async function renderDashboard() {
   const view = document.getElementById('view');
-  view.innerHTML = `<div class="empty-state">กำลังโหลด...</div>`;
+  showLoading('dash');
 
   const { courses, sectionCards, totalStudents, totalProgressSum } = await loadCoursesWithGrades();
   AppState.courses = courses;

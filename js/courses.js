@@ -170,7 +170,7 @@ function courseRowHtml(c) {
 
 async function renderCoursesList() {
   const view = document.getElementById('view');
-  view.innerHTML = `<div class="empty-state">กำลังโหลด...</div>`;
+  showLoading('list');
   const uid = AppState.user.uid;
   const snap = await db.collection('users').doc(uid).collection('courses').orderBy('createdAt', 'desc').get();
   const courses = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(c => !c.archived);
@@ -314,7 +314,7 @@ async function renderCourseShell() {
   else if (AppState.currentTab === 'scores') renderScoresTab(body, course, section);
   else if (AppState.currentTab === 'report') {
     // report.js โหลดครั้งแรกที่เปิดแท็บนี้ — ถ้าผู้ใช้สลับแท็บ/ออกจากหน้าก่อนโหลดเสร็จ ไม่ต้องวาดทับ
-    body.innerHTML = `<div class="empty-state">กำลังโหลด...</div>`;
+    showLoading('cat-sm', body);
     try { await loadModule('report'); } catch (err) { body.innerHTML = `<div class="card"><div class="empty-state">${escapeHtml(err.message)}</div></div>`; return; }
     if (AppState.currentTab === 'report' && body.isConnected) renderReportTab(body, course, section);
   }
@@ -322,7 +322,7 @@ async function renderCourseShell() {
 
 async function renderArchivePage() {
   const view = document.getElementById('view');
-  view.innerHTML = `<div class="empty-state">กำลังโหลด...</div>`;
+  showLoading('list');
   const uid = AppState.user.uid;
   const snap = await db.collection('users').doc(uid).collection('courses').orderBy('createdAt', 'desc').get();
   const courses = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(c => c.archived);

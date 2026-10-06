@@ -1079,6 +1079,30 @@ table.sheet th, table.sheet td.name-cell { font-family: var(--font); }
 #view.view-enter, #rc-body.rc-swap { animation: view-enter .22s ease-out; }
 /* กดเปิดรายวิชาแล้วรอข้อมูล: หน้าเดิมจางลงทันทีให้รู้ว่ารับคำสั่งแล้ว (playViewEnter ถอดออกเมื่อหน้าใหม่มา) */
 #view.view-pending { opacity: .55; pointer-events: none; transition: opacity .15s ease; }
+/* ตัวโหลด (showLoading ใน utils.js): น้องแมว + โครงกระดูกวิบวับ */
+@keyframes sk-shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+@keyframes loader-bob { 0%, 100% { transform: translateY(0) rotate(-3deg); } 50% { transform: translateY(-8px) rotate(3deg); } }
+@keyframes loader-dot { 0%, 80%, 100% { opacity: .25; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-3px); } }
+.loader { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 56px 16px; color: var(--ink-soft); font-size: 14px; font-weight: 600; animation: view-enter .2s ease-out; }
+.loader-sm { padding: 28px 16px; }
+.loader-cat { display: block; width: 84px; height: auto; transform-origin: 50% 100%; animation: loader-bob 1.3s ease-in-out infinite; }
+.loader-sm .loader-cat { width: 56px; }
+.loader-dots { display: inline-flex; gap: 3px; margin-left: 4px; }
+.loader-dots i { width: 5px; height: 5px; border-radius: 50%; background: currentColor; animation: loader-dot 1.2s ease-in-out infinite; }
+.loader-dots i:nth-child(2) { animation-delay: .15s; }
+.loader-dots i:nth-child(3) { animation-delay: .3s; }
+.sk { display: block; border-radius: var(--radius-s); background: linear-gradient(90deg, var(--surface-sunken) 25%, color-mix(in srgb, var(--surface-sunken) 50%, var(--card)) 50%, var(--surface-sunken) 75%); background-size: 200% 100%; animation: sk-shimmer 1.5s linear infinite; }
+.sk-list, .sk-dash { display: flex; flex-direction: column; gap: 12px; animation: view-enter .2s ease-out; }
+.sk-row { display: flex; align-items: center; gap: 16px; padding: 16px 20px; border-radius: var(--radius-l); background: var(--card); }
+.sk-chip { width: 44px; height: 44px; flex: none; border-radius: 50%; }
+.sk-lines { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.sk-line { width: 55%; height: 14px; }
+.sk-short { width: 32%; height: 11px; }
+.sk-btn { width: 88px; height: 36px; flex: none; border-radius: var(--radius-pill); }
+.sk-banner { height: 170px; border-radius: var(--radius-l); }
+.sk-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+.sk-card { height: 110px; border-radius: var(--radius-l); }
+.sk-card-lg { height: 220px; }
 /* แถบเลื่อนของแท็บ/ห้อง/ตัวเลือกสลับภายในหน้า (initNavPill ใน app.js) */
 .tabs, .theme-seg, .room-pills, .rc-tabs { position: relative; }
 .tab, .room-pill, .theme-opt, .rc-tab { position: relative; z-index: 1; }
@@ -1088,7 +1112,7 @@ table.sheet th, table.sheet td.name-cell { font-family: var(--font); }
 .room-pills { --seg-pill-bg: var(--primary); --seg-pill-shadow: none; }
 .seg-pill { position: absolute; left: 0; top: 0; z-index: 0; border-radius: var(--radius-pill); pointer-events: none; opacity: 0; background: var(--seg-pill-bg, var(--card)); box-shadow: var(--seg-pill-shadow, 0 1px 6px var(--shadow-ink-md)); transition: transform .28s cubic-bezier(.3, .9, .3, 1), width .28s cubic-bezier(.3, .9, .3, 1), height .28s cubic-bezier(.3, .9, .3, 1), background-color .28s ease, opacity .2s ease; }
 .seg-pill.no-anim { transition: none; }
-@media (prefers-reduced-motion: reduce) { #view.view-enter, #rc-body.rc-swap { animation: none; } #view.view-pending { transition: none; } }
+@media (prefers-reduced-motion: reduce) { #view.view-enter, #rc-body.rc-swap { animation: none; } #view.view-pending { transition: none; } .loader, .loader-cat, .loader-dots i, .sk, .sk-list, .sk-dash { animation: none; } }
 
 /* ----- หน้าแรกแบบ One UI: หัวใหญ่ + การ์ดตัวเลขเล็กสีขาว (แทนปกหนังสือ) ----- */
 .book-inside { padding: 24px 0 0; }

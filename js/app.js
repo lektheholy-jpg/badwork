@@ -70,6 +70,7 @@ function setActiveNav(routeId) {
 function playViewEnter() {
   const v = document.getElementById('view');
   if (!v) return;
+  clearLoading(v); // เนื้อหาจริงมาแล้ว — ยกเลิกตัวโหลดที่รออยู่
   v.classList.remove('view-enter', 'view-pending');
   void v.offsetWidth; // รีสตาร์ทแอนิเมชันถ้ากดซ้ำ
   v.classList.add('view-enter');
@@ -101,7 +102,7 @@ function navigate(route) {
 
   // โหลดสคริปต์ของหน้านั้นครั้งแรก — ถ้าผู้ใช้เปลี่ยนหน้าไปก่อนโหลดเสร็จ ไม่ต้องวาดทับ
   const view = document.getElementById('view');
-  if (view) view.innerHTML = `<div class="empty-state">กำลังโหลด...</div>`;
+  if (view) showLoading('cat');
   loadModule(mod).then(() => {
     if (AppState.currentRoute === route) drawRoute(route);
   }).catch(err => {

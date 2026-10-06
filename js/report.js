@@ -37,7 +37,7 @@ function exportRoomCsv(course, section, { students, assessments, scores, gradeSc
 }
 
 async function renderReportTab(container, course, section) {
-  container.innerHTML = `<div class="empty-state">กำลังโหลด...</div>`;
+  showLoading('cat-sm', container);
   const { students, assessments, scores, gradeScale } = await loadRoomReportData(course, section);
   const maxTotal = assessments.reduce((s, a) => s + (Number(a.max) || 0), 0) || 100;
 

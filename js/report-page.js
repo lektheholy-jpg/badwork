@@ -56,7 +56,7 @@ function reportPageBodyHtml(cards) {
 
 async function renderReportPage() {
   const view = document.getElementById('view');
-  view.innerHTML = `<div class="empty-state">กำลังโหลด...</div>`;
+  showLoading('cat');
 
   // โหลดครั้งเดียว (รวมเกรดรายห้อง) แล้วสลับภาคเรียนจากข้อมูลในหน่วยความจำ ไม่ต้องโหลดซ้ำ
   const { courses, sectionCards } = await loadCoursesWithGrades(); // เฉพาะวิชาที่ยังเปิดใช้งาน
