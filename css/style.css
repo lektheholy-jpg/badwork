@@ -791,7 +791,7 @@ table.sheet tbody tr:nth-child(even) td.grp-sub-total { background: var(--col-co
 /* ---------- เมนูด้านข้างล็อกตำแหน่ง: เลื่อนเนื้อหาแล้วเมนูไม่เลื่อนตาม (เฉพาะจอ desktop) ---------- */
 @media (min-width: 861px) {
   .sidebar {
-    position: sticky; top: 0;
+    position: sticky; top: 0; z-index: 40; /* ให้ tooltip ตอนย่อเมนูลอยทับการ์ดเนื้อหา ไม่ถูกบังไว้ด้านหลัง */
     height: 100vh; align-self: flex-start;
   }
   /* จอเตี้ยๆ: ให้เลื่อนภายในเมนูเองได้ (ตอนย่อเมนูไม่ใช้ เพราะ tooltip ต้องล้นออกนอกแถบ) */
@@ -1525,8 +1525,18 @@ button.brand:hover .mark { transform: rotate(-6deg) scale(1.04); }
 
 /* ===== หัวเว็บ: ชื่อแอปทางซ้าย + แมวใส่ตู้ปลาทางขวา (ขนาดตามหน้าจอ) ===== */
 .site-banner { display: flex; align-items: center; justify-content: space-between; gap: clamp(8px, 3vw, 28px); margin: 0 0 10px; padding: 4px 0 0; }
-.banner-title { margin: 0; min-width: 0; font-size: clamp(34px, 9.5vw, 56px); font-weight: 800; line-height: 1.2; letter-spacing: -.01em; color: var(--ink); overflow-wrap: anywhere; }
-.banner-dots { color: var(--ink-soft); }
+.banner-title {
+  margin: 0; min-width: 0; font-size: clamp(34px, 9.5vw, 56px); font-weight: 800; line-height: 1.2; letter-spacing: -.01em; overflow-wrap: anywhere;
+  /* ไล่สีม่วง → ฟ้า ตามธีม (ใช้ตัวแปร --viz-* จึงเปลี่ยนตามโหมดมืด/สว่างอัตโนมัติ) + กระพริบนุ่ม ๆ */
+  color: var(--viz-purple);
+  background: linear-gradient(90deg, var(--viz-purple), var(--viz-blue), var(--viz-sky), var(--viz-blue), var(--viz-purple)) 0 0 / 200% 100%;
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+  animation: banner-shimmer 4s ease-in-out infinite alternate, banner-blink 2.4s ease-in-out infinite;
+}
+.banner-dots { opacity: .85; }
+@keyframes banner-shimmer { from { background-position: 0 0; } to { background-position: 100% 0; } }
+@keyframes banner-blink { 0%, 100% { opacity: 1; } 50% { opacity: .4; } }
+@media (prefers-reduced-motion: reduce) { .banner-title { animation: none; } }
 .site-banner picture { flex: none; display: block; }
 .site-banner img { display: block; width: auto; height: clamp(170px, 36vw, 240px); aspect-ratio: 252 / 350; user-select: none; -webkit-user-drag: none; }
 /* ธีมมืด: ภาพต้นฉบับเป็นเส้นดำบนพื้นโปร่งใส → กลับสีเป็นเส้นขาว */
