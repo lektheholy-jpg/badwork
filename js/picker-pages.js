@@ -65,8 +65,9 @@ async function renderStructureList(view) {
   const courses = await loadAllCoursesForStructure();
 
   view.innerHTML = `
-    <div class="page-header u-flex u-wrap u-gap-10">
-      <button class="btn btn-primary btn-sm u-ml-auto" id="struct-new-course-btn">+ สร้างรายวิชาใหม่</button>
+    <div class="page-header u-flex u-items-start u-between u-wrap u-gap-10">
+      <h1>ตั้งค่าโครงสร้างวิชา</h1>
+      <button class="btn btn-primary btn-sm" id="struct-new-course-btn">+ สร้างรายวิชาใหม่</button>
     </div>
     ${courses.length === 0 ? `
       <div class="card"><div class="empty-state">
@@ -271,12 +272,14 @@ async function renderScoresPage() {
 
     if (courses.length === 0) {
       view.innerHTML = `
+        ${pageHeaderHtml('บันทึกคะแนน')}
         <div class="card"><div class="empty-state"><div class="icon">${icon('book')}</div>ยังไม่มีรายวิชา กรุณาสร้างรายวิชาก่อน</div></div>
       `;
       return;
     }
 
     view.innerHTML = `
+      ${pageHeaderHtml('บันทึกคะแนน')}
       ${scoresPickerGroupsHtml(cards)}
     `;
 

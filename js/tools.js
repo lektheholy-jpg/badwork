@@ -77,6 +77,7 @@ async function renderToolsPage() {
 
   const tab = (id, label) => `<button type="button" class="theme-opt" data-tool="${id}" aria-pressed="${ToolsState.tool === id}">${TOOL_ICONS[id]}${label}</button>`;
   view.innerHTML = `
+    ${pageHeaderHtml('เครื่องมือ')}
     <div class="theme-seg tools-tabs" role="group" aria-label="เครื่องมือ">
       ${tab('pick', 'สุ่มเรียกชื่อ')}${tab('group', 'แบ่งกลุ่ม')}${tab('timer', 'จับเวลา')}
     </div>

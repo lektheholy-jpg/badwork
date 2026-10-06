@@ -98,7 +98,6 @@ function openCreateCourseModal(onCreated, sourceCourse = null) {
       semester: document.getElementById('f-semester').value.trim(),
       year: document.getElementById('f-year').value.trim(),
       credit: document.getElementById('f-credit').value.trim(),
-      color: getLevelColor(level).strong,
       roomCount: rooms.length,
       archived: false,
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
@@ -176,6 +175,7 @@ async function renderCoursesList() {
   const courses = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(c => !c.archived);
 
   view.innerHTML = `
+    ${pageHeaderHtml('รายวิชาของฉัน')}
     ${courses.length === 0 ? `
       <div class="card"><div class="empty-state">
         <div class="icon">${icon('book')}</div>
@@ -344,6 +344,7 @@ async function renderArchivePage() {
   const courses = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(c => c.archived);
 
   view.innerHTML = `
+    ${pageHeaderHtml('คลังรายวิชา')}
     ${courses.length === 0 ? `
       <div class="card"><div class="empty-state">
         <div class="icon">${icon('archive')}</div>
@@ -353,7 +354,7 @@ async function renderArchivePage() {
       <div class="course-list">
         ${courses.map(c => `
           <div class="course-row u-cursor-default" data-course-id="${c.id}">
-            <div class="course-dot" style="--c:${courseColor(c) || '#3E91FF'}"></div>
+            <div class="course-dot" style="--c:${courseColor(c) || 'var(--primary)'}"></div>
             <div class="info">
               <div class="name">${escapeHtml(c.name)}</div>
               <div class="meta">${escapeHtml(c.code || '')} • ${escapeHtml(c.level || '')} • ${c.roomCount || 0} ห้อง • ภาคเรียน ${escapeHtml(c.semester || '-')}/${escapeHtml(c.year || '-')}</div>

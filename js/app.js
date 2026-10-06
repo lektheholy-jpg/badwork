@@ -142,6 +142,7 @@ function renderSettings() {
   const view = document.getElementById('view');
   const u = AppState.user;
   view.innerHTML = `
+    ${pageHeaderHtml('ตั้งค่า')}
     <div class="card card-pad u-maxw-420">
       <div class="u-flex u-items-center u-gap-12 u-mb-16">
         <img src="${escapeHtml(safePhotoUrl(u.photoURL, u.displayName))}" alt="" referrerpolicy="no-referrer" class="u-avatar-48">

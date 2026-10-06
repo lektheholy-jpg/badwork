@@ -174,48 +174,25 @@ function uid4() {
 
 // ==========================================================================
 // ระดับชั้น (ม.1-ม.6) และห้อง (1-13) — ตัวเลือกมาตรฐานที่ใช้ทั้งแอป
-// สีของแต่ละระดับชั้นเป็นโทนอ่อน (soft/pastel) ใช้แยกกลุ่มวิชาให้มองง่าย
+// สีของแต่ละระดับชั้นอ้างตัวแปร --viz-* ใน css/style.css (โหมดมืดสลับเองผ่านตัวแปร ไม่ต้องมีชุดสีแยกใน JS)
 // ==========================================================================
 const LEVEL_OPTIONS = ['ม.1', 'ม.2', 'ม.3', 'ม.4', 'ม.5', 'ม.6'];
 const ROOM_OPTIONS = Array.from({ length: 13 }, (_, i) => String(i + 1));
 const LEVEL_COLORS = {
-  'ม.1': { tint: '#E3EFFF', strong: '#2D80F2' },   // ฟ้า
-  'ม.2': { tint: '#DDF6EC', strong: '#12A87A' },   // เขียว
-  'ม.3': { tint: '#EDE6FF', strong: '#7B52E6' },   // ม่วง
-  'ม.4': { tint: '#DCF1FA', strong: '#1A9FD0' },   // ฟ้าอมเขียว
-  'ม.5': { tint: '#E4F7DF', strong: '#3FB86B' },   // เขียวสด
-  'ม.6': { tint: '#F1E4FB', strong: '#A25BE0' },   // ม่วงกล้วยไม้
+  'ม.1': { strong: 'var(--viz-blue)' },    // ฟ้า
+  'ม.2': { strong: 'var(--viz-green)' },   // เขียว
+  'ม.3': { strong: 'var(--viz-purple)' },  // ม่วง
+  'ม.4': { strong: 'var(--viz-sky)' },     // ฟ้าอมเขียว
+  'ม.5': { strong: 'var(--viz-mint)' },    // เขียวสด
+  'ม.6': { strong: 'var(--viz-orchid)' },  // ม่วงกล้วยไม้
 };
-// เวอร์ชันโหมดมืด: พื้นเข้ม ตัวเน้นสว่างขึ้นให้อ่านออกบนพื้นดำ
-const LEVEL_COLORS_DARK = {
-  'ม.1': { tint: '#16304F', strong: '#5AA2FF' },
-  'ม.2': { tint: '#0F2E26', strong: '#2FD1A0' },
-  'ม.3': { tint: '#2A1F4D', strong: '#B79BFF' },
-  'ม.4': { tint: '#0F2E3D', strong: '#4CC3F0' },
-  'ม.5': { tint: '#16301A', strong: '#6FD98C' },
-  'ม.6': { tint: '#35204D', strong: '#CF9BFF' },
-};
-
-// ไอคอนเส้นบาง (แทนอีโมจิ) — ใช้เป็น ${icon('book')} ใน template
-const ICONS = {
-  book: '<path d="M12 6.7c-1.6-1.3-3.7-2-6.1-2-.6 0-1 .5-1 1.1v11.4c0 .6.4 1.1 1 1.1 2.4 0 4.5.7 6.1 2"/><path d="M12 6.7c1.6-1.3 3.7-2 6.1-2 .6 0 1 .5 1 1.1v11.4c0 .6-.4 1.1-1 1.1-2.4 0-4.5.7-6.1 2"/><path d="M12 6.7v13.5"/>',
-  archive: '<rect x="3" y="4" width="18" height="5" rx="1.5"/><path d="M4 9v9a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9"/><path d="M10 13h4"/>',
-  user: '<circle cx="12" cy="8" r="3.5"/><path d="M5 20c.8-3.6 3.6-5.5 7-5.5s6.2 1.9 7 5.5"/>',
-  sliders: '<line x1="4" y1="8" x2="20" y2="8"/><circle cx="9" cy="8" r="2"/><line x1="4" y1="16" x2="20" y2="16"/><circle cx="15" cy="16" r="2"/>',
-  edit: '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>',
-  report: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5"/><path d="M9 17v-3"/><path d="M12 17v-5"/><path d="M15 17v-2"/>',
-  sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.2M12 19.3v2.2M4.9 4.9l1.6 1.6M17.5 17.5l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.9 19.1l1.6-1.6M17.5 6.5l1.6-1.6"/>',
-  moon: '<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z"/>',
-  contrast: '<circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v17a8.5 8.5 0 0 0 0-17Z" fill="currentColor"/>',
-  folder: '<path d="M3 7.5A1.5 1.5 0 0 1 4.5 6H9l2 2.5h8.5A1.5 1.5 0 0 1 21 10v8a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 18Z"/>',
-};
-function icon(name) {
-  return `<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name] || ''}</svg>`;
-}
-const LEVEL_COLOR_FALLBACK = { tint: 'var(--surface-sunken)', strong: 'var(--ink-soft)' };
+const LEVEL_COLOR_FALLBACK = { strong: 'var(--ink-soft)' };
 function getLevelColor(level) {
-  const dark = document.documentElement.dataset.theme === 'dark';
-  return (dark ? LEVEL_COLORS_DARK : LEVEL_COLORS)[level] || LEVEL_COLOR_FALLBACK;
+  return LEVEL_COLORS[level] || LEVEL_COLOR_FALLBACK;
+}
+// หัวหน้ามาตรฐานของทุกหน้าหลัก (One UI: หัวเรื่องใหญ่ชิดซ้าย) — ใช้ชื่อเดียวกับเมนูข้าง
+function pageHeaderHtml(title) {
+  return `<div class="page-header"><h1>${escapeHtml(title)}</h1></div>`;
 }
 function levelSelectOptionsHtml(selected) {
   return `<option value="">— เลือกระดับชั้น —</option>` +

@@ -62,6 +62,7 @@ async function renderReportPage() {
   const { courses, sectionCards } = await loadCoursesWithGrades(); // เฉพาะวิชาที่ยังเปิดใช้งาน
   if (courses.length === 0) {
     view.innerHTML = `
+      ${pageHeaderHtml('รายงาน')}
       <div class="card"><div class="empty-state"><div class="icon">${icon('book')}</div>ยังไม่มีรายวิชา กรุณาสร้างรายวิชาก่อน</div></div>`;
     return;
   }
@@ -75,6 +76,7 @@ async function renderReportPage() {
     ? AppState.reportPageTerm : terms[0];
 
   view.innerHTML = `
+    ${pageHeaderHtml('รายงาน')}
     <div class="toolbar u-mb-16">
       <div class="toolbar-left">
         <label for="report-term" class="u-fs-13 u-semibold">ภาคเรียน</label>

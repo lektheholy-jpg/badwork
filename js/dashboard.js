@@ -274,7 +274,7 @@ function buildGradeSummaryHtml(courses, year) {
     const rooms = c.roomsData || [];
     const head = `
       <tr class="gs-course" style="--cc:${courseColor(c)}">
-        <td colspan="15"><span class="course-dot" style="--c:${courseColor(c) || '#3E91FF'}"></span>${escapeHtml(c.name)}${c.code ? ` <span class="gs-code">(${escapeHtml(c.code)})</span>` : ''}</td>
+        <td colspan="15"><span class="course-dot" style="--c:${courseColor(c) || 'var(--primary)'}"></span>${escapeHtml(c.name)}${c.code ? ` <span class="gs-code">(${escapeHtml(c.code)})</span>` : ''}</td>
       </tr>`;
     const rows = rooms.map(r => {
       no++;
@@ -345,7 +345,7 @@ function buildGradeStatsBodyHtml(courses, year) {
       <div class="grade-stat-card">
         <div class="gsc-head">
           <div class="gsc-title">
-            <span class="course-dot" style="--c:${courseColor(c) || '#3E91FF'}"></span>
+            <span class="course-dot" style="--c:${courseColor(c) || 'var(--primary)'}"></span>
             <span class="gsc-name">${escapeHtml(c.name)}</span>
           </div>
           <select class="grade-room-filter" data-course-id="${c.id}">
@@ -636,7 +636,7 @@ function renderProgressChart(courses) {
 
 function renderStudentDonut(courses, totalStudents) {
   if (!totalStudents) return `<div class="empty-state u-py-20">ยังไม่มีนักเรียน</div>`;
-  const palette = ['#2D80F2', '#12A87A', '#7B52E6', '#1A9FD0', '#3FB86B', '#A25BE0'];  // ฟ้า เขียว ม่วง
+  const palette = ['var(--viz-blue)', 'var(--viz-green)', 'var(--viz-purple)', 'var(--viz-sky)', 'var(--viz-mint)', 'var(--viz-orchid)'];  // ฟ้า เขียว ม่วง ฟ้าอมเขียว เขียวสด ม่วงกล้วยไม้
   const r = 46, cx = 60, cy = 60, circumference = 2 * Math.PI * r;
   let offset = 0;
   const segs = courses.filter(c => c.studentCount > 0).map((c, i) => {
