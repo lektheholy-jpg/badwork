@@ -9,13 +9,14 @@ const navPills = []; // ฟังก์ชันวางแถบเลื่�
 //   opt.key        ระบุเมื่อหน้านั้นวาด container ใหม่ทุกครั้งที่กด (innerHTML) — เรียก pillSlideNext(key) ก่อนวาด
 //                  แถบใหม่จะเริ่มจากตำแหน่งเดิมแล้วเลื่อนไปที่ใหม่ แทนการโผล่ทันที
 //   opt.watch      true = เฝ้าดู aria-pressed ที่เปลี่ยนในที่เดิม (ไม่ต้องวาดใหม่) แล้วเลื่อนตาม
+//   opt.colorVar   ชื่อตัวแปรสีบนปุ่ม active ที่แถบจะยืมไปใช้เป็น --w (ค่าเริ่มต้น '--w')
 //   opt.global     true = ลงทะเบียนให้ setActiveNav สั่งเลื่อน (เมนูข้าง/ล่างเท่านั้น)
 const pillGeom = {}, pillPending = {};
 function pillSlideNext(key) { pillPending[key] = true; }
 
 function initNavPill(container, itemSel, cls, opt = {}) {
   if (!container) return;
-  const { activeSel = '.active', key = null, watch = false, global = false } = opt;
+  const { activeSel = '.active', key = null, watch = false, global = false, colorVar = '--w' } = opt;
   const pill = document.createElement('span');
   pill.className = cls; pill.setAttribute('aria-hidden', 'true');
   container.prepend(pill);
@@ -28,7 +29,7 @@ function initNavPill(container, itemSel, cls, opt = {}) {
     const t = container.querySelector(itemSel + activeSel);
     if (!t || !t.offsetWidth) { pill.style.opacity = '0'; return; } // ไม่มีปุ่ม active หรือเมนูถูกซ่อนอยู่
     const g = { x: t.offsetLeft, y: t.offsetTop, w: t.offsetWidth, h: t.offsetHeight };
-    pill.style.setProperty('--w', getComputedStyle(t).getPropertyValue('--w'));
+    pill.style.setProperty('--w', getComputedStyle(t).getPropertyValue(colorVar));
     pill.style.opacity = '1';
     if (!pill.dataset.placed) {
       pill.dataset.placed = '1';
@@ -45,7 +46,7 @@ function initNavPill(container, itemSel, cls, opt = {}) {
   };
   if (typeof ResizeObserver === 'function') new ResizeObserver(() => place(false)).observe(container);
   if (watch && typeof MutationObserver === 'function') {
-    new MutationObserver(() => place(true)).observe(container, { attributes: true, subtree: true, attributeFilter: ['aria-pressed'] });
+    new MutationObserver(() => place(true)).observe(container, { attributes: true, subtree: true, attributeFilter: ['aria-pressed', 'aria-selected'] });
   }
   if (global) navPills.push(place);
   place(false);
@@ -69,9 +70,16 @@ function setActiveNav(routeId) {
 function playViewEnter() {
   const v = document.getElementById('view');
   if (!v) return;
-  v.classList.remove('view-enter');
+  v.classList.remove('view-enter', 'view-pending');
   void v.offsetWidth; // รีสตาร์ทแอนิเมชันถ้ากดซ้ำ
   v.classList.add('view-enter');
+}
+// กดเปิดหน้าที่ต้องรอข้อมูลก่อนวาด (เช่น เปิดรายวิชา): หน้าเดิมจางลงทันที แล้ว playViewEnter จะถอดออกเมื่อหน้าใหม่มา
+function markViewPending() {
+  const v = document.getElementById('view');
+  if (!v) return;
+  v.classList.add('view-pending');
+  setTimeout(() => v.classList.remove('view-pending'), 8000); // กันค้างถ้าโหลดล้มเหลว
 }
 document.getElementById('view')?.addEventListener('animationend', e => {
   if (e.target === e.currentTarget) e.currentTarget.classList.remove('view-enter');
@@ -89,13 +97,13 @@ function navigate(route) {
   document.getElementById('app')?.classList.remove('more-open');
 
   const mod = ROUTE_MODULES[route];
-  if (!mod) { renderRoute(route); playViewEnter(); return; }
+  if (!mod) { drawRoute(route); return; }
 
   // โหลดสคริปต์ของหน้านั้นครั้งแรก — ถ้าผู้ใช้เปลี่ยนหน้าไปก่อนโหลดเสร็จ ไม่ต้องวาดทับ
   const view = document.getElementById('view');
   if (view) view.innerHTML = `<div class="empty-state">กำลังโหลด...</div>`;
   loadModule(mod).then(() => {
-    if (AppState.currentRoute === route) { renderRoute(route); playViewEnter(); }
+    if (AppState.currentRoute === route) drawRoute(route);
   }).catch(err => {
     console.error(err);
     if (AppState.currentRoute !== route) return;
@@ -104,15 +112,22 @@ function navigate(route) {
   });
 }
 
+// วาดหน้า แล้วเฟดเข้าเมื่อวาดเสร็จจริง (หน้าส่วนใหญ่วาด "กำลังโหลด..." ก่อน แล้วรอ Firestore ค่อยวาดเนื้อหา — ถ้าเฟดทันที จะเฟดทับข้อความโหลดแล้วเนื้อหาจริงโผล่แข็ง)
+function drawRoute(route) {
+  Promise.resolve(renderRoute(route)).then(() => {
+    if (AppState.currentRoute === route) playViewEnter();
+  });
+}
+
 function renderRoute(route) {
-  if (route === 'dashboard') renderDashboard();
-  else if (route === 'courses') renderCoursesList();
-  else if (route === 'archive-page') renderArchivePage();
-  else if (route === 'structure-page') { AppState.structureEditingCourseId = null; renderStructurePage(); }
-  else if (route === 'scores-page') renderScoresPage();
-  else if (route === 'report-page') renderReportPage();
-  else if (route === 'tools') renderToolsPage();
-  else if (route === 'settings') renderSettings();
+  if (route === 'dashboard') return renderDashboard();
+  else if (route === 'courses') return renderCoursesList();
+  else if (route === 'archive-page') return renderArchivePage();
+  else if (route === 'structure-page') { AppState.structureEditingCourseId = null; return renderStructurePage(); }
+  else if (route === 'scores-page') return renderScoresPage();
+  else if (route === 'report-page') return renderReportPage();
+  else if (route === 'tools') return renderToolsPage();
+  else if (route === 'settings') return renderSettings();
 }
 
 function renderSettings() {

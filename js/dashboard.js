@@ -407,6 +407,7 @@ function openCourseSection(courseId, sectionId) {
   AppState.currentSectionId = sectionId;
   AppState.currentTab = 'scores';
   setActiveNav(null);
+  markViewPending();
   renderCourseShell();
 }
 
@@ -563,11 +564,13 @@ function wireRoomCompare(courses) {
   if (!body) return;
   const tabs = document.querySelectorAll('.rc-tab');
   const current = () => courses.find(c => c.id === body.querySelector('.rc-plot')?.dataset.courseId);
+  initNavPill(document.querySelector('.rc-tabs'), '.rc-tab', 'seg-pill rc-pill', { activeSel: '[aria-selected="true"]', watch: true, colorVar: '--tc' });
   tabs.forEach(tab => tab.addEventListener('click', () => {
     const c = courses.find(x => x.id === tab.dataset.courseId);
     if (!c) return;
     tabs.forEach(t => { const on = t === tab; t.classList.toggle('is-on', on); t.setAttribute('aria-selected', String(on)); });
     body.innerHTML = renderRoomCompareChart(c);
+    body.classList.remove('rc-swap'); void body.offsetWidth; body.classList.add('rc-swap'); // กราฟใหม่จางเข้า (เฉพาะตอนกดแท็บ ไม่เล่นตอนปรับขนาดจอ)
   }));
 
   // เลื่อนเมาส์/แตะบนกราฟ → เส้นนำสายตา + ป้ายค่าของห้องนั้น

@@ -194,6 +194,7 @@ function openCourse(courseId) {
   AppState.currentSectionId = null;
   AppState.currentTab = 'overview';
   setActiveNav(null);
+  markViewPending();
   renderCourseShell();
 }
 
@@ -260,6 +261,7 @@ async function renderCourseShell() {
     </div>
     <div id="course-tab-body"></div>
   `;
+  if (view.classList.contains('view-pending')) playViewEnter(); // มาจากการเปิดรายวิชา (ไม่ใช่สลับแท็บ/ห้อง) → เฟดเข้า
 
   document.getElementById('back-to-courses').addEventListener('click', (e) => { e.preventDefault(); navigate('courses'); });
   document.getElementById('archive-course-btn')?.addEventListener('click', () => {
