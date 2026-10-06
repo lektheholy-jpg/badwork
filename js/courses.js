@@ -311,7 +311,12 @@ async function renderCourseShell() {
   else if (AppState.currentTab === 'students') renderStudentsTab(body, course, section);
   else if (AppState.currentTab === 'structure') renderStructureTab(body, course);
   else if (AppState.currentTab === 'scores') renderScoresTab(body, course, section);
-  else if (AppState.currentTab === 'report') renderReportTab(body, course, section);
+  else if (AppState.currentTab === 'report') {
+    // report.js โหลดครั้งแรกที่เปิดแท็บนี้ — ถ้าผู้ใช้สลับแท็บ/ออกจากหน้าก่อนโหลดเสร็จ ไม่ต้องวาดทับ
+    body.innerHTML = `<div class="empty-state">กำลังโหลด...</div>`;
+    try { await loadModule('report'); } catch (err) { body.innerHTML = `<div class="card"><div class="empty-state">${escapeHtml(err.message)}</div></div>`; return; }
+    if (AppState.currentTab === 'report' && body.isConnected) renderReportTab(body, course, section);
+  }
 }
 
 async function renderArchivePage() {

@@ -131,6 +131,7 @@ async function renderReportPage() {
     const label = btn.textContent;
     btn.disabled = true; btn.textContent = 'กำลังโหลด...';
     try {
+      await loadModule('report'); // ปกติโหลดแล้วตอนเข้าหน้านี้ — กันไว้เผื่อกรณีเรียกจากที่อื่น
       const data = await loadRoomReportData(card.course, section);
       const { students, assessments, scores, gradeScale } = data;
       if (btn.dataset.kind === 'csv') exportRoomCsv(card.course, section, data);

@@ -111,6 +111,18 @@ JS ที่ไม่ถูกเรียกใช้: parseRoomList ใน uti
 `invalidateCourseData(courseId)` (ล้างเฉพาะวิชานั้น) หรือ `invalidateCourseData()` (ล้างทั้งหมด เมื่อรายการวิชาเปลี่ยน เช่น สร้าง/เก็บเข้าคลัง/ลบ)
 บังคับโหลดใหม่ทั้งหมดได้ด้วย `loadCoursesWithGrades({ force: true })`
 
+## สคริปต์ที่โหลดเมื่อเข้าหน้านั้น (lazy load)
+
+`js/report.js`, `js/privacy.js`, `js/tools.js` **ไม่อยู่ใน `index.html`** — โหลดครั้งแรกที่ใช้งานผ่าน `loadModule(name)` (`js/utils.js`, ตาราง `LAZY_MODULES`) เป็น `<script>` ธรรมดา จึงใช้ฟังก์ชัน/ค่าคงที่ global ร่วมกับไฟล์อื่นได้เหมือนเดิม
+
+| ไฟล์ | โหลดเมื่อ | จุดที่เรียก `loadModule` |
+| --- | --- | --- |
+| `report.js` | เข้าหน้ารายงาน หรือเปิดแท็บรายงานในวิชา | `navigate()` ใน `app.js` (`ROUTE_MODULES`), `renderCourseShell()` ใน `courses.js` |
+| `tools.js` | เข้าหน้าเครื่องมือ | `navigate()` ใน `app.js` (`ROUTE_MODULES`) |
+| `privacy.js` | กดปุ่มส่งออก/ลบข้อมูลในหน้าตั้งค่า | `renderSettings()` ใน `app.js` |
+
+**กติกาสำหรับโค้ดใหม่:** ถ้าไฟล์อื่นต้องเรียกฟังก์ชันในไฟล์ข้างบน ให้ `await loadModule('ชื่อ')` ก่อนเสมอ (เรียกซ้ำปลอดภัย โหลดแค่ครั้งเดียว) · เพิ่มไฟล์ lazy ใหม่โดยใส่ใน `LAZY_MODULES` แล้วอย่าใส่ `<script>` ใน `index.html` · `navigate()` เช็ค `AppState.currentRoute` หลังโหลดเสร็จ ผู้ใช้กดไปหน้าอื่นระหว่างรอจะไม่ถูกวาดทับ
+
 ## กติกาคะแนน/เกรด (แก้ความถูกต้องของข้อมูล)
 
 - **ผลรวมคะแนนต้องผ่าน `roundScore()` เสมอ** (`js/utils.js`) และ `calcGrade()` ปัดให้เองแล้ว — กันเลขทศนิยมลอยตัวทำให้เกรดตกผิดที่ขอบเกณฑ์ (เช่น 50 กลายเป็น 49.99999999999999)

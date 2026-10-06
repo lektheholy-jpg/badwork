@@ -14,6 +14,9 @@ function setActiveNav(routeId) {
   });
 }
 
+// หน้าที่ต้องโหลดสคริปต์เพิ่มก่อนวาด (ดู LAZY_MODULES ใน utils.js)
+const ROUTE_MODULES = { 'report-page': 'report', tools: 'tools' };
+
 function navigate(route) {
   AppState.flushScoreSaves?.(); // กันคะแนนหายถ้าเพิ่งพิมพ์คะแนนแล้วรีบกดออกจากหน้าวิชา
   AppState.currentRoute = route;
@@ -22,6 +25,23 @@ function navigate(route) {
   closeMobileNav();
   document.getElementById('app')?.classList.remove('more-open');
 
+  const mod = ROUTE_MODULES[route];
+  if (!mod) { renderRoute(route); return; }
+
+  // โหลดสคริปต์ของหน้านั้นครั้งแรก — ถ้าผู้ใช้เปลี่ยนหน้าไปก่อนโหลดเสร็จ ไม่ต้องวาดทับ
+  const view = document.getElementById('view');
+  if (view) view.innerHTML = `<div class="empty-state">กำลังโหลด...</div>`;
+  loadModule(mod).then(() => {
+    if (AppState.currentRoute === route) renderRoute(route);
+  }).catch(err => {
+    console.error(err);
+    if (AppState.currentRoute !== route) return;
+    if (view) view.innerHTML = `<div class="card"><div class="empty-state">${escapeHtml(err.message)}<br><button type="button" class="btn btn-ghost btn-sm" id="retry-route-btn">ลองใหม่</button></div></div>`;
+    document.getElementById('retry-route-btn')?.addEventListener('click', () => navigate(route));
+  });
+}
+
+function renderRoute(route) {
   if (route === 'dashboard') renderDashboard();
   else if (route === 'courses') renderCoursesList();
   else if (route === 'archive-page') renderArchivePage();
@@ -71,8 +91,13 @@ function renderSettings() {
       </div>
     </div>
   `;
-  document.getElementById('privacy-export-btn').addEventListener('click', exportMyData);
-  document.getElementById('privacy-delete-btn').addEventListener('click', deleteMyAccount);
+  // privacy.js โหลดเมื่อกดปุ่มครั้งแรกเท่านั้น
+  const withPrivacy = (fnName) => async () => {
+    try { await loadModule('privacy'); } catch (err) { showToast(err.message); return; }
+    window[fnName]();
+  };
+  document.getElementById('privacy-export-btn').addEventListener('click', withPrivacy('exportMyData'));
+  document.getElementById('privacy-delete-btn').addEventListener('click', withPrivacy('deleteMyAccount'));
   const syncThemeButtons = () => {
     const cur = getThemePref();
     view.querySelectorAll('.theme-opt').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.themePref === cur)));

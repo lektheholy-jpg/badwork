@@ -449,6 +449,34 @@ function loadXLSX() {
   return _xlsxPromise;
 }
 
+// โหลดสคริปต์ของแต่ละหน้าแบบ lazy (route-based) — ไม่โหลดตอนเปิดแอป โหลดครั้งแรกที่เข้าหน้านั้น
+// ใช้ <script> ธรรมดา (ไม่ใช่ module) จึงใช้ฟังก์ชัน/ค่าคงที่ global ร่วมกับไฟล์อื่นได้เหมือนเดิม
+// เพิ่มโมดูลใหม่: ใส่ชื่อ → path ในตารางนี้ แล้วเรียก `await loadModule('ชื่อ')` ก่อนใช้ฟังก์ชันในไฟล์นั้น
+const LAZY_MODULES = {
+  report: 'js/report.js',   // แท็บรายงานในวิชา + ส่งออก ปพ.5 / SGS / Next School
+  privacy: 'js/privacy.js', // ส่งออก/ลบข้อมูลของฉัน
+  tools: 'js/tools.js',     // เครื่องมือในห้องเรียน
+};
+const _modulePromises = {};
+function loadModule(name) {
+  const src = LAZY_MODULES[name];
+  if (!src) return Promise.reject(new Error('ไม่รู้จักโมดูล: ' + name));
+  if (!_modulePromises[name]) {
+    _modulePromises[name] = new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = src;
+      s.onload = () => resolve();
+      s.onerror = () => {
+        s.remove();
+        delete _modulePromises[name]; // ให้กดลองใหม่ได้
+        reject(new Error('โหลดหน้านี้ไม่สำเร็จ ตรวจสอบอินเทอร์เน็ตแล้วลองอีกครั้ง'));
+      };
+      document.head.appendChild(s);
+    });
+  }
+  return _modulePromises[name];
+}
+
 // URL รูปโปรไฟล์ที่ปลอดภัย (เฉพาะ https) ไม่งั้นใช้รูปตัวอักษรย่อที่สร้างในเครื่อง ไม่ส่งชื่อไปเว็บภายนอก
 function initialsAvatar(name) {
   const ch = (String(name || 'T').trim()[0] || 'T').toUpperCase();
