@@ -141,7 +141,7 @@ a { color: inherit; }
 }
 .nav-item .nav-icon {
   display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0; width: 38px; height: 38px; border-radius: var(--radius-xs); color: var(--w); background: color-mix(in srgb, var(--w) 17%, transparent); transition: background .15s ease, color .15s ease;
+  flex-shrink: 0; width: 38px; height: 38px; border-radius: var(--radius-xs); color: var(--on-w); background: linear-gradient(145deg, color-mix(in oklab, var(--w) 62%, var(--white)), var(--w)); box-shadow: 0 6px 12px -6px color-mix(in srgb, var(--w) 75%, transparent), inset 0 1px 0 color-mix(in srgb, var(--white) 40%, transparent); transition: background .15s ease, color .15s ease, transform .15s ease, box-shadow .15s ease;
 }
 .nav-item .nav-label { white-space: nowrap; overflow: hidden; }
 .nav-item:hover { color: var(--ink); }
@@ -1225,7 +1225,7 @@ table.sheet tbody tr:last-child td { border-bottom: none; }
 .nav-item[data-route="settings"] { --w: var(--hue-gray); }
 #logout-btn { --w: var(--hue-red); }
 .nav-item .nav-icon svg { width: 22px; height: 22px; }
-.nav-item.active .nav-icon { background: var(--w); color: var(--on-w); }
+.nav-item.active .nav-icon { transform: scale(1.08); box-shadow: 0 9px 16px -5px color-mix(in srgb, var(--w) 85%, transparent), inset 0 1px 0 color-mix(in srgb, var(--white) 45%, transparent); }
 @media (min-width: 861px) {
   #app.sidebar-collapsed .nav-item { padding: 5px; justify-content: center; gap: 0; }
 }
@@ -1374,7 +1374,8 @@ button.brand:hover .mark { transform: rotate(-6deg) scale(1.04); }
   .tab-item[data-route="scores-page"] { --w: var(--hue-orange); }
   .tab-item[data-route="report-page"] { --w: var(--hue-pink); }
   .tab-item[data-route="more"] { --w: var(--hue-violet); }
-  .tab-ico svg { width: 24px; height: 24px; display: block; }
+  .tab-ico { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 10px; color: var(--on-w); background: linear-gradient(145deg, color-mix(in oklab, var(--w) 62%, var(--white)), var(--w)); box-shadow: 0 6px 12px -6px color-mix(in srgb, var(--w) 75%, transparent), inset 0 1px 0 color-mix(in srgb, var(--white) 40%, transparent); }
+  .tab-ico svg { width: 19px; height: 19px; display: block; }
   .tab-item:active { transform: scale(.95); }
   .tab-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 
@@ -1396,7 +1397,7 @@ button.brand:hover .mark { transform: rotate(-6deg) scale(1.04); }
   .more-tile[data-route="settings"] { --w: var(--hue-gray); }
   .more-tile[data-route="logout-btn"] { --w: var(--hue-red); }
   .more-tile:active { transform: scale(.97); }
-  .more-ico { display: grid; place-items: center; flex-shrink: 0; width: 44px; height: 44px; border-radius: var(--radius-s); background: var(--w); color: var(--on-w); }
+  .more-ico { display: grid; place-items: center; flex-shrink: 0; width: 44px; height: 44px; border-radius: var(--radius-s); background: linear-gradient(145deg, color-mix(in oklab, var(--w) 62%, var(--white)), var(--w)); box-shadow: 0 6px 12px -6px color-mix(in srgb, var(--w) 75%, transparent), inset 0 1px 0 color-mix(in srgb, var(--white) 40%, transparent); color: var(--on-w); }
   .more-ico svg { width: 24px; height: 24px; }
 }
 
@@ -1675,7 +1676,7 @@ table.sheet tbody tr:nth-child(n) td.over-max { background: var(--danger-tint); 
   background: color-mix(in oklab, var(--w) var(--wmix-soft), var(--card)); display: flex; flex-direction: column; min-width: 0; }
 .tools-card-head { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
 .tools-ico { display: grid; place-items: center; width: 46px; height: 46px; border-radius: var(--radius-s); flex: none;
-  color: var(--w); background: color-mix(in oklab, var(--w) var(--wmix-head), var(--card)); box-shadow: 0 8px 16px -9px var(--w); }
+  color: var(--on-w); background: linear-gradient(145deg, color-mix(in oklab, var(--w) 62%, var(--white)), var(--w)); box-shadow: 0 6px 12px -6px color-mix(in srgb, var(--w) 75%, transparent), inset 0 1px 0 color-mix(in srgb, var(--white) 40%, transparent); }
 .tools-ico .ico { width: 24px; height: 24px; }
 .tools-title { font-weight: 700; font-size: 16px; }
 .tools-label { font-weight: 600; font-size: 13.5px; color: var(--ink-soft); }
