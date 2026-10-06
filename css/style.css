@@ -2458,3 +2458,26 @@ table.sheet td.over-max { background: var(--danger-tint) !important; }
   table.sheet th, .gs-table thead th, .ns-table th { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
 .login-note { margin: 18px 0 0; font-size: 12px; line-height: 1.6; color: var(--ink-soft); }
+
+/* ==========================================================================
+   หน้า "บันทึกคะแนน": แบบกระชับ (จำกัดขอบเขตเฉพาะหน้านี้ ไม่กระทบการ์ดห้องหน้าอื่น)
+   ========================================================================== */
+.main:has(.scores-subject-list) .page-header { margin-bottom: 14px; }
+.main:has(.scores-subject-list) .page-header h1 { font-size: 24px; }
+.main:has(.scores-subject-list) .page-header .sub { font-size: 13px; margin-top: 2px; }
+.struct-group:has(.scores-subject-list) .struct-group-header { padding: 8px 16px; border-radius: 16px; }
+.struct-group:has(.scores-subject-list) .struct-group-title { font-size: 15px; }
+.scores-subject-list { gap: 12px; }
+.scores-subject-block { gap: 8px; }
+.scores-subject-block .scores-subject-title { padding: 0 0 0 10px; border-left-width: 4px !important; }
+.scores-subject-block .struct-course-name { font-size: 14px; }
+.scores-subject-block .section-card-grid { grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 8px; }
+.scores-subject-block .section-card,
+.main .scores-subject-block .section-card { padding: 9px 12px 10px; border-radius: 16px; }
+.scores-subject-block .section-card-top { margin-bottom: 4px; gap: 6px; }
+.scores-subject-block .section-card .course-dot { width: 10px; height: 10px; }
+.scores-subject-block .section-card-room { font-size: 12px; padding: 2px 8px; }
+.scores-subject-block .section-card-name { display: none; } /* ชื่อวิชาซ้ำกับหัวข้อวิชาด้านบนอยู่แล้ว */
+.scores-subject-block .section-card-meta { font-size: 12px; margin-bottom: 6px; }
+.scores-subject-block .section-card .progress-bar { width: 100%; height: 5px; }
+.scores-subject-block .section-card-pct { font-size: 11px; margin-top: 4px; }
