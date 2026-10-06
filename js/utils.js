@@ -10,12 +10,46 @@ document.addEventListener('wheel', (e) => {
   }
 }, { passive: false });
 
-function showToast(msg) {
-  const el = document.getElementById('toast');
-  el.textContent = msg;
-  el.classList.add('show');
+// แจ้งเตือนแบบ Dynamic Island: แคปซูลดำกลางบนจอ ขยายออกตามข้อความแล้วหดกลับเอง
+//   showToast('บันทึกคะแนนแล้ว')            → เดาชนิดจากข้อความ (สำเร็จ / เตือน / ผิดพลาด / กำลังโหลด)
+//   showToast('กำลังซิงค์...')               → ข้อความลงท้าย ... = สถานะโหลด (ค้างไว้จนมีข้อความถัดไป)
+//   showToast('ข้อความ', 'success|warn|error|info|loading')   → ระบุชนิดเอง
+const ISLAND_SVG = inner => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${inner}</svg>`;
+const ISLAND_ICONS = {
+  success: ISLAND_SVG('<circle cx="12" cy="12" r="9"/><path d="m8 12.5 2.8 2.8L16 9.5"/>'),
+  warn: ISLAND_SVG('<path d="M12 4 2.8 19.5h18.4Z"/><path d="M12 10v4.5"/><path d="M12 17.3v.01"/>'),
+  error: ISLAND_SVG('<circle cx="12" cy="12" r="9"/><path d="m9 9 6 6"/><path d="m15 9-6 6"/>'),
+  info: ISLAND_SVG('<circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><path d="M12 7.8v.01"/>'),
+  loading: '<span class="island-spin"></span>',
+};
+function islandKind(msg) {
+  if (/(\.{2,}|…)\s*$/.test(msg)) return 'loading';
+  if (/ไม่สำเร็จ|ผิดพลาด|ล้มเหลว/.test(msg)) return 'error';
+  if (/^กรุณา|^คำเตือน|ยังไม่|เกิน|อยู่แล้ว|ไม่พบ|ตกหล่น/.test(msg)) return 'warn';
+  if (/สำเร็จ|แล้ว|เรียบร้อย/.test(msg)) return 'success';
+  return 'info';
+}
+function showToast(msg, kind) {
+  const el = document.getElementById('island');
+  if (!el) return;
+  msg = String(msg == null ? '' : msg);
+  if (!ISLAND_ICONS[kind]) kind = islandKind(msg);
+  const body = el.querySelector('.island-body');
+  el.dataset.kind = kind;
+  el.querySelector('.island-icon').innerHTML = ISLAND_ICONS[kind];
+  el.querySelector('.island-text').textContent = msg;
+
+  // วัดขนาดเนื้อหาจริง แล้วส่งให้ CSS เป็นขนาดปลายทางของการขยาย (CSS transition ทำแอนิเมชันให้)
+  const w = Math.ceil(body.offsetWidth), h = Math.ceil(body.offsetHeight);
+  el.style.setProperty('--ow', w + 'px');
+  el.style.setProperty('--oh', h + 'px');
+  el.style.setProperty('--or', Math.min(h / 2, 28) + 'px');
+  body.classList.remove('pop'); void body.offsetWidth; body.classList.add('pop');
+  el.classList.add('open');
+
   clearTimeout(showToast._t);
-  showToast._t = setTimeout(() => el.classList.remove('show'), 2200);
+  const ms = kind === 'loading' ? 12000 : (kind === 'warn' || kind === 'error' ? 3600 : 2400) + Math.min(msg.length * 25, 1500);
+  showToast._t = setTimeout(() => { el.classList.remove('open'); body.classList.remove('pop'); }, ms);
 }
 
 function openModal(html) {

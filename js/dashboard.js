@@ -184,7 +184,7 @@ async function renderDashboard() {
   view.innerHTML = `
     <div class="dash">
     <header class="site-banner">
-      <h1 class="banner-title">เวรกรรม<span class="banner-dots">..</span></h1>
+      <h1 class="banner-title">เวรกรรม.<span class="banner-dot-blink">.</span></h1>
       <picture>
         <source media="(prefers-reduced-motion: reduce)" srcset="assets/head-cat-still.webp">
         <source media="(prefers-reduced-motion: no-preference) and (min-width: 641px)" srcset="assets/head-cat.webp">

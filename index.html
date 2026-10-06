@@ -128,7 +128,13 @@
 </div>
 
 <div id="modal-root"></div>
-<div id="toast" class="toast"></div>
+<!-- Dynamic Island: แคปซูลดำกลางบนจอ ขยายเป็นแจ้งเตือน/สถานะโหลด (ควบคุมโดย showToast ใน js/utils.js) -->
+<div id="island" class="island" role="status" aria-live="polite" aria-atomic="true">
+  <div class="island-body">
+    <span class="island-icon" aria-hidden="true"></span>
+    <span class="island-text"></span>
+  </div>
+</div>
 
 <!-- Firebase SDK (compat, ง่ายต่อการใช้กับ HTML/JS ธรรมดา) -->
 <script defer src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>

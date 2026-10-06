@@ -587,13 +587,35 @@ table.sheet thead th.sticky-right-2 { z-index: 3; }
 .check-row.ok { color: var(--success); }
 .check-row.warn { color: var(--danger); }
 
-.toast {
-  position: fixed; bottom: 22px; right: 22px; left: 22px;
-  margin: 0 auto; max-width: 320px; font-size: 13.5px; font-weight: 600;
-  z-index: 100; opacity: 0; transform: translateY(8px); transition: all .2s ease;
-  text-align: center;
+/* ---------- Dynamic Island: แคปซูลดำกลางบนจอ ขยายเป็นแจ้งเตือน/สถานะโหลด ----------
+   ขนาดตอนพักกำหนดที่นี่ · ขนาดตอนขยาย (--ow/--oh/--or) js/utils.js วัดจากข้อความแล้วใส่ให้ */
+.island {
+  position: fixed; top: calc(10px + env(safe-area-inset-top, 0px)); left: 50%; z-index: 80;
+  display: flex; align-items: center; justify-content: center; overflow: hidden;
+  width: 120px; height: 32px; border-radius: 16px; transform: translateX(-50%);
+  background: #000; color: var(--white); pointer-events: none;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, .12), 0 8px 24px rgba(0, 0, 0, .22);
+  transition: width .55s cubic-bezier(.3, 1.4, .5, 1), height .55s cubic-bezier(.3, 1.4, .5, 1), border-radius .55s ease;
 }
-.toast.show { opacity: 1; transform: translateY(0); }
+.island.open { width: var(--ow, 240px); height: var(--oh, 44px); border-radius: var(--or, 22px); }
+.island-body {
+  flex: none; box-sizing: border-box; display: flex; align-items: center; gap: 10px;
+  width: max-content; max-width: min(92vw, 460px); min-height: 44px; padding: 10px 20px;
+  font-family: var(--font-modern); font-size: 14px; font-weight: 600; line-height: 1.45;
+  opacity: 0; transition: opacity .15s ease;
+}
+.island.open .island-body { opacity: 1; }
+.island-body.pop { animation: island-pop .4s cubic-bezier(.3, 1.3, .5, 1) .08s backwards; }
+.island-text { min-width: 0; overflow-wrap: anywhere; }
+.island-icon { flex: none; display: flex; align-items: center; justify-content: center; width: 20px; height: 20px; color: var(--viz-sky); }
+.island-icon svg { display: block; width: 100%; height: 100%; }
+.island[data-kind="success"] .island-icon { color: var(--viz-mint); }
+.island[data-kind="warn"] .island-icon { color: var(--hue-amber); }
+.island[data-kind="error"] .island-icon { color: var(--hue-red); }
+.island-spin { width: 18px; height: 18px; border-radius: 50%; border: 2.5px solid rgba(255, 255, 255, .22); border-top-color: var(--viz-sky); animation: island-spin .8s linear infinite; }
+@keyframes island-pop { from { opacity: 0; transform: scale(.86); } to { opacity: 1; transform: none; } }
+@keyframes island-spin { to { transform: rotate(360deg); } }
+@media print { .island { display: none; } }
 
 /* ==========================================================================
    Responsive: mobile — off-canvas sidebar with hamburger
@@ -967,7 +989,6 @@ table.sheet th, table.sheet td.name-cell { font-family: var(--font); }
 /* ----- โมดัล / โทสต์ / หน้าเข้าสู่ระบบ ----- */
 .modal { border-radius: var(--radius-xl); padding: 30px 30px 26px; box-shadow: var(--shadow); }
 .modal h2 { font-size: 20px; }
-.toast { border-radius: var(--radius-pill); padding: 13px 22px; box-shadow: var(--shadow); }
 .login-card { border-radius: var(--radius-xl); padding: 52px 36px; }
 .login-card .mark-lg { border-radius: var(--radius-m); width: 72px; height: 72px; }
 .login-card h1 { font-size: 24px; }
@@ -1117,7 +1138,6 @@ body, #app { background: var(--bg); color: var(--ink); }
 .room-mode-btn.active, .room-pick-btn.active { background: var(--primary-solid); border-color: var(--primary-solid); color: var(--on-primary); }
 .course-row:hover, .section-card:hover { border-color: var(--primary-tint); }
 .group-icon { color: var(--primary); }
-.toast { background: var(--tip-bg); color: var(--white); }
 .tab.active { box-shadow: 0 1px 6px var(--shadow-ink-md); }
 
 /* ----- เข้าสู่ระบบ ----- */
@@ -1396,8 +1416,7 @@ button.brand:hover .mark { transform: rotate(-6deg) scale(1.04); }
 .tabbar, .more-scrim, .more-sheet { display: none; }
 @media (max-width: 860px) {
   .hamburger-btn { display: none; }
-  .main { padding: 18px 16px calc(104px + env(safe-area-inset-bottom, 0px)); }
-  .toast { bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
+  .main { padding: calc(52px + env(safe-area-inset-top, 0px)) 16px calc(104px + env(safe-area-inset-bottom, 0px)); }
 
   .tabbar {
     display: flex; position: fixed; z-index: 45; left: 12px; right: 12px; bottom: calc(10px + env(safe-area-inset-bottom, 0px));
@@ -1526,17 +1545,19 @@ button.brand:hover .mark { transform: rotate(-6deg) scale(1.04); }
 /* ===== หัวเว็บ: ชื่อแอปทางซ้าย + แมวใส่ตู้ปลาทางขวา (ขนาดตามหน้าจอ) ===== */
 .site-banner { display: flex; align-items: center; justify-content: space-between; gap: clamp(8px, 3vw, 28px); margin: 0 0 10px; padding: 4px 0 0; }
 .banner-title {
-  margin: 0; min-width: 0; font-size: clamp(34px, 9.5vw, 56px); font-weight: 800; line-height: 1.2; letter-spacing: -.01em; overflow-wrap: anywhere;
-  /* ไล่สีม่วง → ฟ้า ตามธีม (ใช้ตัวแปร --viz-* จึงเปลี่ยนตามโหมดมืด/สว่างอัตโนมัติ) + กระพริบนุ่ม ๆ */
+  margin: 0 0 0 auto; min-width: 0; font-size: clamp(34px, 9.5vw, 56px); font-weight: 800; line-height: 1.2; letter-spacing: -.01em; overflow-wrap: anywhere;
+  /* ชิดขวา (ดันไปติดรูปแมว) · ไล่สีม่วง → ฟ้า ตามธีม (ตัวแปร --viz-* เปลี่ยนตามโหมดมืด/สว่างเอง) */
+  text-align: right;
   color: var(--viz-purple);
   background: linear-gradient(90deg, var(--viz-purple), var(--viz-blue), var(--viz-sky), var(--viz-blue), var(--viz-purple)) 0 0 / 200% 100%;
   -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
-  animation: banner-shimmer 4s ease-in-out infinite alternate, banner-blink 2.4s ease-in-out infinite;
+  animation: banner-shimmer 4s ease-in-out infinite alternate;
 }
-.banner-dots { opacity: .85; }
+/* จุดสุดท้ายกระพริบเหมือนทวิภาคนาฬิกา (ติด 0.5 วิ ดับ 0.5 วิ) — ใช้ visibility เพื่อไม่ให้ background-clip:text ของหัวเรื่องเพี้ยน */
+.banner-dot-blink { animation: banner-dot 1s step-end infinite; }
 @keyframes banner-shimmer { from { background-position: 0 0; } to { background-position: 100% 0; } }
-@keyframes banner-blink { 0%, 100% { opacity: 1; } 50% { opacity: .4; } }
-@media (prefers-reduced-motion: reduce) { .banner-title { animation: none; } }
+@keyframes banner-dot { 0% { visibility: visible; } 50% { visibility: hidden; } }
+@media (prefers-reduced-motion: reduce) { .banner-title, .banner-dot-blink { animation: none; } }
 .site-banner picture { flex: none; display: block; }
 .site-banner img { display: block; width: auto; height: clamp(170px, 36vw, 240px); aspect-ratio: 252 / 350; user-select: none; -webkit-user-drag: none; }
 /* ธีมมืด: ภาพต้นฉบับเป็นเส้นดำบนพื้นโปร่งใส → กลับสีเป็นเส้นขาว */
@@ -1617,7 +1638,7 @@ button.brand:hover .mark { transform: rotate(-6deg) scale(1.04); }
 
 /* ----- ขยายตามหน้าจอ: ใช้พื้นที่เต็ม ไม่เหลือขอบว่างสองข้าง ----- */
 @media (min-width: 861px) {
-  .main { max-width: none; margin: 0; padding: 32px clamp(24px, 3vw, 72px) 64px; }
+  .main { max-width: none; margin: 0; padding: 52px clamp(24px, 3vw, 72px) 64px; }
   .banner-title { font-size: clamp(44px, 5vw, 64px); }
 }
 @media (min-width: 1360px) {
