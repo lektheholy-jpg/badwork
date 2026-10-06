@@ -190,6 +190,23 @@ const LEVEL_COLOR_FALLBACK = { strong: 'var(--ink-soft)' };
 function getLevelColor(level) {
   return LEVEL_COLORS[level] || LEVEL_COLOR_FALLBACK;
 }
+// ไอคอนเส้นบาง (แทนอีโมจิ) — ใช้เป็น ${icon('book')} ใน template
+const ICONS = {
+  book: '<path d="M12 6.7c-1.6-1.3-3.7-2-6.1-2-.6 0-1 .5-1 1.1v11.4c0 .6.4 1.1 1 1.1 2.4 0 4.5.7 6.1 2"/><path d="M12 6.7c1.6-1.3 3.7-2 6.1-2 .6 0 1 .5 1 1.1v11.4c0 .6-.4 1.1-1 1.1-2.4 0-4.5.7-6.1 2"/><path d="M12 6.7v13.5"/>',
+  archive: '<rect x="3" y="4" width="18" height="5" rx="1.5"/><path d="M4 9v9a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9"/><path d="M10 13h4"/>',
+  user: '<circle cx="12" cy="8" r="3.5"/><path d="M5 20c.8-3.6 3.6-5.5 7-5.5s6.2 1.9 7 5.5"/>',
+  sliders: '<line x1="4" y1="8" x2="20" y2="8"/><circle cx="9" cy="8" r="2"/><line x1="4" y1="16" x2="20" y2="16"/><circle cx="15" cy="16" r="2"/>',
+  edit: '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>',
+  report: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5"/><path d="M9 17v-3"/><path d="M12 17v-5"/><path d="M15 17v-2"/>',
+  sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.2M12 19.3v2.2M4.9 4.9l1.6 1.6M17.5 17.5l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.9 19.1l1.6-1.6M17.5 6.5l1.6-1.6"/>',
+  moon: '<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z"/>',
+  contrast: '<circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v17a8.5 8.5 0 0 0 0-17Z" fill="currentColor"/>',
+  folder: '<path d="M3 7.5A1.5 1.5 0 0 1 4.5 6H9l2 2.5h8.5A1.5 1.5 0 0 1 21 10v8a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 18Z"/>',
+};
+function icon(name) {
+  return `<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name] || ''}</svg>`;
+}
+
 // หัวหน้ามาตรฐานของทุกหน้าหลัก (One UI: หัวเรื่องใหญ่ชิดซ้าย) — ใช้ชื่อเดียวกับเมนูข้าง
 function pageHeaderHtml(title) {
   return `<div class="page-header"><h1>${escapeHtml(title)}</h1></div>`;
