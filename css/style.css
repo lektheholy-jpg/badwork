@@ -33,6 +33,12 @@
   --radius-xs: 12px;  --radius-s: 16px;  --radius-m: 24px;  --radius-l: 28px;  --radius-xl: 32px;  --radius-pill: 999px;
   --paper-shadow: none;
   --bg: #F4F4F6;  --canvas: #F4F4F6;
+  --page-bg: var(--bg);  /* พื้นหลังหน้า: ค่าเริ่มต้น = --bg · ผู้ใช้เลือกสีทึบ/ไล่สีได้ที่ ตั้งค่า → พื้นหลัง (js/theme.js ตั้งค่านี้) */
+  --bgp-lemon: #FFF0A3;  --bgp-sky: #C4DAFF;  --bgp-lilac: #E4D0FF;  --bgp-mint: #CDEFD9;
+  --bgp-ocean: linear-gradient(180deg, #B9D2FF, #C9F2C4);
+  --bgp-aurora: radial-gradient(circle at 50% 24%, #C8F0B8 0, transparent 58%), linear-gradient(180deg, #9FDCF5, #B8DDF8);
+  --bgp-sunny: linear-gradient(180deg, #FFF3A0, #E4FF8F);
+  --bgp-dusk: linear-gradient(180deg, #BBD1FF, #D9C4FF);
   --surface: #FFFFFF;  --paper: #FFFFFF;  --card: #FFFFFF;
   --surface-sunken: #ECECEF;
   --primary: #3E91FF;  --primary-solid: #2D80F2;  --primary-dark: #1B67D6;  --primary-tint: #E3EFFF;
@@ -81,7 +87,7 @@
 html, body { height: 100%; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; overflow-x: clip;
   margin: 0;
   font-family: var(--font);
-  -webkit-font-smoothing: antialiased; font-size: 16px; line-height: 1.6; background: var(--bg); color: var(--ink); }
+  -webkit-font-smoothing: antialiased; font-size: 16px; line-height: 1.6; background: var(--page-bg); background-attachment: fixed; color: var(--ink); }
 button { font-family: inherit; }
 /* หมายเหตุ: ห้ามใช้ letter-spacing ติดลบกับข้อความไทย เพราะสระ/วรรณยุกต์ที่ลอยอยู่
    เหนือ-ใต้ตัวพยัญชนะจะเยื้องออกจากตำแหน่งจนดูเหมือนตัวอักษรเพี้ยน */
@@ -91,7 +97,7 @@ h2 { margin: 0;
 a { color: inherit; }
 
 /* ---------- Layout shell ---------- */
-#app { display: flex; min-height: 100vh; position: relative; line-height: 1.6; background: var(--bg); color: var(--ink); }
+#app { display: flex; min-height: 100vh; position: relative; line-height: 1.6; color: var(--ink); }
 
 .sidebar {
   width: var(--sidebar-w);
@@ -1011,7 +1017,6 @@ table.sheet tbody tr:nth-child(even) td.grp-sub-total { background: var(--col-co
 
 @media (max-width: 1100px) { .book-inside { padding: 28px 0 0; } }
 @media (max-width: 860px) {
-  body, #app { background: var(--bg); }
   .page-header { padding-top: 4px; }
   .page-header h1 { font-size: 28px; }
   .modal { border-radius: var(--radius-l); }
@@ -1059,7 +1064,7 @@ table.sheet tbody tr:nth-child(even) td.grp-sub-total { background: var(--col-co
 .rc-pill { --seg-pill-bg: var(--w, var(--primary)); --seg-pill-shadow: none; }
 .seg-pill { position: absolute; left: 0; top: 0; z-index: 0; border-radius: var(--radius-pill); pointer-events: none; opacity: 0; background: var(--seg-pill-bg, var(--card)); box-shadow: var(--seg-pill-shadow, 0 1px 6px var(--shadow-ink-md)); transition: transform .28s cubic-bezier(.3, .9, .3, 1), width .28s cubic-bezier(.3, .9, .3, 1), height .28s cubic-bezier(.3, .9, .3, 1), background-color .28s ease, opacity .2s ease; }
 .seg-pill.no-anim { transition: none; }
-@media (prefers-reduced-motion: reduce) { #view.view-enter, #rc-body.rc-swap, #course-tab-body.tab-swap { animation: none; } #view.view-pending { transition: none; } .loader, .loader-cat, .loader-dots i, .sk, .sk-list, .sk-dash { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .bg-opt { transition: none; } #view.view-enter, #rc-body.rc-swap, #course-tab-body.tab-swap { animation: none; } #view.view-pending { transition: none; } .loader, .loader-cat, .loader-dots i, .sk, .sk-list, .sk-dash { animation: none; } }
 
 /* ----- หน้าแรกแบบ One UI: หัวใหญ่ + การ์ดตัวเลขเล็กสีขาว (แทนปกหนังสือ) ----- */
 
@@ -1107,6 +1112,11 @@ table.sheet tbody tr:last-child td { border-bottom: none; }
 :root[data-theme="dark"] {
   color-scheme: dark;
   --bg: #000000;  --canvas: #000000;
+  --bgp-lemon: #2E2A0A;  --bgp-sky: #0B1B33;  --bgp-lilac: #1E1230;  --bgp-mint: #0C2418;
+  --bgp-ocean: linear-gradient(180deg, #0F2347, #12301E);
+  --bgp-aurora: radial-gradient(circle at 50% 24%, #1C4A2C 0, transparent 58%), linear-gradient(180deg, #0A2A3C, #0B1E33);
+  --bgp-sunny: linear-gradient(180deg, #332E08, #1F2A06);
+  --bgp-dusk: linear-gradient(180deg, #0F1F3E, #25163F);
   --surface: #1C1C1F;  --paper: #1C1C1F;  --card: #1C1C1F;
   --surface-sunken: #2A2A2E;
   --primary: #3E91FF;  --primary-solid: #3E91FF;  --primary-dark: #8DBDFF;  --primary-tint: #16304F;
@@ -1828,3 +1838,14 @@ table.sheet tbody tr:nth-child(n) td.over-max { background: var(--danger-tint); 
 /* --glass และ --glass-blur ย้ายขึ้นรวมใน :root {} หลักแล้ว — ไม่ต้องซ้ำที่นี่ */
 @media (max-width: 860px) {
 }
+
+/* ----- ตั้งค่า → พื้นหลัง: ช่องเลือกสีทึบ/ไล่สี (js/app.js renderSettings · ค่าเก็บใน js/theme.js) ----- */
+.bg-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 10px; }
+.bg-opt { position: relative; aspect-ratio: 3 / 4; padding: 0; border: 2px solid var(--border); border-radius: var(--radius-m); background: var(--sw); cursor: pointer; transition: transform .12s ease, border-color .2s ease; }
+.bg-opt:active { transform: scale(.96); }
+.bg-opt:focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; }
+.bg-opt[aria-pressed="true"] { border-color: var(--primary); }
+.bg-opt .bg-check { position: absolute; right: 8px; bottom: 8px; display: none; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 50%; background: var(--primary-solid); color: var(--on-primary); }
+.bg-opt[aria-pressed="true"] .bg-check { display: flex; }
+.bg-opt .bg-check .ico { width: 16px; height: 16px; }
+.bg-opt-default { --sw: var(--bg); }

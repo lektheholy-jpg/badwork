@@ -138,6 +138,15 @@ function renderRoute(route) {
   else if (route === 'settings') return renderSettings();
 }
 
+// ช่องเลือกพื้นหลังในหน้าตั้งค่า: แต่ละช่องส่งสีผ่านตัวแปร --sw (ค่าสีจริงอยู่ที่ --bgp-* ใน css/style.css)
+function bgGroupHtml(title, opts) {
+  const tiles = opts.map(([id, label]) => `
+    <button type="button" class="bg-opt${id === 'default' ? ' bg-opt-default' : ''}" data-bg-pref="${id}" aria-label="${escapeHtml(label)}" title="${escapeHtml(label)}"${id === 'default' ? '' : ` style="--sw:var(--bgp-${id})"`}>
+      <span class="bg-check">${icon('check')}</span>
+    </button>`).join('');
+  return `<div class="u-note u-semibold u-mt-12">${escapeHtml(title)}</div><div class="bg-grid" role="group" aria-label="${escapeHtml(title)}">${tiles}</div>`;
+}
+
 function renderSettings() {
   const view = document.getElementById('view');
   const u = AppState.user;
@@ -163,6 +172,13 @@ function renderSettings() {
         <button type="button" class="theme-opt" data-theme-pref="light">${icon('sun')}สว่าง</button>
         <button type="button" class="theme-opt" data-theme-pref="dark">${icon('moon')}มืด</button>
       </div>
+    </div>
+    <div class="card card-pad u-maxw-420 u-mt-14">
+      <div class="u-semibold">พื้นหลัง</div>
+      <div class="u-note">เลือกสีทึบหรือไล่สีสำหรับพื้นหลังของหน้าเว็บ</div>
+      ${bgGroupHtml('ค่าเริ่มต้น', [['default', 'ค่าเริ่มต้น']])}
+      ${bgGroupHtml('สีทึบ', BG_OPTIONS.solid)}
+      ${bgGroupHtml('ไล่สี', BG_OPTIONS.gradient)}
     </div>
     <div class="card card-pad u-maxw-420 u-mt-14">
       <div class="u-semibold">ความเป็นส่วนตัวและข้อมูลของฉัน</div>
@@ -193,6 +209,15 @@ function renderSettings() {
     syncThemeButtons();
   }));
   syncThemeButtons();
+  const syncBgButtons = () => {
+    const cur = getBgPref();
+    view.querySelectorAll('.bg-opt').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.bgPref === cur)));
+  };
+  view.querySelectorAll('.bg-opt').forEach(b => b.addEventListener('click', () => {
+    setBgPref(b.dataset.bgPref);
+    syncBgButtons();
+  }));
+  syncBgButtons();
   initNavPill(view.querySelector('.theme-seg'), '.theme-opt', 'seg-pill', { activeSel: '[aria-pressed="true"]', watch: true });
 }
 
