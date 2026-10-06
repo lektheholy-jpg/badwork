@@ -2551,3 +2551,31 @@ table.sheet td.over-max { background: var(--danger-tint) !important; }
 .tools-ring .tools-big { position: absolute; inset: 0; display: grid; place-items: center; padding: 0; font-size: clamp(38px, 11vw, 56px); }
 @media (prefers-reduced-motion: reduce) { .tools-ring-bar { transition: none; } }
 .more-tile[data-route="tools"] { --w: var(--hue-blue); }
+
+/* ===== หน้าเครื่องมือ: ขยายให้เต็มพื้นที่หน้าจอ (ความสูง = เต็มจอ, การ์ดยืดตาม) ===== */
+.main:has(.tools-stage) { display: flex; flex-direction: column; }
+.main:has(.tools-stage) > #view { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.tools-stage { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.tools-grid { flex: 1; align-items: stretch; grid-template-columns: minmax(260px, 28%) minmax(0, 1fr); gap: 18px; }
+.tools-card { display: flex; flex-direction: column; min-width: 0; }
+.tools-names textarea { flex: 1 1 0; min-height: 200px; resize: none; }
+
+/* สุ่มเรียกชื่อ: กรอบแสดงชื่อยืดเต็มพื้นที่ ตัวอักษรใหญ่ขึ้นตามจอ */
+.tools-main .tools-display { flex: 1; min-height: 180px; }
+.tools-main .tools-big { font-size: clamp(36px, 7vw, 110px); }
+
+/* แบ่งกลุ่ม: กล่องกลุ่มเรียงเต็มความกว้าง */
+.tools-groups { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); align-content: start; }
+
+/* จับเวลา: การ์ดเต็มความกว้าง วงแหวนขยายตามความสูงจอ */
+.tools-timer { max-width: none; margin: 0; flex: 1; align-items: center; justify-content: center; }
+.tools-ring { width: clamp(240px, min(58vh, 70vw), 620px); container-type: inline-size; margin: 4px auto 22px; }
+.tools-ring .tools-big { font-size: 22cqw; }
+.tools-timer .tools-preset { padding: 9px 18px; font-size: 15px; }
+.tools-timer .tools-input { font-size: 16px; }
+
+@media (max-width: 720px) {
+  .tools-grid { grid-template-columns: 1fr; gap: 14px; }
+  .tools-names textarea { flex: none; min-height: 160px; }
+  .tools-ring { width: min(260px, 70vw); }
+}
