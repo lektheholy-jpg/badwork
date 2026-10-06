@@ -8,7 +8,6 @@
    • การสลับธีมมีกลไกเดียว: html[data-theme="light|dark"] ตั้งโดย js/theme.js
    ========================================================================== */
 
-
 /* ==========================================================================
    MyScore — bold / modern theme
    Ink-navy + indigo accent on a cool neutral canvas. Structure is carried
@@ -168,7 +167,6 @@ a { color: inherit; }
 #app.sidebar-collapsed .user-chip > div { display: none; }
 .crumb { font-size: 12.5px; margin-bottom: 4px; font-weight: 600; }
 .crumb b { color: var(--primary); }
-.page-actions { display: flex; justify-content: flex-end; margin-bottom: 14px; }
 
 /* ---------- Mobile hamburger nav ---------- */
 .hamburger-btn {
@@ -350,17 +348,6 @@ a { color: inherit; }
   .struct-row-actions { width: 100%; justify-content: flex-end; }
 }
 
-/* ---------- Course/section pickers (structure-page) ---------- */
-.picker-bar { margin-bottom: 20px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-.picker-label { font-size: 13px; font-weight: 700; color: var(--ink-soft); white-space: nowrap; }
-.picker-select {
-  flex: 1; min-width: 180px; max-width: 420px; padding: 10px 12px;
-  border: 1.5px solid var(--border); border-radius: var(--radius-s);
-  font-size: 14px; font-family: inherit;
-}
-.picker-select-sm { max-width: 220px; flex: 0 0 auto; }
-.picker-note { font-size: 12.5px; color: var(--ink-soft); }
-
 /* ---------- Scores page: pick a card grouped by level -> subject -> room ---------- */
 .scores-subject-list { display: flex; flex-direction: column; }
 .scores-subject-block { display: flex; flex-direction: column; }
@@ -539,8 +526,6 @@ table.sheet thead th.sticky-right-2 { z-index: 3; }
 /* ---------- Badges ---------- */
 .badge { display: inline-flex; padding: 4px 10px; font-size: 12px; font-weight: 700; }
 .badge-success { background: var(--success-tint); color: var(--success); }
-.badge-warning { background: var(--warning-tint); color: var(--warning); }
-.badge-danger { background: var(--danger-tint); color: var(--danger); }
 .badge-neutral { background: var(--surface-sunken); color: var(--ink-soft); }
 
 /* ---------- Distribution chart ---------- */
@@ -635,8 +620,6 @@ table.sheet thead th.sticky-right-2 { z-index: 3; }
   .main { max-width: 100%; }
   .stat-row { grid-template-columns: 1fr; }
   .field-row { grid-template-columns: 1fr; }
-  .picker-bar { flex-direction: column; align-items: stretch; }
-  .picker-select, .picker-select-sm { max-width: 100%; }
   .course-row { flex-wrap: wrap; }
   .progress-bar { width: 100%; order: 3; }
   .toolbar { flex-direction: column; align-items: stretch; }
@@ -665,8 +648,6 @@ table.sheet thead th.sticky-right-2 { z-index: 3; }
 }
 
 /* ---------- Dashboard: สรุปผลการเรียน (ตารางตามแบบฟอร์ม) ---------- */
-.grade-summary-card { margin-bottom: 16px; padding: 16px 18px; }
-.gs-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
 .gs-select, .grade-room-filter {
   font-size: 12.5px;
 }
@@ -835,7 +816,7 @@ table.sheet tbody tr:nth-child(even) td.grp-sub-total { background: var(--col-co
 
 /* ----- หัวข้อ: แบบชื่อบทในหนังสือ ----- */
 
-h2, .report-h2, .gs-head h2, .main .struct-panel-header {
+h2, .report-h2, .main .struct-panel-header {
   font-family: var(--font-head); font-weight: 700; color: var(--ink);
 }
 
@@ -870,7 +851,7 @@ h2, .report-h2, .gs-head h2, .main .struct-panel-header {
 }
 
 /* ==========================================================================
-   สันปก + ปกหนังสือแบบสมัยใหม่: สีเรียบ ตัวอักษรหนาใหญ่ รูปทรงเรขาคณิต
+   สันปก (เมนูข้าง) แบบสมัยใหม่: สีเรียบ ตัวอักษรหนา
    โลโก้แสดงตลอด (แม้ย่อเมนู)
    ========================================================================== */
 
@@ -893,42 +874,8 @@ h2, .report-h2, .gs-head h2, .main .struct-panel-header {
 .hamburger-btn { border: none; transition: left .25s ease; }
 #app.nav-open .hamburger-btn { left: 254px; }
 
-/* ---------- หน้าแรก = ปกหนังสือสมัยใหม่ ---------- */
-.book-cover {
-  position: relative; overflow: hidden; display: flex; flex-direction: column;
-  font-family: var(--font-modern);
-}
-/* รูปทรงเรขาคณิต */
-.cv-circle { position: absolute; width: 420px; height: 420px; right: -90px; top: -110px; border-radius: 50%; }
-.cv-ring { position: absolute; width: 600px; height: 600px; right: -180px; top: -200px; border-radius: 50%; border: 1.5px solid rgba(246,239,223,.22); }
-.cv-dot { position: absolute; width: 28px; height: 28px; right: 330px; top: 250px; border-radius: 50%; }
-.cover-emblem {
-  position: absolute; right: 50px; top: 30px; width: 140px; height: 140px; padding: 8px;
-  border-radius: 50%;
-}
-.cover-emblem img { width: 100%; height: 100%; object-fit: contain; display: block; border-radius: 50%; mix-blend-mode: multiply; }
-
-.cover-kicker { position: relative; font-size: 15px; font-weight: 500; display: flex; align-items: center; gap: 10px; }
-.cover-kicker::before { content: ''; width: 10px; height: 10px; border-radius: 50%; background: var(--accent); }
-.cv-main { position: relative; margin-top: auto; padding-top: 70px; }
-.cover-title { margin: 0; font-family: var(--font-modern); font-weight: 700; line-height: 1.3; }
-.cover-sub { position: relative; margin: 14px 0 0; padding-top: 16px; font-size: 19px; font-weight: 500; }
-.cover-sub::before { content: ''; position: absolute; top: 0; left: 0; width: 44px; background: var(--accent); height: 4px; border-radius: 4px; }
-
-.cover-stats { position: relative; display: flex; gap: 44px; flex-wrap: wrap; margin-top: 38px; padding-top: 18px; }
-.cover-stat .value { font-family: var(--font-modern); font-size: 30px; font-weight: 700; line-height: 1.3; }
-.cover-stat .label { font-size: 13px; }
-
 /* หน้าในเล่ม */
-@media (max-width: 860px) { .cover-emblem { top: 64px; } .cv-circle { top: -60px; } .cv-ring { top: -150px; } }
 @media (max-width: 720px) {
-  .main:has(.book-cover) { min-height: 0; border-radius: 0; box-shadow: none; }
-  .cv-circle { width: 280px; height: 280px; right: -70px; top: -50px; }
-  .cv-ring { width: 420px; height: 420px; right: -140px; top: -120px; }
-  .cv-dot { right: 200px; top: 190px; width: 20px; height: 20px; }
-  .cover-emblem { width: 96px; height: 96px; right: 24px; top: 28px; }
-  .cover-stats { gap: 26px; }
-  .cover-stat .value { font-size: 26px; }
   .book-inside { margin-top: 0; border: none; border-radius: 0; padding: 30px 16px 40px; box-shadow: none; }
 }
 
@@ -961,14 +908,13 @@ body, #app { line-height: 1.6; }
 
 /* ----- พื้นที่เนื้อหา: ไม่มีกระดาษ ไม่มีสันหนังสือ ----- */
 .main { background: transparent; border: none; border-radius: 0; box-shadow: none; overflow: visible; padding: 40px 48px 64px; }
-.main:has(.book-cover) { background: transparent; border: none; border-radius: 0; box-shadow: none; overflow: visible; padding: 28px 40px 64px; min-height: 0; }
 
 /* ----- หัวเรื่องใหญ่ชิดซ้ายแบบ One UI ----- */
 .page-header { text-align: left; border-bottom: none; padding: 20px 0 0; margin-bottom: 24px; }
 .page-header h1 { font-size: 34px; font-weight: 700; line-height: 1.35; letter-spacing: 0; }
 .page-header .sub { font-style: normal; font-size: 15px; color: var(--ink-soft); margin-top: 6px; }
 .crumb { font-style: normal; color: var(--ink-soft); }
-.report-h2, .gs-head h2 { font-size: 20px; border-bottom: none; padding-bottom: 0; margin: 0 0 14px; }
+.report-h2 { font-size: 20px; border-bottom: none; padding-bottom: 0; margin: 0 0 14px; }
 .report-h2::before { content: none; }
 .chart-title { border-bottom: none; padding-bottom: 0; font-size: 16px; }
 
@@ -1020,27 +966,14 @@ table.sheet th, table.sheet td.name-cell { font-family: var(--font); }
 .login-card h1 { font-size: 24px; }
 
 /* ----- หน้าแรก: การ์ดใหญ่โค้งสีทรายอุ่น แทนปกหนังสือสีเขียวเข้ม ----- */
-.book-cover { background: var(--primary-tint); color: var(--ink); border-radius: 36px; box-shadow: none; min-height: min(62vh, 520px); padding: 40px 44px 32px; }
-.cv-circle { background: #D9C7AA; opacity: .75; }
-.cv-ring { border-color: rgba(122, 101, 80, .22); }
-.cv-dot { background: var(--accent); }
-.cover-emblem { box-shadow: none; }
-.cover-kicker, .cover-stat .label { color: var(--ink-soft); }
-.cover-title { color: var(--ink); font-size: clamp(44px, 8vw, 88px); }
-.cover-title .dots { color: var(--accent); }
-.cover-sub { color: var(--ink); }
-.cover-stats { border-top: 1px solid rgba(122, 101, 80, .25); }
-.cover-stat .value { color: var(--ink); }
 .book-inside { background: transparent; box-shadow: none; }
 
-@media (max-width: 1100px) { .main, .main:has(.book-cover) { padding: 32px 28px 56px; } .book-inside { padding: 28px 0 0; } }
-@media (max-width: 860px) { .book-cover { padding-top: 76px; } }
+@media (max-width: 1100px) { .main { padding: 32px 28px 56px; } .book-inside { padding: 28px 0 0; } }
 @media (max-width: 720px) {
   body, #app { background: var(--bg); }
-  .main, .main:has(.book-cover) { padding: 76px 16px 40px; margin: 0; }
+  .main { padding: 76px 16px 40px; margin: 0; }
   .page-header { padding-top: 4px; }
   .page-header h1 { font-size: 28px; }
-  .book-cover { border-radius: 30px; min-height: 76vh; padding: 76px 24px 24px; box-shadow: none; }
   .modal { border-radius: 28px; }
   .card-pad { padding: 20px; }
 }
@@ -1048,14 +981,7 @@ table.sheet th, table.sheet td.name-cell { font-family: var(--font); }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 
 /* ----- หน้าแรกแบบ One UI: หัวใหญ่ + การ์ดตัวเลขเล็กสีขาว (แทนปกหนังสือ) ----- */
-.oneui-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 8px; }
-.oneui-stat { border-radius: var(--radius-m); padding: 20px 22px; }
-.oneui-stat .label { margin-top: 2px; }
 .book-inside { padding: 24px 0 0; }
-@media (max-width: 720px) {
-  .oneui-stats { gap: 8px; }
-  .oneui-stat { padding: 16px 14px; border-radius: 22px; }
-}
 
 /* ----- ไอคอนแทนอีโมจิ ----- */
 .ico { width: 24px; height: 24px; flex-shrink: 0; }
@@ -1076,34 +1002,6 @@ table.sheet td input.score-input { border-radius: 12px; min-height: 40px; }
 .search-box input { border: 1.5px solid transparent; border-radius: 999px; padding: 10px 18px; font-family: var(--font); }
 .search-box input:focus { outline: none; }
 @media (max-width: 720px) { .sheet-wrap { border-radius: 22px; max-height: 70vh; } }
-
-/* ----- หน้าแรก: ทางลัด ----- */
-.oneui-shortcuts { grid-template-columns: repeat(4, 1fr); }
-.oneui-tile { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 20px 8px 16px; border: none; border-radius: var(--radius-m); font: inherit; font-size: 14px; font-weight: 600; color: var(--ink); cursor: pointer; text-align: center; }
-.oneui-tile:focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; }
-.tile-ico { display: grid; place-items: center; width: 52px; height: 52px; border-radius: 50%; background: var(--primary-tint); color: var(--primary-dark); }
-@media (max-width: 720px) {
-  .oneui-shortcuts { gap: 8px; margin-bottom: 22px; }
-  .oneui-tile { padding: 16px 4px 12px; font-size: 12.5px; border-radius: 22px; }
-  .tile-ico { width: 44px; height: 44px; }
-}
-
-
-/* ----- หัวหน้าแรกแบบการ์ดสีทราย + โลโก้แมว ----- */
-.oneui-hero { align-items: center; justify-content: space-between; gap: 16px; }
-.oneui-hero::before { position: absolute; right: -60px; top: 50%; width: 340px; height: 340px; transform: translateY(-50%); border-radius: 50%; }
-.oneui-hero-text { position: relative; min-width: 0; }
-.oneui-logo { flex-shrink: 0; }
-.oneui-stat { display: flex; flex-direction: column; align-items: flex-start; }
-.stat-ico { display: grid; place-items: center; width: 40px; height: 40px; margin-bottom: 10px; border-radius: 50%; background: var(--primary-tint); color: var(--primary-dark); }
-.stat-ico .ico { width: 22px; height: 22px; }
-@media (max-width: 720px) {
-  .oneui-hero { min-height: 150px; padding: 18px 20px; border-radius: 28px; margin-top: 0; }
-  .oneui-hero::before { width: 220px; height: 220px; right: -50px; }
-  .oneui-logo { width: 120px; }
-  .oneui-title { font-size: 32px; }
-  .stat-ico { width: 34px; height: 34px; margin-bottom: 6px; }
-}
 
 /* ----- หน้าแรก: ความคืบหน้าล่าสุด 1 แถวต่อห้อง ----- */
 .prog-section { margin: 4px 0 28px; }
@@ -1178,12 +1076,11 @@ html { background: var(--bg); }
 body, #app { background: var(--bg); color: var(--ink); }
 
 /* ----- พื้นผิวที่เดิมฮาร์ดโค้ดสีขาว → ใช้ตัวแปรเพื่อให้สลับโหมดได้ ----- */
-.hamburger-btn, .picker-select, .sheet-wrap, table.sheet td, .struct-summary-box, .login-card, .google-btn, .modal, .chip, .main .card, .section-card, .main .struct-summary-box, .group-creator, .room-pill, .cover-emblem, .oneui-stat, .save-status, .search-box input, .oneui-tile { background: var(--card); }
+.hamburger-btn, .sheet-wrap, table.sheet td, .struct-summary-box, .login-card, .google-btn, .modal, .chip, .main .card, .section-card, .main .struct-summary-box, .group-creator, .room-pill, .save-status, .search-box input { background: var(--card); }
 .sidebar { background: var(--sidebar-bg); border-right: 1px solid var(--border); }
 .sidebar-toggle, .user-chip { background: var(--surface-sunken); }
 .field input, .field select, .field textarea, .gs-select, .grade-room-filter, .group-creator-row input,
 .struct-table select.row-group { background: var(--surface-sunken); color: var(--ink); }
-.picker-select { color: var(--ink); }
 .switch-slider::before { background: #fff; }
 
 /* ----- เมนู ----- */
@@ -1202,8 +1099,7 @@ body, #app { background: var(--bg); color: var(--ink); }
 :root[data-theme="dark"] .btn-ghost:hover { filter: brightness(1.25); }
 .btn-danger-ghost:hover { background: var(--danger-tint); filter: brightness(.96); }
 .btn-danger { color: #fff; }
-.btn:focus-visible, .nav-item:focus-visible, .tab:focus-visible, .room-pill:focus-visible,
-.oneui-tile:focus-visible, .prog-row:focus-visible { outline-color: var(--primary); }
+.btn:focus-visible, .nav-item:focus-visible, .tab:focus-visible, .room-pill:focus-visible, .prog-row:focus-visible { outline-color: var(--primary); }
 .field input:focus, .field select:focus, .field textarea:focus,
 .search-box input:focus { border-color: var(--primary); box-shadow: 0 0 0 4px var(--primary-tint); }
 .google-btn { color: var(--ink); border-color: var(--border); }
@@ -1221,14 +1117,6 @@ body, #app { background: var(--bg); color: var(--ink); }
 .login-card { box-shadow: var(--shadow); }
 
 /* ----- หน้าแรก ----- */
-.oneui-hero::before { background: var(--hero-orb); }
-.oneui-stat:nth-child(1) .stat-ico, .oneui-tile:nth-child(1) .tile-ico { background: var(--ic1-bg); color: var(--ic1); }
-.oneui-stat:nth-child(2) .stat-ico, .oneui-tile:nth-child(2) .tile-ico { background: var(--ic2-bg); color: var(--ic2); }
-.oneui-tile:nth-child(3) .tile-ico { background: var(--ic3-bg); color: var(--ic3); }
-.oneui-stat:nth-child(3) .stat-ico { background: var(--ic4-bg); color: var(--ic4); }
-.oneui-tile:nth-child(4) .tile-ico { background: var(--ic4-bg); color: var(--ic4); }
-.oneui-tile:hover { background: var(--primary-tint); }
-.oneui-tile:hover .tile-ico { background: var(--card); }
 .prog-row { border-bottom-color: var(--border); }
 .prog-row:hover { background: var(--surface-sunken); }
 .prog-pct { color: var(--primary-dark); }
@@ -1260,51 +1148,22 @@ table.sheet td input.score-input { color: var(--ink); }
    ========================================================================== */
 
 /* ----- พื้นการ์ดวิดเจ็ต: สี --w ผสมเข้าพื้นการ์ด ----- */
-.oneui-stats .oneui-stat, .oneui-shortcuts .oneui-tile, .main .course-row, .main .section-card,
-.prog-list .prog-row, .chart-row .chart-card {
+.main .course-row, .main .section-card, .prog-list .prog-row, .chart-row .chart-card {
   border: none; box-shadow: none;
   transition: transform .12s ease, filter .15s ease;
-}
-.oneui-shortcuts .oneui-tile:hover {
-  border: none; filter: brightness(.97);
 }
 .main .course-row:hover, .main .section-card:hover, .prog-list .prog-row:hover {
   border: none;
 }
-:root[data-theme="dark"] .oneui-shortcuts .oneui-tile:hover, :root[data-theme="dark"] .main .course-row:hover,
-:root[data-theme="dark"] .main .section-card:hover, :root[data-theme="dark"] .prog-list .prog-row:hover { filter: brightness(1.15); }
-.oneui-tile:active, .section-card:active, .prog-row:active, .course-row:active { transform: scale(.98); }
+:root[data-theme="dark"] .main .course-row:hover, :root[data-theme="dark"] .main .section-card:hover, :root[data-theme="dark"] .prog-list .prog-row:hover { filter: brightness(1.15); }
+.section-card:active, .prog-row:active, .course-row:active { transform: scale(.98); }
 
 /* ----- ไอคอนทรงสควิร์เคิล สีสด ไอคอนสีตัดกัน ----- */
-.oneui-stats .oneui-stat .stat-ico, .oneui-shortcuts .oneui-tile .tile-ico, .course-chip {
+.course-chip {
   display: grid; place-items: center; flex-shrink: 0;
   background: var(--w, var(--primary)); color: var(--on-w);
 }
-.oneui-stats .oneui-stat .stat-ico { width: 46px; height: 46px; border-radius: 16px; margin-bottom: 14px; }
-.oneui-stats .oneui-stat .stat-ico .ico { width: 24px; height: 24px; }
-.oneui-shortcuts .oneui-tile:hover .tile-ico { background: var(--w, var(--primary)); transform: scale(1.06); }
 .course-chip .ico { width: 24px; height: 24px; }
-
-/* ----- วิดเจ็ตตัวเลขหน้าแรก: ไอคอนบน ตัวเลขใหญ่ล่าง ----- */
-.oneui-stats .oneui-stat { position: relative; min-height: 156px; padding: 20px 22px; border-radius: 30px; }
-.oneui-stats .oneui-stat:nth-child(1) { --w: var(--hue-teal); }
-.oneui-stats .oneui-stat:nth-child(2) { --w: var(--hue-blue); }
-.oneui-stats .oneui-stat:nth-child(3) { --w: var(--hue-orange); }
-.oneui-stat .value { margin-top: auto; font-size: 40px; font-weight: 700; line-height: 1.2; color: var(--ink); }
-.oneui-stat .label { font-size: 14px; font-weight: 600; color: var(--ink-soft); }
-.oneui-stat.stat-ring::after {
-  content: ''; position: absolute; top: 20px; right: 20px; width: 52px; height: 52px; border-radius: 50%;
-  background: conic-gradient(var(--w) calc(var(--p, 0) * 1%), color-mix(in srgb, var(--w) 28%, transparent) 0);
-  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 8px), #000 calc(100% - 7px));
-          mask: radial-gradient(farthest-side, transparent calc(100% - 8px), #000 calc(100% - 7px));
-}
-
-/* ----- ทางลัดเป็นวิดเจ็ตสี่เหลี่ยมโค้ง ไอคอนซ้ายบน ชื่อซ้ายล่าง ----- */
-.oneui-shortcuts .oneui-tile { text-align: left; }
-.oneui-shortcuts .oneui-tile:nth-child(1) { --w: var(--hue-orange); }
-.oneui-shortcuts .oneui-tile:nth-child(2) { --w: var(--hue-teal); }
-.oneui-shortcuts .oneui-tile:nth-child(3) { --w: var(--hue-pink); }
-.oneui-shortcuts .oneui-tile:nth-child(4) { --w: var(--hue-violet); }
 
 /* ----- ความคืบหน้าล่าสุด: แถวละวิดเจ็ต ไม่รวมกล่องเดียว ----- */
 .prog-list { background: transparent; border-radius: 0; overflow: visible; display: grid; }
@@ -1352,14 +1211,6 @@ table.sheet td input.score-input { color: var(--ink); }
 
 /* ----- มือถือ ----- */
 @media (max-width: 720px) {
-  .oneui-stats .oneui-stat { min-height: 128px; padding: 14px 14px 14px; border-radius: 24px; }
-  .oneui-stats .oneui-stat .stat-ico { width: 38px; height: 38px; border-radius: 13px; margin-bottom: 8px; }
-  .oneui-stats .oneui-stat .stat-ico .ico { width: 20px; height: 20px; }
-  .oneui-stat .value { font-size: 28px; }
-  .oneui-stat .label { font-size: 12.5px; }
-  .oneui-stat.stat-ring::after { width: 34px; height: 34px; top: 14px; right: 14px; -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 6px), #000 calc(100% - 5px)); mask: radial-gradient(farthest-side, transparent calc(100% - 6px), #000 calc(100% - 5px)); }
-  .oneui-shortcuts .oneui-tile { min-height: 108px; padding: 14px; border-radius: 24px; font-size: 14px; }
-  .oneui-shortcuts .oneui-tile .tile-ico { width: 44px; height: 44px; border-radius: 15px; }
   .prog-list .prog-row { border-radius: 20px; padding: 12px 16px; }
   .main .course-row, .main .section-card { border-radius: 24px; }
 }
@@ -1369,8 +1220,7 @@ table.sheet td input.score-input { color: var(--ink); }
    ผสมสี --w เข้ากับพื้นการ์ดแบบ oklab (สีไม่เพี้ยนเทา) ตารางทุกแบบใช้ตัวแปรธีม
    ========================================================================== */
 
-.oneui-stats .oneui-stat, .oneui-shortcuts .oneui-tile, .main .course-row, .main .section-card,
-.prog-list .prog-row, .chart-row .chart-card, .stat-card {
+.main .course-row, .main .section-card, .prog-list .prog-row, .chart-row .chart-card, .stat-card {
   background: color-mix(in oklab, var(--w, var(--hue-blue)) var(--wmix), var(--card));
 }
 .stat-card { --w: var(--hue-blue); }
@@ -1381,7 +1231,7 @@ table.sheet td input.score-input { color: var(--ink); }
 .chart-row .chart-card:nth-child(1) { --wmix: 26%; --w: var(--viz-blue); }
 .chart-row .chart-card:nth-child(2) { --wmix: 26%; --w: var(--viz-purple); }
 :root[data-theme="dark"] .chart-row .chart-card { --wmix: 30%; }
-.chart-row .chart-card h3, .chart-row .chart-card .card-title { color: var(--ink); font-weight: 700; }
+.chart-row .chart-card h3 { color: var(--ink); font-weight: 700; }
 
 /* ฮีโร่: ไล่สีเข้มขึ้น */
 
@@ -1445,7 +1295,6 @@ table.sheet td input.score-input:hover { background: var(--hover-wash); }
 .cw-wx-desc { font-size: 16px; font-weight: 800; }
 
 /* ไอคอน + ตัวเลข/ป้ายเด่นขึ้น */
-.oneui-shortcuts .oneui-tile { font-size: 16px; font-weight: 800; color: var(--ink); }
 .course-chip, .section-card .course-dot, .course-dot { box-shadow: 0 4px 10px -5px currentColor; }
 .course-chip { width: 50px; height: 50px; border-radius: 17px; }
 
@@ -1467,7 +1316,6 @@ table.sheet td input.score-input:focus, .field input:focus, .field select:focus,
   .cw-card { border-radius: 26px; }
   .cw-time { font-size: 40px; } .cw-temp { font-size: 36px; }
   .cw-wx-ico { width: 58px; height: 58px; font-size: 30px; }
-  .oneui-shortcuts .oneui-tile { font-size: 14px; min-height: 84px; padding: 10px; }
 }
 
 /* ==========================================================================
@@ -1507,7 +1355,7 @@ table.sheet td input.score-input:focus, .field input:focus, .field select:focus,
    ส่วนรอง (แถวความคืบหน้า รายวิชา ห้อง กราฟ) อ่อนกว่า หัวกลุ่ม/ตารางอยู่กลาง
    ========================================================================== */
 
-.oneui-shortcuts .oneui-tile, .cw-card { --wmix: var(--wmix-main); }
+.cw-card { --wmix: var(--wmix-main); }
 
 .prog-list .prog-row, .main .course-row, .main .section-card, .stat-card,
 .chart-row .chart-card:nth-child(n), :root[data-theme="dark"] .chart-row .chart-card:nth-child(n) { --wmix: var(--wmix-soft); }
@@ -1603,14 +1451,7 @@ button.brand:hover .mark { transform: rotate(-6deg) scale(1.04); }
   .tab-item:not(.active) { background: transparent; }
 }
 
-/* ทางลัดหน้าแรก: เหลือแต่ไอคอน (ชื่ออยู่ใน aria-label/title) */
-.oneui-shortcuts .oneui-tile { align-items: center; justify-content: center; gap: 0; }
-.oneui-shortcuts .oneui-tile .tile-ico { transition: transform .15s ease; width: 54px; height: 54px; border-radius: 19px; box-shadow: 0 6px 14px -7px var(--w); }
-.oneui-shortcuts .oneui-tile .tile-ico .ico { stroke-width: 2; width: 28px; height: 28px; }
-
 /* ===== ทางลัดขนาดเล็ก กึ่งกลาง + ช่องไฟหน้าแรกกระชับขึ้น ===== */
-.oneui-shortcuts { display: flex; justify-content: center; flex-wrap: wrap; gap: 10px; margin: 10px 0 16px; }
-.oneui-shortcuts .oneui-tile { flex: 0 0 auto; width: 84px; height: 84px; min-height: 0; padding: 0; border-radius: 26px; }
 .cw-card { min-height: 136px; padding: 18px 26px; }
 .book-inside, .book-inside:has(*) { padding-top: 10px; }
 .chart-row { gap: 12px; margin: 10px 0 18px; }
@@ -1618,11 +1459,6 @@ button.brand:hover .mark { transform: rotate(-6deg) scale(1.04); }
 .prog-list .prog-row { padding: 13px 20px; }
 
 @media (max-width: 640px) {
-  .oneui-shortcuts { gap: 8px; margin: 8px 0 12px; }
-  .oneui-shortcuts .oneui-tile { width: 72px; height: 72px; border-radius: 22px; }
-  .oneui-shortcuts .oneui-tile .tile-ico { width: 46px; height: 46px; border-radius: 16px; }
-  .oneui-shortcuts .oneui-tile .tile-ico .ico { width: 24px; height: 24px; }
-  .oneui-hero { min-height: 130px; margin-bottom: 8px; }
   .cw-row { margin-bottom: 8px; }
   .cw-card { min-height: 104px; padding: 14px 18px; }
   .chart-row { gap: 10px; margin: 8px 0 14px; }
@@ -1630,36 +1466,6 @@ button.brand:hover .mark { transform: rotate(-6deg) scale(1.04); }
   .prog-list .prog-row { padding: 12px 16px; }
 }
 
-/* ===== ส่วนหัวหน้าแรก (ดีไซน์ใหม่): ตัวอักษรหนาล้วน ไม่มีกรอบ ไม่มีแสงสี — แมวนอนเอกเขนกอยู่บนชื่อแอป ===== */
-.oneui-hero { display: block; position: relative; min-height: 0; margin: 0 0 12px; padding: 22px 2px 6px; border: 0; border-radius: 0; box-shadow: none; overflow: visible; }
-.oneui-hero::before, .oneui-hero::after { content: none; display: none; }
-.oneui-hello { margin: 0 0 2px; font-size: 17px; font-weight: 600; color: var(--ink-soft); }
-.oneui-titlewrap { position: relative; display: inline-block; max-width: 100%; padding-top: 76px; }
-.oneui-title {
-  position: relative; margin: 0; font-size: clamp(46px, 13vw, 84px); font-weight: 800; line-height: 1.2; letter-spacing: -.015em; white-space: nowrap;
-  color: var(--ink); background: none; -webkit-text-fill-color: currentColor; padding-bottom: 14px;
-}
-.oneui-title .dots { color: var(--hue-blue); -webkit-text-fill-color: var(--hue-blue); animation: heroDots 2.4s ease-in-out infinite; }
-@keyframes heroDots { 0%, 100% { opacity: .3; } 50% { opacity: 1; } }
-/* เส้นหวัดใต้ชื่อ ให้ฟีลลายเส้นเดียวกับแมว */
-.oneui-title::after {
-  content: ''; position: absolute; left: 2px; right: 2px; bottom: 0; height: 10px; background: var(--hue-blue);
-  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='10' viewBox='0 0 40 10'%3E%3Cpath d='M0 5 Q5 0 10 5 T20 5 T30 5 T40 5' fill='none' stroke='black' stroke-width='2.6' stroke-linecap='round'/%3E%3C/svg%3E") repeat-x left center / 40px 10px;
-          mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='10' viewBox='0 0 40 10'%3E%3Cpath d='M0 5 Q5 0 10 5 T20 5 T30 5 T40 5' fill='none' stroke='black' stroke-width='2.6' stroke-linecap='round'/%3E%3C/svg%3E") repeat-x left center / 40px 10px;
-}
-.oneui-logo {
-  position: absolute; z-index: 1; right: 3%; top: -2px; width: clamp(104px, 27%, 168px); height: auto; margin: 0;
-  mix-blend-mode: multiply; filter: contrast(1.3); pointer-events: none;
-}
-:root[data-theme="dark"] .oneui-logo { mix-blend-mode: screen; filter: contrast(1.3) invert(1) hue-rotate(180deg); }
-@media (max-width: 640px) {
-  .oneui-hero { padding: 14px 2px 2px; }
-  .oneui-hello { font-size: 15px; }
-  .oneui-titlewrap { padding-top: 64px; }
-  .oneui-title { font-size: clamp(40px, 12.4vw, 52px); }
-  .oneui-logo { width: clamp(92px, 28%, 120px); top: -10px; }
-}
-@media (prefers-reduced-motion: reduce) { .oneui-title .dots { animation: none; opacity: 1; } }
 /* กันหน้ากว้างเกินจอบนมือถือ */
 .main { overflow-x: clip; }
 
@@ -1947,7 +1753,6 @@ table.sheet td.over-max { background: var(--danger-tint) !important; }
    (วงแหวนความคืบหน้าแบบ conic ยังอยู่ เพราะเป็นเส้นสีทึบไม่ใช่การไล่สี)
    ========================================================================== */
 .login-screen { background: var(--login-b); }
-.oneui-hero { background: var(--hero-a); }
 .cw-row .cw-clock, :root[data-theme="dark"] .cw-row .cw-clock { background: color-mix(in oklab, var(--hue-blue) 14%, var(--card)); }
 .cw-row .cw-weather { background: color-mix(in srgb, rgb(0 18 60) calc(var(--sky-shade, 0) * 100%), var(--sky-solid, #5AA9FA)); }
 
