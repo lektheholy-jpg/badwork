@@ -6,20 +6,25 @@
 
 async function _collectAll(uid) {
   const userRef = db.collection('users').doc(uid);
-  const profileSnap = await userRef.get();
-  const out = { exportedAt: new Date().toISOString(), profile: profileSnap.exists ? profileSnap.data() : null, courses: [] };
   const plain = async (ref) => (await ref.get()).docs.map(d => ({ id: d.id, ...d.data() }));
 
-  const courseSnap = await userRef.collection('courses').get();
-  for (const c of courseSnap.docs) {
+  // อ่านอย่างเดียว จึงขนานได้ปลอดภัย — วิชา/ห้องโหลดพร้อมกันแบบจำกัดจำนวน (mapLimit ใน dashboard.js) ผลเรียงตามลำดับเดิม
+  const [profileSnap, courseSnap] = await Promise.all([userRef.get(), userRef.collection('courses').get()]);
+  const out = { exportedAt: new Date().toISOString(), profile: profileSnap.exists ? profileSnap.data() : null, courses: [] };
+
+  out.courses = await mapLimit(courseSnap.docs, COURSE_LOAD_CONCURRENCY, async (c) => {
     const cRef = c.ref;
-    const course = { id: c.id, ...c.data(), assessments: await plain(cRef.collection('assessments')), settings: await plain(cRef.collection('settings')), sections: [] };
-    const secSnap = await cRef.collection('sections').get();
-    for (const s of secSnap.docs) {
-      course.sections.push({ id: s.id, ...s.data(), students: await plain(s.ref.collection('students')), scores: await plain(s.ref.collection('scores')) });
-    }
-    out.courses.push(course);
-  }
+    const [assessments, settings, secSnap] = await Promise.all([
+      plain(cRef.collection('assessments')),
+      plain(cRef.collection('settings')),
+      cRef.collection('sections').get(),
+    ]);
+    const sections = await mapLimit(secSnap.docs, SECTION_LOAD_CONCURRENCY, async (s) => {
+      const [students, scores] = await Promise.all([plain(s.ref.collection('students')), plain(s.ref.collection('scores'))]);
+      return { id: s.id, ...s.data(), students, scores };
+    });
+    return { id: c.id, ...c.data(), assessments, settings, sections };
+  });
   return out;
 }
 
