@@ -587,17 +587,35 @@ table.sheet thead th.sticky-right-2 { z-index: 3; }
 .check-row.ok { color: var(--success); }
 .check-row.warn { color: var(--danger); }
 
-/* ---------- Dynamic Island: แคปซูลดำกลางบนจอ ขยายเป็นแจ้งเตือน/สถานะโหลด ----------
-   ขนาดตอนพักกำหนดที่นี่ · ขนาดตอนขยาย (--ow/--oh/--or) js/utils.js วัดจากข้อความแล้วใส่ให้ */
+/* ---------- Dynamic Island: แคปซูลดำกลางบนจอ — พัก = วัน·เวลา · ใช้งาน = แจ้งเตือน/บันทึก/เลิกทำ/ความคืบหน้า ----------
+   ขนาดตอนพัก (--iw) และตอนขยาย (--ow/--oh/--or) js/island.js วัดจากเนื้อหาจริงแล้วใส่ให้ */
 .island {
   position: fixed; top: calc(10px + env(safe-area-inset-top, 0px)); left: 50%; z-index: 80;
   display: flex; align-items: center; justify-content: center; overflow: hidden;
-  width: 120px; height: 32px; border-radius: 16px; transform: translateX(-50%);
+  width: var(--iw, 132px); height: 32px; border-radius: 16px; transform: translateX(-50%);
   background: #000; color: var(--white); pointer-events: none;
   box-shadow: 0 0 0 1px rgba(255, 255, 255, .12), 0 8px 24px rgba(0, 0, 0, .22);
   transition: width .55s cubic-bezier(.3, 1.4, .5, 1), height .55s cubic-bezier(.3, 1.4, .5, 1), border-radius .55s ease;
 }
 .island.open { width: var(--ow, 240px); height: var(--oh, 44px); border-radius: var(--or, 22px); }
+
+/* ตอนพัก */
+.island-idle {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: max-content;
+  display: flex; align-items: center; gap: 6px; white-space: nowrap;
+  font-family: var(--font-modern); font-size: 12.5px; font-weight: 600; line-height: 1; font-variant-numeric: tabular-nums;
+  color: rgba(255, 255, 255, .9); transition: opacity .18s ease;
+}
+.island.open .island-idle { opacity: 0; }
+.island-idle-date, .island-idle-sep { color: rgba(255, 255, 255, .6); }
+.island-idle-sep { opacity: .6; }
+.island-idle-off { display: none; align-items: center; gap: 7px; color: var(--hue-amber); }
+.island-idle-off i { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.island.is-offline .island-idle-off { display: inline-flex; }
+.island.is-offline .island-idle-date, .island.is-offline .island-idle-sep, .island.is-offline .island-idle-time { display: none; }
+@media (max-width: 640px) { .island-idle-sep, .island-idle-time { display: none; } }
+
+/* ตอนขยาย */
 .island-body {
   flex: none; box-sizing: border-box; display: flex; align-items: center; gap: 10px;
   width: max-content; max-width: min(92vw, 460px); min-height: 44px; padding: 10px 20px;
@@ -606,15 +624,39 @@ table.sheet thead th.sticky-right-2 { z-index: 3; }
 }
 .island.open .island-body { opacity: 1; }
 .island-body.pop { animation: island-pop .4s cubic-bezier(.3, 1.3, .5, 1) .08s backwards; }
-.island-text { min-width: 0; overflow-wrap: anywhere; }
+.island-text { min-width: 0; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.island[data-mode="progress"] .island-body { min-width: 220px; }
 .island-icon { flex: none; display: flex; align-items: center; justify-content: center; width: 20px; height: 20px; color: var(--viz-sky); }
 .island-icon svg { display: block; width: 100%; height: 100%; }
 .island[data-kind="success"] .island-icon { color: var(--viz-mint); }
-.island[data-kind="warn"] .island-icon { color: var(--hue-amber); }
-.island[data-kind="error"] .island-icon { color: var(--hue-red); }
+.island[data-kind="warn"] .island-icon, .island[data-kind="offline"] .island-icon { color: var(--hue-amber); }
+.island[data-kind="error"] .island-icon, .island[data-kind="trash"] .island-icon { color: var(--hue-red); }
+.island-check { stroke-dasharray: 14; stroke-dashoffset: 14; animation: island-check .35s .15s ease forwards; }
 .island-spin { width: 18px; height: 18px; border-radius: 50%; border: 2.5px solid rgba(255, 255, 255, .22); border-top-color: var(--viz-sky); animation: island-spin .8s linear infinite; }
+
+/* ปุ่มในแคปซูล (เลิกทำ / ลองใหม่) — แคปซูลทั้งก้อนไม่รับคลิก เฉพาะปุ่มนี้รับ */
+.island-action {
+  pointer-events: auto; flex: none; appearance: none; border: 0; border-radius: 999px; margin: -3px -10px -3px 0; padding: 6px 14px;
+  background: rgba(255, 255, 255, .14); color: var(--viz-sky); font: inherit; font-size: 13px; font-weight: 700; cursor: pointer;
+  -webkit-tap-highlight-color: transparent; transition: background .15s ease;
+}
+.island-action:hover { background: rgba(255, 255, 255, .24); }
+.island-action:focus-visible { outline: 2px solid var(--white); outline-offset: 2px; }
+.island-action[hidden] { display: none; }
+
+/* แถบเล็กชิดขอบล่าง: ความคืบหน้า / นับถอยหลังเลิกทำ / วิ่งไม่รู้ความยาว */
+.island-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: rgba(255, 255, 255, .14); opacity: 0; transition: opacity .2s ease; }
+.island-bar i { display: block; height: 100%; width: 100%; background: var(--viz-sky); transform-origin: left center; transform: scaleX(0); }
+.island[data-bar="progress"] .island-bar, .island[data-bar="indeterminate"] .island-bar, .island[data-bar="countdown"] .island-bar { opacity: 1; }
+.island[data-bar="progress"] .island-bar i { transform: scaleX(var(--p, 0)); transition: transform .3s ease; }
+.island[data-bar="countdown"] .island-bar i { background: rgba(255, 255, 255, .5); transform: scaleX(1); animation: island-countdown var(--cd, 5000ms) linear forwards; }
+.island[data-bar="indeterminate"] .island-bar i { width: 38%; transform: none; animation: island-slide 1.1s ease-in-out infinite; }
+
 @keyframes island-pop { from { opacity: 0; transform: scale(.86); } to { opacity: 1; transform: none; } }
 @keyframes island-spin { to { transform: rotate(360deg); } }
+@keyframes island-check { to { stroke-dashoffset: 0; } }
+@keyframes island-countdown { to { transform: scaleX(0); } }
+@keyframes island-slide { from { transform: translateX(-100%); } to { transform: translateX(263%); } }
 @media print { .island { display: none; } }
 
 /* ==========================================================================
@@ -1105,7 +1147,7 @@ body, #app { background: var(--bg); color: var(--ink); }
 
 /* ----- พื้นผิวที่เดิมฮาร์ดโค้ดสีขาว → ใช้ตัวแปรเพื่อให้สลับโหมดได้ ----- */
 .hamburger-btn, .sheet-wrap, table.sheet td, .struct-summary-box, .login-card, .google-btn, .modal, .chip, .main .card, .section-card, .main .struct-summary-box, .group-creator, .room-pill, .save-status, .search-box input { background: var(--card); }
-.sidebar { background: var(--sidebar-bg); border-right: 1px solid var(--border); }
+.sidebar { background: color-mix(in srgb, var(--sidebar-bg) var(--glass, 80%), transparent); border-right: 1px solid var(--border); }
 .sidebar-toggle, .user-chip { background: var(--surface-sunken); }
 .field input, .field select, .field textarea, .gs-select, .grade-room-filter, .group-creator-row input,
 .struct-table select.row-group { background: var(--surface-sunken); color: var(--ink); }
@@ -1420,7 +1462,7 @@ button.brand:hover .mark { transform: rotate(-6deg) scale(1.04); }
 
   .tabbar {
     display: flex; position: fixed; z-index: 45; left: 12px; right: 12px; bottom: calc(10px + env(safe-area-inset-bottom, 0px));
-    gap: 4px; padding: 6px; border-radius: var(--radius-l); background: var(--card); box-shadow: 0 10px 30px var(--shadow-ink-md), inset 0 0 0 1px var(--border);
+    gap: 4px; padding: 6px; border-radius: var(--radius-l); background: color-mix(in srgb, var(--card) var(--glass, 80%), transparent); box-shadow: 0 10px 30px var(--shadow-ink-md), inset 0 0 0 1px var(--border);
   }
   .tab-item {
     --w: var(--hue-blue); flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
@@ -1438,7 +1480,7 @@ button.brand:hover .mark { transform: rotate(-6deg) scale(1.04); }
   .more-scrim { display: block; position: fixed; inset: 0; z-index: 46; background: var(--scrim); opacity: 0; pointer-events: none; transition: opacity .2s ease; }
   .more-sheet {
     display: block; position: fixed; z-index: 47; left: 0; right: 0; bottom: 0; padding: 10px 16px calc(96px + env(safe-area-inset-bottom, 0px));
-    border-radius: var(--radius-xl) var(--radius-xl) 0 0; background: var(--card); box-shadow: 0 -10px 40px var(--shadow-ink-md);
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0; background: color-mix(in srgb, var(--card) 90%, transparent); box-shadow: 0 -10px 40px var(--shadow-ink-md);
     transform: translateY(105%); transition: transform .26s cubic-bezier(.2, .8, .2, 1);
   }
   #app.more-open .more-scrim { opacity: 1; pointer-events: auto; }
@@ -1973,3 +2015,14 @@ table.sheet tbody tr:nth-child(n) td.over-max { background: var(--danger-tint); 
 :root .u-badge-inline { vertical-align: middle; margin-left: 6px; }
 :root .u-avatar-48 { width: 48px; height: 48px; border-radius: 50%; }
 :root .u-input-sm { padding: 7px; border: 1px solid var(--border); border-radius: 6px; }
+
+/* ==========================================================================
+   v10 — เมนูบาร์โปร่งแสงนิดๆ (เมนูข้างบนจอปกติ + ลิ้นชักเมนู / แถบเมนูล่าง / แผงเพิ่มเติมบนมือถือ)
+   สีพื้นโปร่งแสงอยู่ที่กฎเดิมของ .sidebar / .tabbar / .more-sheet (ใช้ --glass) · ที่นี่เพิ่มเฉพาะเอฟเฟกต์เบลอพื้นหลัง
+   ปรับความโปร่งที่ --glass (ยิ่งน้อยยิ่งโปร่ง)
+   ========================================================================== */
+:root { --glass: 80%; --glass-blur: 22px; }
+.sidebar { -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.6); backdrop-filter: blur(var(--glass-blur)) saturate(1.6); }
+@media (max-width: 860px) {
+  .tabbar, .more-sheet { -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.6); backdrop-filter: blur(var(--glass-blur)) saturate(1.6); }
+}

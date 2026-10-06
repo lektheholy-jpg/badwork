@@ -4,7 +4,7 @@
 //            และ sections/{id}/{students,scores}
 // ==========================================================================
 
-async function _collectAll(uid) {
+async function _collectAll(uid, onProgress) {
   const userRef = db.collection('users').doc(uid);
   const plain = async (ref) => (await ref.get()).docs.map(d => ({ id: d.id, ...d.data() }));
 
@@ -12,6 +12,7 @@ async function _collectAll(uid) {
   const [profileSnap, courseSnap] = await Promise.all([userRef.get(), userRef.collection('courses').get()]);
   const out = { exportedAt: new Date().toISOString(), profile: profileSnap.exists ? profileSnap.data() : null, courses: [] };
 
+  let coursesDone = 0;
   out.courses = await mapLimit(courseSnap.docs, COURSE_LOAD_CONCURRENCY, async (c) => {
     const cRef = c.ref;
     const [assessments, settings, secSnap] = await Promise.all([
@@ -23,25 +24,29 @@ async function _collectAll(uid) {
       const [students, scores] = await Promise.all([plain(s.ref.collection('students')), plain(s.ref.collection('scores'))]);
       return { id: s.id, ...s.data(), students, scores };
     });
+    if (onProgress) onProgress(++coursesDone, courseSnap.docs.length);
     return { id: c.id, ...c.data(), assessments, settings, sections };
   });
   return out;
 }
 
 async function exportMyData() {
+  let prog = islandProgress({ label: 'กำลังรวบรวมข้อมูล...' }); // แถบวิ่งก่อน แล้วเปลี่ยนเป็นนับจริงเมื่อรู้จำนวนวิชา
   try {
-    showToast('กำลังรวบรวมข้อมูล...');
-    const data = await _collectAll(AppState.user.uid);
+    const data = await _collectAll(AppState.user.uid, (done, total) => {
+      prog = islandProgress({ label: 'รวบรวมข้อมูล', total, unit: 'วิชา' });
+      prog.update(done);
+    });
     const json = JSON.stringify(data, (k, v) => (v && typeof v.toDate === 'function' ? v.toDate().toISOString() : v), 2);
     const url = URL.createObjectURL(new Blob([json], { type: 'application/json;charset=utf-8' }));
     const a = document.createElement('a');
     a.href = url; a.download = `ข้อมูลของฉัน-${new Date().toISOString().slice(0, 10)}.json`;
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    showToast('ส่งออกข้อมูลสำเร็จ');
+    prog.finish('ส่งออกข้อมูลสำเร็จ');
   } catch (err) {
     console.error(err);
-    showToast('ส่งออกข้อมูลไม่สำเร็จ: ' + (err.message || err));
+    prog.fail('ส่งออกข้อมูลไม่สำเร็จ: ' + (err.message || err));
   }
 }
 

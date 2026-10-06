@@ -10,47 +10,7 @@ document.addEventListener('wheel', (e) => {
   }
 }, { passive: false });
 
-// แจ้งเตือนแบบ Dynamic Island: แคปซูลดำกลางบนจอ ขยายออกตามข้อความแล้วหดกลับเอง
-//   showToast('บันทึกคะแนนแล้ว')            → เดาชนิดจากข้อความ (สำเร็จ / เตือน / ผิดพลาด / กำลังโหลด)
-//   showToast('กำลังซิงค์...')               → ข้อความลงท้าย ... = สถานะโหลด (ค้างไว้จนมีข้อความถัดไป)
-//   showToast('ข้อความ', 'success|warn|error|info|loading')   → ระบุชนิดเอง
-const ISLAND_SVG = inner => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${inner}</svg>`;
-const ISLAND_ICONS = {
-  success: ISLAND_SVG('<circle cx="12" cy="12" r="9"/><path d="m8 12.5 2.8 2.8L16 9.5"/>'),
-  warn: ISLAND_SVG('<path d="M12 4 2.8 19.5h18.4Z"/><path d="M12 10v4.5"/><path d="M12 17.3v.01"/>'),
-  error: ISLAND_SVG('<circle cx="12" cy="12" r="9"/><path d="m9 9 6 6"/><path d="m15 9-6 6"/>'),
-  info: ISLAND_SVG('<circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><path d="M12 7.8v.01"/>'),
-  loading: '<span class="island-spin"></span>',
-};
-function islandKind(msg) {
-  if (/(\.{2,}|…)\s*$/.test(msg)) return 'loading';
-  if (/ไม่สำเร็จ|ผิดพลาด|ล้มเหลว/.test(msg)) return 'error';
-  if (/^กรุณา|^คำเตือน|ยังไม่|เกิน|อยู่แล้ว|ไม่พบ|ตกหล่น/.test(msg)) return 'warn';
-  if (/สำเร็จ|แล้ว|เรียบร้อย/.test(msg)) return 'success';
-  return 'info';
-}
-function showToast(msg, kind) {
-  const el = document.getElementById('island');
-  if (!el) return;
-  msg = String(msg == null ? '' : msg);
-  if (!ISLAND_ICONS[kind]) kind = islandKind(msg);
-  const body = el.querySelector('.island-body');
-  el.dataset.kind = kind;
-  el.querySelector('.island-icon').innerHTML = ISLAND_ICONS[kind];
-  el.querySelector('.island-text').textContent = msg;
-
-  // วัดขนาดเนื้อหาจริง แล้วส่งให้ CSS เป็นขนาดปลายทางของการขยาย (CSS transition ทำแอนิเมชันให้)
-  const w = Math.ceil(body.offsetWidth), h = Math.ceil(body.offsetHeight);
-  el.style.setProperty('--ow', w + 'px');
-  el.style.setProperty('--oh', h + 'px');
-  el.style.setProperty('--or', Math.min(h / 2, 28) + 'px');
-  body.classList.remove('pop'); void body.offsetWidth; body.classList.add('pop');
-  el.classList.add('open');
-
-  clearTimeout(showToast._t);
-  const ms = kind === 'loading' ? 12000 : (kind === 'warn' || kind === 'error' ? 3600 : 2400) + Math.min(msg.length * 25, 1500);
-  showToast._t = setTimeout(() => { el.classList.remove('open'); body.classList.remove('pop'); }, ms);
-}
+// แจ้งเตือน/สถานะแบบ Dynamic Island (showToast, islandSave, islandUndo, islandProgress) อยู่ที่ js/island.js
 
 function openModal(html) {
   const root = document.getElementById('modal-root');
@@ -339,6 +299,52 @@ async function deleteCollectionDocs(colRef) {
   }
 }
 
+// ---------- สำรองข้อมูลก่อนลบ → ใช้ทำปุ่ม "เลิกทำ" (อ่านเก็บในหน่วยความจำ แล้วเขียนกลับด้วย id เดิม) ----------
+async function snapshotCollection(colRef) {
+  const snap = await colRef.get();
+  return snap.docs.map(d => ({ id: d.id, data: d.data() }));
+}
+async function restoreDocs(colRef, docs) {
+  const CHUNK = 400;
+  for (let i = 0; i < docs.length; i += CHUNK) {
+    const batch = db.batch();
+    docs.slice(i, i + CHUNK).forEach(d => batch.set(colRef.doc(d.id), d.data));
+    await batch.commit();
+  }
+}
+// ห้องเรียนทั้งห้อง (เอกสารห้อง + นักเรียน + คะแนน)
+async function snapshotSection(secRef) {
+  const secSnap = await secRef.get();
+  return {
+    id: secRef.id, data: secSnap.data(),
+    students: await snapshotCollection(secRef.collection('students')),
+    scores: await snapshotCollection(secRef.collection('scores')),
+  };
+}
+async function restoreSection(sectionsColRef, snap) {
+  const secRef = sectionsColRef.doc(snap.id);
+  await secRef.set(snap.data);
+  await restoreDocs(secRef.collection('students'), snap.students);
+  await restoreDocs(secRef.collection('scores'), snap.scores);
+}
+// วิชาทั้งวิชา (ทุกห้อง + โครงสร้างคะแนน + เกณฑ์เกรด)
+async function snapshotCourse(courseRef) {
+  const courseSnap = await courseRef.get();
+  const sections = [];
+  for (const s of (await courseRef.collection('sections').get()).docs) sections.push(await snapshotSection(s.ref));
+  return {
+    data: courseSnap.data(), sections,
+    assessments: await snapshotCollection(courseRef.collection('assessments')),
+    settings: await snapshotCollection(courseRef.collection('settings')),
+  };
+}
+async function restoreCourse(courseRef, snap) {
+  await courseRef.set(snap.data);
+  await restoreDocs(courseRef.collection('assessments'), snap.assessments);
+  await restoreDocs(courseRef.collection('settings'), snap.settings);
+  for (const s of snap.sections) await restoreSection(courseRef.collection('sections'), s);
+}
+
 // ---------- Smart import parser (Excel/CSV) for student rosters ----------
 // รองรับไฟล์ที่หัวตารางไม่ตรงตำแหน่งเป๊ะ (มีแถวว่าง/merge cell ด้านบน) และคอลัมน์ภาษาไทย/อังกฤษหลายแบบ
 const IMPORT_HEADER_ALIASES = {
@@ -474,9 +480,10 @@ function loadXLSX() {
   if (!_xlsxPromise) {
     _xlsxPromise = new Promise((resolve, reject) => {
       const s = document.createElement('script');
+      const prog = islandProgress({ label: 'กำลังเตรียมตัวอ่านไฟล์ Excel...' }); // แถบวิ่ง (ครั้งแรกที่ต้องโหลดไลบรารี)
       s.src = 'js/vendor/xlsx.mini.min.js?v=0.20.3';
-      s.onload = () => resolve(window.XLSX);
-      s.onerror = () => { _xlsxPromise = null; reject(new Error('โหลดตัวอ่านไฟล์ Excel ไม่สำเร็จ ตรวจสอบอินเทอร์เน็ตแล้วลองอีกครั้ง')); };
+      s.onload = () => { prog.clear(); resolve(window.XLSX); };
+      s.onerror = () => { prog.clear(); _xlsxPromise = null; reject(new Error('โหลดตัวอ่านไฟล์ Excel ไม่สำเร็จ ตรวจสอบอินเทอร์เน็ตแล้วลองอีกครั้ง')); };
       document.head.appendChild(s);
     });
   }

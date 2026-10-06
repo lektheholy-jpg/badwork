@@ -57,11 +57,22 @@ async function renderStudentsTab(container, course, section) {
         danger: true,
         onConfirm: async () => {
           const secBase = sectionRef(uid, course.id, section.id);
-          await secBase.collection('students').doc(row.dataset.id).delete();
-          await secBase.collection('scores').doc(row.dataset.id).delete().catch(() => {}); // อาจไม่มีคะแนนอยู่แล้ว
+          const sid = row.dataset.id;
+          // เก็บสำเนาไว้ก่อนลบ เพื่อให้ปุ่ม "เลิกทำ" คืนนักเรียนพร้อมคะแนนเดิมด้วยรหัสเดิม
+          const stuSnap = await secBase.collection('students').doc(sid).get();
+          const scoreSnap = await secBase.collection('scores').doc(sid).get().catch(() => null);
+          await secBase.collection('students').doc(sid).delete();
+          await secBase.collection('scores').doc(sid).delete().catch(() => {}); // อาจไม่มีคะแนนอยู่แล้ว
           invalidateCourseData(course.id);
-          showToast('ลบนักเรียนสำเร็จ');
           renderStudentsTab(container, course, section);
+          if (!stuSnap.exists) { showToast('ลบนักเรียนแล้ว'); return; }
+          islandUndo('ลบนักเรียนแล้ว', async () => {
+            await secBase.collection('students').doc(sid).set(stuSnap.data());
+            if (scoreSnap && scoreSnap.exists) await secBase.collection('scores').doc(sid).set(scoreSnap.data());
+            invalidateCourseData(course.id);
+            // วาดรายชื่อใหม่เฉพาะเมื่อผู้ใช้ยังอยู่ที่แท็บนักเรียนนี้ (container ถูกใช้ซ้ำกับแท็บอื่น)
+            if (document.body.contains(container) && container.querySelector('#add-one-btn')) renderStudentsTab(container, course, section);
+          });
         }
       });
     });
@@ -184,28 +195,29 @@ function openImportAllRoomsModal(course, existingSections, onDone) {
     btn.textContent = 'กำลังนำเข้า...';
     const roomCount = Object.keys(groups).length;
     const studentCount = Object.values(groups).reduce((s, arr) => s + arr.length, 0);
+    const prog = islandProgress({ label: 'นำเข้า', total: studentCount, unit: 'คน' });
     try {
-      await performMultiRoomImport(course, existingSections, groups);
+      await performMultiRoomImport(course, existingSections, groups, n => prog.update(n));
       closeModal();
-      showToast(`นำเข้านักเรียน ${studentCount} คน ใน ${roomCount} ห้องสำเร็จ`);
+      prog.finish(`นำเข้านักเรียน ${studentCount} คน ใน ${roomCount} ห้องสำเร็จ`);
       if (onDone) onDone();
     } catch (err) {
       btn.disabled = false;
       btn.textContent = `นำเข้า ${studentCount} คน (${roomCount} ห้อง)`;
-      showToast('นำเข้าไม่สำเร็จ: ' + (err.message || String(err)));
+      prog.fail('นำเข้าไม่สำเร็จ: ' + (err.message || String(err)));
     }
   });
 }
 
-async function performMultiRoomImport(course, existingSections, groups) {
+async function performMultiRoomImport(course, existingSections, groups, onProgress) {
   try {
-    return await importStudentsToRooms(course, existingSections, groups);
+    return await importStudentsToRooms(course, existingSections, groups, onProgress);
   } finally {
     invalidateCourseData(course.id); // ล้างแคชแม้นำเข้าสำเร็จเพียงบางส่วน
   }
 }
 
-async function importStudentsToRooms(course, existingSections, groups) {
+async function importStudentsToRooms(course, existingSections, groups, onProgress) {
   const uid = AppState.user.uid;
   const courseRef = db.collection('users').doc(uid).collection('courses').doc(course.id);
   const existingByRoom = new Map(existingSections.map(s => [String(s.room), s]));
@@ -232,7 +244,7 @@ async function importStudentsToRooms(course, existingSections, groups) {
     const secRef = createdRefs[room] || courseRef.collection('sections').doc(existingByRoom.get(room).id);
     groups[room].forEach(stu => ops.push({ secRef, stu }));
   });
-  const CHUNK = 400;
+  const CHUNK = 20; // ก้อนเล็กพอให้แถบความคืบหน้าขยับตามจริง (ไม่เกินลิมิต 500 ของ Firestore)
   for (let i = 0; i < ops.length; i += CHUNK) {
     const batch = db.batch();
     ops.slice(i, i + CHUNK).forEach(({ secRef, stu }) => {
@@ -241,6 +253,7 @@ async function importStudentsToRooms(course, existingSections, groups) {
       });
     });
     await batch.commit();
+    if (onProgress) onProgress(Math.min(i + CHUNK, ops.length), ops.length);
   }
 }
 
@@ -356,16 +369,34 @@ function openImportStudentsModal(course, section) {
 
   document.getElementById('confirm-import-btn').addEventListener('click', async () => {
     const uid = AppState.user.uid;
-    const batch = db.batch();
+    const btn = document.getElementById('confirm-import-btn');
+    btn.disabled = true; // กันกดซ้ำระหว่างนำเข้า (ไม่งั้นรายชื่อซ้ำ)
     const colRef = sectionRef(uid, course.id, section.id).collection('students');
-    parsedRows.forEach(r => {
-      const ref = colRef.doc();
-      batch.set(ref, { no: r.no, code: r.code, firstName: r.firstName, lastName: r.lastName });
-    });
-    await batch.commit();
+    const total = parsedRows.length;
+    const prog = islandProgress({ label: 'นำเข้า', total, unit: 'คน' });
+    const CHUNK = 15; // แบ่งเป็นก้อนเล็ก เพื่อให้แถบความคืบหน้าขยับตามจริง
+    let done = 0;
+    try {
+      for (let i = 0; i < total; i += CHUNK) {
+        const batch = db.batch();
+        parsedRows.slice(i, i + CHUNK).forEach(r => {
+          batch.set(colRef.doc(), { no: r.no, code: r.code, firstName: r.firstName, lastName: r.lastName });
+        });
+        await batch.commit();
+        done = Math.min(i + CHUNK, total);
+        prog.update(done);
+      }
+    } catch (err) {
+      console.error(err);
+      invalidateCourseData(course.id);
+      closeModal();
+      prog.fail(`นำเข้าได้ ${done}/${total} คน แล้วหยุด — ตรวจรายชื่อก่อนนำเข้าซ้ำ`);
+      renderStudentsTab(document.getElementById('course-tab-body'), course, section);
+      return;
+    }
     invalidateCourseData(course.id);
     closeModal();
-    showToast(`นำเข้านักเรียน ${parsedRows.length} คนสำเร็จ`);
+    prog.finish(`นำเข้านักเรียน ${total} คนสำเร็จ`);
     renderStudentsTab(document.getElementById('course-tab-body'), course, section);
   });
 }

@@ -49,7 +49,7 @@ async function makeEnv({ nStudents = 4, nAssess = 8, max = 10, seed = {} } = {})
   w.addEventListener = (t, ...x) => { if (t === 'beforeunload') counts.add++; return a(t, ...x); };
   w.removeEventListener = (t, ...x) => { if (t === 'beforeunload') counts.rem++; return r(t, ...x); };
   env.counts = counts;
-  w.eval(['utils.js', 'scores.js'].map(f => fs.readFileSync(`${root}/js/${f}`, 'utf8')).join('\n;\n') + '\n;this.__calcGrade = calcGrade; this.__parse = parseDelimitedText; this.renderScoresTab = renderScoresTab;');
+  w.eval(['island.js', 'utils.js', 'scores.js'].map(f => fs.readFileSync(`${root}/js/${f}`, 'utf8')).join('\n;\n') + '\n;this.__calcGrade = calcGrade; this.__parse = parseDelimitedText; this.renderScoresTab = renderScoresTab;');
   const container = w.document.getElementById('view');
   env.render = async () => { await w.renderScoresTab(container, { id: 'c1' }, { id: 'sec1', room: '1' }); };
   await env.render();

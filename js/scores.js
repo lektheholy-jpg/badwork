@@ -202,7 +202,17 @@ function wireScoreInputs(container, course, section, students, collectItems, mid
   let seqCounter = 0;
   const MAX_RETRY = 4;            // ลองซ้ำ 4 ครั้ง หน่วง 1.5s, 3s, 6s, 12s
 
+  let islandState = 'saved'; // สถานะล่าสุดที่ส่งให้ Dynamic Island (ส่งเฉพาะตอนเปลี่ยน ไม่รัวทุกตัวอักษร)
+  function syncIsland() {
+    let st = failed.size > 0 ? 'error' : (pendingCount > 0 ? 'saving' : 'saved');
+    if (st === 'saving' && navigator.onLine === false) { islandState = 'saving'; return; } // ออฟไลน์: แคปซูลแสดงสถานะออฟไลน์อยู่แล้ว
+    if (st === islandState) return;
+    islandState = st;
+    islandSave(st, { count: failed.size, retry: retryFailed });
+  }
+
   function renderStatus() {
+    syncIsland();
     statusEl.classList.toggle('saving', failed.size === 0 && pendingCount > 0);
     statusEl.classList.toggle('is-clickable', failed.size > 0);
     if (failed.size > 0) {

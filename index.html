@@ -128,12 +128,18 @@
 </div>
 
 <div id="modal-root"></div>
-<!-- Dynamic Island: แคปซูลดำกลางบนจอ ขยายเป็นแจ้งเตือน/สถานะโหลด (ควบคุมโดย showToast ใน js/utils.js) -->
+<!-- Dynamic Island: แคปซูลดำกลางบนจอ — พัก = วัน·เวลา / ใช้งาน = แจ้งเตือน บันทึกอัตโนมัติ เลิกทำ ความคืบหน้า (ควบคุมโดย js/island.js) -->
 <div id="island" class="island" role="status" aria-live="polite" aria-atomic="true">
+  <div class="island-idle" aria-hidden="true">
+    <span class="island-idle-date"></span><span class="island-idle-sep">·</span><span class="island-idle-time"></span>
+    <span class="island-idle-off"><i></i>ออฟไลน์</span>
+  </div>
   <div class="island-body">
     <span class="island-icon" aria-hidden="true"></span>
     <span class="island-text"></span>
+    <button type="button" class="island-action" hidden></button>
   </div>
+  <div class="island-bar" aria-hidden="true"><i></i></div>
 </div>
 
 <!-- Firebase SDK (compat, ง่ายต่อการใช้กับ HTML/JS ธรรมดา) -->
@@ -142,6 +148,7 @@
 <script defer src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
 
 <script defer src="js/firebase-config.js"></script>
+<script defer src="js/island.js"></script>
 <script defer src="js/utils.js"></script>
 <script defer src="js/auth.js"></script>
 <script defer src="js/dashboard.js"></script>

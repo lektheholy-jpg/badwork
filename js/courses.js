@@ -425,6 +425,8 @@ function confirmDeleteSection(course, sectionId, roomLabel, onDone) {
       const secRef = courseRef.collection('sections').doc(sectionId);
 
       showToast('กำลังลบห้อง...');
+      let backup = null;
+      try { backup = await snapshotSection(secRef); } catch (e) { console.warn('สำรองห้องก่อนลบไม่สำเร็จ', e); }
       await deleteCollectionDocs(secRef.collection('scores'));
       await deleteCollectionDocs(secRef.collection('students'));
       await secRef.delete();
@@ -432,9 +434,20 @@ function confirmDeleteSection(course, sectionId, roomLabel, onDone) {
       invalidateCourseData(course.id);
 
       if (AppState.currentSectionId === sectionId) AppState.currentSectionId = null;
-      showToast('ลบห้องสำเร็จ');
-      if (onDone) onDone();
-      else renderCourseShell();
+      const refresh = () => { if (onDone) onDone(); else renderCourseShell(); };
+      refresh();
+      if (backup && backup.data) {
+        const where = [AppState.currentRoute, AppState.currentCourseId];
+        islandUndo(`ลบห้อง ${roomLabel} แล้ว`, async () => {
+          await restoreSection(courseRef.collection('sections'), backup);
+          await courseRef.update({ roomCount: firebase.firestore.FieldValue.increment(1) });
+          invalidateCourseData(course.id);
+          // วาดหน้าใหม่เฉพาะเมื่อผู้ใช้ยังอยู่หน้าเดิม ไม่ดึงออกจากหน้าที่กำลังใช้อยู่
+          if (AppState.currentRoute === where[0] && AppState.currentCourseId === where[1]) refresh();
+        });
+      } else {
+        showToast('ลบห้องสำเร็จ');
+      }
     }
   });
 }
@@ -470,6 +483,8 @@ function confirmDeleteCourse(course, onDone) {
       const courseRef = db.collection('users').doc(uid).collection('courses').doc(course.id);
 
       showToast('กำลังลบรายวิชา...');
+      let backup = null;
+      try { backup = await snapshotCourse(courseRef); } catch (e) { console.warn('สำรองวิชาก่อนลบไม่สำเร็จ', e); }
       const sectionsSnap = await courseRef.collection('sections').get();
       for (const secDoc of sectionsSnap.docs) {
         const secRef = secDoc.ref;
@@ -483,9 +498,18 @@ function confirmDeleteCourse(course, onDone) {
       invalidateCourseData();
 
       closeModal();
-      showToast('ลบรายวิชาสำเร็จ');
-      if (onDone) onDone();
-      else navigate('courses');
+      const refresh = () => { if (onDone) onDone(); else navigate('courses'); };
+      refresh();
+      if (backup && backup.data) {
+        const where = [AppState.currentRoute, AppState.currentCourseId];
+        islandUndo('ลบรายวิชาแล้ว', async () => {
+          await restoreCourse(courseRef, backup);
+          invalidateCourseData();
+          if (AppState.currentRoute === where[0] && AppState.currentCourseId === where[1]) refresh();
+        });
+      } else {
+        showToast('ลบรายวิชาสำเร็จ');
+      }
     } catch (err) {
       invalidateCourseData(); // อาจลบไปแล้วบางส่วน
       console.error(err);
