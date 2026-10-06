@@ -885,7 +885,7 @@ table.sheet tbody tr:nth-child(even) td.grp-sub-total { background: var(--col-co
 }
 @media (max-width: 860px) {
   /* มือถือ: เต็มจอ ไม่ต้องเว้นขอบกระดาษ เพราะพื้นที่น้อย (อยู่หลังกฎ .main พื้นฐานเพื่อไม่ให้ถูกทับ) */
-  .main { max-width: 100%; border: none; border-radius: 0; min-height: 100vh; box-shadow: none; margin: 0; padding: calc(52px + env(safe-area-inset-top, 0px)) 12px calc(104px + env(safe-area-inset-bottom, 0px)); }
+  .main { max-width: 100%; border: none; border-radius: 0; min-height: 100vh; box-shadow: none; margin: 0; padding: calc(52px + env(safe-area-inset-top, 0px)) 16px calc(104px + env(safe-area-inset-bottom, 0px)); }
 }
 @media print {
   .main { margin: 0; box-shadow: none; border: none; max-width: none; padding: 0; }
