@@ -287,16 +287,27 @@ async function renderCourseShell() {
     p.addEventListener('click', () => {
       AppState.flushScoreSaves?.(); // กันคะแนนหายถ้าเพิ่งพิมพ์แล้วรีบสลับห้อง
       AppState.currentSectionId = p.dataset.sectionId;
+      switchInPlace(p);
       pillSlideNext('course-rooms');
       renderCourseShell();
     });
   });
+  // กดแท็บ/ห้อง: ขยับแถบทันที + หรี่เนื้อหาเดิม — renderCourseShell ต้องรอ Firestore สองรอบก่อนวาดใหม่ ถ้าไม่ตอบสนองก่อนจะรู้สึกค้าง
+  const switchInPlace = (el) => {
+    el.parentElement.querySelectorAll(':scope > .active').forEach(x => x.classList.remove('active'));
+    el.classList.add('active');
+    el.parentElement.__pillPlace?.(true);
+    const b = document.getElementById('course-tab-body');
+    if (b) { b.classList.add('is-switching'); setTimeout(() => b.classList.remove('is-switching'), 8000); }
+    AppState.tabSwitch = true;
+  };
   initNavPill(view.querySelector('#room-pills'), '.room-pill', 'seg-pill', { key: 'course-rooms' });
   initNavPill(view.querySelector('.tabs'), '.tab', 'seg-pill', { key: 'course-tabs' });
   view.querySelectorAll('.tab').forEach(t => {
     t.addEventListener('click', () => {
       AppState.flushScoreSaves?.(); // กันคะแนนหายถ้าเพิ่งพิมพ์แล้วรีบสลับแท็บ
       AppState.currentTab = t.dataset.tab;
+      switchInPlace(t);
       pillSlideNext('course-tabs');
       renderCourseShell();
     });
@@ -308,15 +319,20 @@ async function renderCourseShell() {
     return;
   }
 
-  if (AppState.currentTab === 'overview') renderCourseOverview(body, course, sections);
-  else if (AppState.currentTab === 'students') renderStudentsTab(body, course, section);
-  else if (AppState.currentTab === 'structure') renderStructureTab(body, course);
-  else if (AppState.currentTab === 'scores') renderScoresTab(body, course, section);
+  const switching = AppState.tabSwitch; AppState.tabSwitch = false;
+  const enterBody = () => { // สลับแท็บ/ห้อง: เนื้อหาจริงจางเข้าเมื่อวาดเสร็จ (ไม่เล่นตอนวาดซ้ำจากเหตุอื่น)
+    if (!switching || !body.isConnected) return;
+    body.classList.remove('tab-swap'); void body.offsetWidth; body.classList.add('tab-swap');
+  };
+  if (AppState.currentTab === 'overview') { await renderCourseOverview(body, course, sections); enterBody(); }
+  else if (AppState.currentTab === 'students') { await renderStudentsTab(body, course, section); enterBody(); }
+  else if (AppState.currentTab === 'structure') { await renderStructureTab(body, course); enterBody(); }
+  else if (AppState.currentTab === 'scores') { await renderScoresTab(body, course, section); enterBody(); }
   else if (AppState.currentTab === 'report') {
     // report.js โหลดครั้งแรกที่เปิดแท็บนี้ — ถ้าผู้ใช้สลับแท็บ/ออกจากหน้าก่อนโหลดเสร็จ ไม่ต้องวาดทับ
     showLoading('cat-sm', body);
     try { await loadModule('report'); } catch (err) { body.innerHTML = `<div class="card"><div class="empty-state">${escapeHtml(err.message)}</div></div>`; return; }
-    if (AppState.currentTab === 'report' && body.isConnected) renderReportTab(body, course, section);
+    if (AppState.currentTab === 'report' && body.isConnected) { await renderReportTab(body, course, section); enterBody(); }
   }
 }
 

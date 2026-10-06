@@ -44,7 +44,15 @@ function initNavPill(container, itemSel, cls, opt = {}) {
     }
     if (key) pillGeom[key] = g;
   };
-  if (typeof ResizeObserver === 'function') new ResizeObserver(() => place(false)).observe(container);
+  if (typeof ResizeObserver === 'function') {
+    let lw = container.offsetWidth, lh = container.offsetHeight;
+    new ResizeObserver(() => {
+      if (container.offsetWidth === lw && container.offsetHeight === lh) return; // observer ยิงครั้งแรกตอนเริ่มโดยขนาดไม่เปลี่ยน — ห้ามวางทับจนการเลื่อนที่กำลังเล่นถูกยกเลิก
+      lw = container.offsetWidth; lh = container.offsetHeight;
+      place(false);
+    }).observe(container);
+  }
+  container.__pillPlace = place; // ให้โค้ดหน้าสั่งเลื่อนทันทีตอนกด (ก่อนข้อมูลใหม่มา)
   if (watch && typeof MutationObserver === 'function') {
     new MutationObserver(() => place(true)).observe(container, { attributes: true, subtree: true, attributeFilter: ['aria-pressed', 'aria-selected'] });
   }
