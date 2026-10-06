@@ -71,6 +71,8 @@
   --zebra: #F7F8FA;  --row-on: #E8F0FE;
   --viz-track: #E3E6EC;
   --viz-bar: var(--viz-blue);
+  --glass:      42%;    /* sidebar/tabbar/more-sheet opacity — ยิ่งน้อยยิ่งโปร่ง */
+  --glass-blur: 30px;
   color-scheme: light;
 }
 
@@ -2024,9 +2026,9 @@ table.sheet tbody tr:nth-child(n) td.over-max { background: var(--danger-tint); 
 /* ==========================================================================
    v10 — เมนูบาร์โปร่งแสงนิดๆ (เมนูข้างบนจอปกติ + ลิ้นชักเมนู / แถบเมนูล่าง / แผงเพิ่มเติมบนมือถือ)
    สีพื้นโปร่งแสงอยู่ที่กฎเดิมของ .sidebar / .tabbar / .more-sheet (ใช้ --glass) · ที่นี่เพิ่มเฉพาะเอฟเฟกต์เบลอพื้นหลัง
-   ปรับความโปร่งที่ --glass (ยิ่งน้อยยิ่งโปร่ง · ตอนนี้ 42%)
+   ปรับความโปร่งที่ --glass ใน :root {} บนสุด (ยิ่งน้อยยิ่งโปร่ง · ตอนนี้ 42%)
    ========================================================================== */
-:root { --glass: 42%; --glass-blur: 30px; }
+/* --glass และ --glass-blur ย้ายขึ้นรวมใน :root {} หลักแล้ว — ไม่ต้องซ้ำที่นี่ */
 .sidebar { -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.6); backdrop-filter: blur(var(--glass-blur)) saturate(1.6); }
 @media (max-width: 860px) {
   .tabbar, .more-sheet { -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.6); backdrop-filter: blur(var(--glass-blur)) saturate(1.6); }
