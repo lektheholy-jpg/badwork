@@ -29,7 +29,7 @@ function exportRoomCsv(course, section, { students, assessments, scores, gradeSc
   const header = ['เลขที่', 'รหัสนักเรียน', 'ชื่อ', 'นามสกุล', ...assessments.map(a => a.name), 'รวม', 'เกรด'];
   const rows = students.map(s => {
     const sc = scores[s.id] || {};
-    const total = assessments.reduce((sum, a) => sum + (Number(sc[a.id]) || 0), 0);
+    const total = roundScore(assessments.reduce((sum, a) => sum + (Number(sc[a.id]) || 0), 0));
     return [s.no, s.code, s.firstName, s.lastName, ...assessments.map(a => sc[a.id] ?? ''), total, calcGrade(total, gradeScale)];
   });
   downloadCsv(`คะแนน-${course.name}-ห้อง${section.room}.csv`, [header, ...rows]);
@@ -43,7 +43,7 @@ async function renderReportTab(container, course, section) {
 
   const totals = students.map(s => {
     const sc = scores[s.id] || {};
-    return assessments.reduce((sum, a) => sum + (Number(sc[a.id]) || 0), 0);
+    return roundScore(assessments.reduce((sum, a) => sum + (Number(sc[a.id]) || 0), 0));
   });
 
   const avg = totals.length ? (totals.reduce((a, b) => a + b, 0) / totals.length) : 0;

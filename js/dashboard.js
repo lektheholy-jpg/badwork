@@ -88,7 +88,7 @@ async function loadSectionWithGrades(c, s, courseBase, ctx) {
   };
   const gradedStudents = studentsSnap.docs.map(sd => {
     const sc = scoresByStudent[sd.id] || {};
-    const total = assessments.reduce((sum, a) => sum + (Number(sc[a.id]) || 0), 0);
+    const total = roundScore(assessments.reduce((sum, a) => sum + (Number(sc[a.id]) || 0), 0));
     const hasScore = assessmentIds.some(aid => sc[aid] !== undefined && sc[aid] !== null && sc[aid] !== '');
     return { id: sd.id, total, hasScore, grade: calcGrade(total, gradeScale) };
   });

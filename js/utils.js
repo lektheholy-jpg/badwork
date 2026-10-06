@@ -88,12 +88,37 @@ function escapeHtml(str) {
 }
 
 // แยกข้อความ CSV หรือข้อความที่ copy มาจาก Excel (คั่นด้วย comma หรือ tab)
-function parseDelimitedText(text) {
-  const lines = text.trim().split(/\r?\n/).filter(l => l.trim().length > 0);
-  return lines.map(line => {
-    const delim = line.includes('\t') ? '\t' : ',';
-    return line.split(delim).map(c => c.trim());
-  });
+// - รองรับช่องที่ครอบด้วย "..." (มี comma/ขึ้นบรรทัดใหม่ในช่องได้ และ "" แทน ")
+// - ค่าเริ่มต้น: ตัดแถวว่างทิ้ง (เหมาะกับการนำเข้ารายชื่อ)
+// - keepBlank: true = คงแถวว่างและช่องว่างหน้าสุดไว้ตามตำแหน่งเดิม (ใช้ตอนวางคะแนนลงตาราง
+//   เพื่อไม่ให้คะแนนเลื่อนไปผิดคนเมื่อมีนักเรียนที่ช่องว่าง)
+function parseDelimitedText(text, { keepBlank = false } = {}) {
+  let s = String(text ?? '').replace(/^\uFEFF/, '');
+  if (keepBlank) s = s.replace(/\r?\n$/, ''); // Excel เติมขึ้นบรรทัดใหม่ท้ายข้อความเสมอ ตัดออกแค่ 1 ตัว
+  const firstLine = s.split(/\r?\n/).find(l => l.trim() !== '') ?? '';
+  const delim = firstLine.includes('\t') ? '\t' : ',';
+
+  const rows = [];
+  let row = [], field = '', inQuotes = false;
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i];
+    if (inQuotes) {
+      if (c === '"') {
+        if (s[i + 1] === '"') { field += '"'; i++; } else inQuotes = false;
+      } else field += c;
+    } else if (c === '"' && field === '') {
+      inQuotes = true;
+    } else if (c === delim) {
+      row.push(field); field = '';
+    } else if (c === '\n' || c === '\r') {
+      if (c === '\r' && s[i + 1] === '\n') i++;
+      row.push(field); rows.push(row); row = []; field = '';
+    } else field += c;
+  }
+  row.push(field); rows.push(row);
+
+  const trimmed = rows.map(r => r.map(c => c.trim()));
+  return keepBlank ? trimmed : trimmed.filter(r => r.some(c => c !== ''));
 }
 
 // แยกเลขห้อง / รายการห้องจากข้อความ เช่น "1,2,3" หรือ "1-5" หรือ "ม.6/1, ม.6/2"
@@ -125,12 +150,21 @@ const DEFAULT_GRADE_SCALE = [
   { grade: '0', min: 0 },
 ];
 
+// ตัดเศษทศนิยมลอยตัวของคะแนน (เช่น 49.99999999999999 -> 50, 0.1+0.2 -> 0.3)
+// ใช้กับผลรวมคะแนนทุกที่ที่นำไปแสดงหรือตัดเกรด เพื่อให้คะแนนที่ขอบเกณฑ์ไม่ตกเกรดผิด
+// ค่าที่ไม่ใช่ตัวเลข (NaN/ว่าง) นับเป็น 0
+function roundScore(v) {
+  const n = Number(v);
+  return Number.isFinite(n) ? Number(n.toFixed(6)) : 0;
+}
+
 function calcGrade(total, scale) {
+  const t = roundScore(total);
   const s = (scale && scale.length ? scale : DEFAULT_GRADE_SCALE)
     .slice()
     .sort((a, b) => b.min - a.min);
   for (const row of s) {
-    if (total >= row.min) return row.grade;
+    if (t >= row.min) return row.grade;
   }
   return s.length ? s[s.length - 1].grade : '0';
 }

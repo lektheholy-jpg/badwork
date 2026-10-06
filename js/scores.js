@@ -146,10 +146,10 @@ function gradeBadgeClass(grade) {
 }
 
 function renderScoreRow(student, collectItems, midItems, finalItems, studentScores, collectMax, maxTotal, gradeScale, collectRuns) {
-  const collectSum = collectItems.reduce((s, a) => s + (Number(studentScores[a.id]) || 0), 0);
-  const midSum = midItems.reduce((s, a) => s + (Number(studentScores[a.id]) || 0), 0);
-  const finalSum = finalItems.reduce((s, a) => s + (Number(studentScores[a.id]) || 0), 0);
-  const total = collectSum + midSum + finalSum;
+  const collectSum = roundScore(collectItems.reduce((s, a) => s + (Number(studentScores[a.id]) || 0), 0));
+  const midSum = roundScore(midItems.reduce((s, a) => s + (Number(studentScores[a.id]) || 0), 0));
+  const finalSum = roundScore(finalItems.reduce((s, a) => s + (Number(studentScores[a.id]) || 0), 0));
+  const total = roundScore(collectSum + midSum + finalSum);
   const grade = calcGrade(total, gradeScale);
   const searchText = `${student.no} ${student.code} ${student.firstName} ${student.lastName}`.toLowerCase();
 
@@ -167,7 +167,7 @@ function renderScoreRow(student, collectItems, midItems, finalItems, studentScor
       <td class="name-cell sticky-col-3" title="${escapeHtml(student.firstName)} ${escapeHtml(student.lastName)}">${escapeHtml(student.firstName)} ${escapeHtml(student.lastName)}</td>
       ${collectRuns
         ? collectRuns.map(r => r.items.map(cellFor).join('')
-            + `<td class="total-cell grp-sub-total" data-group-sum="${r.gid}" data-student-id="${student.id}">${r.items.reduce((s, a) => s + (Number(studentScores[a.id]) || 0), 0)}</td>`).join('')
+            + `<td class="total-cell grp-sub-total" data-group-sum="${r.gid}" data-student-id="${student.id}">${roundScore(r.items.reduce((s, a) => s + (Number(studentScores[a.id]) || 0), 0))}</td>`).join('')
         : collectItems.map(cellFor).join('')}
       <td class="total-cell grp-collect-total" data-collect-for="${student.id}">${collectSum}</td>
       ${midItems.map(cellFor).join('')}
@@ -178,67 +178,113 @@ function renderScoreRow(student, collectItems, midItems, finalItems, studentScor
   `;
 }
 
+// แปลงข้อความในช่องคะแนนเป็นตัวเลข — คืน null เมื่อว่าง/ยังพิมพ์ไม่เสร็จ (เช่น ".") หรือไม่ใช่ตัวเลขปกติ
+// null = "ยังไม่กรอก" (ลบฟิลด์ออกจากฐานข้อมูล) ต่างจาก 0 = "ได้ศูนย์คะแนน"
+function parseScore(raw) {
+  const t = String(raw ?? '').trim();
+  if (t === '' || t === '.') return null;
+  const n = Number(t);
+  return Number.isFinite(n) && n >= 0 ? n : null;
+}
+
 function wireScoreInputs(container, course, section, students, collectItems, midItems, finalItems, scores, collectMax, maxTotal, gradeScale, groups) {
   const uid = AppState.user.uid;
   const base = sectionRef(uid, course.id, section.id);
   const statusEl = document.getElementById('save-status');
+  statusEl.setAttribute('role', 'status');
+  statusEl.setAttribute('aria-live', 'polite');
 
-  // เดิม: ใช้ debounce ตัวเดียวรวมทุกช่อง ทำให้พิมพ์คะแนนช่องถัดไปเร็ว ๆ ไปยกเลิกการบันทึก
-  // ของช่องก่อนหน้าที่ยังไม่ทันบันทึกจริง (นี่คือสาเหตุคะแนนหาย) — เปลี่ยนมาเป็น debounce
-  // แยกอิสระ "ต่อช่อง" (คีย์ = นักเรียน+รายการคะแนน) ไม่ให้ช่องอื่นมาตัดหน้ากัน
-  const pendingSaves = new Map(); // key -> { timer, run }
-  let pendingCount = 0;
+  // debounce แยกอิสระ "ต่อช่อง" (คีย์ = นักเรียน+รายการคะแนน) ไม่ให้ช่องอื่นมาตัดหน้ากัน
+  const pendingSaves = new Map(); // key -> { timer, item }  รอครบ 500ms
+  const latestSeq = new Map();    // key -> ลำดับการแก้ล่าสุด กันค่าเก่าทับค่าใหม่ตอน retry
+  const failed = new Map();       // key -> item ที่บันทึกไม่สำเร็จหลัง retry ครบ
+  let pendingCount = 0;           // จำนวนช่องที่ยังรอ/กำลังบันทึก/กำลัง retry
+  let seqCounter = 0;
+  const MAX_RETRY = 4;            // ลองซ้ำ 4 ครั้ง หน่วง 1.5s, 3s, 6s, 12s
 
-  function updateStatusPending() {
-    statusEl.classList.add('saving');
-    statusEl.innerHTML = `<span class="dot"></span> กำลังบันทึก...`;
-  }
-
-  async function runSave(studentId, assessmentId, value) {
-    try {
-      await base.collection('scores').doc(studentId).set({ [assessmentId]: value }, { merge: true });
-      invalidateCourseData(course.id); // หน้าแรก/รายงานต้องโหลดวิชานี้ใหม่
-    } catch (err) {
-      statusEl.innerHTML = `<span class="dot" style="background:var(--danger)"></span> บันทึกไม่สำเร็จ`;
-      console.error(err);
-      return;
-    }
-    pendingCount = Math.max(0, pendingCount - 1);
-    if (pendingCount === 0) {
-      statusEl.classList.remove('saving');
+  function renderStatus() {
+    statusEl.classList.toggle('saving', failed.size === 0 && pendingCount > 0);
+    statusEl.style.cursor = failed.size > 0 ? 'pointer' : '';
+    if (failed.size > 0) {
+      statusEl.innerHTML = `<span class="dot" style="background:var(--danger)"></span> บันทึกไม่สำเร็จ ${failed.size} ช่อง — แตะเพื่อลองใหม่`;
+    } else if (pendingCount > 0) {
+      statusEl.innerHTML = navigator.onLine === false
+        ? `<span class="dot" style="background:var(--danger)"></span> ออฟไลน์ — ยังไม่ได้บันทึก (อย่าปิดหน้านี้)`
+        : `<span class="dot"></span> กำลังบันทึก...`;
+    } else {
       statusEl.innerHTML = `<span class="dot"></span> บันทึกแล้ว`;
     }
   }
 
+  async function runSave(item, attempt = 0) {
+    const done = () => { pendingCount = Math.max(0, pendingCount - 1); renderStatus(); };
+    // มีการแก้ช่องเดิมซ้ำหลังจากนี้แล้ว: ไม่ต้องเขียนค่าเก่า
+    if (attempt > 0 && latestSeq.get(item.key) !== item.seq) return done();
+    const payload = item.value === null ? firebase.firestore.FieldValue.delete() : item.value;
+    try {
+      await base.collection('scores').doc(item.studentId).set({ [item.assessmentId]: payload }, { merge: true });
+      invalidateCourseData(course.id); // หน้าแรก/รายงานต้องโหลดวิชานี้ใหม่
+    } catch (err) {
+      console.error(err);
+      if (latestSeq.get(item.key) !== item.seq) return done();
+      if (attempt < MAX_RETRY) {
+        renderStatus();
+        setTimeout(() => runSave(item, attempt + 1), 1500 * 2 ** attempt);
+        return;
+      }
+      pendingCount = Math.max(0, pendingCount - 1);
+      failed.set(item.key, item);
+      renderStatus();
+      return;
+    }
+    done();
+  }
+
+  function retryFailed() {
+    const items = [...failed.values()];
+    failed.clear();
+    items.forEach(it => { pendingCount++; runSave(it); });
+    renderStatus();
+  }
+  statusEl.addEventListener('click', () => { if (failed.size > 0) retryFailed(); });
+
+  // value: ตัวเลข หรือ null (= ล้างช่อง)
   function saveCell(studentId, assessmentId, value) {
     const key = `${studentId}:${assessmentId}`;
-    updateStatusPending();
-    if (!pendingSaves.has(key)) pendingCount++;
+    const item = { key, studentId, assessmentId, value, seq: ++seqCounter };
+    latestSeq.set(key, item.seq);
+    failed.delete(key);
     const existing = pendingSaves.get(key);
-    if (existing) clearTimeout(existing.timer);
+    if (existing) clearTimeout(existing.timer); else pendingCount++;
     const timer = setTimeout(() => {
       pendingSaves.delete(key);
-      runSave(studentId, assessmentId, value);
+      runSave(item);
     }, 500);
-    pendingSaves.set(key, { timer });
+    pendingSaves.set(key, { timer, item });
+    renderStatus();
   }
 
   // บันทึกทันทีทุกช่องที่ยังค้างอยู่ (ไม่รอ debounce) — เรียกก่อนสลับแท็บ/ออกจากหน้านี้
-  // เพื่อกันคะแนนหายกรณีพิมพ์เสร็จแล้วรีบสลับแท็บก่อนครบ 500ms
+  // ใช้ค่าที่เก็บไว้ในคิว ไม่อ่านจาก DOM จึงไม่หลุดแม้หน้าถูกวาดใหม่ไปแล้ว
   function flushPendingSaves() {
-    pendingSaves.forEach(({ timer }, key) => clearTimeout(timer));
-    const keys = [...pendingSaves.keys()];
+    const items = [...pendingSaves.values()].map(p => { clearTimeout(p.timer); return p.item; });
     pendingSaves.clear();
-    keys.forEach(key => {
-      const inp = container.querySelector(`.score-input[data-student-id="${key.split(':')[0]}"][data-assessment-id="${key.split(':')[1]}"]`);
-      if (!inp) return;
-      const val = inp.value === '' ? 0 : Number(inp.value);
-      runSave(inp.dataset.studentId, inp.dataset.assessmentId, val);
-    });
+    items.forEach(item => runSave(item));
   }
-  // เผื่อกรณีปิดแท็บ/รีเฟรชเบราว์เซอร์ทันทีหลังพิมพ์
-  window.addEventListener('beforeunload', flushPendingSaves);
   AppState.flushScoreSaves = flushPendingSaves;
+
+  // ผูก listener ระดับ window ครั้งเดียวต่อการเปิดหน้านี้ (ถอดของเดิมออกก่อน กันซ้อนทุกครั้งที่วาดหน้าใหม่)
+  if (AppState._scoreBeforeUnload) window.removeEventListener('beforeunload', AppState._scoreBeforeUnload);
+  if (AppState._scoreNetChange) { window.removeEventListener('online', AppState._scoreNetChange); window.removeEventListener('offline', AppState._scoreNetChange); }
+  AppState._scoreBeforeUnload = (e) => {
+    flushPendingSaves();
+    // เตือนก่อนปิดหน้าเมื่อมีคะแนนที่ยังไม่ถึงเซิร์ฟเวอร์จริง ๆ (บันทึกพลาด หรือออฟไลน์อยู่)
+    if (failed.size > 0 || (pendingCount > 0 && navigator.onLine === false)) { e.preventDefault(); e.returnValue = ''; }
+  };
+  AppState._scoreNetChange = () => { if (navigator.onLine !== false && failed.size > 0) retryFailed(); else renderStatus(); };
+  window.addEventListener('beforeunload', AppState._scoreBeforeUnload);
+  window.addEventListener('online', AppState._scoreNetChange);
+  window.addEventListener('offline', AppState._scoreNetChange);
 
   // รหัสรายการคะแนนเก็บ -> รหัสหมวดหมู่ ('' = ยังไม่จัดหมวด) ใช้รวมคะแนนรายหมวด
   const groupIdSet = new Set(groups.map(g => g.id));
@@ -249,7 +295,7 @@ function wireScoreInputs(container, course, section, students, collectItems, mid
     let collectSum = 0, total = 0;
     const groupSums = {};
     row.querySelectorAll('.score-input').forEach(inp => {
-      const val = Number(inp.value) || 0;
+      const val = parseScore(inp.value) || 0;
       total += val;
       if (collectGroupOf.has(inp.dataset.assessmentId)) {
         collectSum += val;
@@ -257,8 +303,9 @@ function wireScoreInputs(container, course, section, students, collectItems, mid
         groupSums[gid] = (groupSums[gid] || 0) + val;
       }
     });
-    row.querySelectorAll('[data-group-sum]').forEach(td => { td.textContent = groupSums[td.dataset.groupSum] || 0; });
-    row.querySelector(`[data-collect-for="${studentId}"]`).textContent = collectSum;
+    row.querySelectorAll('[data-group-sum]').forEach(td => { td.textContent = roundScore(groupSums[td.dataset.groupSum] || 0); });
+    row.querySelector(`[data-collect-for="${studentId}"]`).textContent = roundScore(collectSum);
+    total = roundScore(total);
     row.querySelector(`[data-total-for="${studentId}"]`).textContent = total;
     const grade = calcGrade(total, gradeScale);
     row.querySelector(`[data-grade-for="${studentId}"]`).innerHTML = `<span class="badge ${gradeBadgeClass(grade)}">${grade}</span>`;
@@ -268,15 +315,22 @@ function wireScoreInputs(container, course, section, students, collectItems, mid
 
   inputs.forEach((inp) => {
     inp.addEventListener('input', () => {
-      // กรองให้พิมพ์ได้เฉพาะตัวเลข (และจุดทศนิยม 1 จุด) — ป้องกันค่าอื่นที่ไม่ได้มาจากการพิมพ์คะแนนจริง
+      // กรองให้พิมพ์ได้เฉพาะตัวเลข (และจุดทศนิยม 1 จุด)
       const cleaned = inp.value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
       if (cleaned !== inp.value) inp.value = cleaned;
 
+      // คะแนนเกินคะแนนเต็มไม่ถูกบันทึก: ปรับเป็นคะแนนเต็มและแจ้งเตือน (ถ้าตั้งใจให้โบนัส ให้เพิ่มคะแนนเต็มที่หน้าโครงสร้างวิชา)
       const max = Number(inp.dataset.max);
-      const val = Number(inp.value);
-      inp.closest('td').classList.toggle('over-max', inp.value !== '' && val > max);
+      let val = parseScore(inp.value);
+      if (val !== null && max > 0 && val > max) {
+        val = max;
+        inp.value = String(max);
+        showToast(`คะแนนเกินคะแนนเต็ม (${max}) ปรับเป็น ${max} ให้แล้ว`);
+      }
+      inp.closest('td').classList.remove('over-max');
       recalcRow(inp.dataset.studentId);
-      saveCell(inp.dataset.studentId, inp.dataset.assessmentId, inp.value === '' ? 0 : val);
+      if (inp.value === '.') return; // กำลังพิมพ์ทศนิยม ยังไม่บันทึก รอตัวเลขถัดไป
+      saveCell(inp.dataset.studentId, inp.dataset.assessmentId, val);
     });
 
     inp.addEventListener('keydown', (e) => {
@@ -308,25 +362,34 @@ function wireScoreInputs(container, course, section, students, collectItems, mid
       const text = (e.clipboardData || window.clipboardData).getData('text');
       if (!text.includes('\t') && !text.includes('\n')) return;
       e.preventDefault();
-      const grid = parseDelimitedText(text);
+      // keepBlank: แถวว่าง/ช่องว่างต้องคงตำแหน่งไว้ ไม่งั้นคะแนนเลื่อนไปผิดคน
+      const grid = parseDelimitedText(text, { keepBlank: true });
       const row = inp.closest('tr');
       const startColIdx = [...row.querySelectorAll('.score-input')].indexOf(inp);
       const rows = [...container.querySelectorAll('#score-tbody tr')].filter(r => r.style.display !== 'none');
       const startRowIdx = rows.indexOf(row);
+      let clamped = 0;
 
       grid.forEach((rowVals, rOff) => {
         const targetRow = rows[startRowIdx + rOff];
         if (!targetRow) return;
         const targetInputs = [...targetRow.querySelectorAll('.score-input')];
-        rowVals.forEach((val, cOff) => {
+        rowVals.forEach((cell, cOff) => {
           const targetInp = targetInputs[startColIdx + cOff];
           if (!targetInp) return;
-          const num = Number(val);
-          targetInp.value = isNaN(num) ? '' : num;
+          const raw = String(cell).trim();
+          // ช่องว่าง = ล้างช่อง (เหมือนวางใน Excel) · ข้อความที่ไม่ใช่ตัวเลข (เช่น หัวตาราง) = ข้าม ไม่แตะช่องนั้น
+          let val = raw === '' ? null : Number(raw);
+          if (val !== null && !(Number.isFinite(val) && val >= 0)) return;
+          const max = Number(targetInp.dataset.max);
+          if (val !== null && max > 0 && val > max) { val = max; clamped++; }
+          targetInp.value = val === null ? '' : String(val);
+          targetInp.closest('td').classList.remove('over-max');
           recalcRow(targetInp.dataset.studentId);
-          saveCell(targetInp.dataset.studentId, targetInp.dataset.assessmentId, isNaN(num) ? 0 : num);
+          saveCell(targetInp.dataset.studentId, targetInp.dataset.assessmentId, val);
         });
       });
+      if (clamped) showToast(`มี ${clamped} ช่องที่คะแนนเกินคะแนนเต็ม ปรับเป็นคะแนนเต็มให้แล้ว`);
     });
   });
 }
