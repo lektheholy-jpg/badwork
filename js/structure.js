@@ -5,7 +5,6 @@
 //   เก็บรายชื่อหมวดหมู่ไว้ที่ settings/structure และให้แต่ละงานอ้างด้วย groupId
 // ==========================================================================
 
-const CATEGORY_LABELS = { collect: 'คะแนนเก็บ', midterm: 'กลางภาค', final: 'ปลายภาค' };
 const MIDTERM_NAME = 'สอบกลางภาค';
 const FINAL_NAME = 'สอบปลายภาค';
 

@@ -121,23 +121,6 @@ function parseDelimitedText(text, { keepBlank = false } = {}) {
   return keepBlank ? trimmed : trimmed.filter(r => r.some(c => c !== ''));
 }
 
-// แยกเลขห้อง / รายการห้องจากข้อความ เช่น "1,2,3" หรือ "1-5" หรือ "ม.6/1, ม.6/2"
-function parseRoomList(text) {
-  const parts = text.split(',').map(p => p.trim()).filter(Boolean);
-  const rooms = [];
-  parts.forEach(p => {
-    const rangeMatch = p.match(/^(\d+)\s*-\s*(\d+)$/);
-    if (rangeMatch) {
-      const start = Number(rangeMatch[1]), end = Number(rangeMatch[2]);
-      for (let n = Math.min(start, end); n <= Math.max(start, end); n++) rooms.push(String(n));
-    } else if (p) {
-      rooms.push(p);
-    }
-  });
-  // ตัดค่าซ้ำ โดยรักษาลำดับเดิม
-  return [...new Set(rooms)];
-}
-
 // เกณฑ์เกรดเริ่มต้น (ครูปรับเองได้ในหน้าตั้งค่ารายวิชา)
 const DEFAULT_GRADE_SCALE = [
   { grade: '4.0', min: 80 },
@@ -501,9 +484,6 @@ function readFileAsRows(file) {
 }
 
 // ---------- Mobile nav (hamburger drawer) ----------
-function openMobileNav() {
-  document.getElementById('app')?.classList.add('nav-open');
-}
 function closeMobileNav() {
   document.getElementById('app')?.classList.remove('nav-open');
 }

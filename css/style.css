@@ -26,8 +26,8 @@
   --font-mono: 'IBM Plex Mono', monospace;
   --sidebar-w: 240px;
   --sidebar-w-collapsed: 78px;
-  --font: 'One UI Sans', 'SamsungOne', 'Noto Sans Thai', system-ui, sans-serif;
-  --font-head: 'One UI Sans', 'SamsungOne', 'IBM Plex Sans Thai', 'Noto Sans Thai', system-ui, sans-serif;
+  --font: 'Noto Sans Thai', system-ui, sans-serif;
+  --font-head: 'IBM Plex Sans Thai', 'Noto Sans Thai', system-ui, sans-serif;
   --font-modern: var(--font-head);
   --radius-xs: 12px;  --radius-s: 16px;  --radius-m: 24px;  --radius-l: 28px;  --radius-xl: 32px;  --radius-pill: 999px;
   --paper-shadow: none;

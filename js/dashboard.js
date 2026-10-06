@@ -186,8 +186,9 @@ async function renderDashboard() {
     <header class="site-banner">
       <picture>
         <source media="(prefers-reduced-motion: reduce)" srcset="assets/banner-still.webp">
+        <source media="(prefers-reduced-motion: no-preference) and (min-width: 641px)" srcset="assets/banner.webp">
         <source media="(max-width: 640px)" srcset="assets/banner-sm.webp">
-        <img src="assets/banner.webp" width="590" height="350" decoding="async" alt="กมฺมุนา วตฺตตี โลโก — สัตว์โลกย่อมเป็นไปตามกรรม">
+        <img src="assets/banner-still.webp" width="590" height="350" decoding="async" alt="กมฺมุนา วตฺตตี โลโก — สัตว์โลกย่อมเป็นไปตามกรรม">
       </picture>
     </header>
     <div class="cw-row">
