@@ -85,10 +85,8 @@ function playViewEnter() {
 }
 // กดเปิดหน้าที่ต้องรอข้อมูลก่อนวาด (เช่น เปิดรายวิชา): หน้าเดิมจางลงทันที แล้ว playViewEnter จะถอดออกเมื่อหน้าใหม่มา
 function markViewPending() {
-  const v = document.getElementById('view');
-  if (!v) return;
-  v.classList.add('view-pending');
-  setTimeout(() => v.classList.remove('view-pending'), 8000); // กันค้างถ้าโหลดล้มเหลว
+  AppState.enterNext = true; // renderCourseShell เห็นแล้วจะเฟดเข้าตอนหน้าใหม่มาถึง
+  showLoading('cat');        // หน้าเดิมจางทันที ถ้ารอเกิน 180ms น้องแมวจะขึ้นแทน
 }
 document.getElementById('view')?.addEventListener('animationend', e => {
   if (e.target === e.currentTarget) e.currentTarget.classList.remove('view-enter');
@@ -98,6 +96,7 @@ document.getElementById('view')?.addEventListener('animationend', e => {
 const ROUTE_MODULES = { 'report-page': 'report', tools: 'tools' };
 
 function navigate(route) {
+  AppState.enterNext = false; // ยกเลิกเฟดที่ค้างจากการเปิดรายวิชา (เช่น วิชาถูกลบแล้วเด้งกลับ)
   AppState.flushScoreSaves?.(); // กันคะแนนหายถ้าเพิ่งพิมพ์คะแนนแล้วรีบกดออกจากหน้าวิชา
   AppState.currentRoute = route;
   AppState.currentCourseId = null;

@@ -16,7 +16,7 @@ async function loadAllCoursesForStructure() {
 
 async function renderStructurePage() {
   const view = document.getElementById('view');
-  showLoading('cat');
+  showLoading(AppState.structureEditingCourseId ? 'cat' : 'list'); // หน้ารายการวิชา = โครงแถว · หน้าแก้โครงสร้าง = น้องแมว
 
   if (AppState.structureEditingCourseId) {
     return renderStructureEditor(view, AppState.structureEditingCourseId);
@@ -259,7 +259,7 @@ function scoresSubjectBlockHtml({ course, sections }) {
 
 async function renderScoresPage() {
   const view = document.getElementById('view');
-  showLoading('cat');
+  showLoading(AppState.scoresPageCourseId && AppState.scoresPageSectionId ? 'cat' : 'list'); // ยังไม่เลือกวิชา/ห้อง = การ์ดเลือกวิชา → โครงแถว
 
   const selCourseId = AppState.scoresPageCourseId;
   const selSectionId = AppState.scoresPageSectionId;

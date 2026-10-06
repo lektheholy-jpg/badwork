@@ -261,7 +261,7 @@ async function renderCourseShell() {
     </div>
     <div id="course-tab-body"></div>
   `;
-  if (view.classList.contains('view-pending')) playViewEnter(); // มาจากการเปิดรายวิชา (ไม่ใช่สลับแท็บ/ห้อง) → เฟดเข้า
+  if (AppState.enterNext) { AppState.enterNext = false; playViewEnter(); } // มาจากการเปิดรายวิชา (ไม่ใช่สลับแท็บ/ห้อง) → เฟดเข้า
 
   document.getElementById('back-to-courses').addEventListener('click', (e) => { e.preventDefault(); navigate('courses'); });
   document.getElementById('archive-course-btn')?.addEventListener('click', () => {
@@ -534,6 +534,7 @@ function confirmDeleteCourse(course, onDone) {
 }
 
 async function renderCourseOverview(container, course, sections) {
+  showLoading('cat-sm', container);
   const uid = AppState.user.uid;
   const base = db.collection('users').doc(uid).collection('courses').doc(course.id);
 
