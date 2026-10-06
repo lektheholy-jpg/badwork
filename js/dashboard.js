@@ -186,10 +186,10 @@ async function renderDashboard() {
     <header class="site-banner">
       <h1 class="banner-title">เวรกรรม<span class="banner-dots">..</span></h1>
       <picture>
-        <source media="(prefers-reduced-motion: reduce)" srcset="assets/banner-still.webp">
-        <source media="(prefers-reduced-motion: no-preference) and (min-width: 641px)" srcset="assets/banner.webp">
-        <source media="(max-width: 640px)" srcset="assets/banner-sm.webp">
-        <img src="assets/banner-still.webp" width="252" height="350" decoding="async" alt="แมวสวมหมวกตู้ปลา">
+        <source media="(prefers-reduced-motion: reduce)" srcset="assets/head-cat-still.webp">
+        <source media="(prefers-reduced-motion: no-preference) and (min-width: 641px)" srcset="assets/head-cat.webp">
+        <source media="(max-width: 640px)" srcset="assets/head-cat-sm.webp">
+        <img src="assets/head-cat-still.webp" width="252" height="350" decoding="async" alt="แมวสวมหมวกตู้ปลา">
       </picture>
     </header>
     <div class="cw-row">
