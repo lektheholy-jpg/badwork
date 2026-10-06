@@ -1523,13 +1523,15 @@ button.brand:hover .mark { transform: rotate(-6deg) scale(1.04); }
 .rc-tab:focus-visible { outline: 2px solid var(--tc); outline-offset: 2px; }
 .rc-course { margin: 0 0 8px; font-size: 13px; font-weight: 700; color: var(--ink-soft); }
 
-/* ===== หัวเว็บ (แบนเนอร์แมวอวกาศ): ขนาดตามหน้าจอ ===== */
-.site-banner { display: flex; justify-content: flex-end; margin: 0 0 10px; padding: 4px 0 0; }
-.site-banner img { display: block; width: min(100%, 500px); height: auto; aspect-ratio: 590 / 350; user-select: none; -webkit-user-drag: none; }
-/* ธีมมืด: ภาพต้นฉบับเป็นเส้นดำบนพื้นโปร่งใส → กลับสี (หมุนเฉดกลับให้สีฟ้ายังเป็นฟ้า) */
+/* ===== หัวเว็บ: ชื่อแอปทางซ้าย + แมวใส่ตู้ปลาทางขวา (ขนาดตามหน้าจอ) ===== */
+.site-banner { display: flex; align-items: center; justify-content: space-between; gap: clamp(8px, 3vw, 28px); margin: 0 0 10px; padding: 4px 0 0; }
+.banner-title { margin: 0; min-width: 0; font-size: clamp(34px, 9.5vw, 56px); font-weight: 800; line-height: 1.2; letter-spacing: -.01em; color: var(--ink); overflow-wrap: anywhere; }
+.banner-dots { color: var(--ink-soft); }
+.site-banner picture { flex: none; display: block; }
+.site-banner img { display: block; width: auto; height: clamp(170px, 36vw, 240px); aspect-ratio: 252 / 350; user-select: none; -webkit-user-drag: none; }
+/* ธีมมืด: ภาพต้นฉบับเป็นเส้นดำบนพื้นโปร่งใส → กลับสีเป็นเส้นขาว */
 :root[data-theme="dark"] .site-banner img { filter: invert(1) hue-rotate(180deg); }
-@media (min-width: 1100px) { .site-banner img { width: min(100%, 540px); } }
-@media (max-width: 640px) { .site-banner { margin-bottom: 4px; } .site-banner img { width: 100%; } }
+@media (max-width: 640px) { .site-banner { margin-bottom: 4px; } .site-banner img { height: 170px; } }
 
 /* ===== จอคอม: ขยายเนื้อหาให้เต็มพื้นที่ แทนที่จะเหลือขอบว่างสองข้าง ===== */
 /* จอกว้าง (≥1360px): หน้าแรกแบ่ง 2 คอลัมน์ — ซ้าย: นาฬิกา/อากาศ + กราฟ · ขวา: ความคืบหน้าล่าสุด */
@@ -1606,7 +1608,7 @@ button.brand:hover .mark { transform: rotate(-6deg) scale(1.04); }
 /* ----- ขยายตามหน้าจอ: ใช้พื้นที่เต็ม ไม่เหลือขอบว่างสองข้าง ----- */
 @media (min-width: 861px) {
   .main { max-width: none; margin: 0; padding: 32px clamp(24px, 3vw, 72px) 64px; }
-  .site-banner img { width: min(100%, 380px); }
+  .banner-title { font-size: clamp(44px, 5vw, 64px); }
 }
 @media (min-width: 1360px) {
   /* แถว 1: ซ้าย = วิดเจ็ตเวลา+อากาศ · ขวา = แบนเนอร์แมว (ขยายใหญ่ ความสูงเท่ากัน)
@@ -1614,8 +1616,9 @@ button.brand:hover .mark { transform: rotate(-6deg) scale(1.04); }
   .dash { --hero-h: clamp(200px, 14.5vw, 380px); display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(500px, 1fr); grid-template-rows: auto auto auto; column-gap: clamp(24px, 2vw, 44px); align-items: start; }
   .dash > .cw-row { grid-column: 1; grid-row: 1; align-self: stretch; margin-bottom: clamp(12px, 1.2vw, 22px); }
   .dash > .cw-row .cw-card { min-height: var(--hero-h); }
-  .dash > .site-banner { grid-column: 2; grid-row: 1; align-self: stretch; justify-content: center; align-items: center; margin: 0 0 clamp(12px, 1.2vw, 22px); padding: 0; }
-  .dash > .site-banner img { width: auto; height: var(--hero-h); max-width: 100%; object-fit: contain; }
+  .dash > .site-banner { grid-column: 2; grid-row: 1; align-self: stretch; justify-content: center; gap: clamp(16px, 2.4vw, 48px); margin: 0 0 clamp(12px, 1.2vw, 22px); padding: 0 clamp(8px, 2vw, 36px); }
+  .dash > .site-banner .banner-title { font-size: clamp(48px, 4.2vw, 88px); }
+  .dash > .site-banner img { height: var(--hero-h); }
   .dash > .rc-card { grid-column: 1; grid-row: 2; margin-bottom: 0; padding: clamp(20px, 1.6vw, 34px) clamp(22px, 1.9vw, 40px) 14px; }
   .dash > .book-inside { grid-column: 1 / -1; grid-row: 3; }
   .chart-row { gap: clamp(14px, 1.4vw, 28px); }

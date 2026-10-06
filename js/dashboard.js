@@ -184,11 +184,12 @@ async function renderDashboard() {
   view.innerHTML = `
     <div class="dash">
     <header class="site-banner">
+      <h1 class="banner-title">เวรกรรม<span class="banner-dots">..</span></h1>
       <picture>
         <source media="(prefers-reduced-motion: reduce)" srcset="assets/banner-still.webp">
         <source media="(prefers-reduced-motion: no-preference) and (min-width: 641px)" srcset="assets/banner.webp">
         <source media="(max-width: 640px)" srcset="assets/banner-sm.webp">
-        <img src="assets/banner-still.webp" width="590" height="350" decoding="async" alt="กมฺมุนา วตฺตตี โลโก — สัตว์โลกย่อมเป็นไปตามกรรม">
+        <img src="assets/banner-still.webp" width="252" height="350" decoding="async" alt="แมวสวมหมวกตู้ปลา">
       </picture>
     </header>
     <div class="cw-row">
