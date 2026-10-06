@@ -17,9 +17,9 @@ async function renderStudentsTab(container, course, section) {
   container.innerHTML = `
     <div class="toolbar">
       <div class="toolbar-left">
-        <span style="font-size:13px; color:var(--ink-soft);">ห้อง ${escapeHtml(section.room)} • นักเรียนทั้งหมด ${students.length} คน</span>
+        <span class="u-note">ห้อง ${escapeHtml(section.room)} • นักเรียนทั้งหมด ${students.length} คน</span>
       </div>
-      <div style="display:flex; gap:8px;">
+      <div class="u-flex u-gap-8">
         <button class="btn btn-ghost btn-sm" id="add-one-btn">+ เพิ่มทีละคน</button>
         <button class="btn btn-primary btn-sm" id="import-btn">นำเข้ารายชื่อ</button>
       </div>
@@ -167,7 +167,7 @@ function openImportAllRoomsModal(course, existingSections, onDone) {
       if (newRooms.length > 0) checks.push({ ok: true, text: `จะสร้างห้องใหม่ ${newRooms.length} ห้อง: ${newRooms.map(r => 'ห้อง ' + r).join(', ')}` });
       if (invalidRows.length > 0) checks.push({ ok: false, text: `ข้าม ${invalidRows.length} แถวที่ระบุเลขห้อง (1-13) ไม่ได้` });
 
-      previewEl.innerHTML = `<div class="card card-pad" style="margin-bottom:10px;">${checks.map(c => `<div class="check-row ${c.ok ? 'ok' : 'warn'}">${c.ok ? '✓' : '✕'} ${c.text}</div>`).join('')}</div>`;
+      previewEl.innerHTML = `<div class="card card-pad u-mb-10">${checks.map(c => `<div class="check-row ${c.ok ? 'ok' : 'warn'}">${c.ok ? '✓' : '✕'} ${c.text}</div>`).join('')}</div>`;
 
       const canImport = validRows.length > 0 && dupCodes.length === 0 && emptyNames === 0;
       confirmBtn.classList.toggle('hidden', !canImport);
@@ -264,7 +264,7 @@ function openImportStudentsModal(course, section) {
       <div class="field">
         <textarea id="import-text" rows="8" placeholder="1,16001,สมชาย,ใจดี&#10;2,16002,สมหญิง,รักเรียน"></textarea>
       </div>
-      <div class="field-hint" style="margin:-8px 0 12px;">รูปแบบ: เลขที่, รหัสนักเรียน, ชื่อ, นามสกุล (คั่นด้วย comma หรือ tab)</div>
+      <div class="field-hint u-hint-up-8">รูปแบบ: เลขที่, รหัสนักเรียน, ชื่อ, นามสกุล (คั่นด้วย comma หรือ tab)</div>
       <button class="btn btn-ghost btn-sm" id="preview-paste-btn">ตรวจสอบข้อมูล</button>
     </div>
 
@@ -319,7 +319,7 @@ function openImportStudentsModal(course, section) {
     }
 
     document.getElementById('preview-area').innerHTML = `
-      <div class="card card-pad" style="margin-bottom:10px;">
+      <div class="card card-pad u-mb-10">
         ${checks.map(c => `<div class="check-row ${c.ok ? 'ok' : 'warn'}">${c.ok ? '✓' : '✕'} ${c.text}</div>`).join('')}
       </div>
     `;

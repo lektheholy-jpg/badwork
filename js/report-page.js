@@ -23,7 +23,7 @@ function reportRoomRowHtml(course, { section, studentCount, progress }) {
   return `
     <div class="report-room-row" data-course-id="${course.id}" data-section-id="${section.id}">
       <div class="report-room-info">
-        <span class="course-dot" style="background:${courseColor(course) || col.strong}"></span>
+        <span class="course-dot" style="--c:${courseColor(course) || col.strong}"></span>
         <span class="report-room-name">ห้อง ${escapeHtml(section.room)}</span>
         <span class="report-room-meta">${studentCount} คน · บันทึกคะแนนแล้ว ${progress}%</span>
       </div>
@@ -43,12 +43,12 @@ function reportPageBodyHtml(cards) {
     listClass: 'scores-subject-list',
     rowFn: ({ course, sections }, col) => `
       <div class="scores-subject-block">
-        <div class="scores-subject-title" style="border-left:4px solid ${col.strong};">
-          <span class="struct-code" style="color:${col.strong};">${escapeHtml(course.code || 'ไม่มีรหัส')}</span>
+        <div class="scores-subject-title" style="--c:${col.strong}">
+          <span class="struct-code" style="--c:${col.strong}">${escapeHtml(course.code || 'ไม่มีรหัส')}</span>
           <span class="struct-course-name">${escapeHtml(course.name)}</span>
         </div>
         ${sections.length === 0
-          ? `<div class="empty-state" style="padding:10px 0 0; text-align:left;">วิชานี้ยังไม่มีห้องเรียน</div>`
+          ? `<div class="empty-state u-pt-10 u-text-left">วิชานี้ยังไม่มีห้องเรียน</div>`
           : `<div class="report-room-list">${sections.map(si => reportRoomRowHtml(course, si)).join('')}</div>`}
       </div>`,
   });
@@ -80,9 +80,9 @@ async function renderReportPage() {
       <h1>รายงาน</h1>
       <div class="sub">เลือกภาคเรียน เพื่อดูสรุปผลการเรียน และกดส่งออกข้อมูลหรือคะแนนเข้าฟอร์ม SGS / Next School ของแต่ละห้อง</div>
     </div>
-    <div class="toolbar" style="margin-bottom:16px;">
+    <div class="toolbar u-mb-16">
       <div class="toolbar-left">
-        <label for="report-term" style="font-size:13px; font-weight:600;">ภาคเรียน</label>
+        <label for="report-term" class="u-fs-13 u-semibold">ภาคเรียน</label>
         <select id="report-term" class="gs-select">
           ${terms.map(t => `<option value="${t}" ${t === currentTerm ? 'selected' : ''}>${escapeHtml(termLabel(t))}</option>`).join('')}
           ${terms.length > 1 ? `<option value="__all__" ${currentTerm === '__all__' ? 'selected' : ''}>ทุกภาคเรียน</option>` : ''}

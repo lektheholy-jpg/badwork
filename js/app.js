@@ -37,35 +37,35 @@ function renderSettings() {
   const u = AppState.user;
   view.innerHTML = `
     <div class="page-header"><h1>ตั้งค่า</h1><div class="sub">บัญชีและหน้าตาของแอป</div></div>
-    <div class="card card-pad" style="max-width:420px;">
-      <div style="display:flex; align-items:center; gap:12px; margin-bottom:16px;">
-        <img src="${escapeHtml(safePhotoUrl(u.photoURL, u.displayName))}" alt="" referrerpolicy="no-referrer" style="width:48px; height:48px; border-radius:50%;">
+    <div class="card card-pad u-maxw-420">
+      <div class="u-flex u-items-center u-gap-12 u-mb-16">
+        <img src="${escapeHtml(safePhotoUrl(u.photoURL, u.displayName))}" alt="" referrerpolicy="no-referrer" class="u-avatar-48">
         <div>
-          <div style="font-weight:600;">${escapeHtml(u.displayName || '')}</div>
-          <div style="font-size:12.5px; color:var(--ink-soft);">${escapeHtml(u.email || '')}</div>
+          <div class="u-semibold">${escapeHtml(u.displayName || '')}</div>
+          <div class="u-note-sm">${escapeHtml(u.email || '')}</div>
         </div>
       </div>
-      <div style="font-size:13px; color:var(--ink-soft);">
+      <div class="u-note">
         ข้อมูลรายวิชา ห้องเรียน นักเรียน และคะแนนของคุณจะถูกเก็บแยกจากครูคนอื่นโดยอัตโนมัติ ผ่านบัญชี Google ของคุณ
       </div>
     </div>
-    <div class="card card-pad" style="max-width:420px; margin-top:14px;">
-      <div style="font-weight:600;">ธีม</div>
-      <div style="font-size:13px; color:var(--ink-soft);">เลือกโหมดสว่าง โหมดมืด หรือให้ตามการตั้งค่าของอุปกรณ์</div>
+    <div class="card card-pad u-maxw-420 u-mt-14">
+      <div class="u-semibold">ธีม</div>
+      <div class="u-note">เลือกโหมดสว่าง โหมดมืด หรือให้ตามการตั้งค่าของอุปกรณ์</div>
       <div class="theme-seg" role="group" aria-label="ธีม">
         <button type="button" class="theme-opt" data-theme-pref="auto">${icon('contrast')}ตามระบบ</button>
         <button type="button" class="theme-opt" data-theme-pref="light">${icon('sun')}สว่าง</button>
         <button type="button" class="theme-opt" data-theme-pref="dark">${icon('moon')}มืด</button>
       </div>
     </div>
-    <div class="card card-pad" style="max-width:420px; margin-top:14px;">
-      <div style="font-weight:600;">ความเป็นส่วนตัวและข้อมูลของฉัน</div>
-      <div style="font-size:13px; color:var(--ink-soft); line-height:1.65; margin-top:4px;">
+    <div class="card card-pad u-maxw-420 u-mt-14">
+      <div class="u-semibold">ความเป็นส่วนตัวและข้อมูลของฉัน</div>
+      <div class="u-note u-lh-165 u-mt-4">
         แอปเก็บชื่อ อีเมล รูปโปรไฟล์ของครู และข้อมูลรายวิชา นักเรียน (ซึ่งเป็นข้อมูลส่วนบุคคลของผู้เยาว์) และคะแนน บน Google Firebase โดยผูกกับบัญชีของครูเท่านั้น
         หน้าหลักส่งพิกัดโดยประมาณ (ปัดเหลือราว 1 กม.) ไปยัง Open-Meteo เพื่อแสดงสภาพอากาศ โดยไม่ส่งข้อมูลนักเรียน
         ครูควรใช้ข้อมูลนักเรียนเท่าที่จำเป็นและตามนโยบายของโรงเรียน
       </div>
-      <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:12px;">
+      <div class="u-flex u-gap-8 u-wrap u-mt-12">
         <button type="button" class="btn btn-ghost btn-sm" id="privacy-export-btn">ส่งออกข้อมูลของฉัน (JSON)</button>
         <button type="button" class="btn btn-danger-ghost btn-sm" id="privacy-delete-btn">ลบบัญชีและข้อมูลทั้งหมด</button>
       </div>

@@ -21,7 +21,7 @@ function openCreateCourseModal(onCreated, sourceCourse = null) {
       <div class="field"><label>ปีการศึกษา</label><input id="f-year" placeholder="2569"></div>
       <div class="field"><label>หน่วยกิต</label><input id="f-credit" placeholder="1.0" value="${escapeHtml(src.credit || '')}"></div>
     </div>
-    <div class="field-hint" style="margin:-6px 0 14px;">สีประจำวิชาจะถูกกำหนดอัตโนมัติตามระดับชั้นที่เลือก เพื่อให้แยกกลุ่มวิชาได้ง่ายในหน้ารายวิชา</div>
+    <div class="field-hint u-hint-up-6">สีประจำวิชาจะถูกกำหนดอัตโนมัติตามระดับชั้นที่เลือก เพื่อให้แยกกลุ่มวิชาได้ง่ายในหน้ารายวิชา</div>
 
     <div class="field">
       <label>ห้องที่สอน (เลือกได้ 1-13)</label>
@@ -178,7 +178,7 @@ async function renderCoursesList() {
   view.innerHTML = `
     <div class="page-header">
       <h1>รายวิชาของฉัน</h1>
-      <div class="sub">รายวิชาทั้งหมดที่คุณสอนในภาคเรียนนี้ — จบเทอมแล้วกดเก็บเข้า <a href="#" id="goto-archive" style="color:var(--primary); font-weight:600;">คลังรายวิชา</a> ได้จากหน้ารายวิชานั้น</div>
+      <div class="sub">รายวิชาทั้งหมดที่คุณสอนในภาคเรียนนี้ — จบเทอมแล้วกดเก็บเข้า <a href="#" id="goto-archive" class="u-link-primary">คลังรายวิชา</a> ได้จากหน้ารายวิชานั้น</div>
     </div>
     ${courses.length === 0 ? `
       <div class="card"><div class="empty-state">
@@ -235,10 +235,10 @@ async function renderCourseShell() {
 
   const view = document.getElementById('view');
   view.innerHTML = `
-    <div class="crumb"><a href="#" id="back-to-courses" style="text-decoration:none; color:inherit;">รายวิชาของฉัน</a> / <b>${escapeHtml(course.name)}</b></div>
-    <div class="page-header" style="display:flex; align-items:flex-start; justify-content:space-between; gap:16px; flex-wrap:wrap;">
+    <div class="crumb"><a href="#" id="back-to-courses" class="u-link-plain">รายวิชาของฉัน</a> / <b>${escapeHtml(course.name)}</b></div>
+    <div class="page-header u-flex u-items-start u-between u-wrap u-gap-16">
       <div>
-        <h1>${escapeHtml(course.code ? course.code + ' • ' : '')}${escapeHtml(course.name)} ${course.archived ? '<span class="badge badge-neutral" style="vertical-align:middle; margin-left:6px;">อยู่ในคลัง</span>' : ''}</h1>
+        <h1>${escapeHtml(course.code ? course.code + ' • ' : '')}${escapeHtml(course.name)} ${course.archived ? '<span class="badge badge-neutral u-badge-inline">อยู่ในคลัง</span>' : ''}</h1>
         <div class="sub">${escapeHtml(course.level || '')} • ภาคเรียน ${escapeHtml(course.semester || '-')}/${escapeHtml(course.year || '-')} • ${sections.length} ห้อง</div>
       </div>
       <div>
@@ -251,12 +251,12 @@ async function renderCourseShell() {
     ${sections.length > 0 ? `
       <div class="room-pills" id="room-pills">
         ${sections.map(s => `
-          <button class="room-pill ${s.id === AppState.currentSectionId ? 'active' : ''}" data-section-id="${s.id}" style="padding:7px 14px;">ห้อง ${escapeHtml(s.room)}</button>
+          <button class="room-pill ${s.id === AppState.currentSectionId ? 'active' : ''} u-pad-7-14" data-section-id="${s.id}">ห้อง ${escapeHtml(s.room)}</button>
         `).join('')}
       </div>
     ` : `
-      <div class="card card-pad" style="margin-bottom:16px;">
-        <div class="empty-state" style="padding:0; text-align:left;">ยังไม่มีห้องเรียนในวิชานี้ — ไปเพิ่มห้องได้ที่หน้า "ตั้งค่าโครงสร้างวิชา"</div>
+      <div class="card card-pad u-mb-16">
+        <div class="empty-state u-p-0 u-text-left">ยังไม่มีห้องเรียนในวิชานี้ — ไปเพิ่มห้องได้ที่หน้า "ตั้งค่าโครงสร้างวิชา"</div>
       </div>
     `}
 
@@ -334,8 +334,8 @@ async function renderArchivePage() {
     ` : `
       <div class="course-list">
         ${courses.map(c => `
-          <div class="course-row" data-course-id="${c.id}" style="cursor:default;">
-            <div class="course-dot" style="background:${courseColor(c) || '#3E91FF'}"></div>
+          <div class="course-row u-cursor-default" data-course-id="${c.id}">
+            <div class="course-dot" style="--c:${courseColor(c) || '#3E91FF'}"></div>
             <div class="info">
               <div class="name">${escapeHtml(c.name)}</div>
               <div class="meta">${escapeHtml(c.code || '')} • ${escapeHtml(c.level || '')} • ${c.roomCount || 0} ห้อง • ภาคเรียน ${escapeHtml(c.semester || '-')}/${escapeHtml(c.year || '-')}</div>
@@ -524,14 +524,14 @@ async function renderCourseOverview(container, course, sections) {
       <div class="stat-card"><div class="label">รายการคะแนนที่กำหนด</div><div class="value">${assessSnap.size}</div></div>
     </div>
     ${sections.length > 0 ? `
-      <div class="card" style="margin-bottom:16px;">
+      <div class="card u-mb-16">
         <div class="struct-panel-header">ความคืบหน้ารายห้อง</div>
-        <div class="card-pad" style="display:flex; flex-direction:column; gap:10px;">
+        <div class="card-pad u-flex u-col u-gap-10">
           ${perSectionWithProgress.map(s => `
-            <div style="display:flex; align-items:center; gap:12px;">
-              <div style="width:70px; font-weight:600; font-size:13.5px;">ห้อง ${escapeHtml(s.room)}</div>
-              <div style="width:80px; font-size:12.5px; color:var(--ink-soft);">${s.studentCount} คน</div>
-              <div class="progress-bar" style="flex:1; width:auto;"><div class="fill" style="width:${s.progress}%"></div></div>
+            <div class="u-flex u-items-center u-gap-12">
+              <div class="u-w-70 u-semibold u-fs-135">ห้อง ${escapeHtml(s.room)}</div>
+              <div class="u-w-80 u-note-sm">${s.studentCount} คน</div>
+              <div class="progress-bar u-grow"><div class="fill" style="--p:${s.progress}%"></div></div>
               <div class="progress-pct">${s.progress}%</div>
             </div>
           `).join('')}
@@ -539,8 +539,8 @@ async function renderCourseOverview(container, course, sections) {
       </div>
     ` : ''}
     <div class="card card-pad">
-      <h2 style="font-size:14.5px; margin-bottom:10px;">ขั้นตอนถัดไป</h2>
-      <div style="display:flex; flex-direction:column; gap:8px; font-size:13.5px; color:var(--ink-soft);">
+      <h2 class="u-fs-145 u-mb-10">ขั้นตอนถัดไป</h2>
+      <div class="u-flex u-col u-gap-8 u-fs-135 u-soft">
         <div>1. เพิ่มห้องเรียน ${sections.length > 0 ? '✓' : '— ยังไม่มีห้อง'}</div>
         <div>2. เพิ่มรายชื่อนักเรียนแต่ละห้อง ${totalStudents > 0 ? '✓' : '— ยังไม่มีนักเรียน'}</div>
         <div>3. กำหนดโครงสร้างคะแนน (ใช้ร่วมกันทุกห้อง) ${assessSnap.size > 0 ? '✓' : '— ยังไม่ได้กำหนด'}</div>

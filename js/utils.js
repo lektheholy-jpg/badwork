@@ -279,7 +279,7 @@ function groupsByLevelHtml(items, { levelOf, listClass, rowFn }) {
         const col = getLevelColor(g.level);
         return `
           <div class="struct-group">
-            <div class="struct-group-header" style="background:${col.tint}; color:${col.strong};">
+            <div class="struct-group-header" style="--c:${col.strong}">
               <span class="struct-group-title">${g.level ? g.level : 'ไม่ระบุระดับชั้น'}</span>
               <span class="struct-group-count">${g.items.length} วิชา</span>
             </div>

@@ -44,11 +44,11 @@ function structureRowHtml(c) {
       </label>
       <div class="info">
         <div class="name">
-          <span class="struct-code" style="color:${c.archived ? 'var(--ink-soft)' : col.strong};">${escapeHtml(c.code || 'ไม่มีรหัส')}</span>
+          <span class="struct-code" style="--c:${col.strong}">${escapeHtml(c.code || 'ไม่มีรหัส')}</span>
           <span class="struct-course-name">${escapeHtml(c.name)}</span>
         </div>
         <div class="meta">
-          <span class="badge struct-level-badge" style="background:${col.tint}; color:${col.strong};">${escapeHtml(c.level || 'ไม่ระบุระดับชั้น')}</span>
+          <span class="badge struct-level-badge" style="--c:${col.strong}">${escapeHtml(c.level || 'ไม่ระบุระดับชั้น')}</span>
           ภาคเรียน ${escapeHtml(c.semester || '-')}/${escapeHtml(c.year || '-')} • ${c.roomCount || 0} ห้อง
           ${c.archived ? '<span class="struct-status-tag">ปิดใช้งาน</span>' : '<span class="struct-status-tag is-active">กำลังใช้งาน</span>'}
         </div>
@@ -65,7 +65,7 @@ async function renderStructureList(view) {
   const courses = await loadAllCoursesForStructure();
 
   view.innerHTML = `
-    <div class="page-header" style="display:flex; align-items:flex-start; justify-content:space-between; flex-wrap:wrap; gap:10px;">
+    <div class="page-header u-flex u-items-start u-between u-wrap u-gap-10">
       <div>
         <h1>ตั้งค่าโครงสร้างวิชา</h1>
         <div class="sub">รายวิชาทั้งหมดของคุณ อ้างอิงด้วยรหัสวิชา — เปิด/ปิดใช้งานเพื่อกำหนดว่าจะใช้วิชาไหนในเทอมนี้ หรือกดแก้ไขเพื่อจัดการห้องเรียนและสัดส่วนคะแนน</div>
@@ -145,29 +145,29 @@ async function renderStructureEditor(view, courseId) {
   AppState.sections = sections; // ใช้โดย openAddRoomModal/confirmDeleteSection เพื่อคำนวณลำดับห้อง/ข้อความยืนยัน
 
   view.innerHTML = `
-    <div class="crumb"><a href="#" id="struct-back-to-list" style="text-decoration:none; color:inherit;">ตั้งค่าโครงสร้างวิชา</a> / <b>${escapeHtml(course.code ? course.code + ' - ' : '')}${escapeHtml(course.name)}</b></div>
-    <div class="page-header" style="display:flex; align-items:flex-start; justify-content:space-between; flex-wrap:wrap; gap:10px;">
+    <div class="crumb"><a href="#" id="struct-back-to-list" class="u-link-plain">ตั้งค่าโครงสร้างวิชา</a> / <b>${escapeHtml(course.code ? course.code + ' - ' : '')}${escapeHtml(course.name)}</b></div>
+    <div class="page-header u-flex u-items-start u-between u-wrap u-gap-10">
       <div>
-        <h1>${escapeHtml(course.code ? course.code + ' • ' : '')}${escapeHtml(course.name)} ${course.archived ? '<span class="badge badge-neutral" style="vertical-align:middle; margin-left:6px;">ปิดใช้งาน</span>' : '<span class="badge badge-success" style="vertical-align:middle; margin-left:6px;">กำลังใช้งาน</span>'}</h1>
+        <h1>${escapeHtml(course.code ? course.code + ' • ' : '')}${escapeHtml(course.name)} ${course.archived ? '<span class="badge badge-neutral u-badge-inline">ปิดใช้งาน</span>' : '<span class="badge badge-success u-badge-inline">กำลังใช้งาน</span>'}</h1>
         <div class="sub">${escapeHtml(course.level || 'ไม่ระบุระดับชั้น')} • ภาคเรียน ${escapeHtml(course.semester || '-')}/${escapeHtml(course.year || '-')}</div>
       </div>
       <button class="btn btn-danger-ghost btn-sm" id="struct-del-course-btn">ลบวิชานี้</button>
     </div>
-    <div class="card card-pad" style="margin-bottom:16px;">
-      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; flex-wrap:wrap; gap:8px;">
-        <div style="font-weight:600; font-size:13.5px;">ห้องเรียนของวิชานี้</div>
+    <div class="card card-pad u-mb-16">
+      <div class="u-flex u-items-center u-between u-mb-10 u-wrap u-gap-8">
+        <div class="u-semibold u-fs-135">ห้องเรียนของวิชานี้</div>
         <button class="btn btn-ghost btn-sm" id="struct-import-all-btn">นำเข้ารายชื่อ (แยกห้องอัตโนมัติ)</button>
       </div>
-      <div class="room-pills" id="struct-room-pills" style="margin-bottom:0;">
+      <div class="room-pills u-mb-0" id="struct-room-pills">
         ${sections.map(s => `
           <div class="room-pill-wrap">
-            <span class="room-pill" style="cursor:default;">ห้อง ${escapeHtml(s.room)}</span>
+            <span class="room-pill u-cursor-default">ห้อง ${escapeHtml(s.room)}</span>
             <button class="room-pill-del" data-section-id="${s.id}" data-room-label="${escapeHtml(s.room)}" title="ลบห้องนี้">×</button>
           </div>
         `).join('')}
         <button class="room-pill room-pill-add" id="struct-add-room-btn">+ เพิ่มห้อง</button>
       </div>
-      ${sections.length === 0 ? `<div class="empty-state" style="padding:10px 0 0;">ยังไม่มีห้องเรียนในวิชานี้ กด "+ เพิ่มห้อง" เพื่อเริ่มต้น</div>` : ''}
+      ${sections.length === 0 ? `<div class="empty-state u-pt-10">ยังไม่มีห้องเรียนในวิชานี้ กด "+ เพิ่มห้อง" เพื่อเริ่มต้น</div>` : ''}
     </div>
     <div id="structure-page-body"></div>
   `;
@@ -235,23 +235,23 @@ function scoresSubjectBlockHtml({ course, sections }) {
   const col = getLevelColor(course.level);
   return `
     <div class="scores-subject-block">
-      <div class="scores-subject-title" style="border-left:4px solid ${col.strong};">
-        <span class="struct-code" style="color:${col.strong};">${escapeHtml(course.code || 'ไม่มีรหัส')}</span>
+      <div class="scores-subject-title" style="--c:${col.strong}">
+        <span class="struct-code" style="--c:${col.strong}">${escapeHtml(course.code || 'ไม่มีรหัส')}</span>
         <span class="struct-course-name">${escapeHtml(course.name)}</span>
       </div>
       ${sections.length === 0 ? `
-        <div class="empty-state" style="padding:10px 0 0; text-align:left;">วิชานี้ยังไม่มีห้องเรียน</div>
+        <div class="empty-state u-pt-10 u-text-left">วิชานี้ยังไม่มีห้องเรียน</div>
       ` : `
         <div class="section-card-grid">
           ${sections.map(({ section, studentCount, progress }) => `
             <div class="section-card" style="--w:${courseColor(course) || col.strong}" data-course-id="${course.id}" data-section-id="${section.id}">
               <div class="section-card-top">
-                <span class="course-dot" style="background:${courseColor(course) || col.strong}"></span>
+                <span class="course-dot" style="--c:${courseColor(course) || col.strong}"></span>
                 <span class="section-card-room">ห้อง ${escapeHtml(section.room)}</span>
               </div>
               <div class="section-card-name">${escapeHtml(course.name)}</div>
               <div class="section-card-meta">${studentCount} คน</div>
-              <div class="progress-bar"><div class="fill" style="width:${progress}%; background:${courseColor(course) || col.strong}"></div></div>
+              <div class="progress-bar"><div class="fill" style="--p:${progress}%; --c:${courseColor(course) || col.strong}"></div></div>
               <div class="section-card-pct">${progress}% บันทึกแล้ว</div>
             </div>
           `).join('')}
@@ -320,7 +320,7 @@ async function renderScoresPage() {
   }
 
   view.innerHTML = `
-    <div class="crumb"><a href="#" id="scores-back-to-picker" style="text-decoration:none; color:inherit;">บันทึกคะแนน</a> / <b>${escapeHtml(course.code ? course.code + ' - ' : '')}${escapeHtml(course.name)} • ห้อง ${escapeHtml(section.room)}</b></div>
+    <div class="crumb"><a href="#" id="scores-back-to-picker" class="u-link-plain">บันทึกคะแนน</a> / <b>${escapeHtml(course.code ? course.code + ' - ' : '')}${escapeHtml(course.name)} • ห้อง ${escapeHtml(section.room)}</b></div>
     <div class="page-header">
       <h1>${escapeHtml(course.code ? course.code + ' • ' : '')}${escapeHtml(course.name)}</h1>
       <div class="sub">${escapeHtml(course.level || '')} • ห้อง ${escapeHtml(section.room)} • บันทึกคะแนนรายบุคคลแบบตาราง พร้อมคำนวณรวมและเกรดอัตโนมัติ</div>

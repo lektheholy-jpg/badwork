@@ -117,9 +117,9 @@ async function renderStructureTab(container, course) {
       </div>
 
       <div class="card">
-        <div class="struct-panel-header" style="display:flex; justify-content:space-between;">
+        <div class="struct-panel-header u-flex u-between">
           <span>รายละเอียดคะแนนเก็บ (งาน/ชิ้นงาน/แบบฝึกหัด)</span>
-          <span style="font-weight:600; color:${gt === 100 ? 'var(--success)' : 'var(--danger)'};">รวมทั้งหมด ${gt} / 100</span>
+          <span class="u-semibold ${gt === 100 ? 'is-ok' : 'is-bad'}">รวมทั้งหมด ${gt} / 100</span>
         </div>
         <div class="card-pad">
           <div class="group-creator">
@@ -131,11 +131,11 @@ async function renderStructureTab(container, course) {
             ${quickNames.length ? `<div class="group-quick">ตัวอย่าง: ${quickNames.map(n => `<button type="button" class="chip quick-group" data-name="${n}">+ ${n}</button>`).join('')}</div>` : ''}
           </div>
 
-          ${ordered.length === 0 && !hasGroups ? `<div class="empty-state" style="padding:20px;">ยังไม่มีรายการคะแนนเก็บ</div>` : `
+          ${ordered.length === 0 && !hasGroups ? `<div class="empty-state u-p-20">ยังไม่มีรายการคะแนนเก็บ</div>` : `
             <div class="struct-table-wrap">
             <table class="struct-table ${hasGroups ? 'has-groups' : ''}">
               <thead><tr>
-                <th style="width:24px;"></th>
+                <th class="u-w-24"></th>
                 <th>#</th>
                 <th>รหัส/ชื่อรายการ</th>
                 <th>รายละเอียด / จุดประสงค์</th>
@@ -147,9 +147,9 @@ async function renderStructureTab(container, course) {
             </table>
             </div>
           `}
-          <div style="margin-top:12px; display:flex; gap:8px;">
+          <div class="u-mt-12 u-flex u-gap-8">
             <button class="btn btn-ghost btn-sm" id="add-item-btn">+ เพิ่มแถว</button>
-            <button class="btn btn-primary" id="save-structure-btn" style="margin-left:auto;">บันทึกโครงสร้างวิชา</button>
+            <button class="btn btn-primary u-ml-auto" id="save-structure-btn">บันทึกโครงสร้างวิชา</button>
           </div>
         </div>
       </div>
@@ -258,7 +258,8 @@ async function renderStructureTab(container, course) {
     const header = container.querySelector('.struct-panel-header span:last-child');
     if (header) {
       header.textContent = `รวมทั้งหมด ${gt} / 100`;
-      header.style.color = gt === 100 ? 'var(--success)' : 'var(--danger)';
+      header.classList.toggle('is-ok', gt === 100);
+      header.classList.toggle('is-bad', gt !== 100);
     }
     container.querySelectorAll('.group-stat').forEach(el => {
       el.textContent = statText(itemsOf(el.dataset.statFor || null));

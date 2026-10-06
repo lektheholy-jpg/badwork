@@ -60,7 +60,7 @@ async function renderScoresTab(container, course, section) {
   container.innerHTML = `
     <div class="toolbar">
       <div class="toolbar-left">
-        <span class="badge badge-neutral" style="font-size:13px; padding:6px 12px;">ห้อง ${escapeHtml(section.room)}</span>
+        <span class="badge badge-neutral u-fs-13 u-pad-6-12">ห้อง ${escapeHtml(section.room)}</span>
         <div class="search-box"><input id="student-search" placeholder="ค้นหานักเรียน..."></div>
       </div>
       <div class="save-status" id="save-status"><span class="dot"></span> บันทึกอัตโนมัติแล้ว</div>
@@ -83,7 +83,7 @@ async function renderScoresTab(container, course, section) {
           <tr>
             <th rowspan="3" class="sticky-col-1">เลขที่</th>
             <th rowspan="3" class="sticky-col-2">รหัส</th>
-            <th rowspan="3" class="sticky-col-3" style="text-align:left;">นักเรียน</th>
+            <th rowspan="3" class="sticky-col-3 u-text-left">นักเรียน</th>
             <th class="grp-label grp-collect" colspan="${collectItems.length + collectRuns.length + 1}">คะแนนเก็บ</th>
             ${midItems.length ? `<th class="grp-label grp-mid" rowspan="2" colspan="${midItems.length}">กลางภาค</th>` : ''}
             ${finalItems.length ? `<th class="grp-label grp-final" rowspan="2" colspan="${finalItems.length}">ปลายภาค</th>` : ''}
@@ -104,7 +104,7 @@ async function renderScoresTab(container, course, section) {
           <tr>
             <th rowspan="2" class="sticky-col-1">เลขที่</th>
             <th rowspan="2" class="sticky-col-2">รหัส</th>
-            <th rowspan="2" class="sticky-col-3" style="text-align:left;">นักเรียน</th>
+            <th rowspan="2" class="sticky-col-3 u-text-left">นักเรียน</th>
             ${collectItems.length ? `<th class="grp-label grp-collect" colspan="${collectItems.length + 1}">คะแนนเก็บ</th>` : ''}
             ${midItems.length ? `<th class="grp-label grp-mid" colspan="${midItems.length}">กลางภาค</th>` : ''}
             ${finalItems.length ? `<th class="grp-label grp-final" colspan="${finalItems.length}">ปลายภาค</th>` : ''}
@@ -130,7 +130,7 @@ async function renderScoresTab(container, course, section) {
     const q = e.target.value.trim().toLowerCase();
     document.querySelectorAll('#score-tbody tr').forEach(row => {
       const text = row.dataset.searchtext || '';
-      row.style.display = text.includes(q) ? '' : 'none';
+      row.classList.toggle('hidden', !text.includes(q));
     });
   }, 150));
 
@@ -204,12 +204,12 @@ function wireScoreInputs(container, course, section, students, collectItems, mid
 
   function renderStatus() {
     statusEl.classList.toggle('saving', failed.size === 0 && pendingCount > 0);
-    statusEl.style.cursor = failed.size > 0 ? 'pointer' : '';
+    statusEl.classList.toggle('is-clickable', failed.size > 0);
     if (failed.size > 0) {
-      statusEl.innerHTML = `<span class="dot" style="background:var(--danger)"></span> บันทึกไม่สำเร็จ ${failed.size} ช่อง — แตะเพื่อลองใหม่`;
+      statusEl.innerHTML = `<span class="dot dot-danger"></span> บันทึกไม่สำเร็จ ${failed.size} ช่อง — แตะเพื่อลองใหม่`;
     } else if (pendingCount > 0) {
       statusEl.innerHTML = navigator.onLine === false
-        ? `<span class="dot" style="background:var(--danger)"></span> ออฟไลน์ — ยังไม่ได้บันทึก (อย่าปิดหน้านี้)`
+        ? `<span class="dot dot-danger"></span> ออฟไลน์ — ยังไม่ได้บันทึก (อย่าปิดหน้านี้)`
         : `<span class="dot"></span> กำลังบันทึก...`;
     } else {
       statusEl.innerHTML = `<span class="dot"></span> บันทึกแล้ว`;
@@ -337,7 +337,7 @@ function wireScoreInputs(container, course, section, students, collectItems, mid
       const row = inp.closest('tr');
       const cellsInRow = [...row.querySelectorAll('.score-input')];
       const colIndex = cellsInRow.indexOf(inp);
-      const rows = () => [...container.querySelectorAll('#score-tbody tr')].filter(r => r.style.display !== 'none');
+      const rows = () => [...container.querySelectorAll('#score-tbody tr')].filter(r => !r.classList.contains('hidden'));
 
       if (e.key === 'Enter') {
         e.preventDefault();
@@ -366,7 +366,7 @@ function wireScoreInputs(container, course, section, students, collectItems, mid
       const grid = parseDelimitedText(text, { keepBlank: true });
       const row = inp.closest('tr');
       const startColIdx = [...row.querySelectorAll('.score-input')].indexOf(inp);
-      const rows = [...container.querySelectorAll('#score-tbody tr')].filter(r => r.style.display !== 'none');
+      const rows = [...container.querySelectorAll('#score-tbody tr')].filter(r => !r.classList.contains('hidden'));
       const startRowIdx = rows.indexOf(row);
       let clamped = 0;
 

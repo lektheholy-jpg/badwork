@@ -59,39 +59,39 @@ async function renderReportTab(container, course, section) {
   const maxCount = Math.max(1, ...Object.values(gradeCounts));
 
   container.innerHTML = `
-    <div style="font-size:13px; color:var(--ink-soft); font-weight:600; margin-bottom:10px;">ห้อง ${escapeHtml(section.room)}</div>
+    <div class="u-note u-semibold u-mb-10">ห้อง ${escapeHtml(section.room)}</div>
     <div class="stat-row">
       <div class="stat-card"><div class="label">คะแนนเฉลี่ย</div><div class="value">${avg.toFixed(1)}</div></div>
       <div class="stat-card"><div class="label">คะแนนสูงสุด</div><div class="value">${max}</div></div>
       <div class="stat-card"><div class="label">คะแนนต่ำสุด</div><div class="value">${min}</div></div>
     </div>
 
-    <div class="card card-pad" style="margin-bottom:16px;">
-      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;">
-        <h2 style="font-size:14.5px;">การกระจายเกรด</h2>
+    <div class="card card-pad u-mb-16">
+      <div class="u-flex u-items-center u-between u-mb-14">
+        <h2 class="u-fs-145">การกระจายเกรด</h2>
         <button class="btn btn-ghost btn-sm" id="edit-grade-scale">ตั้งเกณฑ์เกรด</button>
       </div>
       ${gradeScale.map(g => `
         <div class="dist-row">
           <span class="g-label">${g.grade}</span>
-          <div class="g-bar-track"><div class="g-bar-fill" style="width:${((gradeCounts[g.grade] || 0) / maxCount) * 100}%"></div></div>
+          <div class="g-bar-track"><div class="g-bar-fill" style="--p:${((gradeCounts[g.grade] || 0) / maxCount) * 100}%"></div></div>
           <span class="g-count">${gradeCounts[g.grade] || 0}</span>
         </div>
       `).join('')}
     </div>
 
     <div class="card card-pad">
-      <h2 style="font-size:14.5px; margin-bottom:12px;">ส่งออกข้อมูล</h2>
-      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+      <h2 class="u-fs-145 u-mb-12">ส่งออกข้อมูล</h2>
+      <div class="u-flex u-gap-8 u-wrap">
         <button class="btn btn-ghost btn-sm" id="export-csv-btn">Export CSV</button>
         <button class="btn btn-ghost btn-sm" id="export-pp5-btn">Export เข้าฟอร์ม ปพ.5</button>
       </div>
     </div>
 
-    <div class="card card-pad" style="margin-top:16px;">
-      <h2 style="font-size:14.5px; margin-bottom:4px;">แปลงคะแนน SGS</h2>
-      <div style="font-size:12.5px; color:var(--ink-soft); margin-bottom:12px;">ส่งออกคะแนนเป็น เก็บก่อนกลางภาค 30 · กลางภาค 20 · เก็บหลังกลางภาค 30 · ปลายภาค 20 — คะแนนจริงและเกรดในระบบไม่เปลี่ยน · ปุ่ม "แปลงคะแนน Next School" นำคะแนนนี้ไปใส่ในไฟล์ฟอร์มที่โรงเรียนส่งให้</div>
-      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+    <div class="card card-pad u-mt-16">
+      <h2 class="u-fs-145 u-mb-4">แปลงคะแนน SGS</h2>
+      <div class="u-note-sm u-mb-12">ส่งออกคะแนนเป็น เก็บก่อนกลางภาค 30 · กลางภาค 20 · เก็บหลังกลางภาค 30 · ปลายภาค 20 — คะแนนจริงและเกรดในระบบไม่เปลี่ยน · ปุ่ม "แปลงคะแนน Next School" นำคะแนนนี้ไปใส่ในไฟล์ฟอร์มที่โรงเรียนส่งให้</div>
+      <div class="u-flex u-gap-8 u-wrap">
         <button class="btn btn-primary btn-sm" id="export-nextschool-btn">แปลงคะแนน SGS</button>
         <button class="btn btn-primary btn-sm" id="export-nsform-btn">แปลงคะแนน Next School</button>
       </div>
@@ -235,12 +235,12 @@ function openPp5ExportModal(course, section, students, assessments, scores) {
       const bucketLabel = { collect: 'คะแนนเก็บ (ก่อน+หลังกลางภาค)', midterm: 'กลางภาค', final: 'ปลายภาค' };
 
       bodyEl.innerHTML = `
-        <div class="card card-pad" style="margin-bottom:12px;">
+        <div class="card card-pad u-mb-12">
           <div class="check-row ok">✓ พบคอลัมน์คะแนนในฟอร์ม ${targetCols.length} คอลัมน์ — จะแปลงคะแนนอัตโนมัติตามสัดส่วน ไม่ต้องเลือกเอง</div>
           ${mismatches.length === 0 ? `
-            <div class="check-row ok" style="margin-top:6px;">✓ คะแนนเต็มแต่ละหมวดตรงกับฟอร์มพอดี (เก็บ ${appMax.collect}, กลางภาค ${appMax.midterm}, ปลายภาค ${appMax.final}) — เกรดรวม (%) จะเท่าเดิมแน่นอน</div>
+            <div class="check-row ok u-mt-6">✓ คะแนนเต็มแต่ละหมวดตรงกับฟอร์มพอดี (เก็บ ${appMax.collect}, กลางภาค ${appMax.midterm}, ปลายภาค ${appMax.final}) — เกรดรวม (%) จะเท่าเดิมแน่นอน</div>
           ` : `
-            <div class="check-row warn" style="margin-top:6px;">
+            <div class="check-row warn u-mt-6">
               ✕ คะแนนเต็มบางหมวดในระบบไม่ตรงกับฟอร์ม: ${mismatches.map(cat => `${bucketLabel[cat]} (ระบบ ${appMax[cat]} / ฟอร์ม ${formMax[cat]})`).join(', ')}
               — ระบบจะยังคำนวณสัดส่วน (%) ให้เท่าเดิมในแต่ละหมวด แต่ผลรวม 100 คะแนนสุดท้ายอาจ<b>คลาดเคลื่อนเล็กน้อย</b>จากเกรดจริงในระบบ เพราะน้ำหนักหมวดคะแนนของวิชานี้ไม่เท่ากับที่ฟอร์มกำหนดไว้ — แนะนำให้เช็กเกรดหลัง export อีกครั้ง
             </div>
@@ -269,7 +269,7 @@ function openPp5ExportModal(course, section, students, assessments, scores) {
           ${missingInFile.length === 0 ? '✓' : '✕'} จับคู่รหัสนักเรียนได้ ${matchedCount}/${students.length} คน
         </div>
         ${missingInFile.length > 0 ? `
-          <div style="font-size:12.5px; color:var(--ink-soft); margin-top:6px;">
+          <div class="u-note-sm u-mt-6">
             ไม่พบรหัสในไฟล์ต้นแบบ (จะไม่ถูกส่งออก): ${missingInFile.map(s => escapeHtml(`${s.firstName} ${s.lastName} (รหัส ${s.code || '-'})`)).join(', ')}
           </div>
         ` : ''}
@@ -660,15 +660,15 @@ function openNextSchoolFormModal(course, section, students, assessments, scores,
     const gradeOk = rows.filter(r => r.ok).length;
 
     bodyEl.innerHTML = `
-      <div class="card card-pad" style="margin:12px 0;">
+      <div class="card card-pad u-my-12">
         <div class="check-row ok">✓ พบคอลัมน์คะแนนในฟอร์ม ${usable.length} คอลัมน์</div>
         ${mism.length === 0
-          ? `<div class="check-row ok" style="margin-top:6px;">✓ คะแนนเต็มแต่ละช่วงในฟอร์มตรงกับ SGS (30/20/30/20) — ผลรวมของแต่ละช่วงเท่ากับที่ SGS แปลงไว้</div>`
-          : `<div class="check-row warn" style="margin-top:6px;">✕ คะแนนเต็มในฟอร์มไม่ตรงกับ SGS: ${mism.map(x => `${x.p.label} (ฟอร์ม ${x.has ? x.sum : 'ไม่มีคอลัมน์'} / SGS ${x.p.max})`).join(', ')} — ระบบปรับตามสัดส่วนให้ แต่ควรตรวจเกรดก่อนอัปโหลด</div>`}
-        ${unknown.length ? `<div class="check-row warn" style="margin-top:6px;">✕ ข้ามคอลัมน์ที่ระบุช่วงไม่ได้: ${unknown.map(c => escapeHtml(`${c.group || '(ไม่มีชื่อกลุ่ม)'} ${c.order}`)).join(', ')}</div>` : ''}
-        <div class="check-row ${matched.length === rows.length ? 'ok' : 'warn'}" style="margin-top:6px;">${matched.length === rows.length ? '✓' : '✕'} จับคู่รหัสนักเรียนได้ ${matched.length}/${rows.length} คน</div>
-        ${missing.length ? `<div style="font-size:12.5px; color:var(--ink-soft); margin-top:6px;">ไม่พบรหัสในฟอร์ม (จะไม่ถูกส่งออก): ${missing.map(r => escapeHtml(`${r.student.firstName} ${r.student.lastName} (รหัส ${r.student.code || '-'})`)).join(', ')}</div>` : ''}
-        <div class="check-row ${gradeOk === rows.length ? 'ok' : 'warn'}" style="margin-top:6px;">${gradeOk === rows.length ? '✓' : '✕'} เกรดหลังแปลงตรงกับเกรดจริง ${gradeOk}/${rows.length} คน</div>
+          ? `<div class="check-row ok u-mt-6">✓ คะแนนเต็มแต่ละช่วงในฟอร์มตรงกับ SGS (30/20/30/20) — ผลรวมของแต่ละช่วงเท่ากับที่ SGS แปลงไว้</div>`
+          : `<div class="check-row warn u-mt-6">✕ คะแนนเต็มในฟอร์มไม่ตรงกับ SGS: ${mism.map(x => `${x.p.label} (ฟอร์ม ${x.has ? x.sum : 'ไม่มีคอลัมน์'} / SGS ${x.p.max})`).join(', ')} — ระบบปรับตามสัดส่วนให้ แต่ควรตรวจเกรดก่อนอัปโหลด</div>`}
+        ${unknown.length ? `<div class="check-row warn u-mt-6">✕ ข้ามคอลัมน์ที่ระบุช่วงไม่ได้: ${unknown.map(c => escapeHtml(`${c.group || '(ไม่มีชื่อกลุ่ม)'} ${c.order}`)).join(', ')}</div>` : ''}
+        <div class="check-row ${matched.length === rows.length ? 'ok' : 'warn'} u-mt-6">${matched.length === rows.length ? '✓' : '✕'} จับคู่รหัสนักเรียนได้ ${matched.length}/${rows.length} คน</div>
+        ${missing.length ? `<div class="u-note-sm u-mt-6">ไม่พบรหัสในฟอร์ม (จะไม่ถูกส่งออก): ${missing.map(r => escapeHtml(`${r.student.firstName} ${r.student.lastName} (รหัส ${r.student.code || '-'})`)).join(', ')}</div>` : ''}
+        <div class="check-row ${gradeOk === rows.length ? 'ok' : 'warn'} u-mt-6">${gradeOk === rows.length ? '✓' : '✕'} เกรดหลังแปลงตรงกับเกรดจริง ${gradeOk}/${rows.length} คน</div>
       </div>
       <div class="ns-table-wrap">
         <table class="ns-table">
@@ -746,12 +746,12 @@ function openGradeScaleModal(course, section, scale) {
     openModal(`
       <h2>ตั้งเกณฑ์เกรด</h2>
       <div class="modal-sub">กำหนดเกรดและคะแนนขั้นต่ำของแต่ละเกรด — ใช้ร่วมกันทุกห้องในวิชานี้</div>
-      <div style="display:flex; flex-direction:column; gap:8px; margin-bottom:14px;" id="scale-rows">
+      <div class="u-flex u-col u-gap-8 u-mb-14" id="scale-rows">
         ${rows.map((r, idx) => `
-          <div style="display:flex; gap:8px; align-items:center;">
-            <input class="scale-grade" data-idx="${idx}" value="${escapeHtml(r.grade)}" style="width:70px; padding:7px; border:1px solid var(--border); border-radius:6px;">
-            <span style="font-size:13px; color:var(--ink-soft);">คะแนนขั้นต่ำ</span>
-            <input class="scale-min" type="number" data-idx="${idx}" value="${r.min}" style="width:80px; padding:7px; border:1px solid var(--border); border-radius:6px;">
+          <div class="u-flex u-gap-8 u-items-center">
+            <input class="scale-grade u-w-70 u-input-sm" data-idx="${idx}" value="${escapeHtml(r.grade)}">
+            <span class="u-note">คะแนนขั้นต่ำ</span>
+            <input class="scale-min u-w-80 u-input-sm" type="number" data-idx="${idx}" value="${r.min}">
             <button class="btn btn-danger-ghost btn-sm del-scale-row" data-idx="${idx}">ลบ</button>
           </div>
         `).join('')}

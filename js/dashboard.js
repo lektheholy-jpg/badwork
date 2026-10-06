@@ -238,7 +238,7 @@ async function renderDashboard() {
       <div class="card"><div class="empty-state">
         <div class="icon">${icon('book')}</div>
         <div>ยังไม่มีรายวิชา เริ่มจากสร้างรายวิชาแรกของคุณ</div>
-        <button class="btn btn-primary" data-go="structure-page" style="margin-top:16px;">สร้างรายวิชา</button>
+        <button class="btn btn-primary u-mt-16" data-go="structure-page">สร้างรายวิชา</button>
       </div></div>
     ` : ''}
     </section>
@@ -280,14 +280,14 @@ function gradeSummaryCells(row) {
 function buildGradeSummaryHtml(courses, year) {
   const filtered = year === '__all__' ? courses : courses.filter(c => (c.year || '').toString().trim() === year);
   if (filtered.length === 0) {
-    return `<div class="empty-state" style="padding:16px 0;">ไม่มีวิชาที่เปิดสอนในปีการศึกษานี้</div>`;
+    return `<div class="empty-state u-py-16">ไม่มีวิชาที่เปิดสอนในปีการศึกษานี้</div>`;
   }
   let no = 0;
   const body = filtered.map(c => {
     const rooms = c.roomsData || [];
     const head = `
       <tr class="gs-course" style="--cc:${courseColor(c)}">
-        <td colspan="15"><span class="course-dot" style="background:${courseColor(c) || '#3E91FF'}"></span>${escapeHtml(c.name)}${c.code ? ` <span class="gs-code">(${escapeHtml(c.code)})</span>` : ''}</td>
+        <td colspan="15"><span class="course-dot" style="--c:${courseColor(c) || '#3E91FF'}"></span>${escapeHtml(c.name)}${c.code ? ` <span class="gs-code">(${escapeHtml(c.code)})</span>` : ''}</td>
       </tr>`;
     const rows = rooms.map(r => {
       no++;
@@ -350,7 +350,7 @@ function wireGradeSummaryRows() {
 function buildGradeStatsBodyHtml(courses, year) {
   const filtered = year === '__all__' ? courses : courses.filter(c => (c.year || '').toString().trim() === year);
   if (filtered.length === 0) {
-    return `<div class="empty-state" style="padding:12px 0;">ไม่มีวิชาที่เปิดสอนในปีการศึกษานี้</div>`;
+    return `<div class="empty-state u-py-12">ไม่มีวิชาที่เปิดสอนในปีการศึกษานี้</div>`;
   }
   return `<div class="grade-stat-grid">` + filtered.map(c => {
     const totalInCourse = c.roomsData.reduce((sum, r) => sum + r.students.length, 0);
@@ -358,7 +358,7 @@ function buildGradeStatsBodyHtml(courses, year) {
       <div class="grade-stat-card">
         <div class="gsc-head">
           <div class="gsc-title">
-            <span class="course-dot" style="background:${courseColor(c) || '#3E91FF'}"></span>
+            <span class="course-dot" style="--c:${courseColor(c) || '#3E91FF'}"></span>
             <span class="gsc-name">${escapeHtml(c.name)}</span>
           </div>
           <select class="grade-room-filter" data-course-id="${c.id}">
@@ -388,7 +388,7 @@ function renderGradeDistribution(course, roomFilter) {
     : (course.roomsData.find(r => r.sectionId === roomFilter)?.students || []);
 
   if (students.length === 0) {
-    return `<div class="empty-state" style="padding:12px 0;">ยังไม่มีนักเรียน/คะแนนในห้องนี้</div>`;
+    return `<div class="empty-state u-py-12">ยังไม่มีนักเรียน/คะแนนในห้องนี้</div>`;
   }
 
   const gradeScale = course.gradeScale;
@@ -407,7 +407,7 @@ function renderGradeDistribution(course, roomFilter) {
     ${gradeScale.map(g => `
       <div class="dist-row">
         <span class="g-label">${escapeHtml(g.grade)}</span>
-        <div class="g-bar-track"><div class="g-bar-fill" style="width:${((gradeCounts[g.grade] || 0) / maxCount) * 100}%"></div></div>
+        <div class="g-bar-track"><div class="g-bar-fill" style="--p:${((gradeCounts[g.grade] || 0) / maxCount) * 100}%"></div></div>
         <span class="g-count">${gradeCounts[g.grade] || 0}</span>
       </div>
     `).join('')}
@@ -441,10 +441,10 @@ function renderLatestProgress(courses, sectionCards) {
       <div class="prog-list">
         ${rows.map(({ c, r }) => `
           <button class="prog-row" style="--w:${courseColor(c) || 'var(--primary)'}" data-course-id="${r.courseId}" data-section-id="${r.sectionId}">
-            <span class="prog-dot" style="background:${courseColor(c) || 'var(--primary)'}"></span>
+            <span class="prog-dot" style="--c:${courseColor(c) || 'var(--primary)'}"></span>
             <span class="prog-title">${escapeHtml(c.name)} · ห้อง ${escapeHtml(r.room)}</span>
             <span class="prog-item">${escapeHtml(item(r))}</span>
-            <span class="progress-bar"><span class="fill" style="width:${r.progress}%; background:${courseColor(c) || 'var(--primary)'}"></span></span>
+            <span class="progress-bar"><span class="fill" style="--p:${r.progress}%; --c:${courseColor(c) || 'var(--primary)'}"></span></span>
             <span class="prog-pct">${r.progress}%</span>
           </button>`).join('')}
       </div>
@@ -546,7 +546,7 @@ function renderRoomCompareChart(course) {
     <div class="rc-plot" data-course-id="${course.id}">
       <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="กราฟเส้นคะแนนสูงสุด เฉลี่ย ต่ำสุด รายห้อง วิชา ${escapeHtml(course.name)}">
         ${grid}${xlabels}
-        <line class="rc-cross" x1="0" x2="0" y1="${t}" y2="${t + ih}" style="display:none"/>
+        <line class="rc-cross hidden" x1="0" x2="0" y1="${t}" y2="${t + ih}"/>
         ${lines}${avgLabels}
       </svg>
       <div class="rc-tip" hidden></div>
@@ -596,7 +596,7 @@ function wireRoomCompare(courses) {
     const vx = (ev.clientX - box.left) / box.width * W;
     const i = Math.max(0, Math.min(stats.length - 1, Math.floor((vx - l) / ((W - l - r) / stats.length))));
     const cx = l + ((W - l - r) / stats.length) * (i + 0.5);
-    cross.setAttribute('x1', cx); cross.setAttribute('x2', cx); cross.style.display = '';
+    cross.setAttribute('x1', cx); cross.setAttribute('x2', cx); cross.classList.remove('hidden');
     const s = stats[i];
     tip.innerHTML = `<b>ห้อง ${escapeHtml(s.room)}</b><small>${s.n} คน</small>` +
       RC_SERIES.map(sr => `<div class="rc-tip-row ${sr.cls}"><i></i><span>${sr.label}</span><b>${rcFmt(s[sr.key])}</b></div>`).join('');
@@ -608,7 +608,7 @@ function wireRoomCompare(courses) {
   const hide = () => {
     const plot = body.querySelector('.rc-plot'); if (!plot) return;
     plot.querySelector('.rc-tip').hidden = true;
-    plot.querySelector('.rc-cross').style.display = 'none';
+    plot.querySelector('.rc-cross').classList.add('hidden');
   };
   let lastW = body.querySelector('svg')?.viewBox.baseVal.width || 0;
   let lastH = body.querySelector('svg')?.viewBox.baseVal.height || 0;
@@ -627,17 +627,17 @@ function wireRoomCompare(courses) {
 // ---------- Lightweight inline SVG charts (no external chart library) ----------
 
 function renderProgressChart(courses) {
-  if (!courses.length) return `<div class="empty-state" style="padding:20px 0;">ยังไม่มีข้อมูล</div>`;
+  if (!courses.length) return `<div class="empty-state u-py-20">ยังไม่มีข้อมูล</div>`;
   return `
     <div class="progress-chart-list">
       ${courses.map(c => `
         <div class="progress-chart-row">
           <div class="progress-chart-label" title="${escapeHtml(c.name)}">
-            <span class="progress-chart-dot" style="background:${courseColor(c) || 'var(--primary)'}"></span>
+            <span class="progress-chart-dot" style="--c:${courseColor(c) || 'var(--primary)'}"></span>
             <span class="progress-chart-label-text">${escapeHtml(c.name)}</span>
           </div>
-          <div class="progress-bar"><div class="fill" style="width:${c.progress || 0}%; background:${courseColor(c) || 'var(--primary)'}"></div></div>
-          <div class="progress-pct" style="color:${courseColor(c) || 'var(--primary)'};">${c.progress || 0}%</div>
+          <div class="progress-bar"><div class="fill" style="--p:${c.progress || 0}%; --c:${courseColor(c) || 'var(--primary)'}"></div></div>
+          <div class="progress-pct" style="--c:${courseColor(c) || 'var(--primary)'}">${c.progress || 0}%</div>
         </div>
       `).join('')}
     </div>
@@ -645,7 +645,7 @@ function renderProgressChart(courses) {
 }
 
 function renderStudentDonut(courses, totalStudents) {
-  if (!totalStudents) return `<div class="empty-state" style="padding:20px 0;">ยังไม่มีนักเรียน</div>`;
+  if (!totalStudents) return `<div class="empty-state u-py-20">ยังไม่มีนักเรียน</div>`;
   const palette = ['#2D80F2', '#12A87A', '#7B52E6', '#1A9FD0', '#3FB86B', '#A25BE0'];  // ฟ้า เขียว ม่วง
   const r = 46, cx = 60, cy = 60, circumference = 2 * Math.PI * r;
   let offset = 0;
@@ -659,7 +659,7 @@ function renderStudentDonut(courses, totalStudents) {
   }).join('');
   const legend = courses.filter(c => c.studentCount > 0).map((c, i) => `
     <div class="donut-legend-item">
-      <span class="dot" style="background:${courseColor(c) || palette[i % palette.length]}"></span>
+      <span class="dot" style="--c:${courseColor(c) || palette[i % palette.length]}"></span>
       ${escapeHtml(truncateLabel(c.name, 16))} <b>${c.studentCount}</b>
     </div>`).join('');
   return `

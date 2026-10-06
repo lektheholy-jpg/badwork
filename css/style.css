@@ -212,7 +212,7 @@ a { color: inherit; }
   border-radius: var(--radius-m);
   cursor: pointer;
 }
-.course-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--primary); flex-shrink: 0; }
+.course-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--c, var(--primary)); flex-shrink: 0; }
 .course-row .info { flex: 1; min-width: 0; }
 .course-row .name { font-weight: 700; font-size: 14.5px; }
 .course-row .meta { font-size: 12.5px; color: var(--ink-soft); margin-top: 2px; }
@@ -222,7 +222,7 @@ a { color: inherit; }
 .donut-wrap { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
 .donut-legend { display: flex; flex-direction: column; gap: 8px; }
 .donut-legend-item { font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 7px; }
-.donut-legend-item .dot { border-radius: 50%; flex-shrink: 0; }
+.donut-legend-item .dot { border-radius: 50%; flex-shrink: 0; background: var(--c); }
 .donut-legend-item b { color: var(--ink); font-weight: 700; }
 @media (max-width: 860px) {
   .chart-row { grid-template-columns: 1fr; }
@@ -238,7 +238,7 @@ a { color: inherit; }
 .section-card-pct { font-size: 11.5px; font-weight: 600; margin-top: 6px; }
 
 .progress-bar { width: 140px; height: 7px; background: var(--surface-sunken); overflow: hidden; }
-.progress-bar .fill { height: 100%; background: var(--primary); transition: width .25s ease; }
+.progress-bar .fill { height: 100%; width: var(--p, 0%); background: var(--c, var(--primary)); transition: width .25s ease; }
 .progress-pct { font-family: var(--font-mono); font-size: 12px; color: var(--ink-soft); width: 34px; text-align: right; }
 
 /* ---------- Dashboard: "ความคืบหน้าการบันทึกคะแนนต่อวิชา" list (replaces old cramped inline-SVG chart) ---------- */
@@ -249,10 +249,10 @@ a { color: inherit; }
   display: flex; align-items: center; gap: 9px;
   font-size: 13px;
 }
-.progress-chart-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+.progress-chart-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; background: var(--c, var(--primary)); }
 .progress-chart-label-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .progress-chart-row .progress-bar { flex: 1 1 auto; width: auto; }
-.progress-chart-row .progress-pct { flex: 0 0 auto; font-weight: 700; }
+.progress-chart-row .progress-pct { flex: 0 0 auto; font-weight: 700; color: var(--c, var(--primary)); }
 
 /* ---------- Buttons / forms ---------- */
 .btn {
@@ -320,6 +320,8 @@ a { color: inherit; }
 .struct-groups { display: flex; flex-direction: column; gap: 22px; }
 .struct-group-header {
   display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 10px; letter-spacing: 0;
+  padding: 10px 20px; font-size: 15px; font-weight: 800; border: none; border-radius: var(--radius-xs);
+  color: var(--c); background: color-mix(in oklab, currentColor var(--wmix-head), var(--card));  /* --c = สีระดับชั้น ส่งมาจาก JS */
 }
 .struct-group-count { font-size: 12px; font-weight: 600; opacity: .8; }
 
@@ -329,11 +331,11 @@ a { color: inherit; }
 .struct-row.is-archived .struct-course-name,
 .struct-row.is-archived .struct-level-badge { opacity: .6; }
 .struct-code {
-  font-family: var(--font-mono); font-weight: 700; color: var(--primary);
+  font-family: var(--font-mono); font-weight: 700; color: var(--c, var(--primary));
   margin-right: 6px;
 }
 .struct-course-name { font-weight: 700; }
-.struct-level-badge { margin-right: 8px; vertical-align: middle; }
+.struct-level-badge { margin-right: 8px; vertical-align: middle; color: var(--c); }
 .struct-status-tag {
   margin-left: 8px; color: var(--ink-soft);
 }
@@ -362,7 +364,7 @@ a { color: inherit; }
 /* ---------- Scores page: pick a card grouped by level -> subject -> room ---------- */
 .scores-subject-list { display: flex; flex-direction: column; }
 .scores-subject-block { display: flex; flex-direction: column; }
-.scores-subject-title { padding: 4px 0 4px 12px; }
+.scores-subject-title { padding: 4px 0 4px 12px; border-left: 5px solid var(--c, currentColor); background: transparent; }
 .scores-subject-title .struct-course-name { margin-left: 2px; }
 
 /* ---------- Tabs ---------- */
@@ -402,13 +404,12 @@ table.sheet th {
   transform: translateZ(0);
 }
 table.sheet th span.max { display: block; font-weight: 500; font-size: 10px; }
-table.sheet thead tr:first-child th { top: 0; height: 26px; }
-table.sheet thead tr:last-child th { top: 26px; height: 38px; }
+table.sheet:not(.sheet-simple) thead tr:first-child th { top: 0; height: 26px; }
+table.sheet:not(.sheet-simple) thead tr:last-child th { top: 26px; height: 38px; }
 
-/* ตารางแบบหัวแถวเดียว (เช่น รายชื่อนักเรียน) — "ห้ามใช้กติกา 2 แถวหัวตาราง" ของตารางคะแนน
-   เพราะ tr เดียวกันจะแมตช์ทั้ง :first-child และ :last-child พร้อมกัน ทำให้ top เพี้ยนเป็น 26px
-   จนหัวตารางลอยไปกลางตารางแทนที่จะติดขอบบน ต้อง reset top ให้เป็น 0 เสมอ */
-table.sheet.sheet-simple thead th { top: 0 !important; height: 34px !important; }
+/* ตารางแบบหัวแถวเดียว (เช่น รายชื่อนักเรียน) — ไม่ใช้กติกา 2 แถวหัวตารางของตารางคะแนน (ด้านบนใช้ :not(.sheet-simple))
+   เพราะ tr เดียวกันจะแมตช์ทั้ง :first-child และ :last-child พร้อมกัน ทำให้ top เพี้ยนเป็น 26px */
+table.sheet.sheet-simple thead th { top: 0; height: 34px; }
 
 table.sheet td {
   padding: 0;
@@ -528,6 +529,8 @@ table.sheet thead th.sticky-right-2 { z-index: 3; }
 .save-status { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--ink-soft); font-weight: 600; }
 .save-status .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--success); }
 .save-status.saving .dot { background: var(--warning); }
+.save-status .dot.dot-danger { background: var(--danger); }
+.save-status.is-clickable { cursor: pointer; }
 
 .toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
 .toolbar-left { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
@@ -543,7 +546,7 @@ table.sheet thead th.sticky-right-2 { z-index: 3; }
 .dist-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; font-size: 13px; }
 .dist-row .g-label { width: 34px; font-family: var(--font-mono); font-weight: 700; }
 .dist-row .g-bar-track { flex: 1; height: 17px; overflow: hidden; }
-.dist-row .g-bar-fill { height: 100%; }
+.dist-row .g-bar-fill { height: 100%; width: var(--p, 0%); }
 .dist-row .g-count { width: 24px; text-align: right; font-weight: 700; font-family: var(--font-mono); }
 
 /* ---------- Empty / login ---------- */
@@ -1013,7 +1016,7 @@ table.sheet td input.score-input { border-radius: var(--radius-xs); min-height: 
 .prog-row { display: grid; grid-template-columns: 12px minmax(0, 1fr) minmax(0, 1.3fr) 110px 44px; align-items: center; gap: 14px; width: 100%; padding: 14px 20px; background: none; border: none; border-bottom: 1px solid var(--border); font: inherit; color: var(--ink); text-align: left; cursor: pointer; }
 .prog-row:last-child { border-bottom: none; }
 .prog-row:focus-visible { outline: 3px solid var(--primary); outline-offset: -3px; }
-.prog-dot { width: 12px; height: 12px; border-radius: 50%; }
+.prog-dot { width: 12px; height: 12px; border-radius: 50%; background: var(--c, var(--primary)); }
 .prog-title { font-weight: 600; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .prog-item { font-size: 14px; color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .prog-row .progress-bar { width: 100%; display: block; }
@@ -1247,10 +1250,6 @@ table.sheet td input.score-input { color: var(--ink); }
 .donut-legend-item .dot { width: 11px; height: 11px; }
 
 /* ===== หน้ารายงาน: รูปแบบตารางตามธีม ===== */
-.struct-group-header {
-  border: none !important; border-radius: var(--radius-xs);
-}
-.scores-subject-title { border-left-width: 5px !important; background: transparent; }
 .report-room-list { border: 1px solid var(--border); border-radius: var(--radius-m); overflow: hidden; box-shadow: none;
 }
 .report-room-row { background: transparent; border-bottom: 1px solid var(--border); padding: 12px 18px; }
@@ -1275,7 +1274,7 @@ table.sheet td input.score-input:hover { background: var(--hover-wash); }
   display: flex; align-items: center; gap: 18px;
   background: color-mix(in oklab, var(--w) var(--wmix), var(--card)); color: var(--ink); border-radius: var(--radius-l); box-shadow: none;
 }
-.cw-clock { flex-direction: column; align-items: flex-start; justify-content: center; gap: 0; --w: var(--hue-blue) !important; }
+.cw-clock { flex-direction: column; align-items: flex-start; justify-content: center; gap: 0; --w: var(--hue-blue); }
 :root[data-theme="dark"] .cw-card { --cw-b: 1.1; }
 .cw-time { font-family: var(--font-head); line-height: 1.2; font-variant-numeric: tabular-nums; }
 .cw-time small { font-weight: 600; font-size: 24px; color: var(--ink-soft); }
@@ -1289,7 +1288,7 @@ table.sheet td input.score-input:hover { background: var(--hover-wash); }
    ========================================================================== */
 
 /* วิดเจ็ตเวลา/อากาศ แบบพาสเทลเดียวกับทางลัด */
-.cw-weather { --w: var(--hue-amber) !important; }
+.cw-weather { --w: var(--hue-amber); }
 .cw-day { color: color-mix(in oklab, var(--w) 75%, var(--ink)); font-size: 15px; font-weight: 800; filter: none; }
 .cw-time { font-size: 54px; font-weight: 800; color: var(--ink); }
 .cw-date, .cw-wx-meta { color: var(--ink-soft); font-size: 14px; font-weight: 600; }
@@ -1312,7 +1311,7 @@ table.sheet td input.score-input:focus, .field input:focus, .field select:focus,
 /* ----- กราฟ: ค่ากลางเดียวกันทุกหน้า (รางสีกลาง แท่งสด ตัวเลขเข้ม) ----- */
 .dist-row .g-label, .dist-row .g-count { color: var(--ink); }
 .chart-title { font-weight: 800; color: var(--ink); }
-.progress-chart-row .progress-pct { color: var(--ink); filter: none; }
+.progress-chart-row .progress-pct { filter: none; }
 :root:not([data-theme="dark"]) .progress-chart-row .progress-pct { filter: none; }
 
 @media (max-width: 640px) {
@@ -1325,15 +1324,10 @@ table.sheet td input.score-input:focus, .field input:focus, .field select:focus,
    v6 — สีสัมพันธ์กันทุกหน้า (สีวิชา = สีระดับชั้น) + ตารางสรุปผลอ่านง่าย
    ========================================================================== */
 /* หัวกลุ่มระดับชั้น กับแถววิชา ใช้สูตรผสมเดียวกัน จึงเป็นโทนเดียวกัน */
-.struct-group-header {
-  padding: 10px 20px; font-size: 15px; font-weight: 800;
-}
-.struct-row, .struct-row.is-archived { border-left: none !important; }
 .struct-row.is-archived { --wmix: 12%; background: color-mix(in oklab, var(--w) 12%, var(--card)); }
 .struct-row.is-archived .info { opacity: .75; }
-.struct-level-badge, .main .course-row .badge { background: var(--card) !important; }
+.struct-level-badge, .main .course-row .badge { background: var(--card); }
 .struct-status-tag { font-weight: 700; }
-.scores-subject-title { border-left-color: currentColor; }
 
 /* ตารางสรุปผลการเรียน: เส้นบาง หัวตารางเข้ม แถวกลุ่มสีตามวิชา */
 .gs-wrap { border: none; border-radius: var(--radius-m); box-shadow: inset 0 0 0 1px var(--border); }
@@ -1362,8 +1356,6 @@ table.sheet td input.score-input:focus, .field input:focus, .field select:focus,
 
 .prog-list .prog-row, .main .course-row, .main .section-card, .stat-card,
 .chart-row .chart-card:nth-child(n), :root[data-theme="dark"] .chart-row .chart-card:nth-child(n) { --wmix: var(--wmix-soft); }
-
-.struct-group-header { background: color-mix(in oklab, currentColor var(--wmix-head), var(--card)) !important; }
 
 /* แท่ง/ตัวเลขในแถวอ่อน: รางเป็นสีวิชาจาง ตัวเลข % ใช้สีเดียวกับแถว */
 .prog-list .prog-row .prog-pct, .section-card .section-card-pct { color: color-mix(in oklab, var(--w) 82%, var(--ink)); font-weight: 800; }
@@ -1403,7 +1395,7 @@ button.brand:hover .mark { transform: rotate(-6deg) scale(1.04); }
    ========================================================================== */
 .tabbar, .more-scrim, .more-sheet { display: none; }
 @media (max-width: 860px) {
-  .hamburger-btn { display: none !important; }
+  .hamburger-btn { display: none; }
   .main { padding: 18px 16px calc(104px + env(safe-area-inset-bottom, 0px)); }
   .toast { bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
 
@@ -1728,7 +1720,7 @@ table.sheet td.grp-sub-total, table.sheet tbody tr:hover td.grp-collect-total, t
 table.sheet td.total-cell.sticky-right-1, table.sheet tbody tr:hover td.total-cell.sticky-right-1 {
   background: var(--head-solid); color: var(--white);
 }
-table.sheet td.over-max { background: var(--danger-tint) !important; }
+table.sheet tbody tr:nth-child(n) td.over-max { background: var(--danger-tint); }
 
 /* ----- แถวสลับสี / แถวที่ชี้ / แถวสรุป ----- */
 .ns-table tbody tr:nth-child(even) td, .report-room-row:nth-child(even) { background: var(--zebra); }
@@ -1774,7 +1766,7 @@ table.sheet td.over-max { background: var(--danger-tint) !important; }
 .struct-group:has(.scores-subject-list) .struct-group-title { font-size: 15px; }
 .scores-subject-list { gap: 12px; }
 .scores-subject-block { gap: 8px; }
-.scores-subject-block .scores-subject-title { padding: 0 0 0 10px; border-left-width: 4px !important; }
+.scores-subject-block .scores-subject-title { padding: 0 0 0 10px; border-left-width: 4px; }
 .scores-subject-block .struct-course-name { font-size: 14px; }
 .scores-subject-block .section-card-grid { grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 8px; }
 .scores-subject-block .section-card,
@@ -1881,3 +1873,69 @@ table.sheet td.over-max { background: var(--danger-tint) !important; }
   .tools-names textarea { flex: none; min-height: 160px; }
   .tools-ring { width: min(260px, 70vw); }
 }
+
+.struct-panel-header .is-ok { color: var(--success); }
+.struct-panel-header .is-bad { color: var(--danger); }
+
+/* ==========================================================================
+   Utilities — ใช้แทน style="…" ใน JS (ห้ามฝังสไตล์ในสตริง HTML)
+   • ค่าคงที่ → ใช้คลาส u-* ด้านล่าง   • ค่าที่มาจากข้อมูล → ส่งตัวแปร style="--c:…" (สี) / "--p:…%" (ความกว้าง) / "--w:…" (สีวิดเจ็ต)
+   • ขึ้นต้นด้วย :root เพื่อให้ชนะกฎคอมโพเนนต์ที่ specificity 0,2,0 (เดิม inline ชนะอยู่แล้ว) โดยไม่ต้องบังคับด้วย important
+   ========================================================================== */
+:root .u-flex { display: flex; }
+:root .u-col { flex-direction: column; }
+:root .u-wrap { flex-wrap: wrap; }
+:root .u-between { justify-content: space-between; }
+:root .u-center-x { justify-content: center; }
+:root .u-items-center { align-items: center; }
+:root .u-items-start { align-items: flex-start; }
+:root .u-grow { flex: 1; width: auto; }
+:root .u-gap-8 { gap: 8px; }
+:root .u-gap-10 { gap: 10px; }
+:root .u-gap-12 { gap: 12px; }
+:root .u-gap-16 { gap: 16px; }
+:root .u-mt-4 { margin-top: 4px; }
+:root .u-mt-6 { margin-top: 6px; }
+:root .u-mt-12 { margin-top: 12px; }
+:root .u-mt-14 { margin-top: 14px; }
+:root .u-mt-16 { margin-top: 16px; }
+:root .u-mt-18 { margin-top: 18px; }
+:root .u-mb-0 { margin-bottom: 0; }
+:root .u-mb-4 { margin-bottom: 4px; }
+:root .u-mb-10 { margin-bottom: 10px; }
+:root .u-mb-12 { margin-bottom: 12px; }
+:root .u-mb-14 { margin-bottom: 14px; }
+:root .u-mb-16 { margin-bottom: 16px; }
+:root .u-m-0 { margin: 0; }
+:root .u-my-12 { margin: 12px 0; }
+:root .u-ml-auto { margin-left: auto; }
+:root .u-hint-up-6 { margin: -6px 0 14px; }
+:root .u-hint-up-8 { margin: -8px 0 12px; }
+:root .u-p-0 { padding: 0; }
+:root .u-p-20 { padding: 20px; }
+:root .u-py-12 { padding: 12px 0; }
+:root .u-py-16 { padding: 16px 0; }
+:root .u-py-20 { padding: 20px 0; }
+:root .u-pt-10 { padding: 10px 0 0; }
+:root .u-pad-7-14 { padding: 7px 14px; }
+:root .u-pad-6-12 { padding: 6px 12px; }
+:root .u-w-24 { width: 24px; }
+:root .u-w-70 { width: 70px; }
+:root .u-w-80 { width: 80px; }
+:root .u-w-84 { width: 84px; }
+:root .u-maxw-420 { max-width: 420px; }
+:root .u-fs-13 { font-size: 13px; }
+:root .u-fs-135 { font-size: 13.5px; }
+:root .u-fs-145 { font-size: 14.5px; }
+:root .u-note { font-size: 13px; color: var(--ink-soft); }
+:root .u-note-sm { font-size: 12.5px; color: var(--ink-soft); }
+:root .u-soft { color: var(--ink-soft); }
+:root .u-lh-165 { line-height: 1.65; }
+:root .u-semibold { font-weight: 600; }
+:root .u-text-left { text-align: left; }
+:root .u-cursor-default { cursor: default; }
+:root .u-link-plain { text-decoration: none; color: inherit; }
+:root .u-link-primary { color: var(--primary); font-weight: 600; }
+:root .u-badge-inline { vertical-align: middle; margin-left: 6px; }
+:root .u-avatar-48 { width: 48px; height: 48px; border-radius: 50%; }
+:root .u-input-sm { padding: 7px; border: 1px solid var(--border); border-radius: 6px; }

@@ -135,12 +135,12 @@ function drawPicker() {
     : '<span class="tools-muted">ยังไม่มีประวัติ</span>';
   main.innerHTML = `
     <div class="tools-display"><div class="tools-big" id="pick-out" aria-live="polite">—</div></div>
-    <div class="tools-row" style="justify-content:center;">
+    <div class="tools-row u-center-x">
       <button type="button" class="btn tools-btn" id="pick-go">สุ่มเลย</button>
       <label class="tools-check"><input type="checkbox" id="pick-norepeat" ${ToolsState.noRepeat ? 'checked' : ''}> ไม่สุ่มซ้ำ</label>
       <button type="button" class="btn btn-ghost btn-sm" id="pick-reset">ล้างประวัติ</button>
     </div>
-    <div class="tools-label" style="margin-top:18px;">ที่สุ่มได้แล้ว</div>
+    <div class="tools-label u-mt-18">ที่สุ่มได้แล้ว</div>
     <div class="tools-chips" id="pick-hist">${pickedHtml()}</div>`;
   document.getElementById('pick-norepeat').addEventListener('change', (e) => { ToolsState.noRepeat = e.target.checked; });
   document.getElementById('pick-reset').addEventListener('click', () => { ToolsState.picked = []; drawPicker(); });
@@ -168,8 +168,8 @@ function drawGroups() {
   const main = document.getElementById('tools-main');
   main.innerHTML = `
     <div class="tools-row">
-      <label class="tools-label" for="grp-n" style="margin:0;">จำนวนกลุ่ม</label>
-      <input type="number" id="grp-n" class="tools-input" min="2" max="30" value="${ToolsState.groupCount}" style="width:84px;">
+      <label class="tools-label u-m-0" for="grp-n">จำนวนกลุ่ม</label>
+      <input type="number" id="grp-n" class="tools-input u-w-84" min="2" max="30" value="${ToolsState.groupCount}">
       <button type="button" class="btn tools-btn" id="grp-go">แบ่งกลุ่ม</button>
       <button type="button" class="btn btn-ghost btn-sm" id="grp-copy">คัดลอก</button>
     </div>
@@ -225,11 +225,11 @@ function drawTimer(body) {
         <svg viewBox="0 0 120 120" aria-hidden="true"><circle class="tools-ring-track" cx="60" cy="60" r="52"/><circle class="tools-ring-bar" id="timer-ring" cx="60" cy="60" r="52" stroke-dasharray="${RING_LEN}" stroke-dashoffset="0"/></svg>
         <div class="tools-big" id="timer-out" aria-live="off">${toolsFmtTime(ToolsState.timerLeft)}</div>
       </div>
-      <div class="tools-chips" style="justify-content:center; margin:4px 0 14px;">
+      <div class="tools-chips u-center-x u-mt-4 u-mb-14">
         ${presets.map(m => `<button type="button" class="tools-preset" data-min="${m}" aria-pressed="${Math.round(ToolsState.timerTotal / 60) === m}">${m} นาที</button>`).join('')}
       </div>
-      <div class="tools-row" style="justify-content:center;">
-        <input type="number" id="timer-min" class="tools-input" min="1" max="180" value="${Math.round(ToolsState.timerTotal / 60)}" style="width:84px;" aria-label="นาที"> <span class="tools-muted">นาที</span>
+      <div class="tools-row u-center-x">
+        <input type="number" id="timer-min" class="tools-input u-w-84" min="1" max="180" value="${Math.round(ToolsState.timerTotal / 60)}" aria-label="นาที"> <span class="tools-muted">นาที</span>
         <button type="button" class="btn tools-btn" id="timer-toggle">${ToolsState.timerId ? 'หยุดชั่วคราว' : 'เริ่ม'}</button>
         <button type="button" class="btn btn-ghost" id="timer-reset">รีเซ็ต</button>
       </div>
