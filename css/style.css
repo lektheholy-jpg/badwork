@@ -33,6 +33,7 @@
   --radius-xs: 12px;  --radius-s: 16px;  --radius-m: 24px;  --radius-l: 28px;  --radius-xl: 32px;  --radius-pill: 999px;
   --paper-shadow: none;
   --bg: #F4F4F6;  --canvas: #F4F4F6;
+  --card-glass: rgb(255 255 255 / 68%);  --card-glass-hover: rgb(255 255 255 / 82%);  /* พื้นการ์ดขาวโปร่ง ให้เห็นพื้นหลังที่ผู้ใช้เลือก (การ์ดสภาพอากาศไม่ใช้) */
   --page-bg: var(--bg);  /* พื้นหลังหน้า: ค่าเริ่มต้น = --bg · ผู้ใช้เลือกสีทึบ/ไล่สีได้ที่ ตั้งค่า → พื้นหลัง (js/theme.js ตั้งค่านี้) */
   --bgp-lemon: #FFF0A3;  --bgp-sky: #C4DAFF;  --bgp-lilac: #E4D0FF;  --bgp-mint: #CDEFD9;
   --bgp-ocean: linear-gradient(180deg, #B9D2FF, #C9F2C4);
@@ -242,7 +243,7 @@ a { color: inherit; }
 
 /* ---------- Dashboard: per-section course cards ---------- */
 .section-card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
-.section-card { padding: 16px; cursor: pointer; transition: border-color .15s, box-shadow .15s; border-radius: var(--radius-m); box-shadow: none; border: 2px solid transparent; background: var(--card); }
+.section-card { padding: 16px; cursor: pointer; transition: border-color .15s, box-shadow .15s; border-radius: var(--radius-m); box-shadow: none; border: 2px solid transparent; background: var(--card-glass); }
 .section-card-top { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
 .section-card-room { font-size: 12px; font-weight: 700; color: var(--ink-soft); background: var(--surface-sunken); padding: 3px 9px; border-radius: var(--radius-pill); }
 .section-card-name { font-weight: 700; color: var(--ink); margin-bottom: 3px; font-size: 16px; }
@@ -773,7 +774,7 @@ table.sheet thead th.sticky-right-2 { z-index: 3; }
 .gs-details > summary { cursor: pointer; padding: 2px 0; list-style-position: inside; font-style: normal; font-weight: 700; color: var(--ink); font-size: 14px; }
 .gs-details[open] > summary { margin-bottom: 8px; }
 .grade-stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px; }
-.grade-stat-card { padding: 8px 10px; border: none; border-radius: var(--radius-m); box-shadow: none; background: var(--card); }
+.grade-stat-card { padding: 8px 10px; border: none; border-radius: var(--radius-m); box-shadow: none; background: var(--card-glass); }
 .gsc-head { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 4px; }
 .gsc-title { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: 12.5px; font-weight: 600; }
 .gsc-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -795,7 +796,7 @@ table.sheet thead th.sticky-right-2 { z-index: 3; }
 .ns-table .ns-left { text-align: left; }
 
 /* ---------- หมวดหมู่หลักของคะแนนเก็บ (หน้าโครงสร้างคะแนน) ---------- */
-.group-creator { padding: 12px 14px; margin-bottom: 14px; border: none; border-radius: var(--radius-m); box-shadow: none; background: var(--card);
+.group-creator { padding: 12px 14px; margin-bottom: 14px; border: none; border-radius: var(--radius-m); box-shadow: none; background: var(--card-glass);
 }
 .group-creator-label { font-size: 13px; font-weight: 700; margin-bottom: 8px; }
 .group-creator-label span { font-weight: 400; font-size: 12px; color: var(--ink-soft); margin-left: 6px; }
@@ -864,7 +865,7 @@ table.sheet tbody tr:nth-child(even) td.grp-sub-total { background: var(--col-co
 
 /* การ์ดกลายเป็นส่วนของเอกสาร: ไม่มีเงา ไม่มีพื้นหลังแยก ใช้เส้นบางๆ คั่นแทน */
 .main .card {
-  margin-bottom: 22px; border: none; border-radius: var(--radius-m); box-shadow: none; background: var(--card);
+  margin-bottom: 22px; border: none; border-radius: var(--radius-m); box-shadow: none; background: var(--card-glass);
 }
 .main .card-pad { padding: 20px 22px; }
 .main .struct-panel-header {
@@ -902,7 +903,7 @@ table.sheet tbody tr:nth-child(even) td.grp-sub-total { background: var(--col-co
 }
 
 /* ---------- หน้ารายงาน ---------- */
-.report-room-list { display: flex; flex-direction: column; border: 1px solid var(--border); border-radius: var(--radius-m); overflow: hidden; box-shadow: none; background: var(--card); }
+.report-room-list { display: flex; flex-direction: column; border: 1px solid var(--border); border-radius: var(--radius-m); overflow: hidden; box-shadow: none; background: var(--card-glass); }
 .report-room-row {
   display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; background: transparent; border-bottom: 1px solid var(--border); padding: 12px 18px;
 }
@@ -993,10 +994,10 @@ table.sheet tbody tr:nth-child(even) td.grp-sub-total { background: var(--col-co
 .card-title { font-size: 14.5px; }
 
 /* ----- การ์ด: ขาว มุมโค้งใหญ่ ไม่มีเส้นขอบ ----- */
-.main .struct-summary-box { border: none; border-radius: var(--radius-m); box-shadow: none; background: var(--card);
+.main .struct-summary-box { border: none; border-radius: var(--radius-m); box-shadow: none; background: var(--card-glass);
 }
 .stat-card { border: none; box-shadow: none; padding: 20px 22px; border-radius: var(--radius-m);
-  background: color-mix(in oklab, var(--w, var(--hue-blue)) var(--wmix), var(--card)); --w: var(--hue-blue); --wmix: var(--wmix-soft);
+  background: var(--card-glass); --w: var(--hue-blue); --wmix: var(--wmix-soft);
 }
 .card-pad { padding: 24px 26px; }
 .course-row:hover, .section-card:hover { border: 2px solid var(--primary-tint); box-shadow: none; border-color: var(--primary-tint); }
@@ -1045,7 +1046,7 @@ table.sheet tbody tr:nth-child(even) td.grp-sub-total { background: var(--col-co
 .loader-dots i:nth-child(3) { animation-delay: .3s; }
 .sk { display: block; border-radius: var(--radius-s); background: linear-gradient(90deg, var(--surface-sunken) 25%, color-mix(in srgb, var(--surface-sunken) 50%, var(--card)) 50%, var(--surface-sunken) 75%); background-size: 200% 100%; animation: sk-shimmer 1.5s linear infinite; }
 .sk-list, .sk-dash { display: flex; flex-direction: column; gap: 12px; animation: view-enter .2s ease-out; }
-.sk-row { display: flex; align-items: center; gap: 16px; padding: 16px 20px; border-radius: var(--radius-l); background: var(--card); }
+.sk-row { display: flex; align-items: center; gap: 16px; padding: 16px 20px; border-radius: var(--radius-l); background: var(--card-glass); }
 .sk-chip { width: 44px; height: 44px; flex: none; border-radius: 50%; }
 .sk-lines { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
 .sk-line { width: 55%; height: 14px; }
@@ -1112,6 +1113,7 @@ table.sheet tbody tr:last-child td { border-bottom: none; }
 :root[data-theme="dark"] {
   color-scheme: dark;
   --bg: #000000;  --canvas: #000000;
+  --card-glass: rgb(32 32 36 / 62%);  --card-glass-hover: rgb(32 32 36 / 76%);  /* พื้นการ์ดดำโปร่ง */
   --bgp-lemon: #2E2A0A;  --bgp-sky: #0B1B33;  --bgp-lilac: #1E1230;  --bgp-mint: #0C2418;
   --bgp-ocean: linear-gradient(180deg, #0F2347, #12301E);
   --bgp-aurora: radial-gradient(circle at 50% 24%, #1C4A2C 0, transparent 58%), linear-gradient(180deg, #0A2A3C, #0B1E33);
@@ -1198,10 +1200,10 @@ table.sheet tbody tr:last-child td { border-bottom: none; }
 .main .course-row, .main .section-card, .prog-list .prog-row, .chart-row .chart-card {
   border: none; box-shadow: none;
   transition: transform .12s ease, filter .15s ease; border-radius: var(--radius-m); padding: 16px 20px; gap: 16px;
-  background: color-mix(in oklab, var(--w, var(--hue-blue)) var(--wmix), var(--card)); --wmix: var(--wmix-soft);
+  background: var(--card-glass); --wmix: var(--wmix-soft);
 }
 .main .course-row:hover, .main .section-card:hover, .prog-list .prog-row:hover {
-  border: none; background: color-mix(in oklab, var(--w) calc(var(--wmix-soft) + 6%), var(--card)); filter: none;
+  border: none; background: var(--card-glass-hover); filter: none;
 }
 :root[data-theme="dark"] .main .course-row:hover, :root[data-theme="dark"] .main .section-card:hover, :root[data-theme="dark"] .prog-list .prog-row:hover { filter: brightness(1.15); }
 .section-card:active, .prog-row:active, .course-row:active { transform: scale(.98); }
@@ -1224,9 +1226,9 @@ table.sheet tbody tr:last-child td { border-bottom: none; }
 .section-card .course-dot { width: 14px; height: 14px; box-shadow: 0 4px 10px -5px currentColor; }
 
 /* ----- กราฟหน้าแรก: การ์ดฟ้า/ม่วง ----- */
-.stat-card:nth-child(2) { background: color-mix(in srgb, var(--hue-teal) var(--wmix), var(--card)); --w: var(--hue-teal); }
-.stat-card:nth-child(3) { background: color-mix(in srgb, var(--hue-orange) var(--wmix), var(--card)); --w: var(--hue-orange); }
-.stat-card:nth-child(4) { background: color-mix(in srgb, var(--hue-violet) var(--wmix), var(--card)); --w: var(--hue-violet); }
+.stat-card:nth-child(2) { background: var(--card-glass); --w: var(--hue-teal); }
+.stat-card:nth-child(3) { background: var(--card-glass); --w: var(--hue-orange); }
+.stat-card:nth-child(4) { background: var(--card-glass); --w: var(--hue-violet); }
 
 /* ----- ไอคอนเมนูข้าง: สควิร์เคิลสีประจำหมวด ----- */
 .nav-item[data-route="dashboard"] { --w: var(--hue-blue); }
@@ -1258,7 +1260,7 @@ table.sheet tbody tr:last-child td { border-bottom: none; }
    Rich surfaces v2 — พื้นการ์ดเข้มขึ้น สีไม่จืด และสีเดียวกันทั้งสว่าง/มืด
    ผสมสี --w เข้ากับพื้นการ์ดแบบ oklab (สีไม่เพี้ยนเทา) ตารางทุกแบบใช้ตัวแปรธีม
    ========================================================================== */
-.stat-card:nth-child(n) { background: color-mix(in oklab, var(--w) var(--wmix), var(--card)); }
+.stat-card:nth-child(n) { background: var(--card-glass); }
 .chart-row .chart-card:nth-child(1) { --wmix: 26%; --w: var(--viz-blue); }
 .chart-row .chart-card:nth-child(2) { --wmix: 26%; --w: var(--viz-purple); }
 :root[data-theme="dark"] .chart-row .chart-card { --wmix: 30%; }
@@ -1445,9 +1447,9 @@ button.brand:hover .mark { transform: rotate(-6deg) scale(1.04); }
   margin: 4px 0 22px; padding: 18px 20px 12px; border-radius: var(--radius-l); position: relative;                                   /* ขาวโปร่ง (ธีมสว่าง) */
   border: 0;
   -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
-  box-shadow: none; --rc-max: var(--viz-green); --rc-avg: var(--viz-blue); --rc-min: var(--viz-purple); background: var(--card);
+  box-shadow: none; --rc-max: var(--viz-green); --rc-avg: var(--viz-blue); --rc-min: var(--viz-purple); background: var(--card-glass);
 }
-:root[data-theme="dark"] .main .rc-card { --rc-max: #199e70; --rc-avg: #3987e5; --rc-min: #d95926; background: var(--card); }  /* ดำโปร่ง (ธีมมืด) */
+:root[data-theme="dark"] .main .rc-card { --rc-max: #199e70; --rc-avg: #3987e5; --rc-min: #d95926; }  /* ดำโปร่ง (ธีมมืด) */
 .rc-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
 .rc-head .chart-title { margin: 0; }
 .rc-legend { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 6px; font-size: 12.5px; font-weight: 600; color: var(--ink-soft); }
@@ -1690,7 +1692,7 @@ table.sheet tbody tr:nth-child(n) td.over-max { background: var(--danger-tint); 
 @media (max-width: 860px) { .tools-tabs { width: 100%; } .tools-tabs .theme-opt { flex: 1; justify-content: center; padding: 8px 10px; } }
 
 .tools-card { padding: 20px 22px; border: none; border-radius: var(--radius-l); --wmix: var(--wmix-soft);
-  background: color-mix(in oklab, var(--w) var(--wmix-soft), var(--card)); display: flex; flex-direction: column; min-width: 0; }
+  background: var(--card-glass); display: flex; flex-direction: column; min-width: 0; }
 .tools-card-head { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
 .tools-ico { display: grid; place-items: center; width: 46px; height: 46px; border-radius: var(--radius-s); flex: none;
   position: relative; isolation: isolate; color: var(--on-w); }
