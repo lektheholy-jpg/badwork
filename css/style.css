@@ -715,7 +715,6 @@ table.sheet thead th.sticky-right-2 { z-index: 3; }
   #app.sidebar-collapsed .user-chip { justify-content: flex-start; padding: 8px 9px; }
   #app.sidebar-collapsed .user-chip > div { display: block; }
 
-  .main { max-width: 100%; margin-top: 64px; border: none; border-radius: 0; min-height: 100vh; box-shadow: none; margin: 0; padding: calc(52px + env(safe-area-inset-top, 0px)) 8px calc(104px + env(safe-area-inset-bottom, 0px)); }
   .stat-row { grid-template-columns: 1fr; }
   .field-row { grid-template-columns: 1fr; }
   .course-row { flex-wrap: wrap; }
@@ -879,7 +878,8 @@ table.sheet tbody tr:nth-child(even) td.grp-sub-total { background: var(--col-co
   /* ปุ่ม hamburger ลอยอยู่มุมบน → เว้นที่ให้ ไม่ให้ทับแผ่นกระดาษ */
 }
 @media (max-width: 860px) {
-  /* มือถือ: เต็มจอ ไม่ต้องเว้นขอบกระดาษ เพราะพื้นที่น้อย */
+  /* มือถือ: เต็มจอ ไม่ต้องเว้นขอบกระดาษ เพราะพื้นที่น้อย (อยู่หลังกฎ .main พื้นฐานเพื่อไม่ให้ถูกทับ) */
+  .main { max-width: 100%; border: none; border-radius: 0; min-height: 100vh; box-shadow: none; margin: 0; padding: calc(52px + env(safe-area-inset-top, 0px)) 8px calc(104px + env(safe-area-inset-bottom, 0px)); }
 }
 @media print {
   .main { margin: 0; box-shadow: none; border: none; max-width: none; padding: 0; }
