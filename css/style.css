@@ -33,7 +33,7 @@
   --radius-xs: 12px;  --radius-s: 16px;  --radius-m: 24px;  --radius-l: 28px;  --radius-xl: 32px;  --radius-pill: 999px;
   --paper-shadow: none;
   --bg: #F4F4F6;  --canvas: #F4F4F6;
-  --card-glass: rgb(255 255 255 / 68%);  --card-glass-hover: rgb(255 255 255 / 82%);  /* พื้นการ์ดขาวโปร่ง ให้เห็นพื้นหลังที่ผู้ใช้เลือก (การ์ดสภาพอากาศไม่ใช้) */
+  --card-glass: rgb(255 255 255 / 46%);  --card-glass-hover: rgb(255 255 255 / 62%);  /* พื้นการ์ดขาวโปร่ง ให้เห็นพื้นหลังที่ผู้ใช้เลือก (การ์ดสภาพอากาศไม่ใช้) */
   --page-bg: var(--bg);  /* พื้นหลังหน้า: ค่าเริ่มต้น = --bg · ผู้ใช้เลือกสีทึบ/ไล่สีได้ที่ ตั้งค่า → พื้นหลัง (js/theme.js ตั้งค่านี้) */
   --bgp-lemon: #FFF0A3;  --bgp-sky: #C4DAFF;  --bgp-lilac: #E4D0FF;  --bgp-mint: #CDEFD9;
   --bgp-ocean: linear-gradient(180deg, #B9D2FF, #C9F2C4);
@@ -316,7 +316,7 @@ a { color: inherit; }
 .room-pill-wrap { position: relative; display: inline-flex; align-items: center; }
 .room-pill {
   padding: 8px 28px 8px 15px; border-radius: var(--radius-pill); font-size: 13px; font-weight: 700;
-  cursor: pointer; border: none; position: relative; z-index: 1; transition: transform .12s ease, color .2s ease; background: var(--card); color: var(--ink-soft);
+  cursor: pointer; border: none; position: relative; z-index: 1; transition: transform .12s ease, color .2s ease; background: var(--card-glass); color: var(--ink-soft);
 }
 .room-pill:hover { border-color: var(--primary); }
 .room-pill.active { border-color: var(--primary); background: transparent; color: var(--on-primary); }
@@ -406,7 +406,9 @@ a { color: inherit; }
   -webkit-overflow-scrolling: touch;
   max-height: 74vh; border-radius: var(--radius-l); box-shadow: inset 0 0 0 1px var(--border); background: var(--card);
 }
-table.sheet { border-collapse: separate; border-spacing: 0; width: 100%; font-size: 13.5px; }
+table.sheet { border-collapse: separate; border-spacing: 0; width: 100%; font-size: 13.5px;
+  --c1-w: 44px; --c2-w: 80px; --c3-w: 176px; --r1-w: 64px; --r2-w: 58px;  /* ความกว้างคอลัมน์ที่ตรึง (เลขที่/รหัส/นักเรียน | รวม/เกรด) — มือถือกำหนดใหม่ในบล็อก @media */
+}
 
 table.sheet th {
   position: sticky; top: 0; z-index: 2;
@@ -488,7 +490,7 @@ table.sheet th.grp-label {
 .sheet .sticky-col-1, .sheet .sticky-col-2, .sheet .sticky-col-3,
 .sheet .sticky-right-1, .sheet .sticky-right-2 {
   position: sticky; z-index: 1;
-  transform: translateZ(0); left: 0; width: 34px; min-width: 34px; max-width: 130px; right: 56px; box-shadow: 2px 0 8px var(--shadow-ink-sm);
+  transform: translateZ(0);
 }
 table.sheet thead th.sticky-col-1,
 table.sheet thead th.sticky-col-2,
@@ -497,6 +499,13 @@ table.sheet thead th.sticky-right-1,
 table.sheet thead th.sticky-right-2 { z-index: 3; }
 /* sticky-right-1/2 intentionally NOT reset to white here — total-cell/grade-cell
    need to keep their own dark/badge backgrounds at all times, not just on hover */
+/* ตำแหน่งคอลัมน์ที่ตรึง: ซ้าย 3 ช่อง (เลขที่ / รหัส / นักเรียน) ชิดซ้ายต่อกัน · ขวา 2 ช่อง (รวม / เกรด) ชิดขวาต่อกัน
+   offset คำนวณจากความกว้างในตัวแปร --c1-w … --r2-w ของ table.sheet จึงไม่ซ้อนทับกัน (ห้ามตั้ง left/right เดียวกันให้ทุกช่อง) */
+table.sheet :is(th, td).sticky-col-1 { left: 0; width: var(--c1-w); min-width: var(--c1-w); max-width: var(--c1-w); }
+table.sheet :is(th, td).sticky-col-2 { left: var(--c1-w); width: var(--c2-w); min-width: var(--c2-w); max-width: var(--c2-w); }
+table.sheet :is(th, td).sticky-col-3 { left: calc(var(--c1-w) + var(--c2-w)); width: var(--c3-w); min-width: var(--c3-w); max-width: var(--c3-w); box-shadow: 2px 0 8px var(--shadow-ink-sm); }
+table.sheet :is(th, td).sticky-right-1 { right: var(--r2-w); width: var(--r1-w); min-width: var(--r1-w); max-width: var(--r1-w); box-shadow: -2px 0 8px var(--shadow-ink-sm); }
+table.sheet :is(th, td).sticky-right-2 { right: 0; width: var(--r2-w); min-width: var(--r2-w); max-width: var(--r2-w); }
 
 /* ---------- Grade badges (color-coded by grade level, easy to scan) ---------- */
 .badge-grade-good { background: var(--success-tint); color: var(--success); }
@@ -541,7 +550,7 @@ table.sheet thead th.sticky-right-2 { z-index: 3; }
 .struct-table tr.dragging { opacity: 0.4; }
 .struct-table td.handle-col { width: 24px; color: var(--ink-soft); cursor: grab; text-align: center; }
 
-.save-status { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--ink-soft); font-weight: 600; padding: 7px 14px; border-radius: var(--radius-pill); background: var(--card); }
+.save-status { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--ink-soft); font-weight: 600; padding: 7px 14px; border-radius: var(--radius-pill); background: var(--card-glass); }
 .save-status .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--success); }
 .save-status.saving .dot { background: var(--warning); }
 .save-status .dot.dot-danger { background: var(--danger); }
@@ -550,7 +559,7 @@ table.sheet thead th.sticky-right-2 { z-index: 3; }
 .toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
 .toolbar-left { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .search-box { position: relative; }
-.search-box input { font-size: 13px; width: 200px; border: 1.5px solid transparent; border-radius: var(--radius-pill); padding: 10px 18px; font-family: var(--font); background: var(--card); }
+.search-box input { font-size: 13px; width: 200px; border: 1.5px solid transparent; border-radius: var(--radius-pill); padding: 10px 18px; font-family: var(--font); background: var(--card-glass); }
 
 /* ---------- Badges ---------- */
 .badge { display: inline-flex; padding: 4px 10px; font-size: 12px; font-weight: 700; border-radius: var(--radius-pill); }
@@ -732,10 +741,8 @@ table.sheet thead th.sticky-right-2 { z-index: 3; }
   .sheet-scroll-hint { display: flex; }
   .sheet-wrap { touch-action: pan-x pan-y; border-radius: var(--radius-m); max-height: 70vh; }
   .sheet .sticky-col-1 { display: none; }
-  .sheet .sticky-col-2 { left: 0; width: 46px; min-width: 46px; }
-  .sheet .sticky-col-3 { left: 46px; width: 104px; min-width: 104px; max-width: 104px; }
-  .sheet .sticky-right-1 { right: 46px; width: 62px; min-width: 62px; }
-  .sheet .sticky-right-2 { width: 46px; min-width: 46px; }
+  table.sheet { --c1-w: 0px; --c2-w: 48px; --c3-w: 92px; --r1-w: 52px; --r2-w: 46px; }
+  table.sheet td.name-cell.sticky-col-3 { white-space: normal; overflow-wrap: anywhere; line-height: 1.25; }  /* ชื่อ-นามสกุลขึ้นบรรทัดใหม่ได้ ช่องจึงแคบลงโดยไม่ตัดชื่อ (ความสูงแถวไม่เปลี่ยน เพราะช่องกรอกสูง 40px อยู่แล้ว) */
   table.sheet td.name-cell { padding: 6px 5px; font-size: 11px; }
   table.sheet td { min-width: 56px; }
   table.sheet th { padding: 0 3px; font-size: 9.5px; }
@@ -1113,7 +1120,7 @@ table.sheet tbody tr:last-child td { border-bottom: none; }
 :root[data-theme="dark"] {
   color-scheme: dark;
   --bg: #000000;  --canvas: #000000;
-  --card-glass: rgb(32 32 36 / 62%);  --card-glass-hover: rgb(32 32 36 / 76%);  /* พื้นการ์ดดำโปร่ง */
+  --card-glass: rgb(70 70 78 / 40%);  --card-glass-hover: rgb(70 70 78 / 56%);  /* พื้นการ์ดดำโปร่ง */
   --bgp-lemon: #2E2A0A;  --bgp-sky: #0B1B33;  --bgp-lilac: #1E1230;  --bgp-mint: #0C2418;
   --bgp-ocean: linear-gradient(180deg, #0F2347, #12301E);
   --bgp-aurora: radial-gradient(circle at 50% 24%, #1C4A2C 0, transparent 58%), linear-gradient(180deg, #0A2A3C, #0B1E33);
