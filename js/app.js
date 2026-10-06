@@ -6,7 +6,7 @@ function setActiveNav(routeId) {
   document.querySelectorAll('.nav-item[data-route]').forEach(el => {
     el.classList.toggle('active', el.dataset.route === routeId);
   });
-  const MORE = ['structure-page', 'archive-page', 'settings'];
+  const MORE = ['structure-page', 'archive-page', 'tools', 'settings'];
   document.querySelectorAll('.tab-item').forEach(el => {
     const on = el.dataset.route === routeId || (!!el.dataset.more && MORE.includes(routeId));
     el.classList.toggle('active', on); // ต้องส่ง boolean จริง ไม่งั้น toggle จะสลับค่าแทนการกำหนดค่า
@@ -28,6 +28,7 @@ function navigate(route) {
   else if (route === 'structure-page') { AppState.structureEditingCourseId = null; renderStructurePage(); }
   else if (route === 'scores-page') renderScoresPage();
   else if (route === 'report-page') renderReportPage();
+  else if (route === 'tools') renderToolsPage();
   else if (route === 'settings') renderSettings();
 }
 
@@ -119,7 +120,7 @@ document.getElementById('sidebar-toggle')?.addEventListener('click', () => {
   more.addEventListener('click', () => setMore(!app.classList.contains('more-open')));
   bar.appendChild(more);
 
-  ['structure-page', 'archive-page', 'settings', 'logout'].forEach(k => {
+  ['structure-page', 'archive-page', 'tools', 'settings', 'logout'].forEach(k => {
     const s = src(k); if (!s) return;
     const b = document.createElement('button');
     b.type = 'button'; b.className = 'more-tile'; b.dataset.route = k === 'logout' ? 'logout-btn' : k;
