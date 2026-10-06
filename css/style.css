@@ -23,6 +23,7 @@
    by color and weight rather than hairline borders.
    ========================================================================== */
 :root {
+  --squircle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpolygon points='100.0,50.0 100.0,66.8 99.8,72.1 99.6,76.0 99.3,79.1 98.9,81.8 98.4,84.0 97.9,86.1 97.2,87.9 96.4,89.5 95.6,91.0 94.6,92.3 93.5,93.5 92.3,94.6 91.0,95.6 89.5,96.4 87.9,97.2 86.1,97.9 84.0,98.4 81.8,98.9 79.1,99.3 76.0,99.6 72.1,99.8 66.8,100.0 50.0,100.0 33.2,100.0 27.9,99.8 24.0,99.6 20.9,99.3 18.2,98.9 16.0,98.4 13.9,97.9 12.1,97.2 10.5,96.4 9.0,95.6 7.7,94.6 6.5,93.5 5.4,92.3 4.4,91.0 3.6,89.5 2.8,87.9 2.1,86.1 1.6,84.0 1.1,81.8 0.7,79.1 0.4,76.0 0.2,72.1 0.0,66.8 0.0,50.0 0.0,33.2 0.2,27.9 0.4,24.0 0.7,20.9 1.1,18.2 1.6,16.0 2.1,13.9 2.8,12.1 3.6,10.5 4.4,9.0 5.4,7.7 6.5,6.5 7.7,5.4 9.0,4.4 10.5,3.6 12.1,2.8 13.9,2.1 16.0,1.6 18.2,1.1 20.9,0.7 24.0,0.4 27.9,0.2 33.2,0.0 50.0,0.0 66.8,0.0 72.1,0.2 76.0,0.4 79.1,0.7 81.8,1.1 84.0,1.6 86.1,2.1 87.9,2.8 89.5,3.6 91.0,4.4 92.3,5.4 93.5,6.5 94.6,7.7 95.6,9.0 96.4,10.5 97.2,12.1 97.9,13.9 98.4,16.0 98.9,18.2 99.3,20.9 99.6,24.0 99.8,27.9 100.0,33.2' fill='black'/%3E%3C/svg%3E");
   --font-mono: 'IBM Plex Mono', monospace;
   --sidebar-w: 240px;
   --sidebar-w-collapsed: 78px;
@@ -141,7 +142,7 @@ a { color: inherit; }
 }
 .nav-item .nav-icon {
   display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0; width: 38px; height: 38px; border-radius: var(--radius-xs); color: var(--on-w); background: linear-gradient(145deg, oklch(from var(--w) calc(l + .06) calc(c * 1.18) h), oklch(from var(--w) calc(l - .05) calc(c * 1.25) h)); box-shadow: 0 6px 12px -6px color-mix(in srgb, var(--w) 90%, transparent), inset 0 1px 0 color-mix(in srgb, var(--white) 40%, transparent); transition: background .15s ease, color .15s ease, transform .15s ease, box-shadow .15s ease;
+  flex-shrink: 0; width: 38px; height: 38px; border-radius: var(--radius-xs); position: relative; isolation: isolate; color: var(--on-w); transition: transform .15s ease;
 }
 .nav-item .nav-label { white-space: nowrap; overflow: hidden; }
 .nav-item:hover { color: var(--ink); }
@@ -1225,7 +1226,11 @@ table.sheet tbody tr:last-child td { border-bottom: none; }
 .nav-item[data-route="settings"] { --w: var(--hue-gray); }
 #logout-btn { --w: var(--hue-red); }
 .nav-item .nav-icon svg { width: 28px; height: 28px; }
-.nav-item.active .nav-icon { transform: scale(1.08); box-shadow: 0 9px 16px -5px color-mix(in srgb, var(--w) 85%, transparent), inset 0 1px 0 color-mix(in srgb, var(--white) 45%, transparent); }
+/* ----- ไอคอนทรงสควิร์เคิลจริง (superellipse n=5) แบบ One UI: หน้า = มาสก์, เงาเรือง = ชั้นเบลอแยก ----- */
+.nav-item .nav-icon::before, .tab-ico::before, .more-ico::before, .tools-ico::before { content: ''; position: absolute; inset: 5px 2px -4px; z-index: -1; border-radius: 34%; background: var(--w); opacity: .6; filter: blur(6px); transition: opacity .15s ease; }
+.nav-item .nav-icon::after, .tab-ico::after, .more-ico::after, .tools-ico::after { content: ''; position: absolute; inset: 0; z-index: -1; background: linear-gradient(145deg, oklch(from var(--w) calc(l + .06) calc(c * 1.18) h), oklch(from var(--w) calc(l - .05) calc(c * 1.25) h)); -webkit-mask: var(--squircle) center / 100% 100% no-repeat; mask: var(--squircle) center / 100% 100% no-repeat; }
+.nav-item.active .nav-icon { transform: scale(1.08); }
+.nav-item.active .nav-icon::before { opacity: .9; }
 @media (min-width: 861px) {
   #app.sidebar-collapsed .nav-item { padding: 5px; justify-content: center; gap: 0; }
 }
@@ -1374,7 +1379,7 @@ button.brand:hover .mark { transform: rotate(-6deg) scale(1.04); }
   .tab-item[data-route="scores-page"] { --w: var(--hue-orange); }
   .tab-item[data-route="report-page"] { --w: var(--hue-pink); }
   .tab-item[data-route="more"] { --w: var(--hue-violet); }
-  .tab-ico { display: grid; place-items: center; width: 40px; height: 40px; border-radius: var(--radius-xs); color: var(--on-w); background: linear-gradient(145deg, oklch(from var(--w) calc(l + .06) calc(c * 1.18) h), oklch(from var(--w) calc(l - .05) calc(c * 1.25) h)); box-shadow: 0 6px 12px -6px color-mix(in srgb, var(--w) 90%, transparent), inset 0 1px 0 color-mix(in srgb, var(--white) 40%, transparent); }
+  .tab-ico { display: grid; place-items: center; width: 40px; height: 40px; position: relative; isolation: isolate; color: var(--on-w); }
   .tab-ico svg { width: 28px; height: 28px; display: block; }
   .tab-item:active { transform: scale(.95); }
   .tab-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
@@ -1397,7 +1402,7 @@ button.brand:hover .mark { transform: rotate(-6deg) scale(1.04); }
   .more-tile[data-route="settings"] { --w: var(--hue-gray); }
   .more-tile[data-route="logout-btn"] { --w: var(--hue-red); }
   .more-tile:active { transform: scale(.97); }
-  .more-ico { display: grid; place-items: center; flex-shrink: 0; width: 44px; height: 44px; border-radius: var(--radius-s); background: linear-gradient(145deg, oklch(from var(--w) calc(l + .06) calc(c * 1.18) h), oklch(from var(--w) calc(l - .05) calc(c * 1.25) h)); box-shadow: 0 6px 12px -6px color-mix(in srgb, var(--w) 90%, transparent), inset 0 1px 0 color-mix(in srgb, var(--white) 40%, transparent); color: var(--on-w); }
+  .more-ico { display: grid; place-items: center; flex-shrink: 0; width: 44px; height: 44px; position: relative; isolation: isolate; color: var(--on-w); }
   .more-ico svg { width: 31px; height: 31px; }
 }
 
@@ -1405,7 +1410,7 @@ button.brand:hover .mark { transform: rotate(-6deg) scale(1.04); }
 @media (max-width: 860px) {
   .tab-item:focus, .tab-item:focus-visible, .more-tile:focus, .more-tile:focus-visible { outline: none; }
   .tab-item.active { color: var(--ink); }
-  .tab-pill { position: absolute; left: 0; top: 0; z-index: 0; border-radius: var(--radius-m); pointer-events: none; opacity: 0; background: color-mix(in srgb, var(--w, var(--hue-blue)) 20%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--w, var(--hue-blue)) 26%, transparent); transition: transform .3s cubic-bezier(.3, .9, .3, 1), width .3s cubic-bezier(.3, .9, .3, 1), background-color .3s ease, box-shadow .3s ease, opacity .2s ease; }
+  .tab-pill { position: absolute; left: 0; top: 0; z-index: 0; border-radius: var(--radius-m); pointer-events: none; opacity: 0; background: color-mix(in srgb, var(--w, var(--hue-blue)) 20%, transparent); transition: transform .3s cubic-bezier(.3, .9, .3, 1), width .3s cubic-bezier(.3, .9, .3, 1), background-color .3s ease, box-shadow .3s ease, opacity .2s ease; }
   .tab-pill.no-anim { transition: none; }
   .tab-item.active .tab-label { font-weight: 800; }
   .tab-item:not(.active) { background: transparent; }
@@ -1676,7 +1681,7 @@ table.sheet tbody tr:nth-child(n) td.over-max { background: var(--danger-tint); 
   background: color-mix(in oklab, var(--w) var(--wmix-soft), var(--card)); display: flex; flex-direction: column; min-width: 0; }
 .tools-card-head { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
 .tools-ico { display: grid; place-items: center; width: 46px; height: 46px; border-radius: var(--radius-s); flex: none;
-  color: var(--on-w); background: linear-gradient(145deg, oklch(from var(--w) calc(l + .06) calc(c * 1.18) h), oklch(from var(--w) calc(l - .05) calc(c * 1.25) h)); box-shadow: 0 6px 12px -6px color-mix(in srgb, var(--w) 90%, transparent), inset 0 1px 0 color-mix(in srgb, var(--white) 40%, transparent); }
+  position: relative; isolation: isolate; color: var(--on-w); }
 .tools-ico .ico { width: 31px; height: 31px; }
 .tools-title { font-weight: 700; font-size: 16px; }
 .tools-label { font-weight: 600; font-size: 13.5px; color: var(--ink-soft); }
