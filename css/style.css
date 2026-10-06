@@ -72,7 +72,7 @@
   --zebra: #F7F8FA;  --row-on: #E8F0FE;
   --viz-track: #E3E6EC;
   --viz-bar: var(--viz-blue);
-  --glass:      30%;    /* sidebar/tabbar/more-sheet opacity — ยิ่งน้อยยิ่งโปร่ง */
+  --glass:      20%;    /* sidebar/tabbar/more-sheet opacity — ยิ่งน้อยยิ่งโปร่ง */
   --glass-blur: 30px;
   color-scheme: light;
 }
