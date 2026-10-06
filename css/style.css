@@ -23,7 +23,7 @@
    by color and weight rather than hairline borders.
    ========================================================================== */
 :root {
-  --squircle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpolygon points='100.0,50.0 100.0,66.8 99.8,72.1 99.6,76.0 99.3,79.1 98.9,81.8 98.4,84.0 97.9,86.1 97.2,87.9 96.4,89.5 95.6,91.0 94.6,92.3 93.5,93.5 92.3,94.6 91.0,95.6 89.5,96.4 87.9,97.2 86.1,97.9 84.0,98.4 81.8,98.9 79.1,99.3 76.0,99.6 72.1,99.8 66.8,100.0 50.0,100.0 33.2,100.0 27.9,99.8 24.0,99.6 20.9,99.3 18.2,98.9 16.0,98.4 13.9,97.9 12.1,97.2 10.5,96.4 9.0,95.6 7.7,94.6 6.5,93.5 5.4,92.3 4.4,91.0 3.6,89.5 2.8,87.9 2.1,86.1 1.6,84.0 1.1,81.8 0.7,79.1 0.4,76.0 0.2,72.1 0.0,66.8 0.0,50.0 0.0,33.2 0.2,27.9 0.4,24.0 0.7,20.9 1.1,18.2 1.6,16.0 2.1,13.9 2.8,12.1 3.6,10.5 4.4,9.0 5.4,7.7 6.5,6.5 7.7,5.4 9.0,4.4 10.5,3.6 12.1,2.8 13.9,2.1 16.0,1.6 18.2,1.1 20.9,0.7 24.0,0.4 27.9,0.2 33.2,0.0 50.0,0.0 66.8,0.0 72.1,0.2 76.0,0.4 79.1,0.7 81.8,1.1 84.0,1.6 86.1,2.1 87.9,2.8 89.5,3.6 91.0,4.4 92.3,5.4 93.5,6.5 94.6,7.7 95.6,9.0 96.4,10.5 97.2,12.1 97.9,13.9 98.4,16.0 98.9,18.2 99.3,20.9 99.6,24.0 99.8,27.9 100.0,33.2' fill='black'/%3E%3C/svg%3E");
+  --squircle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpolygon points='100.0,50.0 99.9,54.3 99.8,57.6 99.5,60.7 99.1,63.5 98.6,66.2 98.0,68.8 97.2,71.3 96.4,73.6 95.4,75.9 94.4,78.1 93.2,80.1 91.9,82.1 90.5,84.0 89.0,85.8 87.5,87.5 85.8,89.0 84.0,90.5 82.1,91.9 80.1,93.2 78.1,94.4 75.9,95.4 73.6,96.4 71.3,97.2 68.8,98.0 66.2,98.6 63.5,99.1 60.7,99.5 57.6,99.8 54.3,99.9 50.0,100.0 45.7,99.9 42.4,99.8 39.3,99.5 36.5,99.1 33.8,98.6 31.2,98.0 28.7,97.2 26.4,96.4 24.1,95.4 21.9,94.4 19.9,93.2 17.9,91.9 16.0,90.5 14.2,89.0 12.5,87.5 11.0,85.8 9.5,84.0 8.1,82.1 6.8,80.1 5.6,78.1 4.6,75.9 3.6,73.6 2.8,71.3 2.0,68.8 1.4,66.2 0.9,63.5 0.5,60.7 0.2,57.6 0.1,54.3 0.0,50.0 0.1,45.7 0.2,42.4 0.5,39.3 0.9,36.5 1.4,33.8 2.0,31.2 2.8,28.7 3.6,26.4 4.6,24.1 5.6,21.9 6.8,19.9 8.1,17.9 9.5,16.0 11.0,14.2 12.5,12.5 14.2,11.0 16.0,9.5 17.9,8.1 19.9,6.8 21.9,5.6 24.1,4.6 26.4,3.6 28.7,2.8 31.2,2.0 33.8,1.4 36.5,0.9 39.3,0.5 42.4,0.2 45.7,0.1 50.0,0.0 54.3,0.1 57.6,0.2 60.7,0.5 63.5,0.9 66.2,1.4 68.8,2.0 71.3,2.8 73.6,3.6 75.9,4.6 78.1,5.6 80.1,6.8 82.1,8.1 84.0,9.5 85.8,11.0 87.5,12.5 89.0,14.2 90.5,16.0 91.9,17.9 93.2,19.9 94.4,21.9 95.4,24.1 96.4,26.4 97.2,28.7 98.0,31.2 98.6,33.8 99.1,36.5 99.5,39.3 99.8,42.4 99.9,45.7' fill='black'/%3E%3C/svg%3E");
   --font-mono: 'IBM Plex Mono', monospace;
   --sidebar-w: 240px;
   --sidebar-w-collapsed: 78px;
@@ -126,7 +126,7 @@ a { color: inherit; }
 
 .nav-list { position: relative; display: flex; flex-direction: column; overflow: visible; gap: 4px; }
 /* แถบสีของเมนูที่เปิดอยู่ — JS (initNavPill ใน app.js) เลื่อนไปหาปุ่มใหม่ */
-.nav-pill { position: absolute; left: 0; top: 0; z-index: 0; border-radius: var(--radius-pill); pointer-events: none; opacity: 0; background: color-mix(in srgb, var(--w, var(--hue-blue)) 14%, var(--sidebar-bg)); transition: transform .3s cubic-bezier(.3, .9, .3, 1), width .3s cubic-bezier(.3, .9, .3, 1), height .3s cubic-bezier(.3, .9, .3, 1), background-color .3s ease, opacity .2s ease; }
+.nav-pill { position: absolute; left: 0; top: 0; z-index: 0; border-radius: var(--radius-m); pointer-events: none; opacity: 0; background: color-mix(in srgb, var(--w, var(--hue-blue)) 20%, transparent); transition: transform .3s cubic-bezier(.3, .9, .3, 1), width .3s cubic-bezier(.3, .9, .3, 1), height .3s cubic-bezier(.3, .9, .3, 1), background-color .3s ease, opacity .2s ease; }
 .nav-pill.no-anim { transition: none; }
 
 .nav-item {
@@ -1228,7 +1228,7 @@ table.sheet tbody tr:last-child td { border-bottom: none; }
 #logout-btn { --w: var(--hue-red); }
 .nav-item .nav-icon svg { width: 28px; height: 28px; }
 /* ----- ไอคอนทรงสควิร์เคิลจริง (superellipse n=5) แบบ One UI: หน้า = มาสก์, เงาเรือง = ชั้นเบลอแยก ----- */
-.nav-item .nav-icon::before, .tab-ico::before, .more-ico::before, .tools-ico::before { content: ''; position: absolute; inset: 5px 2px -4px; z-index: -1; border-radius: 34%; background: var(--w); opacity: .6; filter: blur(6px); transition: opacity .15s ease; }
+.nav-item .nav-icon::before, .tab-ico::before, .more-ico::before, .tools-ico::before { content: ''; position: absolute; inset: 5px 2px -4px; z-index: -1; border-radius: 42%; background: var(--w); opacity: .6; filter: blur(6px); transition: opacity .15s ease; }
 .nav-item .nav-icon::after, .tab-ico::after, .more-ico::after, .tools-ico::after { content: ''; position: absolute; inset: 0; z-index: -1; background: linear-gradient(145deg, oklch(from var(--w) calc(l + .06) calc(c * 1.18) h), oklch(from var(--w) calc(l - .05) calc(c * 1.25) h)); -webkit-mask: var(--squircle) center / 100% 100% no-repeat; mask: var(--squircle) center / 100% 100% no-repeat; }
 .nav-item.active .nav-icon { transform: scale(1.08); }
 .nav-item.active .nav-icon::before { opacity: .9; }
