@@ -11,26 +11,27 @@
   --col-final-strong:   #9AA0AE;  --col-final:   #1C1E24;
   --grp-collect-h: #2A2D38;  --grp-mid-h: #272A35;  --grp-final-h: #242730;
 }
+
 /* ===== PATCH: settings-grid เต็มจอเหมือนหน้าอื่น ===== */
 .settings-grid { max-width: none; }
-/* ===== PATCH: island ตรงกึ่งกลางระหว่าง 2 คอลัมน์หน้าแรก (≥1360px) =====
-   สูตร: sidebar + padding + left-col (1.25/2.25 ของ grid) + half-gap          */
-@media (min-width: 1360px) {
+
+/* ===== PATCH: island กึ่งกลาง main content (sidebar offset) =====
+   - บน desktop: left = 50% viewport + ครึ่ง sidebar-w
+   - collapsed:  left = 50% viewport + ครึ่ง sidebar-w-collapsed               */
+@media (min-width: 861px) {
   .island {
-    left: calc(
-      var(--sidebar-w) +
-      clamp(24px, 3vw, 72px) +
-      (100vw - var(--sidebar-w) - 2 * clamp(24px, 3vw, 72px) - clamp(24px, 2vw, 44px)) * 0.5556 +
-      clamp(24px, 2vw, 44px) * 0.5
-    );
+    left: calc(50% + var(--sidebar-w) / 2);
     transform: translateX(-50%);
   }
   #app.sidebar-collapsed .island {
-    left: calc(
-      var(--sidebar-w-collapsed) +
-      clamp(24px, 3vw, 72px) +
-      (100vw - var(--sidebar-w-collapsed) - 2 * clamp(24px, 3vw, 72px) - clamp(24px, 2vw, 44px)) * 0.5556 +
-      clamp(24px, 2vw, 44px) * 0.5
-    );
+    left: calc(50% + var(--sidebar-w-collapsed) / 2);
+    transform: translateX(-50%);
+  }
+}
+
+/* ===== PATCH: dashboard 2 คอลัมน์ — split ตรงกับ island (50/50) ===== */
+@media (min-width: 1360px) {
+  .dash {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
 }
