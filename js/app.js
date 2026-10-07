@@ -147,6 +147,126 @@ function bgGroupHtml(title, opts) {
   return `<div class="u-note u-semibold u-mt-12">${escapeHtml(title)}</div><div class="bg-grid" role="group" aria-label="${escapeHtml(title)}">${tiles}</div>`;
 }
 
+// ---------- พื้นหลังกำหนดเอง: สีเดียว / ไล่สี / ลาย (ตรรกะสีและการบันทึกอยู่ที่ js/theme.js) ----------
+const BG_DEFAULTS = {
+  solid:   { t: 'solid',   c: ['#ffd6e8'] },
+  grad:    { t: 'grad',    c: ['#a1c4fd', '#fbc2eb'], a: 160, k: 'linear' },
+  pattern: { t: 'pattern', c: ['#eef5ff'], a: 160, k: 'linear', p: 'dots', ink: '#2d80f2', s: 28, o: 30 }
+};
+const BG_UNITS = { a: '°', s: 'px', o: '%' };
+
+function hslToHex(h, s, l) {
+  s /= 100; l /= 100;
+  const k = n => (n + h / 30) % 12, a = s * Math.min(l, 1 - l);
+  const f = n => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+  return '#' + [f(0), f(8), f(4)].map(v => Math.round(v * 255).toString(16).padStart(2, '0')).join('');
+}
+const randInt = (lo, hi) => lo + Math.floor(Math.random() * (hi - lo + 1));
+
+function bgColorField(key, label, value) {
+  return `<div class="bg-field"><span>${escapeHtml(label)}</span><span class="bg-color-wrap"><span class="bg-hex" data-hex="${key}">${value}</span><input type="color" class="bg-color" data-key="${key}" value="${value}" aria-label="${escapeHtml(label)}"></span></div>`;
+}
+function bgSlider(key, label, min, max, step, value) {
+  return `<div class="bg-slider"><div class="bg-slider-head"><span>${escapeHtml(label)}</span><span class="bg-slider-val" data-val="${key}">${value}${BG_UNITS[key]}</span></div><input type="range" class="bg-range" data-key="${key}" min="${min}" max="${max}" step="${step}" value="${value}" aria-label="${escapeHtml(label)}"></div>`;
+}
+function bgPanelHtml(mode, cfg) {
+  const preview = '<div class="bg-preview" aria-hidden="true"></div>';
+  const btn = (act, label) => `<button type="button" class="btn btn-ghost btn-sm" data-bg-act="${act}">${label}</button>`;
+  if (mode === 'solid') {
+    return `${preview}${bgColorField('c0', 'สีพื้นหลัง', cfg.c[0])}<div class="u-flex u-gap-8 u-wrap u-mt-12">${btn('random', 'สุ่มสี')}</div>`;
+  }
+  if (mode === 'grad') {
+    const kinds = [['linear', 'เส้นตรง'], ['radial', 'วงกลม']].map(([k, l]) =>
+      `<button type="button" class="theme-opt" data-bg-kind="${k}" aria-pressed="${cfg.k === k}">${l}</button>`).join('');
+    const colors = cfg.c.map((c, i) => bgColorField('c' + i, 'สีที่ ' + (i + 1), c)).join('');
+    return `${preview}<div class="theme-seg bg-kind u-mt-12" role="group" aria-label="รูปแบบไล่สี">${kinds}</div>${colors}`
+      + (cfg.k === 'linear' ? bgSlider('a', 'ทิศทาง', 0, 360, 5, cfg.a) : '')
+      + `<div class="u-flex u-gap-8 u-wrap u-mt-12">${btn('random', 'สุ่มสี')}${btn('swap', 'สลับสี')}${btn('third', cfg.c.length === 3 ? 'เอาสีที่ 3 ออก' : 'เพิ่มสีที่ 3')}</div>`;
+  }
+  const tiles = BG_PATTERNS.map(([id, label]) => `
+    <button type="button" class="bg-opt bg-opt-pat" data-bg-pat="${id}" aria-label="${escapeHtml(label)}" aria-pressed="${cfg.p === id}" style="--sw:${bgCssOf({ ...cfg, p: id }, 0.6)}">
+      <span class="bg-check">${icon('check')}</span><span class="bg-cap">${escapeHtml(label)}</span>
+    </button>`).join('');
+  return `${preview}<div class="bg-grid" role="group" aria-label="ลายพื้นหลัง">${tiles}</div>`
+    + bgColorField('c0', 'สีพื้น', cfg.c[0])
+    + (cfg.c.length === 2 ? bgColorField('c1', 'สีพื้นที่ 2 (ไล่สี)', cfg.c[1]) : '')
+    + bgColorField('ink', 'สีลาย', cfg.ink)
+    + bgSlider('s', 'ขนาดลาย', 12, 72, 2, cfg.s)
+    + bgSlider('o', 'ความเข้มลาย', 8, 100, 2, cfg.o)
+    + `<div class="u-flex u-gap-8 u-wrap u-mt-12">${btn('random', 'สุ่มลายและสี')}${btn('mix', cfg.c.length === 2 ? 'ใช้สีพื้นสีเดียว' : 'ผสมสีพื้น (ไล่สี)')}</div>`;
+}
+
+// ผูกตัวควบคุมพื้นหลังกำหนดเองในหน้าตั้งค่า · onChange = เรียกเมื่อมีการใช้พื้นหลังกำหนดเอง (ให้ช่องสำเร็จรูปเลิกติ๊กถูก)
+function initBgCustom(view, onChange) {
+  const saved = getBgCustom();
+  const clone = o => JSON.parse(JSON.stringify(o));
+  const draft = { solid: clone(BG_DEFAULTS.solid), grad: clone(BG_DEFAULTS.grad), pattern: clone(BG_DEFAULTS.pattern) };
+  if (saved) draft[saved.t] = saved;
+  let mode = saved ? saved.t : null;
+  const seg = view.querySelector('.bg-mode');
+  const panel = view.querySelector('#bg-custom-panel');
+
+  const syncMode = () => {
+    seg.querySelectorAll('[data-bg-mode]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.bgMode === mode)));
+    panel.classList.toggle('hidden', !mode);
+  };
+  const renderPanel = () => {
+    if (!mode) return;
+    panel.innerHTML = bgPanelHtml(mode, draft[mode]);
+    const kind = panel.querySelector('.bg-kind');
+    if (kind) initNavPill(kind, '.theme-opt', 'seg-pill', { activeSel: '[aria-pressed="true"]', watch: true });
+  };
+  const commit = () => { setBgCustom(draft[mode]); onChange(); };
+  const refreshTiles = () => {
+    panel.querySelectorAll('[data-bg-pat]').forEach(t => t.style.setProperty('--sw', bgCssOf({ ...draft.pattern, p: t.dataset.bgPat }, 0.6)));
+  };
+  const select = m => { mode = m; syncMode(); renderPanel(); commit(); };
+
+  seg.querySelectorAll('[data-bg-mode]').forEach(b => b.addEventListener('click', () => select(b.dataset.bgMode)));
+  initNavPill(seg, '[data-bg-mode]', 'seg-pill', { activeSel: '[aria-pressed="true"]', watch: true });
+
+  panel.addEventListener('input', e => {
+    const el = e.target, key = el.dataset.key, cfg = draft[mode];
+    if (!key) return;
+    if (key === 'ink') cfg.ink = el.value;
+    else if (key[0] === 'c') cfg.c[Number(key.slice(1))] = el.value;
+    else cfg[key] = Number(el.value);
+    const hex = panel.querySelector(`[data-hex="${key}"]`); if (hex) hex.textContent = el.value;
+    const val = panel.querySelector(`[data-val="${key}"]`); if (val) val.textContent = el.value + (BG_UNITS[key] || '');
+    commit();
+    if (mode === 'pattern') refreshTiles();
+  });
+  panel.addEventListener('click', e => {
+    const cfg = draft[mode];
+    const pat = e.target.closest('[data-bg-pat]'), kind = e.target.closest('[data-bg-kind]'), act = e.target.closest('[data-bg-act]');
+    if (pat) {
+      cfg.p = pat.dataset.bgPat;
+      panel.querySelectorAll('[data-bg-pat]').forEach(t => t.setAttribute('aria-pressed', String(t === pat)));
+      commit();
+    } else if (kind) {
+      cfg.k = kind.dataset.bgKind; commit(); renderPanel();
+    } else if (act) {
+      const a = act.dataset.bgAct;
+      if (a === 'swap') cfg.c.reverse();
+      else if (a === 'third') { if (cfg.c.length === 3) cfg.c.pop(); else cfg.c.push(hslToHex(randInt(0, 359), 80, 82)); }
+      else if (a === 'mix') { if (cfg.c.length === 2) cfg.c.pop(); else cfg.c.push(hslToHex(randInt(0, 359), 80, 86)); }
+      else if (a === 'random') {
+        const h = randInt(0, 359);
+        if (mode === 'solid') cfg.c = [hslToHex(h, randInt(60, 95), randInt(68, 90))];
+        else if (mode === 'grad') cfg.c = cfg.c.map((_, i) => hslToHex((h + i * randInt(40, 110)) % 360, randInt(65, 95), randInt(62, 86))), cfg.a = randInt(0, 72) * 5;
+        else {
+          cfg.c = cfg.c.map((_, i) => hslToHex((h + i * randInt(30, 90)) % 360, randInt(60, 90), randInt(82, 94)));
+          cfg.ink = hslToHex((h + randInt(0, 40)) % 360, randInt(55, 90), randInt(32, 52));
+          cfg.p = BG_PATTERNS[randInt(0, BG_PATTERNS.length - 1)][0]; cfg.s = randInt(8, 30) * 2; cfg.o = randInt(12, 40) * 2;
+        }
+      }
+      commit(); renderPanel();
+    }
+  });
+  syncMode(); renderPanel();
+  return { reset() { mode = null; syncMode(); } }; // เลือกชุดสำเร็จรูปแล้ว → พับแผงกำหนดเอง
+}
+
 function renderSettings() {
   const view = document.getElementById('view');
   const u = AppState.user;
@@ -175,10 +295,17 @@ function renderSettings() {
     </div>
     <div class="card card-pad u-maxw-420 u-mt-14">
       <div class="u-semibold">พื้นหลัง</div>
-      <div class="u-note">เลือกสีทึบหรือไล่สีสำหรับพื้นหลังของหน้าเว็บ</div>
+      <div class="u-note">เลือกจากชุดสำเร็จรูป หรือปรับเองอิสระ: สีเดียว ไล่สีหลายสี และลายพื้นหลัง ชื่อแอปและตัวหนังสือบนพื้นจะเปลี่ยนสีให้อ่านชัดตามพื้นหลังเอง</div>
       ${bgGroupHtml('ค่าเริ่มต้น', [['default', 'ค่าเริ่มต้น']])}
       ${bgGroupHtml('สีทึบ', BG_OPTIONS.solid)}
       ${bgGroupHtml('ไล่สี', BG_OPTIONS.gradient)}
+      <div class="u-note u-semibold u-mt-16">ปรับเองอิสระ</div>
+      <div class="theme-seg bg-mode u-mt-6" role="group" aria-label="ชนิดพื้นหลังที่ปรับเอง">
+        <button type="button" class="theme-opt" data-bg-mode="solid" aria-pressed="false">สีเดียว</button>
+        <button type="button" class="theme-opt" data-bg-mode="grad" aria-pressed="false">ไล่สี</button>
+        <button type="button" class="theme-opt" data-bg-mode="pattern" aria-pressed="false">ลาย</button>
+      </div>
+      <div id="bg-custom-panel" class="hidden"></div>
     </div>
     <div class="card card-pad u-maxw-420 u-mt-14">
       <div class="u-semibold">ความเป็นส่วนตัวและข้อมูลของฉัน</div>
@@ -202,23 +329,25 @@ function renderSettings() {
   document.getElementById('privacy-delete-btn').addEventListener('click', withPrivacy('deleteMyAccount'));
   const syncThemeButtons = () => {
     const cur = getThemePref();
-    view.querySelectorAll('.theme-opt').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.themePref === cur)));
+    view.querySelectorAll('.theme-opt[data-theme-pref]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.themePref === cur)));
   };
-  view.querySelectorAll('.theme-opt').forEach(b => b.addEventListener('click', () => {
+  view.querySelectorAll('.theme-opt[data-theme-pref]').forEach(b => b.addEventListener('click', () => {
     setThemePref(b.dataset.themePref);
     syncThemeButtons();
   }));
   syncThemeButtons();
   const syncBgButtons = () => {
     const cur = getBgPref();
-    view.querySelectorAll('.bg-opt').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.bgPref === cur)));
+    view.querySelectorAll('.bg-opt[data-bg-pref]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.bgPref === cur)));
   };
-  view.querySelectorAll('.bg-opt').forEach(b => b.addEventListener('click', () => {
+  const bgCustom = initBgCustom(view, syncBgButtons);
+  view.querySelectorAll('.bg-opt[data-bg-pref]').forEach(b => b.addEventListener('click', () => {
     setBgPref(b.dataset.bgPref);
     syncBgButtons();
+    bgCustom.reset();
   }));
   syncBgButtons();
-  initNavPill(view.querySelector('.theme-seg'), '.theme-opt', 'seg-pill', { activeSel: '[aria-pressed="true"]', watch: true });
+  initNavPill(view.querySelector('.theme-seg[aria-label="ธีม"]'), '.theme-opt', 'seg-pill', { activeSel: '[aria-pressed="true"]', watch: true });
 }
 
 initNavPill(document.querySelector('.nav-list'), '.nav-item', 'nav-pill', { global: true });

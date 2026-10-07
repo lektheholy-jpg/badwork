@@ -34,6 +34,8 @@
   --paper-shadow: none;
   --bg: #F4F4F6;  --canvas: #F4F4F6;
   --card-glass: rgb(255 255 255 / 46%);  --card-glass-hover: rgb(255 255 255 / 62%);  /* พื้นการ์ดขาวโปร่ง ให้เห็นพื้นหลังที่ผู้ใช้เลือก (การ์ดสภาพอากาศไม่ใช้) */
+  --on-bg: var(--ink);  --on-bg-soft: var(--ink-soft);  --on-bg-hover: var(--sidebar-hover);  --on-bg-halo: transparent;  --on-bg-accent: var(--primary-dark);  /* ตัวหนังสือที่วางบนพื้นหลังหน้าโดยตรง (เมนู หัวหน้า) · เปลี่ยนตามพื้นหลังที่ผู้ใช้เลือกเอง (js/theme.js) */
+  --on-brand: var(--ink);  --on-brand-halo: transparent;  /* ชื่อแอป "เวรกรรม.." มุมบนซ้าย · คำนวณแยกจากบริเวณที่ตัวอักษรอยู่ */
   --page-bg: var(--bg);  /* พื้นหลังหน้า: ค่าเริ่มต้น = --bg · ผู้ใช้เลือกสีทึบ/ไล่สีได้ที่ ตั้งค่า → พื้นหลัง (js/theme.js ตั้งค่านี้) */
   --bgp-lemon: #FFF0A3;  --bgp-sky: #C4DAFF;  --bgp-lilac: #E4D0FF;  --bgp-mint: #CDEFD9;
   --bgp-ocean: linear-gradient(180deg, #B9D2FF, #C9F2C4);
@@ -124,7 +126,7 @@ a { color: inherit; }
   display: flex;
   align-items: center;
   font-weight: 700;
-  white-space: nowrap; letter-spacing: .2px; flex: 1; min-width: 0; gap: 12px; font-family: var(--font-modern); overflow: visible; color: var(--ink); font-size: 18px;
+  white-space: nowrap; letter-spacing: .2px; flex: 1; min-width: 0; gap: 12px; font-family: var(--font-modern); overflow: visible; color: var(--on-brand); font-size: 18px;
 }
 #app.sidebar-collapsed .brand { display: none; }
 .brand .mark {
@@ -145,14 +147,14 @@ a { color: inherit; }
   background: none;
   text-align: left;
   width: 100%;
-  transition: background .15s ease, color .15s ease; font-family: var(--font-modern); color: var(--ink); border: none; border-radius: var(--radius-pill); font-size: 15px; font-weight: 500; --w: var(--hue-blue); gap: 14px; padding: 5px 10px; min-height: 52px;
+  transition: background .15s ease, color .15s ease; font-family: var(--font-modern); color: var(--on-bg); border: none; border-radius: var(--radius-pill); font-size: 15px; font-weight: 500; --w: var(--hue-blue); gap: 14px; padding: 5px 10px; min-height: 52px;
 }
 .nav-item .nav-icon {
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0; width: 38px; height: 38px; border-radius: var(--radius-xs); position: relative; isolation: isolate; color: var(--on-w); transition: transform .15s ease;
 }
-.nav-item .nav-label { white-space: nowrap; overflow: hidden; }
-.nav-item:hover { color: var(--ink); }
+.nav-item .nav-label { white-space: nowrap; overflow: hidden; text-shadow: 0 0 6px var(--on-bg-halo); }
+.nav-item:hover { color: var(--on-bg); }
 .nav-item.active::after {
   content: '';
   position: absolute;
@@ -189,7 +191,7 @@ a { color: inherit; }
 .user-chip .email { font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 130px; color: var(--ink-soft); }
 #app.sidebar-collapsed .user-chip { justify-content: center; padding: 8px; }
 #app.sidebar-collapsed .user-chip > div { display: none; }
-.crumb { font-size: 12.5px; margin-bottom: 4px; font-weight: 600; font-style: normal; color: var(--ink-soft); }
+.crumb { font-size: 12.5px; margin-bottom: 4px; font-weight: 600; font-style: normal; color: var(--on-bg-soft); }
 .crumb b { color: var(--primary); }
 
 /* ---------- Mobile hamburger nav ---------- */
@@ -716,7 +718,9 @@ table.sheet :is(th, td).sticky-right-2 { right: 0; width: var(--r2-w); min-width
     transform: translateX(-100%);
     transition: transform .25s ease;
     box-shadow: var(--shadow);
+    --on-bg: var(--ink); --on-bg-soft: var(--ink-soft); --on-bg-hover: var(--sidebar-hover); --on-bg-halo: transparent; --on-bg-accent: var(--primary-dark); --on-brand: var(--ink); --on-brand-halo: transparent;  /* ลิ้นชักลอยทับเนื้อหา ไม่ได้อยู่บนพื้นหลังหน้าโดยตรง จึงใช้สีตัวหนังสือปกติ */
   }
+  :root[data-bg="custom"] .sidebar { background: color-mix(in srgb, var(--sidebar-bg) 86%, transparent); }  /* พื้นหลังกำหนดเอง: ลิ้นชักทึบขึ้น ตัวหนังสืออ่านชัดไม่ว่าด้านหลังเป็นสีอะไร */
   #app.nav-open .sidebar { transform: translateX(0); }
   #app.nav-open .nav-overlay { display: block; }
 
@@ -988,16 +992,16 @@ table.sheet tbody tr:nth-child(even) td.grp-sub-total { background: var(--col-co
    ========================================================================== */
 
 /* ----- เมนูข้าง: ขาวสะอาด ตัวที่เลือกเป็นแคปซูลสีทราย ----- */
-.nav-item.active, #app.sidebar-collapsed .nav-item.active { font-weight: 700; box-shadow: none; color: var(--primary-dark); padding-left: 10px; }
+.nav-item.active, #app.sidebar-collapsed .nav-item.active { font-weight: 700; box-shadow: none; color: var(--on-bg-accent); padding-left: 10px; }
 
 /* ----- พื้นที่เนื้อหา: ไม่มีกระดาษ ไม่มีสันหนังสือ ----- */
 
 /* ----- หัวเรื่องใหญ่ชิดซ้ายแบบ One UI ----- */
 .page-header { text-align: left; border-bottom: none; padding: 20px 0 0; margin-bottom: 24px; }
-.page-header h1 { font-size: 34px; font-weight: 700; line-height: 1.35; letter-spacing: 0; }
-.page-header .sub { font-style: normal; font-size: 15px; color: var(--ink-soft); margin-top: 6px; }
+.page-header h1 { font-size: 34px; font-weight: 700; line-height: 1.35; letter-spacing: 0; color: var(--on-bg); text-shadow: 0 0 8px var(--on-bg-halo); }
+.page-header .sub { font-style: normal; font-size: 15px; color: var(--on-bg-soft); margin-top: 6px; }
 /* หัวข้อย่อยของส่วนในหน้า (นอกการ์ด) = .section-title · หัวข้อในการ์ด = .card-title (ระยะห่างใส่ u-mb-* ตามบริบท) */
-.section-title { font-size: 20px; border-bottom: none; padding-bottom: 0; margin: 0 0 14px; }
+.section-title { font-size: 20px; border-bottom: none; padding-bottom: 0; margin: 0 0 14px; color: var(--on-bg); text-shadow: 0 0 8px var(--on-bg-halo); }
 .card-title { font-size: 14.5px; }
 
 /* ----- การ์ด: ขาว มุมโค้งใหญ่ ไม่มีเส้นขอบ ----- */
@@ -1167,7 +1171,7 @@ table.sheet tbody tr:last-child td { border-bottom: none; }
 /* ----- พื้นผิวที่เดิมฮาร์ดโค้ดสีขาว → ใช้ตัวแปรเพื่อให้สลับโหมดได้ ----- */
 
 /* ----- เมนู ----- */
-.nav-item:not(.active):hover { background: var(--sidebar-hover); }
+.nav-item:not(.active):hover { background: var(--on-bg-hover); }
 
 /* ----- ปุ่ม / ช่องกรอก ----- */
 .btn-primary:hover { background: var(--primary-dark); color: var(--on-primary); }
@@ -1359,10 +1363,10 @@ table.sheet td input.score-input:hover { background: var(--hover-wash); }
 button.brand {
   display: flex; align-items: center; gap: 12px; flex: 0 1 auto; min-width: 0; max-width: 100%;
   padding: 6px 12px 6px 6px; border: none; border-radius: var(--radius-pill); background: transparent;
-  color: var(--ink); font: inherit; font-family: var(--font-head); font-size: 18px; font-weight: 800; cursor: pointer;
+  color: var(--on-brand); text-shadow: 0 0 6px var(--on-brand-halo), 0 0 2px var(--on-brand-halo); font: inherit; font-family: var(--font-head); font-size: 18px; font-weight: 800; cursor: pointer;
   transition: background .15s ease, transform .12s ease;
 }
-button.brand:hover { background: var(--sidebar-hover); }
+button.brand:hover { background: var(--on-bg-hover); }
 button.brand:active { transform: scale(.97); }
 button.brand:focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; }
 button.brand .mark { width: 46px; height: 46px; border-radius: var(--radius-s); padding: 4px; background: var(--surface-sunken); flex-shrink: 0; transition: transform .25s ease; }
@@ -1393,7 +1397,7 @@ button.brand:hover .mark { transform: rotate(-6deg) scale(1.04); }
   }
   .tab-item {
     --w: var(--hue-blue); flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
-    position: relative; z-index: 1; min-height: 56px; padding: 6px 2px; border: none; border-radius: var(--radius-m); background: transparent; color: var(--ink-soft);
+    position: relative; z-index: 1; min-height: 56px; padding: 6px 2px; border: none; border-radius: var(--radius-m); background: transparent; color: var(--on-bg-soft);
     font: inherit; font-size: 11.5px; font-weight: 700; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: color .25s ease;
   }
   .tab-item[data-route="courses"] { --w: var(--hue-teal); }
@@ -1430,7 +1434,7 @@ button.brand:hover .mark { transform: rotate(-6deg) scale(1.04); }
 /* v9.1 — แถบเมนูล่าง: เห็นชัดว่าอยู่หน้าไหน (ปุ่มที่เปิดอยู่เป็นสีทึบ ตัวขาว) และไม่มีกรอบดำค้างหลังแตะ */
 @media (max-width: 860px) {
   .tab-item:focus, .tab-item:focus-visible, .more-tile:focus, .more-tile:focus-visible { outline: none; }
-  .tab-item.active { color: var(--ink); }
+  .tab-item.active { color: var(--on-bg); }
   .tab-pill { position: absolute; left: 0; top: 0; z-index: 0; border-radius: var(--radius-m); pointer-events: none; opacity: 0; background: color-mix(in srgb, var(--w, var(--hue-blue)) 20%, transparent); transition: transform .3s cubic-bezier(.3, .9, .3, 1), width .3s cubic-bezier(.3, .9, .3, 1), background-color .3s ease, box-shadow .3s ease, opacity .2s ease; }
   .tab-pill.no-anim { transition: none; }
   .tab-item.active .tab-label { font-weight: 800; }
@@ -1858,3 +1862,21 @@ table.sheet tbody tr:nth-child(n) td.over-max { background: var(--danger-tint); 
 .bg-opt[aria-pressed="true"] .bg-check { display: flex; }
 .bg-opt .bg-check .ico { width: 16px; height: 16px; }
 .bg-opt-default { --sw: var(--bg); }
+
+/* ----- ตั้งค่า → พื้นหลังกำหนดเอง (สีเดียว / ไล่สี / ลาย) · ตัวควบคุมสร้างใน js/app.js · การคำนวณสีอยู่ที่ js/theme.js ----- */
+.bg-preview { height: 84px; margin-top: 12px; border: 2px solid var(--border); border-radius: var(--radius-m); background: var(--page-bg); }
+.bg-field { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; font-size: 14px; font-weight: 600; }
+.bg-color-wrap { display: flex; align-items: center; gap: 8px; }
+.bg-color { -webkit-appearance: none; appearance: none; width: 52px; height: 36px; padding: 0; border: 2px solid var(--border); border-radius: var(--radius-pill); background: none; overflow: hidden; cursor: pointer; }
+.bg-color::-webkit-color-swatch-wrapper { padding: 0; }
+.bg-color::-webkit-color-swatch { border: none; border-radius: var(--radius-pill); }
+.bg-color::-moz-color-swatch { border: none; border-radius: var(--radius-pill); }
+.bg-color:focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; }
+.bg-hex { width: 64px; font-family: var(--font-mono); font-size: 12px; font-weight: 500; color: var(--ink-soft); text-transform: uppercase; }
+.bg-slider { margin-top: 12px; font-size: 14px; font-weight: 600; }
+.bg-slider-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.bg-slider-val { font-family: var(--font-mono); font-size: 12px; font-weight: 500; color: var(--ink-soft); }
+.bg-range { width: 100%; margin: 6px 0 0; accent-color: var(--primary-solid); cursor: pointer; }
+.bg-opt-pat { aspect-ratio: 1 / 1; }
+.bg-opt-pat .bg-check { top: 6px; right: 6px; bottom: auto; width: 20px; height: 20px; }
+.bg-cap { position: absolute; left: 6px; bottom: 6px; max-width: calc(100% - 12px); padding: 0 8px; border-radius: var(--radius-pill); background: var(--card); color: var(--ink); font-size: 11px; font-weight: 600; line-height: 1.7; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
