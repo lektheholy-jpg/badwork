@@ -152,21 +152,16 @@ function readProfileForm(form) {
   return { data };
 }
 
-async function renderProfilePage() {
-  const view = document.getElementById('view');
-  showLoading('list');
+// ---------- แท็บในหน้าข้อมูลส่วนตัว ----------
+const PROFILE_TABS = [['info', 'ข้อมูลส่วนตัว'], ['timetable', 'ตารางสอน']];
+let profileTabToken = 0; // เพิ่มทุกครั้งที่วาดแท็บใหม่ — ผลของการวาดที่ช้ากว่าจะถูกทิ้ง
 
-  let p;
-  try {
-    p = await loadTeacherProfile();
-  } catch (err) {
-    console.error(err);
-    view.innerHTML = `${pageHeaderHtml('ข้อมูลส่วนตัว')}<div class="card"><div class="empty-state">โหลดข้อมูลไม่สำเร็จ<br><button type="button" class="btn btn-ghost btn-sm" id="pf-retry-btn">ลองใหม่</button></div></div>`;
-    document.getElementById('pf-retry-btn')?.addEventListener('click', () => navigate('profile'));
-    return;
-  }
+async function renderProfileInfoTab(body, isActive) {
+  const p = await loadTeacherProfile();
+  if (!isActive()) return;
 
-  view.innerHTML = `${pageHeaderHtml('ข้อมูลส่วนตัว')}${profileFormHtml(p)}`;
+  body.innerHTML = profileFormHtml(p);
+  AppState.profileDirty = false;
   const form = document.getElementById('profile-form');
   const preview = form.querySelector('#pf-preview');
   const ksSelect = form.querySelector('#pf-ksLevel');
@@ -180,13 +175,14 @@ async function renderProfilePage() {
   };
 
   form.addEventListener('input', e => {
+    AppState.profileDirty = true;
     if (e.target === standingInput && !ksSelect.value) {
       const hit = PROFILE_STANDINGS.find(s => s[0] === cleanProfileText(standingInput.value));
       if (hit) ksSelect.value = hit[1]; // เติม คศ. ให้เมื่อยังว่าง
     }
     refreshPreview();
   });
-  form.addEventListener('change', refreshPreview);
+  form.addEventListener('change', () => { AppState.profileDirty = true; refreshPreview(); });
   form.querySelector('#pf-salary').addEventListener('blur', e => {
     const { data } = readProfileForm(form);
     if (data.salary != null) e.target.value = formatSalary(data.salary); // จัดรูปแบบ 32290 → 32,290
@@ -201,6 +197,7 @@ async function renderProfilePage() {
       // mergeFields: แทนที่ฟิลด์ profile ทั้งก้อน (ช่องที่ล้างจะถูกล้างจริง) โดยไม่แตะฟิลด์อื่นของ users/{uid}
       await db.collection('users').doc(AppState.user.uid).set({ profile: r.data }, { mergeFields: ['profile'] });
       AppState.teacherProfile = r.data;
+      AppState.profileDirty = false;
       islandSave('saved');
     } catch (err) {
       console.error(err);
@@ -213,4 +210,68 @@ async function renderProfilePage() {
   });
 
   refreshPreview();
+}
+
+// วาดเนื้อหาของแท็บที่เลือกอยู่ลงใน body · animate = สลับแท็บ (เฟดเข้าเมื่อวาดเสร็จ)
+async function drawProfileTab(body, animate = false) {
+  const token = ++profileTabToken;
+  const isActive = () => token === profileTabToken && body.isConnected;
+  showLoading('list', body);
+  try {
+    if (AppState.profileTab === 'timetable') {
+      await loadModule('timetable'); // js/timetable.js โหลดครั้งแรกที่เปิดแท็บนี้
+      if (!isActive()) return;
+      await renderTimetableTab(body, isActive);
+    } else {
+      await renderProfileInfoTab(body, isActive);
+    }
+  } catch (err) {
+    console.error(err);
+    if (!isActive()) return;
+    body.innerHTML = `<div class="card"><div class="empty-state">โหลดข้อมูลไม่สำเร็จ<br><button type="button" class="btn btn-ghost btn-sm" id="pf-retry-btn">ลองใหม่</button></div></div>`;
+    document.getElementById('pf-retry-btn')?.addEventListener('click', () => drawProfileTab(body));
+  }
+  if (!isActive()) return;
+  clearLoading(body);
+  body.classList.remove('is-switching');
+  if (animate) { body.classList.remove('tab-swap'); void body.offsetWidth; body.classList.add('tab-swap'); }
+}
+
+async function renderProfilePage() {
+  const view = document.getElementById('view');
+  if (!PROFILE_TABS.some(t => t[0] === AppState.profileTab)) AppState.profileTab = 'info';
+
+  view.innerHTML = `
+    ${pageHeaderHtml('ข้อมูลส่วนตัว')}
+    <div class="tabs" id="profile-tabs">
+      ${PROFILE_TABS.map(([id, label]) => `<div class="tab ${AppState.profileTab === id ? 'active' : ''}" data-tab="${id}">${label}</div>`).join('')}
+    </div>
+    <div id="profile-tab-body"></div>`;
+  const tabs = view.querySelector('#profile-tabs');
+  const body = view.querySelector('#profile-tab-body');
+  initNavPill(tabs, '.tab', 'seg-pill');
+
+  const switchTo = tab => {
+    AppState.profileTab = tab;
+    tabs.querySelectorAll('.tab').forEach(x => x.classList.toggle('active', x.dataset.tab === tab));
+    tabs.__pillPlace?.(true);
+    body.classList.add('is-switching'); // หรี่เนื้อหาเดิมทันที ระหว่างรอข้อมูลแท็บใหม่
+    drawProfileTab(body, true);
+  };
+  tabs.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => {
+    const tab = t.dataset.tab;
+    if (tab === AppState.profileTab) return;
+    if (AppState.profileTab === 'info' && AppState.profileDirty) {
+      openConfirmModal({
+        title: 'ยังไม่ได้บันทึกข้อมูลส่วนตัว',
+        body: 'ข้อมูลที่แก้ไขไว้จะหายไปถ้าสลับไปแท็บอื่นตอนนี้',
+        confirmLabel: 'สลับโดยไม่บันทึก',
+        onConfirm: async () => { switchTo(tab); },
+      });
+    } else {
+      switchTo(tab);
+    }
+  }));
+
+  await drawProfileTab(body);
 }

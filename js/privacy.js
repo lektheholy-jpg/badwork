@@ -1,6 +1,7 @@
 // ==========================================================================
 // ความเป็นส่วนตัว: ส่งออกข้อมูลทั้งหมดของครู / ลบบัญชีและข้อมูลทั้งหมด
-// โครงสร้าง: users/{uid}/courses/{id}/{assessments,settings,sections}
+// โครงสร้าง: users/{uid}/timetable/main (ตารางสอน)
+//            users/{uid}/courses/{id}/{assessments,settings,sections}
 //            และ sections/{id}/{students,scores}
 // ==========================================================================
 
@@ -9,8 +10,8 @@ async function _collectAll(uid, onProgress) {
   const plain = async (ref) => (await ref.get()).docs.map(d => ({ id: d.id, ...d.data() }));
 
   // อ่านอย่างเดียว จึงขนานได้ปลอดภัย — วิชา/ห้องโหลดพร้อมกันแบบจำกัดจำนวน (mapLimit ใน dashboard.js) ผลเรียงตามลำดับเดิม
-  const [profileSnap, courseSnap] = await Promise.all([userRef.get(), userRef.collection('courses').get()]);
-  const out = { exportedAt: new Date().toISOString(), profile: profileSnap.exists ? profileSnap.data() : null, courses: [] };
+  const [profileSnap, courseSnap, timetable] = await Promise.all([userRef.get(), userRef.collection('courses').get(), plain(userRef.collection('timetable'))]);
+  const out = { exportedAt: new Date().toISOString(), profile: profileSnap.exists ? profileSnap.data() : null, timetable, courses: [] };
 
   let coursesDone = 0;
   out.courses = await mapLimit(courseSnap.docs, COURSE_LOAD_CONCURRENCY, async (c) => {
@@ -73,6 +74,7 @@ function deleteMyAccount() {
           await deleteCollectionDocs(c.ref.collection('settings'));
         }
         await deleteCollectionDocs(userRef.collection('courses'));
+        await deleteCollectionDocs(userRef.collection('timetable'));
         await userRef.delete();
         try {
           await user.delete();

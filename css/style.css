@@ -1054,8 +1054,8 @@ table.sheet tbody tr:nth-child(even) td.grp-sub-total { background: var(--col-co
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 /* เปลี่ยนหน้า: เนื้อหาใหม่จางเข้า + เลื่อนขึ้นเล็กน้อย (JS ใส่ class .view-enter เฉพาะตอนกดเปลี่ยนหน้า จึงไม่เล่นซ้ำเมื่อหน้าวาดทับตอนข้อมูลมา) */
 @keyframes view-enter { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
-#view.view-enter, #rc-body.rc-swap, #course-tab-body.tab-swap { animation: view-enter .22s ease-out; }
-#course-tab-body.is-switching { opacity: .5; pointer-events: none; transition: opacity .15s ease; }
+#view.view-enter, #rc-body.rc-swap, #course-tab-body.tab-swap, #profile-tab-body.tab-swap { animation: view-enter .22s ease-out; }
+#course-tab-body.is-switching, #profile-tab-body.is-switching { opacity: .5; pointer-events: none; transition: opacity .15s ease; }
 /* กดเปิดรายวิชาแล้วรอข้อมูล: หน้าเดิมจางลงทันทีให้รู้ว่ารับคำสั่งแล้ว (playViewEnter ถอดออกเมื่อหน้าใหม่มา) */
 #view.view-pending { opacity: .55; pointer-events: none; transition: opacity .15s ease; }
 /* ตัวโหลด (showLoading ใน utils.js): น้องแมว + โครงกระดูกวิบวับ */
@@ -1091,7 +1091,7 @@ table.sheet tbody tr:nth-child(even) td.grp-sub-total { background: var(--col-co
 .rc-pill { --seg-pill-bg: var(--w, var(--primary)); --seg-pill-shadow: none; }
 .seg-pill { position: absolute; left: 0; top: 0; z-index: 0; border-radius: var(--radius-pill); pointer-events: none; opacity: 0; background: var(--seg-pill-bg, var(--card)); box-shadow: var(--seg-pill-shadow, 0 1px 6px var(--shadow-ink-md)); transition: transform .28s cubic-bezier(.3, .9, .3, 1), width .28s cubic-bezier(.3, .9, .3, 1), height .28s cubic-bezier(.3, .9, .3, 1), background-color .28s ease, opacity .2s ease; }
 .seg-pill.no-anim { transition: none; }
-@media (prefers-reduced-motion: reduce) { .bg-opt { transition: none; } #view.view-enter, #rc-body.rc-swap, #course-tab-body.tab-swap { animation: none; } #view.view-pending { transition: none; } .loader, .loader-cat, .loader-dots i, .sk, .sk-list, .sk-dash { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .bg-opt { transition: none; } #view.view-enter, #rc-body.rc-swap, #course-tab-body.tab-swap, #profile-tab-body.tab-swap { animation: none; } #view.view-pending { transition: none; } .loader, .loader-cat, .loader-dots i, .sk, .sk-list, .sk-dash { animation: none; } }
 
 /* ----- หน้าแรกแบบ One UI: หัวใหญ่ + การ์ดตัวเลขเล็กสีขาว (แทนปกหนังสือ) ----- */
 
@@ -1932,3 +1932,55 @@ table.sheet tbody tr:nth-child(n) td.over-max { background: var(--danger-tint); 
 @media (max-width: 860px) { .field-row-3 { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 480px) { .profile-actions .btn { flex: 1 1 100%; justify-content: center; } }
 @media (max-width: 860px) { .main .sheet-wrap { border-radius: var(--radius-m); } }
+
+/* ----- ตารางสอน (แท็บในหน้าข้อมูลส่วนตัว) · แถว = วัน, คอลัมน์ = คาบ · สีคาบส่งผ่าน --w (จาก --hue-*) ----- */
+.tt-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 14px; }
+.tt-stats .stat-card { padding: 14px 18px; }
+.tt-stats .stat-card .value { font-size: 26px; }
+.tt-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; margin-bottom: 8px; }
+.tt-toolbar .card-title { margin: 0; }
+.tt-toolbar-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.tt-wrap { overflow: auto; -webkit-overflow-scrolling: touch; max-height: 76vh; border-radius: var(--radius-l); box-shadow: inset 0 0 0 1px var(--border); background: var(--card); }
+table.tt { border-collapse: separate; border-spacing: 0; width: 100%; min-width: 1040px; table-layout: fixed; font-size: 13px; }
+table.tt th { position: sticky; top: 0; z-index: 2; padding: 10px 6px; font-size: 12.5px; font-weight: 700; line-height: 1.4; text-align: center; white-space: nowrap; background: var(--th-bg); color: var(--th-ink); border-bottom: 2px solid var(--th-line); }
+table.tt th small { display: block; font-size: 11px; font-weight: 500; opacity: .85; }
+table.tt th.is-now { box-shadow: inset 0 -4px 0 var(--hue-orange); }
+table.tt th.tt-corner { left: 0; z-index: 3; width: 96px; }
+table.tt td.tt-day { position: sticky; left: 0; z-index: 1; width: 96px; padding: 8px 12px; text-align: left; background: var(--card); border-bottom: 1px solid var(--border); border-right: 1px solid var(--border); }
+table.tt td.tt-day b { display: block; font-size: 14px; color: var(--ink); }
+table.tt td.tt-day span { font-size: 12px; color: var(--ink-soft); }
+table.tt tr.is-today td.tt-day { background: color-mix(in srgb, var(--hue-orange) 14%, var(--card)); box-shadow: inset 4px 0 0 var(--hue-orange); }
+table.tt td.tt-cell { height: 92px; padding: 4px; vertical-align: top; border-bottom: 1px solid var(--border); border-right: 1px solid var(--border); }
+table.tt tr.is-today td.tt-cell { background: color-mix(in srgb, var(--hue-orange) 6%, transparent); }
+.tt-item { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; width: 100%; min-height: 84px; padding: 8px 10px; border: none; border-radius: var(--radius-s); background: color-mix(in srgb, var(--w) 16%, var(--card)); box-shadow: inset 3px 0 0 var(--w); color: var(--ink); font: inherit; text-align: left; cursor: pointer; overflow: hidden; }
+.tt-item:hover { background: color-mix(in srgb, var(--w) 26%, var(--card)); }
+.tt-item:focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; }
+.tt-code { padding: 1px 8px; border-radius: var(--radius-pill); background: color-mix(in srgb, var(--w) 24%, var(--card)); font-size: 11.5px; font-weight: 700; }
+.tt-title { font-size: 13px; font-weight: 700; line-height: 1.35; overflow-wrap: anywhere; }
+.tt-meta { display: flex; flex-wrap: wrap; gap: 2px 8px; font-size: 12px; color: var(--ink-soft); }
+.tt-add { display: grid; place-items: center; width: 100%; min-height: 84px; border: 1.5px dashed transparent; border-radius: var(--radius-s); background: transparent; color: var(--ink-soft); cursor: pointer; opacity: .35; }
+.tt-add .ico { width: 20px; height: 20px; }
+.tt-add:hover { opacity: 1; border-color: var(--border); background: var(--surface-sunken); }
+.tt-add:focus-visible { opacity: 1; outline: 3px solid var(--primary); outline-offset: 2px; }
+.tt-legend { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.tt-legend-item { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: var(--radius-pill); background: var(--surface-sunken); color: var(--ink); font-size: 13px; }
+.tt-legend-item::before { content: ''; flex-shrink: 0; width: 10px; height: 10px; border-radius: 50%; background: var(--w); }
+.tt-legend-item small { color: var(--ink-soft); font-size: 12px; }
+.tt-modal-row3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.tt-hues { display: flex; flex-wrap: wrap; gap: 10px; padding: 4px; }
+.tt-hue { display: grid; place-items: center; width: 34px; height: 34px; border: none; border-radius: var(--radius-s); background: var(--w); color: var(--on-w); cursor: pointer; }
+.tt-hue .ico { width: 18px; height: 18px; opacity: 0; }
+.tt-hue[aria-pressed="true"] { box-shadow: 0 0 0 3px var(--card), 0 0 0 5px var(--w); }
+.tt-hue[aria-pressed="true"] .ico { opacity: 1; }
+.tt-hue:focus-visible { outline: 3px solid var(--primary); outline-offset: 4px; }
+.tt-del { margin-right: auto; }
+.tt-period-row { display: grid; grid-template-columns: 52px minmax(0, 1fr) minmax(0, 1fr) 44px; align-items: center; gap: 8px; margin-bottom: 8px; }
+.tt-period-row input { width: 100%; padding: 10px 12px; border: 1.5px solid transparent; border-radius: var(--radius-s); background: var(--surface-sunken); color: var(--ink); font: inherit; font-size: 14px; }
+.tt-period-row input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 4px var(--primary-tint); background: var(--card); }
+@media (max-width: 860px) {
+  .tt-stats { gap: 8px; }
+  .tt-stats .stat-card { padding: 12px 14px; }
+  .tt-stats .stat-card .value { font-size: 22px; }
+  .tt-modal-row3 { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  table.tt td.tt-day, table.tt th.tt-corner { width: 84px; }
+}
