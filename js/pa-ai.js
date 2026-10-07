@@ -12,7 +12,7 @@
 const PA_AI = {
   SITE_KEY: '6LeHa-MtAAAAAAqvvQSRvBUl0RVFa7-KoFthxWxm', // reCAPTCHA v3 Site key (ค่าสาธารณะ) — ต้องตรงกับที่ลงทะเบียนใน Firebase App Check
   SDK: 'https://www.gstatic.com/firebasejs/12.17.0',    // Firebase JS SDK แบบ modular (แยกจากชุด compat 10.13.0 ที่แอปใช้)
-  MODEL: 'gemini-3.5-flash-lite',                            // ถ้าเปลี่ยนรุ่น แก้ที่นี่ที่เดียว (ดูชื่อรุ่นล่าสุดใน Firebase Console > AI Logic)
+  MODEL: 'gemini-3.5-flash',                            // ถ้าเปลี่ยนรุ่น แก้ที่นี่ที่เดียว (ดูชื่อรุ่นล่าสุดใน Firebase Console > AI Logic)
   TIMEOUT: 90000,
   CONSENT_KEY: 'pa-ai-consent-v1',
 };
@@ -90,14 +90,7 @@ function paAiLoadModel() {
         systemInstruction: PA_AI_SYSTEM,
         generationConfig: {
   responseMimeType: 'application/json',
-  generationConfig: {
-  responseMimeType: 'application/json',
   temperature: 0.6,
-  maxOutputTokens: 2048,
-  thinkingConfig: {
-    thinkingLevel: aiMod.ThinkingLevel.LOW
-  }
-}
   thinkingConfig: { thinkingLevel: aiMod.ThinkingLevel.LOW },
 },
       }, { timeout: PA_AI.TIMEOUT });
@@ -114,70 +107,13 @@ function paAiParseJson(text) {
 }
 
 async function paAiGenerate(prompt) {
-
   const makeModel = await paAiLoadModel();
-  let lastErr;
-
-  for (let attempt = 0; attempt < 5; attempt++) {
-
-    let timer;
-
-    const timeout = new Promise((_, rej) => {
-      timer = setTimeout(
-        () => rej(new Error('timeout')),
-        PA_AI.TIMEOUT + 5000
-      );
-    });
-
-    try {
-
-      const res = await Promise.race([
-        makeModel().generateContent(prompt),
-        timeout
-      ]);
-
-      return paAiParseJson(
-        res.response.text()
-      );
-
-    } catch (err) {
-
-      lastErr = err;
-
-      const msg = String(
-        err?.message || err
-      );
-
-      if (
-        /INTERNAL/i.test(msg) ||
-        /high demand/i.test(msg) ||
-        /RESOURCE_EXHAUSTED/i.test(msg) ||
-        /429/i.test(msg) ||
-        /500/i.test(msg)
-      ) {
-
-        const wait =
-          Math.pow(2, attempt) * 2000;
-
-        console.warn(
-          `Gemini retry ${attempt + 1}/5`
-        );
-
-        await new Promise(r =>
-          setTimeout(r, wait)
-        );
-
-        continue;
-      }
-
-      throw err;
-
-    } finally {
-      clearTimeout(timer);
-    }
-  }
-
-  throw lastErr;
+  let timer;
+  const timeout = new Promise((_, rej) => { timer = setTimeout(() => rej(new Error('timeout')), PA_AI.TIMEOUT + 5000); });
+  try {
+    const res = await Promise.race([makeModel().generateContent(prompt), timeout]);
+    return paAiParseJson(res.response.text());
+  } finally { clearTimeout(timer); }
 }
 
 function paAiError(err) {
@@ -193,9 +129,7 @@ function paAiError(err) {
   else if (code === '429' || /RESOURCE_EXHAUSTED|quota exceeded|too many requests|rate limit/i.test(m)) msg = `โควตา AI เต็มหรือเรียกถี่เกิน${tag} — รอ 1 นาทีแล้วลองใหม่ (ดูโควตาใน Firebase Console > AI Logic)`;
   else if (/timeout/i.test(m)) msg = 'AI ตอบช้าเกินไป ลองใหม่อีกครั้ง';
   else if (/JSON|รูปแบบคำตอบ/i.test(m)) msg = 'AI ตอบในรูปแบบที่อ่านไม่ได้ ลองใหม่อีกครั้ง';
-  else if (/high demand/i.test(m))
-  msg =
-    'ระบบ Gemini กำลังมีผู้ใช้งานจำนวนมาก กรุณารอประมาณ 30–60 วินาทีแล้วลองใหม่';
+  else msg = `เรียก AI ไม่สำเร็จ${tag}: ` + m.slice(0, 120);
   showToast(msg);
 }
 
@@ -224,7 +158,7 @@ function paAiContext(known = {}) {
   const names = { challengeTitle: 'ประเด็นท้าทาย', problem: 'สภาพปัญหา', method: 'วิธีดำเนินการ', outcomeQuant: 'ผลลัพธ์เชิงปริมาณ', outcomeQual: 'ผลลัพธ์เชิงคุณภาพ' };
   Object.entries(names).forEach(([k, lab]) => {
     const v = String(known[k] ?? d[k] ?? '').trim();
-    if (v) lines.push(`${lab} (มีอยู่แล้วในเอกสาร): ${v.slice(0, 500)}`);
+    if (v) lines.push(`${lab} (มีอยู่แล้วในเอกสาร): ${v.slice(0, 1500)}`);
   });
   return lines.join('\n');
 }
@@ -237,7 +171,7 @@ async function paAiBatch(specs, mode, known) {
   }).filter(f => f.el);
   if (!fields.length) return [];
   const list = fields.map(f => `- "${f.key}" ชื่อช่อง: ${f.label}\n  แนวทาง: ${f.hint}\n  งาน: ${PA_AI_MODE_TXT[mode](f.current)}`
-    + (f.current ? `\n  ข้อความเดิม: """${f.current.slice(0, 800)}"""` : '')).join('\n');
+    + (f.current ? `\n  ข้อความเดิม: """${f.current.slice(0, 2000)}"""` : '')).join('\n');
   const prompt = `ข้อมูลประกอบ:\n${paAiContext(known)}\n\nช่องที่ต้องการ:\n${list}\n\nตอบเป็น JSON object ที่มีคีย์เหล่านี้เท่านั้น: ${JSON.stringify(fields.map(f => f.key))}`;
   const out = await paAiGenerate(prompt);
   return fields.map(f => ({ ...f, proposed: String(out[f.key] ?? '').trim() })).filter(f => f.proposed);
