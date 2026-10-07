@@ -1853,7 +1853,7 @@ table.sheet tbody tr:nth-child(n) td.over-max { background: var(--danger-tint); 
 }
 
 /* ----- ตั้งค่า → พื้นหลัง: ช่องเลือกสีทึบ/ไล่สี (js/app.js renderSettings · ค่าเก็บใน js/theme.js) ----- */
-.bg-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 10px; }
+.bg-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 10px; margin-top: 10px; }
 .bg-opt { position: relative; aspect-ratio: 3 / 4; padding: 0; border: 2px solid var(--border); border-radius: var(--radius-m); background: var(--sw); cursor: pointer; transition: transform .12s ease, border-color .2s ease; }
 .bg-opt:active { transform: scale(.96); }
 .bg-opt:focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; }
@@ -1880,3 +1880,24 @@ table.sheet tbody tr:nth-child(n) td.over-max { background: var(--danger-tint); 
 .bg-opt-pat { aspect-ratio: 1 / 1; }
 .bg-opt-pat .bg-check { top: 6px; right: 6px; bottom: auto; width: 20px; height: 20px; }
 .bg-cap { position: absolute; left: 6px; bottom: 6px; max-width: calc(100% - 12px); padding: 0 8px; border-radius: var(--radius-pill); background: var(--card); color: var(--ink); font-size: 11px; font-weight: 600; line-height: 1.7; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ----- หน้าตั้งค่า: จอกว้าง 2 คอลัมน์ (บัญชี·ธีม·ความเป็นส่วนตัว ซ้าย / พื้นหลัง ขวา) · มือถือ 1 คอลัมน์ตามลำดับเดิม ----- */
+.settings-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; align-items: start; max-width: 1040px; }
+.settings-grid > .card { margin: 0; min-width: 0; }
+.settings-grid .card-title { margin: 0 0 4px; }
+.settings-profile { display: flex; align-items: center; gap: 12px; margin: 10px 0 14px; min-width: 0; }
+.settings-profile > div { min-width: 0; overflow-wrap: anywhere; }
+.settings-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+@media (min-width: 861px) {
+  .settings-grid { grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); grid-template-rows: auto auto 1fr; grid-template-areas: "acct bg" "theme bg" "priv bg"; gap: 16px; }
+  .set-acct { grid-area: acct; }
+  .set-theme { grid-area: theme; }
+  .set-bg { grid-area: bg; }
+  .set-priv { grid-area: priv; }
+}
+@media (max-width: 480px) {
+  .settings-grid .theme-seg { width: 100%; margin-inline: 0; }
+  .settings-grid .theme-opt { flex: 1 1 0; justify-content: center; padding-inline: 8px; }
+  .settings-actions .btn { flex: 1 1 100%; justify-content: center; }
+  .bg-grid { grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); }
+}

@@ -272,8 +272,10 @@ function renderSettings() {
   const u = AppState.user;
   view.innerHTML = `
     ${pageHeaderHtml('ตั้งค่า')}
-    <div class="card card-pad u-maxw-420">
-      <div class="u-flex u-items-center u-gap-12 u-mb-16">
+    <div class="settings-grid">
+    <div class="card card-pad set-acct">
+      <h2 class="card-title">บัญชี</h2>
+      <div class="settings-profile">
         <img src="${escapeHtml(safePhotoUrl(u.photoURL, u.displayName))}" alt="" referrerpolicy="no-referrer" class="u-avatar-48">
         <div>
           <div class="u-semibold">${escapeHtml(u.displayName || '')}</div>
@@ -284,8 +286,8 @@ function renderSettings() {
         ข้อมูลรายวิชา ห้องเรียน นักเรียน และคะแนนของคุณจะถูกเก็บแยกจากครูคนอื่นโดยอัตโนมัติ ผ่านบัญชี Google ของคุณ
       </div>
     </div>
-    <div class="card card-pad u-maxw-420 u-mt-14">
-      <div class="u-semibold">ธีม</div>
+    <div class="card card-pad set-theme">
+      <h2 class="card-title">ธีม</h2>
       <div class="u-note">เลือกโหมดสว่าง โหมดมืด หรือให้ตามการตั้งค่าของอุปกรณ์</div>
       <div class="theme-seg" role="group" aria-label="ธีม">
         <button type="button" class="theme-opt" data-theme-pref="auto">${icon('contrast')}ตามระบบ</button>
@@ -293,8 +295,8 @@ function renderSettings() {
         <button type="button" class="theme-opt" data-theme-pref="dark">${icon('moon')}มืด</button>
       </div>
     </div>
-    <div class="card card-pad u-maxw-420 u-mt-14">
-      <div class="u-semibold">พื้นหลัง</div>
+    <div class="card card-pad set-bg">
+      <h2 class="card-title">พื้นหลัง</h2>
       <div class="u-note">เลือกจากชุดสำเร็จรูป หรือปรับเองอิสระ: สีเดียว ไล่สีหลายสี และลายพื้นหลัง ชื่อแอปและตัวหนังสือบนพื้นจะเปลี่ยนสีให้อ่านชัดตามพื้นหลังเอง</div>
       ${bgGroupHtml('ค่าเริ่มต้น', [['default', 'ค่าเริ่มต้น']])}
       ${bgGroupHtml('สีทึบ', BG_OPTIONS.solid)}
@@ -307,17 +309,18 @@ function renderSettings() {
       </div>
       <div id="bg-custom-panel" class="hidden"></div>
     </div>
-    <div class="card card-pad u-maxw-420 u-mt-14">
-      <div class="u-semibold">ความเป็นส่วนตัวและข้อมูลของฉัน</div>
+    <div class="card card-pad set-priv">
+      <h2 class="card-title">ความเป็นส่วนตัวและข้อมูลของฉัน</h2>
       <div class="u-note u-lh-165 u-mt-4">
         แอปเก็บชื่อ อีเมล รูปโปรไฟล์ของครู และข้อมูลรายวิชา นักเรียน (ซึ่งเป็นข้อมูลส่วนบุคคลของผู้เยาว์) และคะแนน บน Google Firebase โดยผูกกับบัญชีของครูเท่านั้น
         หน้าหลักส่งพิกัดโดยประมาณ (ปัดเหลือราว 1 กม.) ไปยัง Open-Meteo เพื่อแสดงสภาพอากาศ โดยไม่ส่งข้อมูลนักเรียน
         ครูควรใช้ข้อมูลนักเรียนเท่าที่จำเป็นและตามนโยบายของโรงเรียน
       </div>
-      <div class="u-flex u-gap-8 u-wrap u-mt-12">
+      <div class="settings-actions">
         <button type="button" class="btn btn-ghost btn-sm" id="privacy-export-btn">ส่งออกข้อมูลของฉัน (JSON)</button>
         <button type="button" class="btn btn-danger-ghost btn-sm" id="privacy-delete-btn">ลบบัญชีและข้อมูลทั้งหมด</button>
       </div>
+    </div>
     </div>
   `;
   // privacy.js โหลดเมื่อกดปุ่มครั้งแรกเท่านั้น
