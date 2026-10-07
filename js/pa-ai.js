@@ -12,7 +12,7 @@
 const PA_AI = {
   SITE_KEY: '6LeHa-MtAAAAAAqvvQSRvBUl0RVFa7-KoFthxWxm', // reCAPTCHA v3 Site key (ค่าสาธารณะ) — ต้องตรงกับที่ลงทะเบียนใน Firebase App Check
   SDK: 'https://www.gstatic.com/firebasejs/12.17.0',    // Firebase JS SDK แบบ modular (แยกจากชุด compat 10.13.0 ที่แอปใช้)
-  MODEL: 'gemini-2.5-flash',                            // ถ้าเปลี่ยนรุ่น แก้ที่นี่ที่เดียว (ดูชื่อรุ่นล่าสุดใน Firebase Console > AI Logic)
+  MODEL: 'gemini-3.8-flash',                            // ถ้าเปลี่ยนรุ่น แก้ที่นี่ที่เดียว (ดูชื่อรุ่นล่าสุดใน Firebase Console > AI Logic)
   TIMEOUT: 90000,
   CONSENT_KEY: 'pa-ai-consent-v1',
 };
@@ -88,7 +88,11 @@ function paAiLoadModel() {
       return () => aiMod.getGenerativeModel(ai, {
         model: PA_AI.MODEL,
         systemInstruction: PA_AI_SYSTEM,
-        generationConfig: { responseMimeType: 'application/json', temperature: 0.6 },
+        generationConfig: {
+  responseMimeType: 'application/json',
+  temperature: 0.6,
+  thinkingConfig: { thinkingLevel: aiMod.ThinkingLevel.LOW },
+},
       }, { timeout: PA_AI.TIMEOUT });
     })().catch(err => { paAiModelP = null; throw err; });
   }
