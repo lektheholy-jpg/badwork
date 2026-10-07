@@ -1438,13 +1438,16 @@ button.brand:hover .mark { transform: rotate(-6deg) scale(1.04); }
     --w: var(--hue-violet); display: flex; align-items: center; gap: 12px; min-height: 72px; padding: 12px 14px; border: none; border-radius: var(--radius-m); text-align: left;
     background: color-mix(in oklab, var(--w) var(--wmix-soft, 16%), var(--card)); color: var(--ink); font: inherit; font-size: 14.5px; font-weight: 800; cursor: pointer;
   }
-  .more-tile[data-route="archive-page"] { --w: var(--hue-amber); }
-  .more-tile[data-route="profile"] { --w: var(--hue-blue); }
-  .more-tile[data-route="settings"] { --w: var(--hue-gray); }
-  .more-tile[data-route="logout-btn"] { --w: var(--hue-red); }
+  .more-tile[data-route="pa-page"]       { --w: var(--hue-violet); }
+  .more-tile[data-route="archive-page"]  { --w: var(--hue-amber); }
+  .more-tile[data-route="profile"]       { --w: var(--hue-blue); }
+  .more-tile[data-route="settings"]      { --w: var(--hue-gray); }
+  .more-tile[data-route="logout-btn"]    { --w: var(--hue-red); }
   .more-tile:active { transform: scale(.97); }
   .more-ico { display: grid; place-items: center; flex-shrink: 0; width: 44px; height: 44px; position: relative; isolation: isolate; color: var(--on-w); }
   .more-ico svg { width: 31px; height: 31px; }
+  /* divider คั่นกลุ่มใน more-sheet — span 2 คอลัมน์ */
+  .more-divider { grid-column: 1 / -1; height: 1px; background: color-mix(in srgb, var(--on-bg) 10%, transparent); border-radius: 1px; margin: 2px 0; }
 }
 
 /* v9.1 — แถบเมนูล่าง: เห็นชัดว่าอยู่หน้าไหน (ปุ่มที่เปิดอยู่เป็นสีทึบ ตัวขาว) และไม่มีกรอบดำค้างหลังแตะ */

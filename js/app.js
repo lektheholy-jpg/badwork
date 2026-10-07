@@ -457,7 +457,9 @@ document.getElementById('sidebar-toggle')?.addEventListener('click', () => {
   more.addEventListener('click', () => setMore(!app.classList.contains('more-open')));
   bar.appendChild(more);
 
-  ['profile', 'structure-page', 'archive-page', 'tools', 'settings', 'logout'].forEach(k => {
+  // จัดกลุ่มปุ่มใน more-sheet: กลุ่ม 1 = เนื้อหา, กลุ่ม 2 = บัญชี/ตั้งค่า, กลุ่ม 3 = ออกจากระบบ
+  const addDivider = () => { const d = document.createElement('div'); d.className = 'more-divider'; grid.appendChild(d); };
+  const addTile = (k) => {
     const s = src(k); if (!s) return;
     const b = document.createElement('button');
     b.type = 'button'; b.className = 'more-tile'; b.dataset.route = k === 'logout' ? 'logout-btn' : k;
@@ -466,7 +468,16 @@ document.getElementById('sidebar-toggle')?.addEventListener('click', () => {
     b.innerHTML = `<span class="more-ico">${ico}</span><span>${label}</span>`;
     b.addEventListener('click', () => { setMore(false); if (k === 'logout') s.click(); else navigate(k); });
     grid.appendChild(b);
-  });
+  };
+
+  // กลุ่ม 1: เมนูเนื้อหา
+  ['pa-page', 'structure-page', 'archive-page', 'tools'].forEach(addTile);
+  addDivider();
+  // กลุ่ม 2: บัญชีและตั้งค่า
+  ['profile', 'settings'].forEach(addTile);
+  addDivider();
+  // กลุ่ม 3: ออกจากระบบ
+  addTile('logout');
 
   initNavPill(bar, '.tab-item', 'tab-pill', { global: true });
   document.getElementById('more-scrim')?.addEventListener('click', () => setMore(false));
