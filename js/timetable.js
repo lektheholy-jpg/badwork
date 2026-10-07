@@ -530,16 +530,15 @@ function ttwWeekStart(now) { // วันจันทร์ของสัปด
 function ttwItemHtml(e, periods, tag, courseIds) {
   const start = periods[e.period].start, end = periods[e.period + e.span - 1].end;
   const label = e.span > 1 ? `คาบ ${e.period + 1}-${e.period + e.span}` : `คาบ ${e.period + 1}`;
+  const link = ttLinkable(e, courseIds); // คาบที่ผูกกับรายวิชา: กดทั้งกรอบเพื่อไปหน้าบันทึกคะแนน
   const meta = [e.cls, e.room && 'ห้อง ' + e.room].filter(Boolean).map(escapeHtml).join(' · ');
   const badge = tag === 'now' ? '<span class="badge badge-success">กำลังสอน</span>'
     : tag === 'next' ? '<span class="badge badge-neutral">ถัดไป</span>' : '';
   return `
-    <div class="ttw-item${tag === 'now' ? ' is-now' : ''}" style="--w:var(--hue-${e.hue})">
+    <div class="ttw-item${tag === 'now' ? ' is-now' : ''}${link ? ' is-link' : ''}" style="--w:var(--hue-${e.hue})"${link ? ` role="link" tabindex="0" data-ttw-score="${escapeHtml(e.id)}" title="ไปหน้าบันทึกคะแนน"` : ''}>
       <div class="ttw-time"><b>${label}</b><span>${start} - ${end}</span></div>
       <div class="ttw-info">
-        ${ttLinkable(e, courseIds)
-          ? `<button type="button" class="ttw-title ttw-link" data-ttw-score="${escapeHtml(e.id)}" title="ไปหน้าบันทึกคะแนน">${escapeHtml([e.code, e.title].filter(Boolean).join(' '))}</button>`
-          : `<span class="ttw-title">${escapeHtml([e.code, e.title].filter(Boolean).join(' '))}</span>`}
+        <span class="ttw-title">${escapeHtml([e.code, e.title].filter(Boolean).join(' '))}</span>
         ${meta ? `<span class="ttw-meta">${meta}</span>` : ''}
       </div>
       ${badge}
@@ -610,6 +609,12 @@ async function initTimetableWidget(root) {
     if (sc) { const entry = tt && tt.entries.find(x => x.id === sc.dataset.ttwScore); if (entry) ttOpenScores(entry); }
     else if (ev.target.closest('[data-ttw-go]')) { AppState.profileTab = 'timetable'; navigate('profile'); }
     else if (ev.target.closest('[data-ttw-retry]')) load();
+  });
+  root.addEventListener('keydown', ev => {
+    const sc = ev.target.closest('[data-ttw-score]');
+    if (!sc || ev.target !== sc || (ev.key !== 'Enter' && ev.key !== ' ')) return;
+    ev.preventDefault();
+    const entry = tt && tt.entries.find(x => x.id === sc.dataset.ttwScore); if (entry) ttOpenScores(entry);
   });
   const timer = setInterval(() => { if (!root.isConnected) clearInterval(timer); else draw(); }, 60000);
   await load();
