@@ -2045,3 +2045,9 @@ table.tt tr.is-today td.tt-cell { background: color-mix(in srgb, var(--hue-orang
   .pa-pf { grid-template-columns: 1fr; }
   .pa-form-footer { flex-direction: column-reverse; }
 }
+.empty-title { margin-bottom: 8px; font-size: 17px; font-weight: 600; }
+.empty-sub { margin-bottom: 20px; color: var(--ink-soft); }
+.empty-state .icon-violet { background: var(--hue-violet); }
+.par-badge { flex-shrink: 0; }
+.par-ok { color: var(--hue-teal); }
+.par-edit-btn .ico { width: 14px; height: 14px; }

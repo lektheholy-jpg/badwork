@@ -35,7 +35,7 @@ function paReportDetailCard(d) {
       </div>
     </div>`).join('');
 
-  const statusColor = d.status === 'submitted' ? 'var(--hue-teal)' : 'var(--ink-soft)';
+  const statusClass = d.status === 'submitted' ? 'badge-success' : 'badge-neutral';
   const statusLabel = d.status === 'submitted' ? 'ส่งแล้ว' : 'ร่าง';
 
   return `
@@ -46,7 +46,7 @@ function paReportDetailCard(d) {
           <div class="par-card-title">${escapeHtml(paDocTitle(d))}</div>
           <div class="par-card-sub">${escapeHtml(d.teacherName || AppState.user?.displayName || '')}${d.department ? ' · ' + escapeHtml(d.department) : ''}</div>
         </div>
-        <span class="badge" style="background:${statusColor};color:var(--on-w);flex-shrink:0">${statusLabel}</span>
+        <span class="badge par-badge ${statusClass}">${statusLabel}</span>
       </div>
 
       <!-- ข้อมูลทั่วไป -->
@@ -69,7 +69,7 @@ function paReportDetailCard(d) {
       <!-- ลิงก์แก้ไข -->
       <div class="par-card-footer">
         <button type="button" class="btn btn-ghost btn-sm par-edit-btn" data-id="${escapeHtml(d.id)}">
-          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><path d="M16.2 3.6a2.4 2.4 0 0 1 3.4 0l.8.8a2.4 2.4 0 0 1 0 3.4L9.5 18.7a2 2 0 0 1-.9.5l-4.3 1.1a.8.8 0 0 1-1-1l1.1-4.3c.1-.3.3-.6.5-.9Z"/></svg>
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M16.2 3.6a2.4 2.4 0 0 1 3.4 0l.8.8a2.4 2.4 0 0 1 0 3.4L9.5 18.7a2 2 0 0 1-.9.5l-4.3 1.1a.8.8 0 0 1-1-1l1.1-4.3c.1-.3.3-.6.5-.9Z"/></svg>
           แก้ไขข้อตกลง
         </button>
       </div>
@@ -98,9 +98,9 @@ async function renderPAReportView() {
   const empty = list.length === 0 ? `
     <div class="card">
       <div class="empty-state">
-        <div class="icon" style="background:var(--hue-violet)">${PA_RPT_ICO}</div>
-        <div style="font-weight:600;font-size:17px;margin-bottom:8px">ยังไม่มีรายงาน PA</div>
-        <div style="color:var(--ink-soft);margin-bottom:20px">สร้างข้อตกลง PA ก่อน แล้วรายงานจะแสดงที่นี่โดยอัตโนมัติ</div>
+        <div class="icon icon-violet">${PA_RPT_ICO}</div>
+        <div class="empty-title">ยังไม่มีรายงาน PA</div>
+        <div class="empty-sub">สร้างข้อตกลง PA ก่อน แล้วรายงานจะแสดงที่นี่โดยอัตโนมัติ</div>
         <button type="button" class="btn btn-primary par-goto-pa">ไปที่ข้อตกลง PA</button>
       </div>
     </div>` : '';
@@ -114,8 +114,8 @@ async function renderPAReportView() {
   const statsHtml = total > 0 ? `
     <div class="par-stats">
       <div class="stat-card card"><div class="label">ข้อตกลงทั้งหมด</div><div class="value">${total}</div></div>
-      <div class="stat-card card"><div class="label">ส่งแล้ว</div><div class="value" style="color:var(--hue-teal)">${submitted}</div></div>
-      <div class="stat-card card"><div class="label">ร่าง</div><div class="value" style="color:var(--ink-soft)">${draft}</div></div>
+      <div class="stat-card card"><div class="label">ส่งแล้ว</div><div class="value par-ok">${submitted}</div></div>
+      <div class="stat-card card"><div class="label">ร่าง</div><div class="value u-soft">${draft}</div></div>
       <div class="stat-card card"><div class="label">มีประเด็นท้าทาย</div><div class="value">${withChallenge}</div></div>
     </div>` : '';
 

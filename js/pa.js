@@ -105,8 +105,8 @@ const PA_ICO_PA    = `<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="c
 // ป้ายสถานะ
 // ------------------------------------------------------------------
 function paStatusBadge(status) {
-  if (status === 'submitted') return `<span class="badge" style="background:var(--hue-teal);color:var(--on-w)">ส่งแล้ว</span>`;
-  return `<span class="badge" style="background:var(--surface-sunken);color:var(--ink-soft)">ร่าง</span>`;
+  if (status === 'submitted') return `<span class="badge badge-success">ส่งแล้ว</span>`;
+  return `<span class="badge badge-neutral">ร่าง</span>`;
 }
 
 // ------------------------------------------------------------------
@@ -209,16 +209,16 @@ async function renderPAListView() {
   const empty = list.length === 0 ? `
     <div class="card">
       <div class="empty-state">
-        <div class="icon" style="background:var(--hue-blue)">${PA_ICO_PA}</div>
-        <div style="font-weight:600;font-size:17px;margin-bottom:8px">ยังไม่มีข้อตกลง PA</div>
-        <div style="color:var(--ink-soft);margin-bottom:20px">กดปุ่มด้านบนเพื่อสร้างข้อตกลง PA ปีการศึกษาใหม่</div>
+        <div class="icon">${PA_ICO_PA}</div>
+        <div class="empty-title">ยังไม่มีข้อตกลง PA</div>
+        <div class="empty-sub">กดปุ่มด้านบนเพื่อสร้างข้อตกลง PA ปีการศึกษาใหม่</div>
         <button type="button" class="btn btn-primary pa-new-btn">${PA_ICO_ADD} สร้างข้อตกลง PA ใหม่</button>
       </div>
     </div>` : '';
 
   view.innerHTML = `
     <div class="pa-toolbar">
-      <span style="color:var(--ink-soft);font-size:14px">${list.length > 0 ? `${list.length} รายการ` : ''}</span>
+      <span class="u-note">${list.length > 0 ? `${list.length} รายการ` : ''}</span>
       ${list.length > 0 ? `<button type="button" class="btn btn-primary btn-sm pa-new-btn">${PA_ICO_ADD} สร้างใหม่</button>` : ''}
     </div>
     ${empty}
