@@ -151,7 +151,7 @@ function bgGroupHtml(title, opts) {
 const BG_DEFAULTS = {
   solid:   { t: 'solid',   c: ['#ffd6e8'] },
   grad:    { t: 'grad',    c: ['#a1c4fd', '#fbc2eb'], a: 160, k: 'linear' },
-  pattern: { t: 'pattern', c: ['#eef5ff'], a: 160, k: 'linear', p: 'dots', ink: '#2d80f2', s: 28, o: 30 }
+  pattern: { t: 'pattern', c: ['#eef5ff'], a: 160, k: 'linear', p: 'dots', ink: '#0381fe', s: 28, o: 30 }
 };
 const BG_UNITS = { a: '°', s: 'px', o: '%' };
 

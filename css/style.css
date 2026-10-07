@@ -32,7 +32,7 @@
   --font-modern: var(--font-head);
   --radius-xs: 12px;  --radius-s: 16px;  --radius-m: 24px;  --radius-l: 28px;  --radius-xl: 32px;  --radius-pill: 999px;
   --paper-shadow: none;
-  --bg: #F4F4F6;  --canvas: #F4F4F6;
+  --bg: #F4F4F4;  --canvas: #F4F4F4;
   --card-glass: rgb(255 255 255 / 46%);  --card-glass-hover: rgb(255 255 255 / 62%);  /* พื้นการ์ดขาวโปร่ง ให้เห็นพื้นหลังที่ผู้ใช้เลือก (การ์ดสภาพอากาศไม่ใช้) */
   --on-bg: var(--ink);  --on-bg-soft: var(--ink-soft);  --on-bg-hover: var(--sidebar-hover);  --on-bg-halo: transparent;  --on-bg-accent: var(--primary-dark);  /* ตัวหนังสือที่วางบนพื้นหลังหน้าโดยตรง (เมนู หัวหน้า) · เปลี่ยนตามพื้นหลังที่ผู้ใช้เลือกเอง (js/theme.js) */
   --on-brand: var(--ink);  --on-brand-halo: transparent;  /* ชื่อแอป "เวรกรรม.." มุมบนซ้าย · คำนวณแยกจากบริเวณที่ตัวอักษรอยู่ */
@@ -44,11 +44,11 @@
   --bgp-dusk: linear-gradient(180deg, #BBD1FF, #D9C4FF);
   --surface: #FFFFFF;  --paper: #FFFFFF;  --card: #FFFFFF;
   --surface-sunken: #ECECEF;
-  --primary: #3E91FF;  --primary-solid: #2D80F2;  --primary-dark: #1B67D6;  --primary-tint: #E3EFFF;
+  --primary: #3E91FF;  --primary-solid: #0381FE;  --primary-dark: #1B67D6;  --primary-tint: #E3EFFF;
   --on-primary: #FFFFFF;
   --white: #FFFFFF;  /* ขาวคงที่ทุกธีม (ตัวหนังสือบนพื้นสีทึบ) — ถ้าต้องสลับตามธีมให้ใช้ --on-primary / --on-w */
   --shadow-ink-sm: rgba(0, 0, 0, .10);  --shadow-ink-md: rgba(0, 0, 0, .18);  --shadow-ink-lg: rgba(0, 0, 0, .30);
-  --ink: #101114;  --ink-soft: #6B6E76;
+  --ink: #111111;  --ink-soft: #666666;
   --border: #E5E6EA;  --paper-edge: #E5E6EA;  --paper-rule: #E5E6EA;
   --success: #12935F;  --success-tint: #DDF4E8;
   --warning: #C77A00;  --warning-tint: #FFEFD0;
@@ -61,16 +61,16 @@
   --sidebar-bg: #FFFFFF;  --sidebar-hover: #F0F1F4;
   --spine: #FFFFFF;  --spine-deep: #1B67D6;
   --accent: #7C5CFF;  --sun: #FFB547;
-  --cream: #FFFFFF;  --cream-dim: #6B6E76;  --hero-orb: rgba(255, 255, 255, .55);
-  --ic1-bg: #E3EFFF;  --ic1: #2D80F2;
+  --cream: #FFFFFF;  --cream-dim: #666666;  --hero-orb: rgba(255, 255, 255, .55);
+  --ic1-bg: #E3EFFF;  --ic1: #0381FE;
   --ic2-bg: #DDF5F0;  --ic2: #0F8F7B;
   --ic3-bg: #FFE9DF;  --ic3: #D9582F;
   --ic4-bg: #EDE6FF;  --ic4: #7B52E6;
-  --login-a: #E6F0FF;  --login-b: #F4F4F6;  --login-c: #EFE9FF;
+  --login-a: #E6F0FF;  --login-b: #F4F4F4;  --login-c: #EFE9FF;
   --on-w: #FFFFFF;
-  --hue-blue: #2D80F2;  --hue-violet: #7B52E6;  --hue-teal: #0F9F88;  --hue-orange: #F0731F;
-  --hue-pink: #E83E7A;  --hue-amber: #D98E00;   --hue-gray: #6B6E76;  --hue-red: #E5484D; --hero-a: #B9D3FF; --hero-b: #CDBFFF; --hero-c: #F2C4DC; --wmix: 38%; --track: color-mix(in oklab, var(--ink) 12%, transparent); --wmix-main: 38%; --wmix-head: 24%; --wmix-soft: 15%; --sky-shade: .08;
-  --viz-blue: #2D80F2;  --viz-green: #12A87A;  --viz-purple: #7B52E6;
+  --hue-blue: #0381FE;  --hue-violet: #7B52E6;  --hue-teal: #0F9F88;  --hue-orange: #F0731F;
+  --hue-pink: #E83E7A;  --hue-amber: #D98E00;   --hue-gray: #666666;  --hue-red: #E5484D; --hero-a: #B9D3FF; --hero-b: #CDBFFF; --hero-c: #F2C4DC; --wmix: 38%; --track: color-mix(in oklab, var(--ink) 12%, transparent); --wmix-main: 38%; --wmix-head: 24%; --wmix-soft: 15%; --sky-shade: .08;
+  --viz-blue: #0381FE;  --viz-green: #12A87A;  --viz-purple: #7B52E6;
   --viz-sky: #1A9FD0;   --viz-mint: #3FB86B;   --viz-orchid: #A25BE0;
   --th-bg: #EBEEF3;  --th-ink: #1B2130;  --th-line: #C9D0DB;
   --head-grad: var(--th-bg);  --head-solid: #2B3345;  --sheet-head: var(--th-bg);
@@ -1123,18 +1123,18 @@ table.sheet tbody tr:last-child td { border-bottom: none; }
 
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --bg: #000000;  --canvas: #000000;
+  --bg: #121212;  --canvas: #121212;
   --card-glass: rgb(70 70 78 / 40%);  --card-glass-hover: rgb(70 70 78 / 56%);  /* พื้นการ์ดดำโปร่ง */
   --bgp-lemon: #2E2A0A;  --bgp-sky: #0B1B33;  --bgp-lilac: #1E1230;  --bgp-mint: #0C2418;
   --bgp-ocean: linear-gradient(180deg, #0F2347, #12301E);
   --bgp-aurora: radial-gradient(circle at 50% 24%, #1C4A2C 0, transparent 58%), linear-gradient(180deg, #0A2A3C, #0B1E33);
   --bgp-sunny: linear-gradient(180deg, #332E08, #1F2A06);
   --bgp-dusk: linear-gradient(180deg, #0F1F3E, #25163F);
-  --surface: #1C1C1F;  --paper: #1C1C1F;  --card: #1C1C1F;
+  --surface: #212121;  --paper: #212121;  --card: #212121;
   --surface-sunken: #2A2A2E;
   --primary: #3E91FF;  --primary-solid: #3E91FF;  --primary-dark: #8DBDFF;  --primary-tint: #16304F;
   --on-primary: #04122A;
-  --ink: #F2F3F5;  --ink-soft: #A0A3AB;
+  --ink: #F5F5F5;  --ink-soft: #A0ABB1;
   --border: #2E2E33;  --paper-edge: #2E2E33;  --paper-rule: #2E2E33;
   --success: #3DD598;  --success-tint: #12301F;
   --warning: #FFB84D;  --warning-tint: #3A2A0C;
@@ -1144,17 +1144,17 @@ table.sheet tbody tr:last-child td { border-bottom: none; }
   --hover-wash: rgba(255, 255, 255, .07);
   --row-alt: #212125;  --row-hover: #262B36;  --tip-bg: #3A3A40;
 
-  --sidebar-bg: #0E0E10;  --sidebar-hover: #222226;
-  --spine: #0E0E10;  --spine-deep: #8DBDFF;
-  --cream: #F2F3F5;  --cream-dim: #A0A3AB;  --hero-orb: rgba(255, 255, 255, .06);
+  --sidebar-bg: #191919;  --sidebar-hover: #222226;
+  --spine: #191919;  --spine-deep: #8DBDFF;
+  --cream: #F5F5F5;  --cream-dim: #A0ABB1;  --hero-orb: rgba(255, 255, 255, .06);
   --ic1-bg: #16304F;  --ic1: #6FAEFF;
   --ic2-bg: #0F2E2A;  --ic2: #3DD6BC;
   --ic3-bg: #3D2218;  --ic3: #FF9A78;
   --ic4-bg: #2A1F4D;  --ic4: #B79BFF;
-  --login-a: #0B1A30;  --login-b: #000000;  --login-c: #1A1230;
+  --login-a: #0B1A30;  --login-b: #121212;  --login-c: #1A1230;
   --on-w: #0B0B0D;
   --hue-blue: #5AA2FF;  --hue-violet: #B79BFF;  --hue-teal: #2FC9AE;  --hue-orange: #FF9A5C;
-  --hue-pink: #FF7BA5;  --hue-amber: #FFC247;   --hue-gray: #A0A3AB;  --hue-red: #FF6B70; --hero-a: #1D3F78; --hero-b: #38297D; --hero-c: #5A2A55; --wmix: 34%; --track: color-mix(in oklab, #fff 15%, transparent); --wmix-main: 34%; --wmix-head: 26%; --wmix-soft: 19%; --sky-shade: .28;
+  --hue-pink: #FF7BA5;  --hue-amber: #FFC247;   --hue-gray: #A0ABB1;  --hue-red: #FF6B70; --hero-a: #1D3F78; --hero-b: #38297D; --hero-c: #5A2A55; --wmix: 34%; --track: color-mix(in oklab, #fff 15%, transparent); --wmix-main: 34%; --wmix-head: 26%; --wmix-soft: 19%; --sky-shade: .28;
   --viz-blue: #5AA2FF;  --viz-green: #2FD1A0;  --viz-purple: #B79BFF;
   --viz-sky: #4CC3F0;   --viz-mint: #6FD98C;   --viz-orchid: #CF9BFF;
   --th-bg: #2A2D38;  --th-ink: #F1F3F8;  --th-line: #444A5A;

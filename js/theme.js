@@ -19,7 +19,7 @@
     var theme = resolve(pref);
     document.documentElement.dataset.theme = theme;
     var meta = document.querySelector('meta[name="theme-color"]');
-    if (meta) meta.setAttribute('content', theme === 'dark' ? '#000000' : '#F4F4F6'); // ให้แถบสถานะมือถือกลืนกับสีพื้นหลัง (--bg) ของแต่ละโหมด
+    if (meta) meta.setAttribute('content', theme === 'dark' ? '#121212' : '#F4F4F4'); // ให้แถบสถานะมือถือกลืนกับสีพื้นหลัง (--bg) ของแต่ละโหมด
     applyTone(); // พื้นหลังกำหนดเอง: สีตัวหนังสือ/การ์ดต้องคำนวณใหม่เมื่อสลับสว่าง-มืด
   }
 
