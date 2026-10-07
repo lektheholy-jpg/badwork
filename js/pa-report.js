@@ -33,7 +33,7 @@ function paReportDetailCard(d) {
         ${t.method    ? `<div><span class="par-tag">วิธีการ</span>${escapeHtml(t.method)}</div>` : ''}
         ${t.timeline  ? `<div><span class="par-tag">กำหนดเวลา</span>${escapeHtml(t.timeline)}</div>` : ''}
       </div>
-    </div>`).join('') || `<div style="color:var(--ink-soft);font-size:14px;padding:8px 0">ยังไม่มีรายการงาน</div>`;
+    </div>`).join('');
 
   const statusColor = d.status === 'submitted' ? 'var(--hue-teal)' : 'var(--ink-soft)';
   const statusLabel = d.status === 'submitted' ? 'ส่งแล้ว' : 'ร่าง';
@@ -43,8 +43,8 @@ function paReportDetailCard(d) {
       <!-- หัวการ์ด -->
       <div class="par-card-head">
         <div>
-          <div class="par-card-title">ปีการศึกษา ${escapeHtml(d.year || '—')} ภาคเรียนที่ ${escapeHtml(d.semester || '—')}</div>
-          <div class="par-card-sub">${escapeHtml(d.teacherName || '')}${d.department ? ' · ' + escapeHtml(d.department) : ''}</div>
+          <div class="par-card-title">${escapeHtml(paDocTitle(d))}</div>
+          <div class="par-card-sub">${escapeHtml(d.teacherName || AppState.user?.displayName || '')}${d.department ? ' · ' + escapeHtml(d.department) : ''}</div>
         </div>
         <span class="badge" style="background:${statusColor};color:var(--on-w);flex-shrink:0">${statusLabel}</span>
       </div>
@@ -58,14 +58,13 @@ function paReportDetailCard(d) {
         ${row('สถานศึกษา', d.school)}
       </table>` : ''}
 
-      <!-- ข้อตกลงการพัฒนางาน -->
-      <div class="par-section-label">ข้อตกลงในการพัฒนางาน</div>
-      <div class="par-tasks">${taskRows}</div>
-
-      <!-- การพัฒนาตนเอง -->
-      ${d.selfDev ? `
-      <div class="par-section-label" style="margin-top:16px">การพัฒนาตนเอง</div>
-      <div class="par-selfdev">${escapeHtml(d.selfDev)}</div>` : ''}
+      ${d.workload ? `<div class="par-section-label">ส่วนที่ 1 ภาระงาน${d.classroomBasic ? ' · ห้องเรียนวิชาสามัญหรือวิชาพื้นฐาน' : ''}</div><div class="par-selfdev">${escapeHtml(d.workload)}</div>` : ''}
+      ${d.challengeTitle ? `
+      <div class="par-section-label par-gap">ส่วนที่ 2 ประเด็นท้าทาย</div>
+      <div class="par-task-name">${escapeHtml(d.challengeTitle)}</div>
+      ${[['สภาพปัญหา', d.problem], ['วิธีการดำเนินการ', d.method], ['ผลลัพธ์ที่คาดหวัง', d.outcome]].filter(x => x[1]).map(x => `<div class="par-tag par-tag-block">${x[0]}</div><div class="par-selfdev">${escapeHtml(x[1])}</div>`).join('')}` : ''}
+      ${taskRows ? `<div class="par-section-label par-gap">ข้อตกลงในการพัฒนางาน (แบบเดิม)</div><div class="par-tasks">${taskRows}</div>` : ''}
+      ${d.selfDev ? `<div class="par-section-label par-gap">การพัฒนาตนเอง (แบบเดิม)</div><div class="par-selfdev">${escapeHtml(d.selfDev)}</div>` : ''}
 
       <!-- ลิงก์แก้ไข -->
       <div class="par-card-footer">
@@ -110,14 +109,14 @@ async function renderPAReportView() {
   const total    = list.length;
   const submitted = list.filter(d => d.status === 'submitted').length;
   const draft    = total - submitted;
-  const totalTasks = list.reduce((n, d) => n + (Array.isArray(d.tasks) ? d.tasks.filter(t => t.name).length : 0), 0);
+  const withChallenge = list.filter(d => d.challengeTitle).length;
 
   const statsHtml = total > 0 ? `
     <div class="par-stats">
       <div class="stat-card card"><div class="label">ข้อตกลงทั้งหมด</div><div class="value">${total}</div></div>
       <div class="stat-card card"><div class="label">ส่งแล้ว</div><div class="value" style="color:var(--hue-teal)">${submitted}</div></div>
       <div class="stat-card card"><div class="label">ร่าง</div><div class="value" style="color:var(--ink-soft)">${draft}</div></div>
-      <div class="stat-card card"><div class="label">รายการงานรวม</div><div class="value">${totalTasks}</div></div>
+      <div class="stat-card card"><div class="label">มีประเด็นท้าทาย</div><div class="value">${withChallenge}</div></div>
     </div>` : '';
 
   const cards = list.map(d => paReportDetailCard(d)).join('');
@@ -159,7 +158,6 @@ async function renderPAReportView() {
     if (!d) return;
     PAState.docId = id;
     PAState.doc = JSON.parse(JSON.stringify(d));
-    if (!Array.isArray(PAState.doc.tasks) || PAState.doc.tasks.length === 0) PAState.doc.tasks = [paBlankTask()];
     PAState.view = 'form';
     paSwitchTab('agreement'); // paSwitchTab วาดฟอร์มให้เอง (PAState.view = 'form')
   }));

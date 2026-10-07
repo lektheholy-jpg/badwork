@@ -2024,3 +2024,24 @@ table.tt tr.is-today td.tt-cell { background: color-mix(in srgb, var(--hue-orang
   .ttw-item .badge { grid-column: 2; justify-self: start; }
   .ttw-item .tt-edit { position: absolute; top: 8px; right: 8px; }
 }
+
+/* ---------- ข้อตกลง PA · ฟอร์ม PA 1/ส (js/pa.js) และการ์ดรายงาน (js/pa-report.js) ---------- */
+.pa-form-head { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+.pa-form-title { font-size: 20px; font-weight: 700; margin: 0 0 2px; color: var(--ink); }
+.pa-form .card { margin-bottom: 16px; }
+.pa-form .card-title { margin: 0 0 12px; }
+.pa-pf { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; margin: 0 0 12px; }
+.pa-pf-item { min-width: 0; margin: 0; padding: 10px 12px; border-radius: var(--radius-s); background: var(--surface-sunken); }
+.pa-pf-item dt { font-size: 12px; font-weight: 600; color: var(--ink-soft); }
+.pa-pf-item dd { margin: 2px 0 0; font-weight: 600; overflow-wrap: anywhere; }
+.pa-pf-note { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 12px; margin-bottom: 16px; font-size: 13px; color: var(--ink-soft); }
+.pa-sub { margin: 0 0 6px; font-size: 13.5px; font-weight: 600; color: var(--ink-soft); }
+.pa-check { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 500; }
+.pa-check input { width: 18px; height: 18px; }
+.pa-form-footer { display: flex; justify-content: flex-end; gap: 10px; padding-bottom: 32px; }
+.par-gap { margin-top: 16px; }
+.par-tag-block { margin: 10px 0 6px; }
+@media (max-width: 540px) {
+  .pa-pf { grid-template-columns: 1fr; }
+  .pa-form-footer { flex-direction: column-reverse; }
+}

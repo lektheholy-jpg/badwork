@@ -40,6 +40,8 @@ async function paSave(data) {
   const uid = AppState.user?.uid;
   if (!uid) throw new Error('ยังไม่ได้เข้าสู่ระบบ');
   const now = firebase.firestore.FieldValue.serverTimestamp();
+  const { id: _id, createdAt: _c, updatedAt: _u, ...clean } = data; // ฟิลด์ระบบไม่ถูกเขียนกลับ
+  data = clean;
   if (PAState.docId) {
     await paRef(uid, PAState.docId).update({ ...data, updatedAt: now });
     return PAState.docId;
@@ -63,26 +65,32 @@ async function paDelete(docId) {
 // ------------------------------------------------------------------
 // blank doc
 // ------------------------------------------------------------------
-function paBlankDoc() {
-  const now = new Date();
-  const thYear = (now.getFullYear() + 543).toString();
-  const sem = now.getMonth() >= 4 && now.getMonth() <= 9 ? '1' : '2'; // พ.ค.–ต.ค. = ภาค 1
-  return {
-    year: thYear,
-    semester: sem,
-    teacherName: AppState.user?.displayName || '',
-    position: 'ครู',
-    level: '',
-    department: '',
-    school: '',
-    tasks: [paBlankTask()],
-    selfDev: '',
-    status: 'draft',
-  };
+// ปีงบประมาณเริ่ม 1 ต.ค. (ต.ค.–ธ.ค. นับเป็นปีงบประมาณถัดไป)
+function paFiscalYear(d = new Date()) { return d.getFullYear() + 543 + (d.getMonth() >= 9 ? 1 : 0); }
+function paPeriodText(y) {
+  y = Number(y);
+  return y > 2400 ? `ระหว่างวันที่ 1 เดือน ตุลาคม พ.ศ. ${y - 1} ถึงวันที่ 30 เดือน กันยายน พ.ศ. ${y}` : '';
+}
+function paDocTitle(d) {
+  return d.fiscalYear ? `ปีงบประมาณ พ.ศ. ${d.fiscalYear}` : `ปีการศึกษา ${d.year || '—'} ภาคเรียนที่ ${d.semester || '—'}`; // รายการเก่าใช้ปีการศึกษา/ภาคเรียน
 }
 
-function paBlankTask() {
-  return { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 5), name: '', goal: '', indicator: '', method: '', timeline: '' };
+const PA_WORKLOAD_TEMPLATE = `1.1 ชั่วโมงสอนตามตารางสอน รวมจำนวน … ชั่วโมง/สัปดาห์ ดังนี้
+- กลุ่มสาระการเรียนรู้ …
+- รายวิชา … จำนวน … ชั่วโมง/สัปดาห์
+- กิจกรรมพัฒนาผู้เรียน … จำนวน … ชั่วโมง/สัปดาห์
+1.2 งานส่งเสริมและสนับสนุนการจัดการเรียนรู้ จำนวน … ชั่วโมง/สัปดาห์
+1.3 งานพัฒนาคุณภาพการจัดการศึกษาของสถานศึกษา จำนวน … ชั่วโมง/สัปดาห์`;
+
+// ข้อมูลผู้จัดทำ (ชื่อ ตำแหน่ง วิทยฐานะ สถานศึกษา สังกัด เงินเดือน) ไม่เก็บใน PA — ดึงจากหน้าข้อมูลส่วนตัวตอนเปิดฟอร์ม
+function paBlankDoc() {
+  return {
+    fiscalYear: String(paFiscalYear()),
+    classroomBasic: true,
+    workload: PA_WORKLOAD_TEMPLATE,
+    challengeTitle: '', problem: '', method: '', outcome: '',
+    status: 'draft',
+  };
 }
 
 // ------------------------------------------------------------------
@@ -186,8 +194,8 @@ async function renderPAListView() {
     <div class="pa-row card" data-id="${escapeHtml(d.id)}">
       <span class="pa-row-icon"><span class="nav-icon" style="--w:var(--hue-blue)">${PA_ICO_PA}</span></span>
       <div class="pa-row-info">
-        <div class="pa-row-title">ปีการศึกษา ${escapeHtml(d.year || '—')} ภาคเรียนที่ ${escapeHtml(d.semester || '—')}</div>
-        <div class="pa-row-sub">${escapeHtml(d.department || d.position || '')}${d.department && d.position ? ' · ' + escapeHtml(d.position) : ''}</div>
+        <div class="pa-row-title">${escapeHtml(paDocTitle(d))}</div>
+        <div class="pa-row-sub">${escapeHtml(d.challengeTitle || d.department || d.position || '')}</div>
       </div>
       <div class="pa-row-meta">
         ${paStatusBadge(d.status)}
@@ -245,7 +253,6 @@ async function renderPAListView() {
     if (!d) return;
     PAState.docId = id;
     PAState.doc = JSON.parse(JSON.stringify(d)); // deep copy
-    if (!Array.isArray(PAState.doc.tasks) || PAState.doc.tasks.length === 0) PAState.doc.tasks = [paBlankTask()];
     PAState.view = 'form';
     renderPAFormView();
   }));
@@ -253,8 +260,7 @@ async function renderPAListView() {
     e.stopPropagation();
     const id = b.dataset.id;
     const d = PAState.list?.find(x => x.id === id);
-    const label = d ? `ปีการศึกษา ${d.year} ภาค ${d.semester}` : 'รายการนี้';
-    const row = b.closest('.pa-row');
+        const row = b.closest('.pa-row');
     if (!row.dataset.confirmDel) {
       row.dataset.confirmDel = '1';
       b.textContent = 'ยืนยันลบ?';
@@ -280,151 +286,92 @@ async function renderPAListView() {
 // ------------------------------------------------------------------
 // หน้าฟอร์ม PA (อยู่ในแท็บแบบฟอร์มข้อตกลง)
 // ------------------------------------------------------------------
-function renderPAFormView() {
+async function renderPAFormView() {
   const view = paMount(); // = พื้นที่เนื้อหาของแท็บ
   const d = PAState.doc;
   const isNew = !PAState.docId;
+  showLoading('list', view);
+  let p;
+  try { await loadModule('profile'); p = await loadTeacherProfile(); } catch (err) { p = AppState.teacherProfile || {}; }
+  if (!view.isConnected || PAState.tab !== 'agreement' || PAState.view !== 'form') return; // ผู้ใช้สลับแท็บ/ออกไปแล้ว
 
-  const fieldRow = (label, id, val, placeholder = '', type = 'text', opts = '') =>
-    `<div class="pa-field">
-      <label class="pa-label" for="${id}">${label}</label>
-      <input class="pa-input" type="${type}" id="${id}" name="${id}" value="${escapeHtml(val || '')}" placeholder="${escapeHtml(placeholder)}" ${opts}>
-    </div>`;
-
-  const tasksHtml = (tasks) => tasks.map((t, i) => `
-    <div class="pa-task-card card" data-task-idx="${i}">
-      <div class="pa-task-head">
-        <span class="pa-task-num">งานที่ ${i + 1}</span>
-        <button type="button" class="btn btn-danger-ghost btn-sm pa-del-task" data-idx="${i}" ${tasks.length === 1 ? 'disabled' : ''}>${PA_ICO_DEL} ลบ</button>
-      </div>
-      <div class="pa-task-grid">
-        <div class="pa-field pa-field-full">
-          <label class="pa-label" for="task-name-${i}">งาน / กิจกรรม / โครงการ</label>
-          <input class="pa-input" type="text" id="task-name-${i}" name="task-name-${i}" value="${escapeHtml(t.name || '')}" placeholder="ระบุงานหรือกิจกรรมที่จะพัฒนา">
-        </div>
-        <div class="pa-field">
-          <label class="pa-label" for="task-goal-${i}">เป้าหมาย / ผลที่คาดหวัง</label>
-          <input class="pa-input" type="text" id="task-goal-${i}" name="task-goal-${i}" value="${escapeHtml(t.goal || '')}" placeholder="เช่น นักเรียนร้อยละ 80 ผ่านเกณฑ์">
-        </div>
-        <div class="pa-field">
-          <label class="pa-label" for="task-indicator-${i}">ตัวชี้วัดความสำเร็จ</label>
-          <input class="pa-input" type="text" id="task-indicator-${i}" name="task-indicator-${i}" value="${escapeHtml(t.indicator || '')}" placeholder="เช่น คะแนนเฉลี่ย ≥ 2.5">
-        </div>
-        <div class="pa-field">
-          <label class="pa-label" for="task-method-${i}">วิธีการดำเนินงาน</label>
-          <input class="pa-input" type="text" id="task-method-${i}" name="task-method-${i}" value="${escapeHtml(t.method || '')}" placeholder="เช่น จัดกิจกรรม PLC ทุกสัปดาห์">
-        </div>
-        <div class="pa-field">
-          <label class="pa-label" for="task-timeline-${i}">กำหนดเวลา</label>
-          <input class="pa-input" type="text" id="task-timeline-${i}" name="task-timeline-${i}" value="${escapeHtml(t.timeline || '')}" placeholder="เช่น ภาคเรียนที่ 1/2567">
-        </div>
-      </div>
-    </div>`).join('');
+  const name = [(p.prefix || '') + (p.firstName || ''), p.lastName || ''].filter(Boolean).join(' ');
+  const hasSalary = p.salary !== '' && p.salary != null;
+  const pay = [p.ksLevel, hasSalary && 'อัตราเงินเดือน ' + formatSalary(p.salary) + ' บาท'].filter(Boolean).join(' ');
+  const item = (label, val, wide) => `<div class="pa-pf-item${wide ? ' pa-pf-wide' : ''}"><dt>${label}</dt><dd>${val ? escapeHtml(val) : '—'}</dd></div>`;
+  const area = (id, label, val, rows, ph = '') =>
+    `<div class="field"><label for="${id}">${label}</label><textarea id="${id}" rows="${rows}" placeholder="${escapeHtml(ph)}">${escapeHtml(val || '')}</textarea></div>`;
 
   view.innerHTML = `
     <div class="pa-form-head">
       <button type="button" class="btn btn-ghost btn-sm pa-back-btn">← กลับ</button>
-      <h2 class="pa-form-title">${isNew ? 'สร้างข้อตกลง PA ใหม่' : 'แก้ไขข้อตกลง PA'}</h2>
+      <div>
+        <h2 class="pa-form-title">PA 1/ส · ${isNew ? 'สร้างข้อตกลงใหม่' : 'แก้ไขข้อตกลง'}</h2>
+        <div class="u-note">แบบตกลงในการพัฒนางาน (PA) สำหรับข้าราชการครูและบุคลากรทางการศึกษา ตำแหน่ง ครู (สังกัด สพฐ.)</div>
+      </div>
     </div>
 
-    <form id="pa-form" novalidate>
-      <!-- ส่วนที่ 1: ข้อมูลทั่วไป -->
-      <div class="card card-pad" style="margin-bottom:16px">
-        <div class="pa-section-title">ส่วนที่ 1 · ข้อมูลทั่วไป</div>
-        <div class="pa-grid">
-          ${fieldRow('ชื่อ-นามสกุล', 'pa-teacherName', d.teacherName, 'ชื่อ นามสกุล')}
-          ${fieldRow('ตำแหน่ง', 'pa-position', d.position, 'เช่น ครู, ครูชำนาญการ')}
-          ${fieldRow('วิทยฐานะ', 'pa-level', d.level, 'เช่น ครูชำนาญการพิเศษ')}
-          ${fieldRow('กลุ่มสาระ / ฝ่าย', 'pa-department', d.department, 'เช่น กลุ่มสาระคณิตศาสตร์')}
-          ${fieldRow('โรงเรียน', 'pa-school', d.school, 'ชื่อสถานศึกษา')}
-          ${fieldRow('ปีการศึกษา (พ.ศ.)', 'pa-year', d.year, '2567')}
+    <form id="pa-form" class="pa-form" novalidate>
+      <div class="card card-pad">
+        <h2 class="card-title">ผู้จัดทำข้อตกลง</h2>
+        <dl class="pa-pf">
+          ${item('ชื่อ-นามสกุล', name)}${item('ตำแหน่ง', p.position)}
+          ${item('วิทยฐานะ', p.academicStanding)}${item('รับเงินเดือนในตำแหน่ง', pay)}
+          ${item('สถานศึกษา', p.school)}${item('สังกัด', p.affiliation)}
+        </dl>
+        <div class="pa-pf-note">
+          <span>ข้อมูลนี้ดึงจากหน้าข้อมูลส่วนตัว${!name || !p.school ? ' — ยังกรอกไม่ครบ' : ''}</span>
+          <button type="button" class="btn btn-ghost btn-sm pa-goto-profile">ไปแก้ในข้อมูลส่วนตัว</button>
         </div>
-        <div class="pa-grid" style="grid-template-columns:1fr 1fr">
-          <div class="pa-field">
-            <label class="pa-label" for="pa-semester">ภาคเรียนที่</label>
-            <select class="pa-input" id="pa-semester" name="pa-semester">
-              <option value="1" ${d.semester === '1' ? 'selected' : ''}>1</option>
-              <option value="2" ${d.semester === '2' ? 'selected' : ''}>2</option>
+        <div class="field-row">
+          <div class="field">
+            <label for="pa-fiscalYear">ปีงบประมาณ พ.ศ.</label>
+            <input id="pa-fiscalYear" type="text" inputmode="numeric" maxlength="4" value="${escapeHtml(d.fiscalYear || '')}" placeholder="${paFiscalYear()}">
+            <div class="field-hint" id="pa-period">${escapeHtml(paPeriodText(d.fiscalYear))}</div>
+          </div>
+          <div class="field">
+            <label for="pa-status">สถานะ</label>
+            <select id="pa-status">
+              <option value="draft"${(d.status || 'draft') === 'draft' ? ' selected' : ''}>ร่าง</option>
+              <option value="submitted"${d.status === 'submitted' ? ' selected' : ''}>ส่งแล้ว</option>
             </select>
           </div>
-          <div class="pa-field">
-            <label class="pa-label" for="pa-status">สถานะ</label>
-            <select class="pa-input" id="pa-status" name="pa-status">
-              <option value="draft" ${(d.status || 'draft') === 'draft' ? 'selected' : ''}>ร่าง</option>
-              <option value="submitted" ${d.status === 'submitted' ? 'selected' : ''}>ส่งแล้ว</option>
-            </select>
-          </div>
         </div>
+        <div class="pa-sub">ประเภทห้องเรียนที่จัดการเรียนรู้</div>
+        <label class="pa-check"><input type="checkbox" id="pa-classroomBasic"${d.classroomBasic ? ' checked' : ''}> ห้องเรียนวิชาสามัญหรือวิชาพื้นฐาน</label>
       </div>
 
-      <!-- ส่วนที่ 2: ข้อตกลงการพัฒนางาน -->
-      <div class="card card-pad" style="margin-bottom:16px">
-        <div class="pa-section-title">ส่วนที่ 2 · ข้อตกลงในการพัฒนางาน</div>
-        <div id="pa-tasks-container">${tasksHtml(d.tasks)}</div>
-        <button type="button" class="btn btn-ghost btn-sm" id="pa-add-task" style="margin-top:12px">${PA_ICO_ADD} เพิ่มงาน / กิจกรรม</button>
+      <div class="card card-pad">
+        <h2 class="card-title">ส่วนที่ 1 ข้อตกลงในการพัฒนางานตามมาตรฐานตำแหน่ง</h2>
+        ${area('pa-workload', '1. ภาระงาน (ชั่วโมงสอนตามตารางสอน รวม … ชั่วโมง/สัปดาห์)', d.workload, 9)}
       </div>
 
-      <!-- ส่วนที่ 3: การพัฒนาตนเอง -->
-      <div class="card card-pad" style="margin-bottom:24px">
-        <div class="pa-section-title">ส่วนที่ 3 · ข้อตกลงในการพัฒนาตนเอง</div>
-        <div class="pa-field pa-field-full">
-          <label class="pa-label" for="pa-selfDev">แผนการพัฒนาตนเองด้านวิชาชีพ</label>
-          <textarea class="pa-input" id="pa-selfDev" name="pa-selfDev" rows="4" placeholder="ระบุแผนการอบรม การศึกษาต่อ หรือการพัฒนาตนเองที่วางแผนไว้ในปีการศึกษานี้">${escapeHtml(d.selfDev || '')}</textarea>
-        </div>
+      <div class="card card-pad">
+        <h2 class="card-title">ส่วนที่ 2 ข้อตกลงในการพัฒนางานที่เป็นประเด็นท้าทาย</h2>
+        ${area('pa-challengeTitle', 'เรื่อง ประเด็นท้าทาย', d.challengeTitle, 3, 'เช่น การพัฒนาทักษะ … ของนักเรียนระดับชั้น … โดยใช้ …')}
+        ${area('pa-problem', '1. สภาพปัญหาของผู้เรียนและการจัดการเรียนรู้', d.problem, 5)}
+        ${area('pa-method', '2. วิธีการดำเนินการให้บรรลุผล', d.method, 5)}
+        ${area('pa-outcome', '3. ผลลัพธ์การพัฒนาที่คาดหวัง', d.outcome, 5, '- เชิงปริมาณ: …\n- เชิงคุณภาพ: …')}
       </div>
 
-      <!-- ปุ่มบันทึก -->
       <div class="pa-form-footer">
         <button type="button" class="btn btn-ghost pa-cancel-btn">ยกเลิก</button>
         <button type="submit" class="btn btn-primary" id="pa-save-btn">บันทึกข้อตกลง PA</button>
       </div>
-    </form>
+    </form>`;
 
-    <style>
-      .pa-form-head{display:flex;align-items:center;gap:12px;margin-bottom:20px}
-      .pa-form-title{font-size:20px;font-weight:700;margin:0;color:var(--ink)}
-      .pa-section-title{font-size:13px;font-weight:700;color:var(--ink-soft);letter-spacing:.5px;text-transform:uppercase;margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid var(--border)}
-      .pa-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px 16px;margin-bottom:12px}
-      .pa-field{display:flex;flex-direction:column;gap:5px}
-      .pa-field-full{grid-column:1/-1}
-      .pa-label{font-size:13px;font-weight:600;color:var(--ink-soft)}
-      .pa-input{width:100%;box-sizing:border-box;padding:9px 12px;border-radius:var(--radius-s);border:1.5px solid var(--border);background:var(--surface);color:var(--ink);font-size:14.5px;font-family:var(--font);line-height:1.5;transition:border-color .15s}
-      .pa-input:focus{outline:none;border-color:var(--primary)}
-      textarea.pa-input{resize:vertical;min-height:80px}
-      select.pa-input{cursor:pointer;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23666' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px}
-      .pa-task-card{padding:16px;margin-bottom:10px}
-      .pa-task-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
-      .pa-task-num{font-size:13px;font-weight:700;color:var(--ink-soft)}
-      .pa-task-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px 16px}
-      .pa-task-grid .pa-field-full{grid-column:1/-1}
-      .pa-form-footer{display:flex;gap:10px;justify-content:flex-end;padding-bottom:32px}
-      @media(max-width:540px){.pa-grid,.pa-task-grid{grid-template-columns:1fr}.pa-form-footer{flex-direction:column-reverse}}
-    </style>`;
-
-  // --- กลับ
   view.querySelectorAll('.pa-back-btn, .pa-cancel-btn').forEach(b => b.addEventListener('click', () => {
     PAState.view = 'list'; renderPAListView();
   }));
-
-  // --- เพิ่มงาน
-  view.querySelector('#pa-add-task').addEventListener('click', () => {
-    paCollectFormData();
-    PAState.doc.tasks.push(paBlankTask());
-    renderPAFormView();
+  view.querySelector('.pa-goto-profile').addEventListener('click', () => { paCollectFormData(); navigate('profile'); });
+  view.querySelector('#pa-fiscalYear').addEventListener('input', e => {
+    view.querySelector('#pa-period').textContent = paPeriodText(e.target.value);
   });
 
-  // --- ลบงาน
-  view.querySelectorAll('.pa-del-task').forEach(b => b.addEventListener('click', () => {
-    const idx = parseInt(b.dataset.idx);
-    paCollectFormData();
-    PAState.doc.tasks.splice(idx, 1);
-    renderPAFormView();
-  }));
-
-  // --- บันทึก
   view.querySelector('#pa-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     paCollectFormData();
+    if (!/^\d{4}$/.test(PAState.doc.fiscalYear)) { showToast('ปีงบประมาณต้องเป็นตัวเลข 4 หลัก เช่น ' + paFiscalYear()); view.querySelector('#pa-fiscalYear').focus(); return; }
     const btn = view.querySelector('#pa-save-btn');
     btn.disabled = true;
     btn.textContent = 'กำลังบันทึก…';
@@ -437,7 +384,7 @@ function renderPAFormView() {
     } catch (err) {
       btn.disabled = false;
       btn.textContent = 'บันทึกข้อตกลง PA';
-      alert('บันทึกไม่สำเร็จ: ' + err.message);
+      showToast(err.code === 'permission-denied' ? 'บันทึกไม่สำเร็จ: ถูกปฏิเสธสิทธิ์ (ต้องอัปเดต firestore.rules ก่อน)' : 'บันทึกไม่สำเร็จ: ' + (err.message || err));
     }
   });
 
@@ -449,25 +396,19 @@ function renderPAFormView() {
 // เก็บค่าจากฟอร์มกลับเข้า PAState.doc
 // ------------------------------------------------------------------
 function paCollectFormData() {
-  const get = id => { const el = document.getElementById(id); return el ? el.value.trim() : ''; };
-  const d = PAState.doc;
-  d.teacherName = get('pa-teacherName');
-  d.position    = get('pa-position');
-  d.level       = get('pa-level');
-  d.department  = get('pa-department');
-  d.school      = get('pa-school');
-  d.year        = get('pa-year');
-  d.semester    = get('pa-semester');
-  d.status      = get('pa-status');
-  d.selfDev     = (document.getElementById('pa-selfDev')?.value || '').trim();
-  d.tasks = d.tasks.map((t, i) => ({
-    ...t,
-    name:      get(`task-name-${i}`),
-    goal:      get(`task-goal-${i}`),
-    indicator: get(`task-indicator-${i}`),
-    method:    get(`task-method-${i}`),
-    timeline:  get(`task-timeline-${i}`),
-  }));
+  const el = id => document.getElementById(id);
+  if (!el('pa-form')) return; // ไม่ได้อยู่ในหน้าฟอร์ม
+  const get = id => (el(id)?.value || '').trim();
+  Object.assign(PAState.doc, {
+    fiscalYear: get('pa-fiscalYear'),
+    status: get('pa-status') || 'draft',
+    classroomBasic: !!el('pa-classroomBasic')?.checked,
+    workload: get('pa-workload'),
+    challengeTitle: get('pa-challengeTitle'),
+    problem: get('pa-problem'),
+    method: get('pa-method'),
+    outcome: get('pa-outcome'),
+  });
 }
 
 // ------------------------------------------------------------------
