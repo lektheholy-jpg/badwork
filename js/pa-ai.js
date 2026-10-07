@@ -10,7 +10,7 @@
 // ==========================================================================
 
 const PA_AI = {
-  SITE_KEY: 'AIzaSyANOCrtJ8lfNj_yLFsEMhRwFmzPgoyLSiE', // reCAPTCHA v3 Site key (ค่าสาธารณะ) — ต้องตรงกับที่ลงทะเบียนใน Firebase App Check
+  SITE_KEY: '6LeHa-MtAAAAAAqvvQSRvBUl0RVFa7-KoFthxWxm', // reCAPTCHA v3 Site key (ค่าสาธารณะ) — ต้องตรงกับที่ลงทะเบียนใน Firebase App Check
   SDK: 'https://www.gstatic.com/firebasejs/12.17.0',    // Firebase JS SDK แบบ modular (แยกจากชุด compat 10.13.0 ที่แอปใช้)
   MODEL: 'gemini-3.8-flash',                            // ถ้าเปลี่ยนรุ่น แก้ที่นี่ที่เดียว (ดูชื่อรุ่นล่าสุดใน Firebase Console > AI Logic)
   TIMEOUT: 90000,
