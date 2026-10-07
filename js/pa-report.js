@@ -1,9 +1,8 @@
 // ==========================================================================
-// รายงานข้อตกลง PA (PA Report)
-// แสดงสรุป PA ของครู แยกตามปีการศึกษา อ่านข้อมูลจาก Firestore
+// ตัวอย่าง / พิมพ์ PA 1/ส (แท็บที่สองของหน้า "ข้อตกลง PA")
+// แสดงข้อตกลงที่เลือกในรูปแบบเอกสารตามแบบ สพฐ. + ปุ่มพิมพ์/บันทึกเป็น PDF
+// ตัวสร้างเอกสาร (paBuildDocHtml, paPrint, PA1_CSS) อยู่ใน pa.js
 // ==========================================================================
-
-const PA_RPT_ICO = `<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><g fill="currentColor" stroke="none"><path opacity=".55" d="M7 2.5h7l5.5 5.5v11A2.5 2.5 0 0 1 17 21.5H7A2.5 2.5 0 0 1 4.5 19V5A2.5 2.5 0 0 1 7 2.5Z"/><rect x="8" y="9" width="8" height="1.5" rx=".75"/><rect x="8" y="12" width="8" height="1.5" rx=".75"/><rect x="8" y="15" width="5" height="1.5" rx=".75"/></g></svg>`;
 
 // ------------------------------------------------------------------
 // โหลดข้อมูล (ใช้ paCol ที่นิยามใน pa.js)
@@ -15,69 +14,18 @@ async function paReportLoadList() {
   return snap.docs.map(d => ({ id: d.id, ...d.data() }));
 }
 
-// ------------------------------------------------------------------
-// แสดง detail card ของ PA หนึ่งรายการ
-// ------------------------------------------------------------------
-function paReportDetailCard(d) {
-  const row = (label, val) => val
-    ? `<tr><td class="par-lbl">${label}</td><td class="par-val">${escapeHtml(val)}</td></tr>`
-    : '';
-
-  const taskRows = (Array.isArray(d.tasks) ? d.tasks : []).filter(t => t.name).map((t, i) => `
-    <div class="par-task">
-      <div class="par-task-num">งานที่ ${i + 1}</div>
-      <div class="par-task-name">${escapeHtml(t.name)}</div>
-      <div class="par-task-details">
-        ${t.goal      ? `<div><span class="par-tag">เป้าหมาย</span>${escapeHtml(t.goal)}</div>` : ''}
-        ${t.indicator ? `<div><span class="par-tag">ตัวชี้วัด</span>${escapeHtml(t.indicator)}</div>` : ''}
-        ${t.method    ? `<div><span class="par-tag">วิธีการ</span>${escapeHtml(t.method)}</div>` : ''}
-        ${t.timeline  ? `<div><span class="par-tag">กำหนดเวลา</span>${escapeHtml(t.timeline)}</div>` : ''}
-      </div>
-    </div>`).join('');
-
-  const statusClass = d.status === 'submitted' ? 'badge-success' : 'badge-neutral';
-  const statusLabel = d.status === 'submitted' ? 'ส่งแล้ว' : 'ร่าง';
-
-  return `
-    <div class="card par-card" data-id="${escapeHtml(d.id)}">
-      <!-- หัวการ์ด -->
-      <div class="par-card-head">
-        <div>
-          <div class="par-card-title">${escapeHtml(paDocTitle(d))}</div>
-          <div class="par-card-sub">${escapeHtml(d.teacherName || AppState.user?.displayName || '')}${d.department ? ' · ' + escapeHtml(d.department) : ''}</div>
-        </div>
-        <span class="badge par-badge ${statusClass}">${statusLabel}</span>
-      </div>
-
-      <!-- ข้อมูลทั่วไป -->
-      ${(d.position || d.level || d.school) ? `
-      <table class="par-table">
-        ${row('ตำแหน่ง', d.position)}
-        ${row('วิทยฐานะ', d.level)}
-        ${row('กลุ่มสาระ / ฝ่าย', d.department)}
-        ${row('สถานศึกษา', d.school)}
-      </table>` : ''}
-
-      ${d.workload ? `<div class="par-section-label">ส่วนที่ 1 ภาระงาน${d.classroomBasic ? ' · ห้องเรียนวิชาสามัญหรือวิชาพื้นฐาน' : ''}</div><div class="par-selfdev">${escapeHtml(d.workload)}</div>` : ''}
-      ${d.challengeTitle ? `
-      <div class="par-section-label par-gap">ส่วนที่ 2 ประเด็นท้าทาย</div>
-      <div class="par-task-name">${escapeHtml(d.challengeTitle)}</div>
-      ${[['สภาพปัญหา', d.problem], ['วิธีการดำเนินการ', d.method], ['ผลลัพธ์ที่คาดหวัง', d.outcome]].filter(x => x[1]).map(x => `<div class="par-tag par-tag-block">${x[0]}</div><div class="par-selfdev">${escapeHtml(x[1])}</div>`).join('')}` : ''}
-      ${taskRows ? `<div class="par-section-label par-gap">ข้อตกลงในการพัฒนางาน (แบบเดิม)</div><div class="par-tasks">${taskRows}</div>` : ''}
-      ${d.selfDev ? `<div class="par-section-label par-gap">การพัฒนาตนเอง (แบบเดิม)</div><div class="par-selfdev">${escapeHtml(d.selfDev)}</div>` : ''}
-
-      <!-- ลิงก์แก้ไข -->
-      <div class="par-card-footer">
-        <button type="button" class="btn btn-ghost btn-sm par-edit-btn" data-id="${escapeHtml(d.id)}">
-          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M16.2 3.6a2.4 2.4 0 0 1 3.4 0l.8.8a2.4 2.4 0 0 1 0 3.4L9.5 18.7a2 2 0 0 1-.9.5l-4.3 1.1a.8.8 0 0 1-1-1l1.1-4.3c.1-.3.3-.6.5-.9Z"/></svg>
-          แก้ไขข้อตกลง
-        </button>
-      </div>
-    </div>`;
+// ข้อมูลแบบเดิมที่แบบ PA 1/ส ไม่มีช่องรองรับ (tasks / selfDev) — แสดงแยกไว้ ไม่ปนในเอกสารพิมพ์
+function paReportLegacyHtml(d) {
+  const tasks = (Array.isArray(d.tasks) ? d.tasks : []).filter(t => t && t.name).map((t, i) =>
+    `งานที่ ${i + 1}: ${t.name}` + [['เป้าหมาย', t.goal], ['ตัวชี้วัด', t.indicator], ['วิธีการ', t.method], ['กำหนดเวลา', t.timeline]]
+      .filter(x => x[1]).map(x => `\n   ${x[0]}: ${x[1]}`).join('')).join('\n\n');
+  const text = [tasks, d.selfDev && 'การพัฒนาตนเอง: ' + d.selfDev].filter(Boolean).join('\n\n');
+  if (!text) return '';
+  return `<details class="parp-legacy"><summary>ข้อมูลแบบเดิมในเอกสารนี้ (ไม่อยู่ในแบบ PA 1/ส — ยังเก็บไว้ ไม่ถูกลบ)</summary><div class="parp-legacy-text">${escapeHtml(text)}</div></details>`;
 }
 
 // ------------------------------------------------------------------
-// render แท็บ "แบบฟอร์มรายงาน" — วาดลงพื้นที่เนื้อหาของหน้า PA (โครงหน้า+แท็บอยู่ใน pa.js)
+// render แท็บ "ตัวอย่าง / พิมพ์ PA 1" — วาดลงพื้นที่เนื้อหาของหน้า PA (โครงหน้า+แท็บอยู่ใน pa.js)
 // ------------------------------------------------------------------
 async function renderPAReportView() {
   const view = paMount();
@@ -93,74 +41,70 @@ async function renderPAReportView() {
     view.innerHTML = `<div class="card card-pad"><div class="empty-state">โหลดข้อมูลไม่สำเร็จ: ${escapeHtml(err.message)}</div></div>`;
     return;
   }
+
+  // เอกสารรุ่นเก่าไม่มีสำเนาข้อมูลผู้จัดทำ → ใช้ข้อมูลปัจจุบันจากหน้าข้อมูลส่วนตัวแทน
+  let live = {};
+  try { await loadModule('profile'); live = paOwnerFromProfile(await loadTeacherProfile()); } catch (err) { /* ใช้ค่าว่าง */ }
+
   if (!view.isConnected || PAState.tab !== 'report') return; // สลับไปแท็บอื่นระหว่างรอข้อมูล — ไม่วาดทับ
 
-  const empty = list.length === 0 ? `
-    <div class="card">
-      <div class="empty-state">
-        <div class="icon icon-violet">${PA_RPT_ICO}</div>
-        <div class="empty-title">ยังไม่มีรายงาน PA</div>
-        <div class="empty-sub">สร้างข้อตกลง PA ก่อน แล้วรายงานจะแสดงที่นี่โดยอัตโนมัติ</div>
-        <button type="button" class="btn btn-primary par-goto-pa">ไปที่ข้อตกลง PA</button>
-      </div>
-    </div>` : '';
+  if (list.length === 0) {
+    view.innerHTML = `
+      <div class="card">
+        <div class="empty-state">
+          <div class="icon icon-violet">${PA_ICO_PA}</div>
+          <div class="empty-title">ยังไม่มีข้อตกลง PA</div>
+          <div class="empty-sub">สร้างข้อตกลง PA ก่อน แล้วดูตัวอย่างและพิมพ์ที่นี่</div>
+          <button type="button" class="btn btn-primary par-goto-pa">ไปที่ข้อตกลง PA</button>
+        </div>
+      </div>`;
+    view.querySelector('.par-goto-pa').addEventListener('click', () => paSwitchTab('agreement'));
+    view.classList.remove('is-switching');
+    paSwapIn(view);
+    return;
+  }
 
-  // สรุปตัวเลข
-  const total    = list.length;
-  const submitted = list.filter(d => d.status === 'submitted').length;
-  const draft    = total - submitted;
-  const withChallenge = list.filter(d => d.challengeTitle).length;
-
-  const statsHtml = total > 0 ? `
-    <div class="par-stats">
-      <div class="stat-card card"><div class="label">ข้อตกลงทั้งหมด</div><div class="value">${total}</div></div>
-      <div class="stat-card card"><div class="label">ส่งแล้ว</div><div class="value par-ok">${submitted}</div></div>
-      <div class="stat-card card"><div class="label">ร่าง</div><div class="value u-soft">${draft}</div></div>
-      <div class="stat-card card"><div class="label">มีประเด็นท้าทาย</div><div class="value">${withChallenge}</div></div>
-    </div>` : '';
-
-  const cards = list.map(d => paReportDetailCard(d)).join('');
+  const d = list.find(x => x.id === PAState.previewId) || list[0];
+  PAState.previewId = d.id;
+  const owner = d.owner || live;
 
   view.innerHTML = `
-    ${statsHtml}
-    ${empty}
-    <div class="par-cards">${cards}</div>
+    <div class="parp-bar">
+      <select id="parp-select" aria-label="เลือกข้อตกลง">
+        ${list.map(x => `<option value="${escapeHtml(x.id)}"${x.id === d.id ? ' selected' : ''}>${escapeHtml(paDocTitle(x))}${x.status === 'submitted' ? ' · ส่งแล้ว' : ' · ร่าง'}</option>`).join('')}
+      </select>
+      <div class="parp-actions">
+        <button type="button" class="btn btn-ghost btn-sm parp-edit">${PA_ICO_EDIT} แก้ไข</button>
+        <button type="button" class="btn btn-primary btn-sm parp-print">${PA_ICO_PRINT} พิมพ์ / บันทึกเป็น PDF</button>
+      </div>
+    </div>
+    <div class="u-note parp-hint">ตัวอย่างตามแบบ PA 1/ส — กดพิมพ์แล้วเลือก "บันทึกเป็น PDF" ในหน้าต่างพิมพ์ได้ · ช่องลงนามและความเห็น ผอ. เว้นไว้ให้เซ็นบนกระดาษ${d.owner ? '' : ' · เอกสารนี้ยังไม่มีสำเนาข้อมูลผู้จัดทำ จึงใช้ข้อมูลปัจจุบันจากข้อมูลส่วนตัว (จะเก็บสำเนาเมื่อบันทึกใหม่)'}</div>
+    <div class="parp-paper"><style>${PA1_CSS}</style>${paBuildDocHtml(d, owner)}</div>
+    ${paReportLegacyHtml(d)}
     <style>
-      .par-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px}
-      .par-cards{display:flex;flex-direction:column;gap:16px}
-      .par-card{padding:20px 22px}
-      .par-card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:14px}
-      .par-card-title{font-size:17px;font-weight:700;color:var(--ink)}
-      .par-card-sub{font-size:13px;color:var(--ink-soft);margin-top:3px}
-      .par-table{width:100%;border-collapse:collapse;margin-bottom:14px;font-size:13.5px}
-      .par-lbl{width:140px;color:var(--ink-soft);font-weight:600;padding:4px 0;vertical-align:top}
-      .par-val{color:var(--ink);padding:4px 0}
-      .par-section-label{font-size:12px;font-weight:700;color:var(--ink-soft);letter-spacing:.5px;text-transform:uppercase;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border)}
-      .par-tasks{display:flex;flex-direction:column;gap:10px}
-      .par-task{padding:12px 14px;border-radius:var(--radius-s);background:var(--surface-sunken)}
-      .par-task-num{font-size:11px;font-weight:700;color:var(--ink-soft);margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px}
-      .par-task-name{font-size:14.5px;font-weight:600;color:var(--ink);margin-bottom:8px}
-      .par-task-details{display:flex;flex-direction:column;gap:5px;font-size:13px;color:var(--ink-soft)}
-      .par-tag{display:inline-block;font-size:11px;font-weight:700;color:var(--primary-dark);background:var(--primary-tint);padding:1px 7px;border-radius:var(--radius-pill);margin-right:7px}
-      .par-selfdev{font-size:14px;color:var(--ink);white-space:pre-wrap;line-height:1.7;padding:10px 14px;border-radius:var(--radius-s);background:var(--surface-sunken)}
-      .par-card-footer{margin-top:16px;padding-top:12px;border-top:1px solid var(--border);display:flex;justify-content:flex-end}
-      .badge{display:inline-block;padding:3px 10px;border-radius:var(--radius-pill);font-size:12px;font-weight:600}
-      @media(max-width:600px){.par-stats{grid-template-columns:repeat(2,1fr)}.par-lbl{width:100px}}
+      .parp-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+      .parp-bar select{min-width:0;max-width:100%}
+      .parp-actions{display:flex;gap:8px}
+      .parp-actions .ico{width:16px;height:16px}
+      .parp-hint{margin-bottom:12px}
+      .parp-paper{background:#fff;color:#000;border-radius:var(--radius-s);box-shadow:0 0 0 1px var(--border);padding:28px 32px;overflow-x:auto}
+      .parp-legacy{margin-top:14px}
+      .parp-legacy>summary{cursor:pointer;font-weight:600;font-size:13.5px;color:var(--ink-soft)}
+      .parp-legacy-text{white-space:pre-wrap;margin-top:8px;font-size:13.5px;padding:10px 12px;border-radius:var(--radius-s);background:var(--surface-sunken)}
+      @media(max-width:600px){.parp-paper{padding:14px 12px}.parp-actions{width:100%}.parp-actions .btn{flex:1}}
     </style>`;
 
-  // ปุ่มไปแท็บข้อตกลง
-  view.querySelector('.par-goto-pa')?.addEventListener('click', () => paSwitchTab('agreement'));
-
-  // ปุ่มแก้ไข: สลับไปแท็บข้อตกลงพร้อมเปิดฟอร์มของรายการนั้น
-  view.querySelectorAll('.par-edit-btn').forEach(b => b.addEventListener('click', () => {
-    const id = b.dataset.id;
-    const d = list.find(x => x.id === id);
-    if (!d) return;
-    PAState.docId = id;
-    PAState.doc = JSON.parse(JSON.stringify(d));
+  view.querySelector('#parp-select').addEventListener('change', e => {
+    PAState.previewId = e.target.value;
+    renderPAReportView();
+  });
+  view.querySelector('.parp-print').addEventListener('click', () => paPrint(d, owner));
+  view.querySelector('.parp-edit').addEventListener('click', () => {
+    PAState.docId = d.id;
+    PAState.doc = paNormalize(JSON.parse(JSON.stringify(d)));
     PAState.view = 'form';
     paSwitchTab('agreement'); // paSwitchTab วาดฟอร์มให้เอง (PAState.view = 'form')
-  }));
+  });
 
   view.classList.remove('is-switching');
   paSwapIn(view);
