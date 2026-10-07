@@ -2005,12 +2005,13 @@ table.tt tr.is-today td.tt-cell { background: color-mix(in srgb, var(--hue-orang
 .ttw-days .theme-opt { flex: 1 1 0; justify-content: center; padding-inline: 8px; }
 .ttw-days .theme-opt.is-today::after { content: ''; position: absolute; bottom: 5px; left: 50%; width: 5px; height: 5px; margin-left: -2.5px; border-radius: 50%; background: var(--hue-orange); }
 .ttw-list { display: flex; flex-direction: column; gap: 8px; }
-.ttw-item { display: grid; grid-template-columns: 96px minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 10px 14px; border-radius: var(--radius-m); background: var(--w); color: var(--on-w); }
+.ttw-item { display: grid; grid-template-columns: 96px minmax(0, 1fr) auto auto; align-items: center; gap: 12px; padding: 10px 14px; border-radius: var(--radius-m); background: var(--w); color: var(--on-w); }
 .ttw-item.is-now { box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--w); }
 .ttw-item .badge { background: var(--card); }
-.ttw-item.is-link { cursor: pointer; }
-.ttw-item.is-link:hover { filter: brightness(1.08); }
-.ttw-item.is-link:focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; }
+.ttw-item.is-act { cursor: pointer; }
+.ttw-item.is-act:hover { filter: brightness(1.08); }
+.ttw-item.is-act:focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; }
+.ttw-item .tt-edit { position: static; grid-column: 4; }
 .ttw-time { display: flex; flex-direction: column; line-height: 1.4; }
 .ttw-time b { font-size: 13.5px; color: var(--on-w); }
 .ttw-time span { font-size: 12px; color: color-mix(in srgb, var(--on-w) 78%, var(--w)); }
@@ -2019,6 +2020,7 @@ table.tt tr.is-today td.tt-cell { background: color-mix(in srgb, var(--hue-orang
 .ttw-meta { font-size: 12.5px; color: color-mix(in srgb, var(--on-w) 78%, var(--w)); }
 .ttw-empty { padding: 20px 8px; text-align: center; font-size: 13.5px; color: var(--ink-soft); }
 @media (max-width: 480px) {
-  .ttw-item { grid-template-columns: 84px minmax(0, 1fr); }
+  .ttw-item { position: relative; grid-template-columns: 84px minmax(0, 1fr); }
   .ttw-item .badge { grid-column: 2; justify-self: start; }
+  .ttw-item .tt-edit { position: absolute; top: 8px; right: 8px; }
 }

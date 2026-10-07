@@ -548,18 +548,23 @@ function ttwWeekStart(now) { // วันจันทร์ของสัปด
 function ttwItemHtml(e, periods, tag, courseIds) {
   const start = periods[e.period].start, end = periods[e.period + e.span - 1].end;
   const label = e.span > 1 ? `คาบ ${e.period + 1}-${e.period + e.span}` : `คาบ ${e.period + 1}`;
-  const link = ttLinkable(e, courseIds); // คาบที่ผูกกับรายวิชา: กดทั้งกรอบเพื่อไปหน้าบันทึกคะแนน
   const meta = [e.cls, e.room && 'ห้อง ' + e.room].filter(Boolean).map(escapeHtml).join(' · ');
   const badge = tag === 'now' ? '<span class="badge badge-success">กำลังสอน</span>'
     : tag === 'next' ? '<span class="badge badge-neutral">ถัดไป</span>' : '';
+  // คาบที่ผูกกับรายวิชา: กดทั้งกรอบ = ไปหน้าบันทึกคะแนน · แก้ไขคาบใช้ปุ่มดินสอ · คาบอื่น (กิจกรรม/พิมพ์เอง) กดทั้งกรอบ = แก้ไข
+  const id = escapeHtml(e.id), link = ttLinkable(e, courseIds);
+  const act = link
+    ? ` role="link" tabindex="0" data-ttw-score="${id}" title="ไปหน้าบันทึกคะแนน"`
+    : ` role="button" tabindex="0" data-ttw-edit="${id}" title="แก้ไขคาบ"`;
+  const pencil = link ? `<button type="button" class="tt-edit" data-ttw-edit="${id}" aria-label="แก้ไข ${escapeHtml(e.title)}" title="แก้ไขคาบ">${icon('edit')}</button>` : '';
   return `
-    <div class="ttw-item${tag === 'now' ? ' is-now' : ''}${link ? ' is-link' : ''}" style="--w:var(--hue-${e.hue})"${link ? ` role="link" tabindex="0" data-ttw-score="${escapeHtml(e.id)}" title="ไปหน้าบันทึกคะแนน"` : ''}>
+    <div class="ttw-item is-act${tag === 'now' ? ' is-now' : ''}" style="--w:var(--hue-${e.hue})"${act}>
       <div class="ttw-time"><b>${label}</b><span>${start} - ${end}</span></div>
       <div class="ttw-info">
         <span class="ttw-title">${escapeHtml([e.code, e.title].filter(Boolean).join(' '))}</span>
         ${meta ? `<span class="ttw-meta">${meta}</span>` : ''}
       </div>
-      ${badge}
+      ${badge}${pencil}
     </div>`;
 }
 
@@ -600,6 +605,38 @@ async function initTimetableWidget(root) {
     listEl.innerHTML = entries.map((e, i) => ttwItemHtml(e, tt.periods, i === nowIdx ? 'now' : i === nextIdx ? 'next' : '', courseIds)).join('');
   };
 
+  // แก้ไขคาบจากหน้าแรก: ใช้หน้าต่างเดียวกับหน้าข้อมูลส่วนตัว (ttEntryModal) · โหลดรายวิชาครั้งแรกที่กดแก้
+  let editCtx = null;
+  const makeEditCtx = courses => {
+    const state = { tt, courses, sections: {} };
+    const setTt = next => { state.tt = next; tt = next; AppState.timetable = next; draw(); };
+    const commit = async next => {
+      const prev = state.tt;
+      setTt(next);
+      const ok = await saveTimetable(next);
+      if (!ok && state.tt === next) setTt(prev);
+      return ok;
+    };
+    const removeEntries = async (ids, label) => {
+      const removed = state.tt.entries.filter(e => ids.includes(e.id));
+      if (!removed.length) return;
+      const ok = await commit({ ...state.tt, entries: state.tt.entries.filter(e => !ids.includes(e.id)) });
+      if (!ok) return;
+      islandUndo(label, async () => {
+        if (!(await commit({ ...state.tt, entries: [...state.tt.entries, ...removed] }))) throw new Error('กู้คืนไม่สำเร็จ');
+      });
+    };
+    return { state, commit, removeEntries };
+  };
+  const openEdit = async id => {
+    const entry = tt && tt.entries.find(x => x.id === id);
+    if (!entry) return;
+    if (!editCtx) editCtx = makeEditCtx(await loadTtCourses());
+    editCtx.state.tt = tt;
+    ttEntryModal(editCtx, { entry });
+  };
+  const openScores = id => { const entry = tt && tt.entries.find(x => x.id === id); if (entry) ttOpenScores(entry); };
+
   const load = async () => {
     if (tt) draw(); else showLoading('list', listEl);
     try {
@@ -623,16 +660,17 @@ async function initTimetableWidget(root) {
     draw();
   });
   root.addEventListener('click', ev => {
-    const sc = ev.target.closest('[data-ttw-score]');
-    if (sc) { const entry = tt && tt.entries.find(x => x.id === sc.dataset.ttwScore); if (entry) ttOpenScores(entry); }
+    const ed = ev.target.closest('[data-ttw-edit]'), sc = ev.target.closest('[data-ttw-score]');
+    if (ed) openEdit(ed.dataset.ttwEdit);
+    else if (sc) openScores(sc.dataset.ttwScore);
     else if (ev.target.closest('[data-ttw-go]')) { AppState.profileTab = 'timetable'; navigate('profile'); }
     else if (ev.target.closest('[data-ttw-retry]')) load();
   });
   root.addEventListener('keydown', ev => {
-    const sc = ev.target.closest('[data-ttw-score]');
-    if (!sc || ev.target !== sc || (ev.key !== 'Enter' && ev.key !== ' ')) return;
+    const el = ev.target.closest('[data-ttw-score], [data-ttw-edit]');
+    if (!el || ev.target !== el || el.tagName === 'BUTTON' || (ev.key !== 'Enter' && ev.key !== ' ')) return; // ปุ่มดินสอเป็น <button> จริง กด Enter ได้เองอยู่แล้ว
     ev.preventDefault();
-    const entry = tt && tt.entries.find(x => x.id === sc.dataset.ttwScore); if (entry) ttOpenScores(entry);
+    if (el.dataset.ttwScore) openScores(el.dataset.ttwScore); else openEdit(el.dataset.ttwEdit);
   });
   const timer = setInterval(() => { if (!root.isConnected) clearInterval(timer); else draw(); }, 60000);
   await load();
