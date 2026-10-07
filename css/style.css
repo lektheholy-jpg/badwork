@@ -645,7 +645,7 @@ table.sheet :is(th, td).sticky-right-2 { right: 0; width: var(--r2-w); min-width
 }
 .island.open .island-idle { opacity: 0; }
 .island-idle-main { flex: none; display: flex; align-items: center; }
-.island-idle-date, .island-idle-sep { color: rgba(255, 255, 255, .6); opacity: .6; margin: 0 6px; }
+.island-idle-date, .island-idle-sep { color: rgba(255, 255, 255, .85); margin: 0 6px; } /* เดิม color .6 ซ้อน opacity .6 = สว่างจริงแค่ ~36% จึงมืดเกิน */
 /* ช่องชื่อหน้า: กว้างตาม --pw (ความกว้างจริงของหน้านั้น) แล้ว transition ด้วยจังหวะเดียวกับแคปซูล · มี 2 ชั้นสลับกัน:
    ชั้นเก่าเลื่อนขึ้นแล้วจางหาย ชั้นใหม่เลื่อนขึ้นมาแทน ระหว่างที่แคปซูลยืด/หดไปพร้อมกัน */
 .island-idle-page { position: relative; flex: none; display: block; height: 18px; width: var(--pw, 0px); overflow: hidden; transition: width var(--island-t); }
