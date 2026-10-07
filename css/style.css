@@ -619,12 +619,13 @@ table.sheet :is(th, td).sticky-right-2 { right: 0; width: var(--r2-w); min-width
    ความกว้างตอนพัก (--iw) ตอนขยาย (--ow) และช่องชื่อหน้า (--pw) js/island.js วัดจากเนื้อหาจริงแล้วใส่ให้ */
 .island {
   --island-h: 32px; --island-t: .55s cubic-bezier(.3, 1.4, .5, 1);
-  position: fixed; top: calc(10px + env(safe-area-inset-top, 0px)); left: 50%; z-index: 80;
+  --island-shift: 0px; /* ระยะที่ขยับจากกลางจอไปกลางเนื้อหา = ครึ่งหนึ่งของความกว้างเมนูข้าง (ตั้งค่าด้านล่างเฉพาะจอ desktop) */
+  position: fixed; top: calc(10px + env(safe-area-inset-top, 0px)); left: calc(50% + var(--island-shift)); z-index: 80;
   display: flex; align-items: center; justify-content: center; overflow: hidden;
-  width: var(--iw, 132px); max-width: calc(100vw - 24px); height: var(--island-h); border-radius: calc(var(--island-h) / 2); transform: translateX(-50%);
+  width: var(--iw, 132px); max-width: calc(100vw - 2 * var(--island-shift) - 24px); height: var(--island-h); border-radius: calc(var(--island-h) / 2); transform: translateX(-50%);
   background: #000; color: var(--white); pointer-events: none;
   box-shadow: 0 0 0 1px rgba(255, 255, 255, .12), 0 8px 24px rgba(0, 0, 0, .22);
-  transition: width var(--island-t);
+  transition: width var(--island-t), left .2s ease; /* left ตามจังหวะเดียวกับเมนูข้างที่ย่อ/ขยาย (.sidebar: width .2s ease) */
 }
 .island.open { width: var(--ow, 240px); }
 /* ตั้งค่าครั้งแรกตอนโหลดหน้า: ไม่ต้องมีแอนิเมชัน (ใช้ความจำเพาะสูงกว่าแทน !important ตามกฎของโปรเจกต์) */
@@ -705,8 +706,13 @@ table.sheet :is(th, td).sticky-right-2 { right: 0; width: var(--r2-w); min-width
 @keyframes island-slide { from { transform: translateX(-100%); } to { transform: translateX(263%); } }
 @media print { .island { display: none; } }
 
-/* island อยู่กึ่งกลางหน้าจอเสมอ (left: 50% + translateX(-50%) จากกฎ .island ด้านบน) ทุกหน้าและทุกขนาดจอ
-   เคยมีกฎ ≥1360px ที่คำนวณให้ชิดกลาง 2 คอลัมน์ของ .dash → ทำให้เยื้องไปทางขวาและผิดตำแหน่งในหน้าอื่นที่ไม่มี 2 คอลัมน์ จึงเอาออกแล้ว */
+/* island อยู่กึ่งกลาง "เนื้อหา" (.main) ไม่ใช่กึ่งกลางจอ: บน desktop เมนูข้างกินพื้นที่ซ้าย ทำให้กลางเนื้อหา = กลางจอ + ครึ่งความกว้างเมนู
+   (.main จัดกึ่งกลางในพื้นที่ที่เหลือด้วย margin auto → จุดกึ่งกลางเท่ากันทุกความกว้างจอ ทั้งกรณี max-width 1060px และจอกลาง 861–1100px)
+   มือถือ (≤860px) เมนูเป็นลิ้นชักลอย เนื้อหาเต็มจอ → ใช้ค่าเริ่มต้น 0 = กลางจอ · ยังไม่ล็อกอิน (#app ซ่อนอยู่) = กลางจอเช่นกัน */
+@media (min-width: 861px) {
+  body:has(#app:not(.hidden)) .island { --island-shift: calc(var(--sidebar-w) / 2); }
+  body:has(#app:not(.hidden).sidebar-collapsed) .island { --island-shift: calc(var(--sidebar-w-collapsed) / 2); }
+}
 
 /* ==========================================================================
    Responsive: mobile — off-canvas sidebar with hamburger
