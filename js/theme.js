@@ -43,7 +43,16 @@
 
   // ---------- ชุดสีสำเร็จรูป (ตัวแปร --bgp-<ชื่อ> ใน css/style.css) ----------
   var BG_KEY = 'myscore-bg'; // ค่าที่เก็บ: ชื่อชุดสำเร็จรูป หรือ JSON ของพื้นหลังกำหนดเอง (ขึ้นต้นด้วย '{')
-  var BG_IDS = ['lemon', 'sky', 'lilac', 'mint', 'ocean', 'aurora', 'sunny', 'dusk'];
+  // ชุดสีไล่เฉดที่กำหนดเป็นค่า cfg (ไม่ใช่ตัวแปร --bgp-*) จึงผ่านการคำนวณสีตัวหนังสือ/ความทึบการ์ดเหมือนพื้นหลังกำหนดเอง
+  //   classicblue    = linear-gradient(120deg, #20A2FF, #034EA2)
+  //   calmblue       = linear-gradient(135deg, #CEDBEC, #9EB8DA, #6D94C7)
+  //   softpurplepink = linear-gradient(135deg, #A56DF5, #685BC7, #1C4CD4)
+  var PRESET_CFG = {
+    classicblue:    { t: 'grad', c: ['#20a2ff', '#034ea2'], a: 120, k: 'linear' },
+    calmblue:       { t: 'grad', c: ['#cedbec', '#9eb8da', '#6d94c7'], a: 135, k: 'linear' },
+    softpurplepink: { t: 'grad', c: ['#a56df5', '#685bc7', '#1c4cd4'], a: 135, k: 'linear' }
+  };
+  var BG_IDS = ['lemon', 'sky', 'lilac', 'mint', 'ocean', 'aurora', 'sunny', 'dusk'].concat(Object.keys(PRESET_CFG));
   var PATTERNS = [['dots', 'จุด'], ['grid', 'ตาราง'], ['lines', 'เส้นบรรทัด'], ['diag', 'ทแยง'],
                   ['mesh', 'ตาข่าย'], ['checker', 'หมากรุก'], ['zigzag', 'ซิกแซก'], ['rings', 'วงกลม']];
   var PATTERN_COVER = { dots: 0.12, grid: 0.15, lines: 0.1, diag: 0.2, mesh: 0.35, checker: 0.5, zigzag: 0.5, rings: 0.2 }; // สัดส่วนพื้นที่ที่ลายครอบ (ใช้ประมาณความสว่างเฉลี่ย)
@@ -206,6 +215,7 @@
     var root = document.documentElement;
     curCfg = null;
     if (id === 'custom') curCfg = parseCustom(readRaw());
+    else if (PRESET_CFG[id]) curCfg = cleanCfg(PRESET_CFG[id]); // ชุดไล่เฉด: ใช้ทางเดียวกับกำหนดเอง (data-bg="custom" = พื้นที่คำนวณโทนตัวหนังสือแล้ว)
     if (curCfg) { root.style.setProperty('--page-bg', bgCss(curCfg)); root.dataset.bg = 'custom'; }
     else if (id === 'default' || id === 'custom') { root.style.removeProperty('--page-bg'); root.removeAttribute('data-bg'); }
     else { root.style.setProperty('--page-bg', 'var(--bgp-' + id + ')'); root.dataset.bg = id; }
@@ -225,10 +235,12 @@
     return cfg;
   };
   window.bgCssOf = function (cfg, scale) { cfg = cleanCfg(cfg); return cfg ? bgCss(cfg, scale) : ''; }; // สำหรับช่องตัวอย่างในหน้าตั้งค่า
+  window.bgPresetCss = function (id) { return PRESET_CFG[id] ? bgCss(cleanCfg(PRESET_CFG[id])) : ''; }; // สำหรับช่องตัวอย่างของชุดไล่เฉด
   window.BG_PATTERNS = PATTERNS;
   window.BG_OPTIONS = {
     solid: [['lemon', 'เหลือง'], ['sky', 'ฟ้า'], ['lilac', 'ม่วง'], ['mint', 'เขียวมิ้นต์']],
-    gradient: [['ocean', 'ฟ้า-เขียว'], ['aurora', 'ออโรรา'], ['sunny', 'เหลือง-เขียว'], ['dusk', 'ฟ้า-ม่วง']]
+    gradient: [['ocean', 'ฟ้า-เขียว'], ['aurora', 'ออโรรา'], ['sunny', 'เหลือง-เขียว'], ['dusk', 'ฟ้า-ม่วง']],
+    preset: [['classicblue', 'Classic Blue'], ['calmblue', 'One UI Calm Blue'], ['softpurplepink', 'One UI Soft Purple & Pink']]
   };
 
   window.getThemePref = readPref;

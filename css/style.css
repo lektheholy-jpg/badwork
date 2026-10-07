@@ -1526,18 +1526,14 @@ button.brand:hover .mark { transform: rotate(-6deg) scale(1.04); }
 .site-banner { display: flex; align-items: center; justify-content: space-between; gap: clamp(8px, 3vw, 28px); margin: 0 0 10px; padding: 4px 0 0; }
 .banner-title {
   margin: 0 0 0 auto; min-width: 0; font-size: clamp(34px, 9.5vw, 56px); font-weight: 800; line-height: 1.2; letter-spacing: -.01em; overflow-wrap: anywhere;
-  /* ชิดขวา (ดันไปติดรูปแมว) · ไล่สีม่วง → ฟ้า ตามธีม (ตัวแปร --viz-* เปลี่ยนตามโหมดมืด/สว่างเอง) */
+  /* ชิดขวา (ดันไปติดรูปแมว) · สีทึบ ไม่ไล่สี ไม่มีสีวิ่ง: โหมดสว่าง = ดำ / โหมดมืด = ขาว (--on-bg = --ink ตามธีม และ js/theme.js ปรับให้อ่านชัดเมื่อเลือกพื้นหลังเข้ม) */
   text-align: right;
-  color: var(--viz-purple);
-  background: linear-gradient(90deg, var(--viz-purple), var(--viz-blue), var(--viz-sky), var(--viz-blue), var(--viz-purple)) 0 0 / 200% 100%;
-  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
-  animation: banner-shimmer 4s ease-in-out infinite alternate;
+  color: var(--on-bg); text-shadow: 0 0 8px var(--on-bg-halo);
 }
-/* จุดสุดท้ายกระพริบเหมือนทวิภาคนาฬิกา (ติด 0.5 วิ ดับ 0.5 วิ) — ใช้ visibility เพื่อไม่ให้ background-clip:text ของหัวเรื่องเพี้ยน */
+/* จุดสุดท้ายกระพริบเหมือนทวิภาคนาฬิกา (ติด 0.5 วิ ดับ 0.5 วิ) */
 .banner-dot-blink { animation: banner-dot 1s step-end infinite; }
-@keyframes banner-shimmer { from { background-position: 0 0; } to { background-position: 100% 0; } }
 @keyframes banner-dot { 0% { visibility: visible; } 50% { visibility: hidden; } }
-@media (prefers-reduced-motion: reduce) { .banner-title, .banner-dot-blink { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .banner-dot-blink { animation: none; } }
 .site-banner picture { flex: none; display: block; }
 .site-banner img { display: block; width: auto; height: clamp(170px, 36vw, 240px); aspect-ratio: 252 / 350; user-select: none; -webkit-user-drag: none; }
 /* ธีมมืด: ภาพต้นฉบับเป็นเส้นดำบนพื้นโปร่งใส → กลับสีเป็นเส้นขาว */

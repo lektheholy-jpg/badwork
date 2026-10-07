@@ -142,7 +142,7 @@ function renderRoute(route) {
 // ช่องเลือกพื้นหลังในหน้าตั้งค่า: แต่ละช่องส่งสีผ่านตัวแปร --sw (ค่าสีจริงอยู่ที่ --bgp-* ใน css/style.css)
 function bgGroupHtml(title, opts) {
   const tiles = opts.map(([id, label]) => `
-    <button type="button" class="bg-opt${id === 'default' ? ' bg-opt-default' : ''}" data-bg-pref="${id}" aria-label="${escapeHtml(label)}" title="${escapeHtml(label)}"${id === 'default' ? '' : ` style="--sw:var(--bgp-${id})"`}>
+    <button type="button" class="bg-opt${id === 'default' ? ' bg-opt-default' : ''}" data-bg-pref="${id}" aria-label="${escapeHtml(label)}" title="${escapeHtml(label)}"${id === 'default' ? '' : ` style="--sw:${bgPresetCss(id) || `var(--bgp-${id})`}"`}>
       <span class="bg-check">${icon('check')}</span>
     </button>`).join('');
   return `<div class="u-note u-semibold u-mt-12">${escapeHtml(title)}</div><div class="bg-grid" role="group" aria-label="${escapeHtml(title)}">${tiles}</div>`;
@@ -302,6 +302,7 @@ function renderSettings() {
       ${bgGroupHtml('ค่าเริ่มต้น', [['default', 'ค่าเริ่มต้น']])}
       ${bgGroupHtml('สีทึบ', BG_OPTIONS.solid)}
       ${bgGroupHtml('ไล่สี', BG_OPTIONS.gradient)}
+      ${bgGroupHtml('ชุดสีเพิ่มเติม', BG_OPTIONS.preset)}
       <div class="u-note u-semibold u-mt-16">ปรับเองอิสระ</div>
       <div class="theme-seg bg-mode u-mt-6" role="group" aria-label="ชนิดพื้นหลังที่ปรับเอง">
         <button type="button" class="theme-opt" data-bg-mode="solid" aria-pressed="false">สีเดียว</button>
