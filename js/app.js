@@ -62,10 +62,10 @@ function initNavPill(container, itemSel, cls, opt = {}) {
 
 function setActiveNav(routeId) {
   if (typeof islandSetPage === 'function') islandSetPage(routeId || AppState.currentRoute); // ชื่อหน้าบน Dynamic Island (หน้าในวิชา routeId=null → ใช้ currentRoute)
-  document.querySelectorAll('.nav-item[data-route]').forEach(el => {
+  document.querySelectorAll('.nav-item[data-route], .user-chip[data-route]').forEach(el => {
     el.classList.toggle('active', el.dataset.route === routeId);
   });
-  const MORE = ['structure-page', 'archive-page', 'tools', 'settings'];
+  const MORE = ['structure-page', 'archive-page', 'tools', 'settings', 'profile'];
   document.querySelectorAll('.tab-item').forEach(el => {
     const on = el.dataset.route === routeId || (!!el.dataset.more && MORE.includes(routeId));
     el.classList.toggle('active', on); // ต้องส่ง boolean จริง ไม่งั้น toggle จะสลับค่าแทนการกำหนดค่า
@@ -93,7 +93,7 @@ document.getElementById('view')?.addEventListener('animationend', e => {
 });
 
 // หน้าที่ต้องโหลดสคริปต์เพิ่มก่อนวาด (ดู LAZY_MODULES ใน utils.js)
-const ROUTE_MODULES = { 'report-page': 'report', tools: 'tools' };
+const ROUTE_MODULES = { 'report-page': 'report', tools: 'tools', profile: 'profile' };
 
 function navigate(route) {
   AppState.enterNext = false; // ยกเลิกเฟดที่ค้างจากการเปิดรายวิชา (เช่น วิชาถูกลบแล้วเด้งกลับ)
@@ -136,6 +136,7 @@ function renderRoute(route) {
   else if (route === 'report-page') return renderReportPage();
   else if (route === 'tools') return renderToolsPage();
   else if (route === 'settings') return renderSettings();
+  else if (route === 'profile') return renderProfilePage();
 }
 
 // ช่องเลือกพื้นหลังในหน้าตั้งค่า: แต่ละช่องส่งสีผ่านตัวแปร --sw (ค่าสีจริงอยู่ที่ --bgp-* ใน css/style.css)
@@ -312,7 +313,7 @@ function renderSettings() {
     <div class="card card-pad set-priv">
       <h2 class="card-title">ความเป็นส่วนตัวและข้อมูลของฉัน</h2>
       <div class="u-note u-lh-165 u-mt-4">
-        แอปเก็บชื่อ อีเมล รูปโปรไฟล์ของครู และข้อมูลรายวิชา นักเรียน (ซึ่งเป็นข้อมูลส่วนบุคคลของผู้เยาว์) และคะแนน บน Google Firebase โดยผูกกับบัญชีของครูเท่านั้น
+        แอปเก็บชื่อ อีเมล รูปโปรไฟล์ของครู ข้อมูลส่วนตัวที่ครูกรอกเอง (ตำแหน่ง สังกัด เงินเดือน ผู้ลงนาม) และข้อมูลรายวิชา นักเรียน (ซึ่งเป็นข้อมูลส่วนบุคคลของผู้เยาว์) และคะแนน บน Google Firebase โดยผูกกับบัญชีของครูเท่านั้น
         หน้าหลักส่งพิกัดโดยประมาณ (ปัดเหลือราว 1 กม.) ไปยัง Open-Meteo เพื่อแสดงสภาพอากาศ โดยไม่ส่งข้อมูลนักเรียน
         ครูควรใช้ข้อมูลนักเรียนเท่าที่จำเป็นและตามนโยบายของโรงเรียน
       </div>
@@ -355,9 +356,12 @@ function renderSettings() {
 
 initNavPill(document.querySelector('.nav-list'), '.nav-item', 'nav-pill', { global: true });
 
-document.querySelectorAll('.nav-item[data-route]').forEach(el => {
+document.querySelectorAll('.nav-item[data-route], .user-chip[data-route]').forEach(el => {
   el.addEventListener('click', () => navigate(el.dataset.route));
 });
+
+// เมนูตั้งค่า + ออกจากระบบอยู่ท้ายเมนูข้าง (นอก .nav-list) — ให้มีแถบสีเลื่อนของตัวเองเหมือนเมนูอื่น
+initNavPill(document.querySelector('.sidebar-footer'), '.nav-item', 'nav-pill', { global: true });
 
 document.getElementById('hamburger-btn')?.addEventListener('click', toggleMobileNav);
 document.getElementById('nav-overlay')?.addEventListener('click', closeMobileNav);
@@ -372,7 +376,7 @@ document.getElementById('sidebar-toggle')?.addEventListener('click', () => {
 (function initTabbar() {
   const app = document.getElementById('app'), bar = document.getElementById('tabbar'), grid = document.getElementById('more-grid');
   if (!app || !bar || !grid) return;
-  const src = k => k === 'logout' ? document.getElementById('logout-btn') : document.querySelector(`.nav-item[data-route="${k}"]`);
+  const src = k => k === 'logout' ? document.getElementById('logout-btn') : document.querySelector(`.nav-item[data-route="${k}"], .user-chip[data-route="${k}"]`);
   const iconOf = el => el.querySelector('.nav-icon')?.innerHTML || '';
   const setMore = open => app.classList.toggle('more-open', open);
 
@@ -391,11 +395,13 @@ document.getElementById('sidebar-toggle')?.addEventListener('click', () => {
   more.addEventListener('click', () => setMore(!app.classList.contains('more-open')));
   bar.appendChild(more);
 
-  ['structure-page', 'archive-page', 'tools', 'settings', 'logout'].forEach(k => {
+  ['profile', 'structure-page', 'archive-page', 'tools', 'settings', 'logout'].forEach(k => {
     const s = src(k); if (!s) return;
     const b = document.createElement('button');
     b.type = 'button'; b.className = 'more-tile'; b.dataset.route = k === 'logout' ? 'logout-btn' : k;
-    b.innerHTML = `<span class="more-ico">${iconOf(s)}</span><span>${s.querySelector('.nav-label')?.textContent || ''}</span>`;
+    const ico = k === 'profile' ? icon('user') : iconOf(s);
+    const label = k === 'profile' ? 'ข้อมูลส่วนตัว' : (s.querySelector('.nav-label')?.textContent || '');
+    b.innerHTML = `<span class="more-ico">${ico}</span><span>${label}</span>`;
     b.addEventListener('click', () => { setMore(false); if (k === 'logout') s.click(); else navigate(k); });
     grid.appendChild(b);
   });

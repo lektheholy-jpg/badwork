@@ -202,6 +202,7 @@ const ISLAND_PAGE_ALIAS = { course: 'courses' }; // หน้าภายใน�
 function islandSetPage(route) {
   if (!IslandUI) return;
   const key = ISLAND_PAGE_ALIAS[route] || route;
+  if (key === 'profile') { IslandUI.setPage({ label: 'ข้อมูลส่วนตัว', icon: window.icon('user') }); return; } // เปิดจากไอคอนบัญชี ไม่ได้อยู่ในรายการเมนู
   const nav = key && key !== 'dashboard' ? document.querySelector(`.nav-item[data-route="${key}"]`) : null;
   const label = nav && (nav.querySelector('.nav-label')?.textContent || '').trim();
   const icon = nav && nav.querySelector('.nav-icon')?.innerHTML;

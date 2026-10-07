@@ -506,6 +506,7 @@ const LAZY_MODULES = {
   report: 'js/report.js',   // แท็บรายงานในวิชา + ส่งออก ปพ.5 / SGS / Next School
   privacy: 'js/privacy.js', // ส่งออก/ลบข้อมูลของฉัน
   tools: 'js/tools.js',     // เครื่องมือในห้องเรียน
+  profile: 'js/profile.js', // หน้าข้อมูลส่วนตัวของครู (ตำแหน่ง/สังกัด/ผู้ลงนามในเอกสาร)
 };
 const _modulePromises = {};
 function loadModule(name) {

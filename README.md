@@ -43,7 +43,12 @@ users/{uid}/courses/{courseId}                    ข้อมูลวิชา
     /scores/{studentId}                             คะแนนของนักเรียนในห้องนั้น
 ```
 
-firestore.rules เดิมเป็น wildcard recursive อยู่แล้ว ครอบคลุมโครงสร้างใหม่โดยไม่ต้องแก้ไข
+firestore.rules เดิมเป็น wildcard recursive อยู่แล้ว ครอบคลุมโครงสร้างวิชา/ห้อง/นักเรียน/คะแนนโดยไม่ต้องแก้ไข
+
+ข้อมูลส่วนตัวของครู (หน้า "ข้อมูลส่วนตัว" เปิดจากไอคอนบัญชีมุมซ้ายล่าง) เก็บเป็นฟิลด์ `profile` (map) ในเอกสาร `users/{uid}` โดยตรง
+ฟิลด์: prefix, firstName, lastName, phone, position, academicStanding, ksLevel, salary (ตัวเลข), positionNo, subjectGroup, school, affiliation, director, deputyAcademic, subjectHead, assessmentHead
+**ต้องนำ `firestore.rules` ล่าสุดไปวาง/deploy ก่อน** (เพิ่มฟังก์ชัน `validTeacherProfile` และอนุญาตฟิลด์ `profile`) ไม่เช่นนั้นกดบันทึกแล้วจะขึ้นว่าถูกปฏิเสธสิทธิ์ · ถ้าเพิ่ม/ลบฟิลด์ ต้องแก้ทั้ง `PROFILE_FIELDS` ใน `js/profile.js` และรายชื่อใน `validTeacherProfile`
+เอกสารอื่นดึงไปใช้: `await loadModule('profile')` แล้ว `await loadTeacherProfile()` / `profileSummary(p)`
 
 ## วิธีติดตั้ง
 
@@ -79,6 +84,7 @@ js/structure.js         โครงสร้างคะแนนระดั�
 js/scores.js             บันทึกคะแนนรายห้องแบบ spreadsheet + autosave
 js/report.js             สรุปผลรายห้อง + Export CSV + ตั้งเกณฑ์เกรด + แปลงคะแนน NextSchool (ก่อนกลางภาค 30 / กลางภาค 20 / หลังกลางภาค 30 / ปลายภาค 20, เกรดคงเดิม)
 js/picker-pages.js       หน้าเลือกวิชา/ห้องแบบ dropdown (โครงสร้างวิชา, บันทึกคะแนน)
+js/profile.js            หน้าข้อมูลส่วนตัวของครู (ตำแหน่ง วิทยฐานะ เงินเดือน สถานศึกษา ผู้ลงนาม) — โหลดแบบ lazy
 firestore.rules          กฎความปลอดภัย (แยกข้อมูลตามครูแต่ละคน, ครอบคลุมโครงสร้างใหม่)
 ```
 
@@ -128,13 +134,14 @@ JS ที่ไม่ถูกเรียกใช้: parseRoomList ใน uti
 
 ## สคริปต์ที่โหลดเมื่อเข้าหน้านั้น (lazy load)
 
-`js/report.js`, `js/privacy.js`, `js/tools.js` **ไม่อยู่ใน `index.html`** — โหลดครั้งแรกที่ใช้งานผ่าน `loadModule(name)` (`js/utils.js`, ตาราง `LAZY_MODULES`) เป็น `<script>` ธรรมดา จึงใช้ฟังก์ชัน/ค่าคงที่ global ร่วมกับไฟล์อื่นได้เหมือนเดิม
+`js/report.js`, `js/privacy.js`, `js/tools.js`, `js/profile.js` **ไม่อยู่ใน `index.html`** — โหลดครั้งแรกที่ใช้งานผ่าน `loadModule(name)` (`js/utils.js`, ตาราง `LAZY_MODULES`) เป็น `<script>` ธรรมดา จึงใช้ฟังก์ชัน/ค่าคงที่ global ร่วมกับไฟล์อื่นได้เหมือนเดิม
 
 | ไฟล์ | โหลดเมื่อ | จุดที่เรียก `loadModule` |
 | --- | --- | --- |
 | `report.js` | เข้าหน้ารายงาน หรือเปิดแท็บรายงานในวิชา | `navigate()` ใน `app.js` (`ROUTE_MODULES`), `renderCourseShell()` ใน `courses.js` |
 | `tools.js` | เข้าหน้าเครื่องมือ | `navigate()` ใน `app.js` (`ROUTE_MODULES`) |
 | `privacy.js` | กดปุ่มส่งออก/ลบข้อมูลในหน้าตั้งค่า | `renderSettings()` ใน `app.js` |
+| `profile.js` | กดไอคอนบัญชีมุมซ้ายล่าง (หน้าข้อมูลส่วนตัว) | `navigate()` ใน `app.js` (`ROUTE_MODULES`) |
 
 **กติกาสำหรับโค้ดใหม่:** ถ้าไฟล์อื่นต้องเรียกฟังก์ชันในไฟล์ข้างบน ให้ `await loadModule('ชื่อ')` ก่อนเสมอ (เรียกซ้ำปลอดภัย โหลดแค่ครั้งเดียว) · เพิ่มไฟล์ lazy ใหม่โดยใส่ใน `LAZY_MODULES` แล้วอย่าใส่ `<script>` ใน `index.html` · `navigate()` เช็ค `AppState.currentRoute` หลังโหลดเสร็จ ผู้ใช้กดไปหน้าอื่นระหว่างรอจะไม่ถูกวาดทับ
 

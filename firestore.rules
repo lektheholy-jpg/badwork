@@ -22,13 +22,31 @@ service cloud.firestore {
       return v == null || (v is string && v.size() <= max);
     }
 
+    // ข้อมูลส่วนตัวของครู (หน้า "ข้อมูลส่วนตัว" → users/{uid}.profile) · รายชื่อฟิลด์ต้องตรงกับ PROFILE_FIELDS ใน js/profile.js
+    // ข้อความยาวไม่เกิน 200 ตัวอักษร · salary เป็นตัวเลขหรือ null
+    function validTeacherProfile(p) {
+      return p == null || (p is map
+        && p.keys().hasOnly(['prefix', 'firstName', 'lastName', 'phone',
+                             'position', 'academicStanding', 'ksLevel', 'salary', 'positionNo', 'subjectGroup',
+                             'school', 'affiliation',
+                             'director', 'deputyAcademic', 'subjectHead', 'assessmentHead'])
+        && okStr(p.get('prefix', null), 200) && okStr(p.get('firstName', null), 200) && okStr(p.get('lastName', null), 200)
+        && okStr(p.get('phone', null), 200) && okStr(p.get('position', null), 200) && okStr(p.get('academicStanding', null), 200)
+        && okStr(p.get('ksLevel', null), 200) && okStr(p.get('positionNo', null), 200) && okStr(p.get('subjectGroup', null), 200)
+        && okStr(p.get('school', null), 200) && okStr(p.get('affiliation', null), 200)
+        && okStr(p.get('director', null), 200) && okStr(p.get('deputyAcademic', null), 200)
+        && okStr(p.get('subjectHead', null), 200) && okStr(p.get('assessmentHead', null), 200)
+        && (p.get('salary', null) == null || p.get('salary', null) is number));
+    }
+
     // โปรไฟล์ครู: มีเฉพาะฟิลด์ที่แอปเขียนจริง
     function validProfile() {
       let d = request.resource.data;
-      return d.keys().hasOnly(['displayName', 'email', 'photoURL', 'lastLogin'])
+      return d.keys().hasOnly(['displayName', 'email', 'photoURL', 'lastLogin', 'profile'])
         && okStr(d.get('displayName', null), 200)
         && okStr(d.get('email', null), 320)
-        && okStr(d.get('photoURL', null), 2048);
+        && okStr(d.get('photoURL', null), 2048)
+        && validTeacherProfile(d.get('profile', null));
     }
 
     // เอกสารใต้รายวิชา: จำกัดจำนวนฟิลด์ (เอกสาร scores เก็บคะแนนต่อชิ้นงานจึงเผื่อไว้มากกว่า)
