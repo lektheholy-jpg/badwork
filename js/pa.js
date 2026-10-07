@@ -782,6 +782,8 @@ async function renderPAFormView() {
     }
   });
 
+  if (typeof paAiMount === 'function') paAiMount(view, form); // ปุ่มผู้ช่วย AI (js/pa-ai.js) — ไม่มีไฟล์นี้ฟอร์มก็ทำงานตามเดิม
+
   view.classList.remove('is-switching');
   paSwapIn(view);
 }
