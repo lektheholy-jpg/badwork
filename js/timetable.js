@@ -3,7 +3,7 @@
 // เก็บที่ users/{uid}/timetable/main = { periods: [{ start, end }], entries: [...], updatedAt }
 //   entry = { id, kind: 'class'|'activity', day: 1-5, period: เริ่มที่คาบ (0 = คาบ 1), span: จำนวนคาบติดกัน,
 //             code, title, cls (เช่น ม.2/4), room (ห้องเรียน/สถานที่), hue, courseId }
-// ฟิลด์ต้องตรงกับ validTimetable ใน firestore.rules · ใช้ cleanProfileText จาก js/profile.js
+// ฟิลด์ต้องตรงกับ validTimetable ใน firestore.rules · ไฟล์นี้ต้องใช้งานเดี่ยวได้ (หน้าแรกโหลดไปทำวิดเจ็ตโดยไม่โหลด profile.js)
 // ==========================================================================
 
 const TT_DAYS = [[1, 'จันทร์'], [2, 'อังคาร'], [3, 'พุธ'], [4, 'พฤหัสบดี'], [5, 'ศุกร์']]; // เลขวันตรงกับ Date.getDay()
@@ -27,7 +27,10 @@ function ttCleanTime(v) {
   return ttPad(+m[1]) + ':' + m[2];
 }
 function ttMin(t) { const [h, m] = t.split(':').map(Number); return h * 60 + m; }
-function ttText(v, max = 100) { return cleanProfileText(v).slice(0, max); }
+// รวมสระอำที่พิมพ์แยกตัว (ํ+า) เป็นตัวเดียว + ตัดช่องว่างซ้ำ แล้วจำกัดความยาว
+function ttText(v, max = 100) {
+  return String(v == null ? '' : v).replace(/\u0E4D\u0E32/g, '\u0E33').replace(/\s+/g, ' ').trim().slice(0, max);
+}
 function ttDayName(n) { return (TT_DAYS.find(d => d[0] === n) || [0, ''])[1]; }
 
 function ttCleanEntry(raw, periodCount) {
@@ -388,6 +391,7 @@ function ttPeriodsModal(ctx) {
 async function renderTimetableTab(body, isActive = () => true) {
   const [tt, courses] = await Promise.all([loadTimetable(), loadTtCourses()]);
   if (!isActive()) return;
+  AppState.timetable = tt; // แคชให้วิดเจ็ตหน้าแรกวาดได้ทันที
   const state = { tt, courses, sections: {} };
 
   body.innerHTML = `
@@ -430,6 +434,7 @@ async function renderTimetableTab(body, isActive = () => true) {
     redraw();
     const ok = await saveTimetable(next);
     if (!ok && state.tt === next) { state.tt = prev; redraw(); }
+    if (state.tt === next || ok) AppState.timetable = state.tt;
     return ok;
   };
   const removeEntries = async (ids, label) => {
@@ -469,4 +474,99 @@ async function renderTimetableTab(body, isActive = () => true) {
   });
 
   redraw();
+}
+
+// ==========================================================================
+// วิดเจ็ตตารางสอนหน้าแรก (วางใต้การ์ดสภาพอากาศ) — js/dashboard.js ใส่โครง #tt-widget แล้วเรียก initTimetableWidget
+// แสดงคาบของวันที่เลือก (ค่าเริ่มต้น = วันนี้ · เสาร์-อาทิตย์ = วันจันทร์หน้า) พร้อมป้าย "กำลังสอน/ถัดไป" และอัปเดตทุกนาที
+// ==========================================================================
+const TT_SHORT_DAY = { 1: 'จ.', 2: 'อ.', 3: 'พ.', 4: 'พฤ.', 5: 'ศ.' };
+
+function ttwWeekStart(now) { // วันจันทร์ของสัปดาห์ที่แสดง
+  const m = ttMonday(now);
+  if (now.getDay() === 0 || now.getDay() === 6) m.setDate(m.getDate() + 7);
+  return m;
+}
+
+function ttwItemHtml(e, periods, tag) {
+  const start = periods[e.period].start, end = periods[e.period + e.span - 1].end;
+  const label = e.span > 1 ? `คาบ ${e.period + 1}-${e.period + e.span}` : `คาบ ${e.period + 1}`;
+  const meta = [e.cls, e.room && 'ห้อง ' + e.room].filter(Boolean).map(escapeHtml).join(' · ');
+  const badge = tag === 'now' ? '<span class="badge badge-success">กำลังสอน</span>'
+    : tag === 'next' ? '<span class="badge badge-neutral">ถัดไป</span>' : '';
+  return `
+    <div class="ttw-item${tag === 'now' ? ' is-now' : ''}" style="--w:var(--hue-${e.hue})">
+      <div class="ttw-time"><b>${label}</b><span>${start} - ${end}</span></div>
+      <div class="ttw-info">
+        <span class="ttw-title">${escapeHtml([e.code, e.title].filter(Boolean).join(' '))}</span>
+        ${meta ? `<span class="ttw-meta">${meta}</span>` : ''}
+      </div>
+      ${badge}
+    </div>`;
+}
+
+async function initTimetableWidget(root) {
+  const daysEl = root.querySelector('#ttw-days'), listEl = root.querySelector('#ttw-list'), subEl = root.querySelector('#ttw-sub');
+  const first = new Date();
+  let day = first.getDay() >= 1 && first.getDay() <= 5 ? first.getDay() : 1;
+  let tt = AppState.timetable || null;
+
+  daysEl.innerHTML = TT_DAYS.map(([n, name]) =>
+    `<button type="button" class="theme-opt${n === first.getDay() ? ' is-today' : ''}" data-day="${n}" aria-pressed="${n === day}" aria-label="${name}">${TT_SHORT_DAY[n]}</button>`).join('');
+  initNavPill(daysEl, '.theme-opt', 'seg-pill', { activeSel: '[aria-pressed="true"]', watch: true });
+
+  const draw = () => {
+    if (!tt) return;
+    const now = new Date(), nowMin = now.getHours() * 60 + now.getMinutes();
+    const date = ttwWeekStart(now); date.setDate(date.getDate() + day - 1);
+    const entries = [...ttLayoutDay(tt.entries, day).values()].sort((a, b) => a.period - b.period);
+    const teach = entries.filter(e => e.kind === 'class').reduce((s, e) => s + e.span, 0);
+    subEl.textContent = `วัน${ttDayName(day)}ที่ ${date.getDate()} ${TT_MONTHS[date.getMonth()]}` + (teach ? ` · สอน ${teach} คาบ` : '');
+
+    if (!tt.entries.length) {
+      listEl.innerHTML = `<div class="ttw-empty">ยังไม่ได้ตั้งตารางสอน<br><button type="button" class="btn btn-primary btn-sm u-mt-12" data-ttw-go>ตั้งตารางสอน</button></div>`;
+      return;
+    }
+    if (!entries.length) { listEl.innerHTML = `<div class="ttw-empty">ไม่มีคาบในวัน${ttDayName(day)}</div>`; return; }
+
+    const today = now.getDay() === day;
+    let nowIdx = -1, nextIdx = -1;
+    if (today) {
+      entries.forEach((e, i) => {
+        const s = ttMin(tt.periods[e.period].start), en = ttMin(tt.periods[e.period + e.span - 1].end);
+        if (nowMin >= s && nowMin < en) nowIdx = i;
+        else if (s > nowMin && nextIdx < 0) nextIdx = i;
+      });
+    }
+    listEl.innerHTML = entries.map((e, i) => ttwItemHtml(e, tt.periods, i === nowIdx ? 'now' : i === nextIdx ? 'next' : '')).join('');
+  };
+
+  const load = async () => {
+    if (tt) draw(); else showLoading('list', listEl);
+    try {
+      const fresh = await loadTimetable();
+      AppState.timetable = fresh; tt = fresh;
+      if (!root.isConnected) return;
+      clearLoading(listEl);
+      draw();
+    } catch (err) {
+      console.error(err);
+      if (tt || !root.isConnected) return;
+      clearLoading(listEl);
+      listEl.innerHTML = `<div class="ttw-empty">โหลดตารางสอนไม่สำเร็จ<br><button type="button" class="btn btn-ghost btn-sm u-mt-12" data-ttw-retry>ลองใหม่</button></div>`;
+    }
+  };
+
+  daysEl.addEventListener('click', ev => {
+    const b = ev.target.closest('[data-day]'); if (!b) return;
+    day = Number(b.dataset.day);
+    daysEl.querySelectorAll('[data-day]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+    draw();
+  });
+  root.addEventListener('click', ev => {
+    if (ev.target.closest('[data-ttw-go]')) { AppState.profileTab = 'timetable'; navigate('profile'); }
+    else if (ev.target.closest('[data-ttw-retry]')) load();
+  });
+  const timer = setInterval(() => { if (!root.isConnected) clearInterval(timer); else draw(); }, 60000);
+  await load();
 }

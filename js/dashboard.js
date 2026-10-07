@@ -202,6 +202,14 @@ async function renderDashboard() {
         </div>
       </div>
     </div>
+    <section class="card card-pad tt-widget" id="tt-widget" aria-label="ตารางสอน">
+      <div class="ttw-head">
+        <div><h2 class="card-title">ตารางสอน</h2><div class="u-note-sm" id="ttw-sub"></div></div>
+        <button type="button" class="btn btn-ghost btn-sm" data-ttw-go>ดูทั้งสัปดาห์</button>
+      </div>
+      <div class="theme-seg ttw-days" id="ttw-days" role="group" aria-label="เลือกวัน"></div>
+      <div class="ttw-list" id="ttw-list" aria-live="polite"></div>
+    </section>
     ${renderRoomCompare(courses)}
 
     ${renderLatestProgress(courses, sectionCards)}
@@ -236,6 +244,11 @@ async function renderDashboard() {
   view.querySelectorAll('[data-go]').forEach(el => el.addEventListener('click', () => navigate(el.dataset.go)));
   wireRoomCompare(courses);
   initWeather();
+  // วิดเจ็ตตารางสอน: โหลด js/timetable.js แบบ lazy แล้วค่อยวาด — ไม่หน่วงการแสดงหน้าแรก
+  loadModule('timetable').then(() => {
+    const w = document.getElementById('tt-widget');
+    if (w && w.isConnected) return initTimetableWidget(w);
+  }).catch(err => console.error(err));
 }
 
 // ==========================================================================
