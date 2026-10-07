@@ -170,7 +170,7 @@
 
   var TONE_VARS = ['--on-bg', '--on-bg-soft', '--on-bg-hover', '--on-bg-halo', '--on-bg-accent', '--on-brand', '--on-brand-halo', '--card-glass', '--card-glass-hover'];
   // ตั้งค่าตัวแปรที่ขึ้นกับพื้นหลังกำหนดเอง: สีตัวหนังสือบนพื้น (--on-bg*), สีชื่อแอป (--on-brand*), ความทึบการ์ด, สีแถบสถานะ
-  function applyTone() {
+  function toneBase() {
     var root = document.documentElement, st = root.style;
     if (!curCfg) { TONE_VARS.forEach(function (v) { st.removeProperty(v); }); return; }
     var W = window.innerWidth || 1280, H = window.innerHeight || 800;
@@ -200,6 +200,59 @@
     var meta = document.querySelector('meta[name="theme-color"]'); // แถบสถานะมือถือกลืนกับสีพื้นหลังด้านบน
     if (meta) meta.setAttribute('content', rgbHex(samplesAt(curCfg, W / 2, 0, W, H)[0]));
   }
+
+  // ---------- สีหลัก + ความโปร่งใสของส่วนต่างๆ (ผู้ใช้ปรับเองในหน้าตั้งค่า) ----------
+  // ค่าที่เก็บ: { pc: สีหลัก hex | null, card: ความโปร่งใสการ์ด 0–90 | null, menu: ความโปร่งใสเมนู 0–90 | null, blur: ความเบลอเมนู 0–40 px | null }
+  // null = ใช้ค่าเริ่มต้นของ css/style.css · ทับค่าที่ applyTone คำนวณ (พื้นหลังสวนธีม/ลาย) เพราะผู้ใช้ตั้งเอง
+  var LOOK_KEY = 'myscore-look';
+  var LOOK_DEFAULT = { card: { light: 65, dark: 60 }, menu: 70, blur: 30 }; // ตรงกับ --card-glass / --glass / --glass-blur ใน style.css
+  var LOOK_VARS = ['--primary', '--primary-solid', '--primary-dark', '--primary-tint', '--on-primary', '--glass', '--glass-blur'];
+  function cleanLook(o) {
+    o = o && typeof o === 'object' ? o : {};
+    function opt(v, lo, hi) { return v == null ? null : num(v, lo, hi, null); }
+    return { pc: typeof o.pc === 'string' && HEX.test(o.pc) ? o.pc.toLowerCase() : null,
+             card: opt(o.card, 0, 90), menu: opt(o.menu, 0, 90), blur: opt(o.blur, 0, 40) };
+  }
+  function readLook() {
+    try { return cleanLook(JSON.parse(localStorage.getItem(LOOK_KEY))); } catch (e) { return cleanLook(null); }
+  }
+  // สีหลักเดียวต้องได้ 4 ระดับ (ปุ่ม / ตัวหนังสือสีหลัก / พื้นอ่อน / ตัวหนังสือบนปุ่ม) ที่อ่านชัดทั้งโหมดสว่างและมืด
+  function primaryVars(hex, dark) {
+    var p = hex2rgb(hex), black = [0, 0, 0], white = [255, 255, 255];
+    var tint = dark ? mixRgb(p, [18, 18, 22], 0.78) : mixRgb(p, white, 0.88);
+    var deep = null;
+    for (var t = dark ? 0.35 : 0.2; t <= 0.9; t += 0.05) { // ขยับให้ตัวหนังสือสีหลักคอนทราสต์ ≥ 4.5 บนพื้นอ่อน
+      deep = dark ? mixRgb(p, white, t) : mixRgb(p, black, t);
+      if (contrast(deep, tint) >= 4.5) break;
+    }
+    var onP = contrast(white, p) >= contrast(DARK_INK, p) ? white : DARK_INK;
+    return { '--primary': hex, '--primary-solid': hex, '--primary-dark': rgbHex(deep), '--primary-tint': rgbHex(tint), '--on-primary': rgbHex(onP) };
+  }
+  function applyLook() {
+    var root = document.documentElement, st = root.style, L = readLook(), dark = root.dataset.theme === 'dark';
+    LOOK_VARS.forEach(function (v) { st.removeProperty(v); });
+    if (L.pc) { var pv = primaryVars(L.pc, dark); Object.keys(pv).forEach(function (k) { st.setProperty(k, pv[k]); }); }
+    if (L.menu != null) st.setProperty('--glass', (100 - L.menu) + '%');
+    if (L.blur != null) st.setProperty('--glass-blur', L.blur + 'px');
+    if (L.card != null) {
+      var a = 100 - L.card, rgb = dark ? 'rgb(70 70 78 / ' : 'rgb(255 255 255 / ';
+      st.setProperty('--card-glass', rgb + a + '%)');
+      st.setProperty('--card-glass-hover', rgb + Math.min(100, a + 15) + '%)');
+    }
+  }
+  function applyTone() { toneBase(); applyLook(); }
+  window.getLookPref = readLook;
+  window.getLookDefaults = function () { return { card: LOOK_DEFAULT.card[resolve(readPref()) === 'dark' ? 'dark' : 'light'], menu: LOOK_DEFAULT.menu, blur: LOOK_DEFAULT.blur }; };
+  window.setLookPref = function (patch) { // patch = บางคีย์ของค่าข้างบน · คืนค่าที่ผ่านการตรวจแล้ว
+    var cur = readLook(), next = cleanLook(Object.assign({}, cur, patch));
+    try { localStorage.setItem(LOOK_KEY, JSON.stringify(next)); } catch (e) {}
+    applyTone();
+    return next;
+  };
+  window.resetLookPref = function () {
+    try { localStorage.removeItem(LOOK_KEY); } catch (e) {}
+    applyTone();
+  };
 
   function readRaw() { try { return localStorage.getItem(BG_KEY); } catch (e) { return null; } }
   function parseCustom(raw) {

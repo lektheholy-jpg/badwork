@@ -154,7 +154,7 @@ const BG_DEFAULTS = {
   grad:    { t: 'grad',    c: ['#a1c4fd', '#fbc2eb'], a: 160, k: 'linear' },
   pattern: { t: 'pattern', c: ['#eef5ff'], a: 160, k: 'linear', p: 'dots', ink: '#0381fe', s: 28, o: 30 }
 };
-const BG_UNITS = { a: '°', s: 'px', o: '%' };
+const BG_UNITS = { a: '°', s: 'px', o: '%', card: '%', menu: '%', blur: 'px' };
 
 function hslToHex(h, s, l) {
   s /= 100; l /= 100;
@@ -195,6 +195,61 @@ function bgPanelHtml(mode, cfg) {
     + bgSlider('s', 'ขนาดลาย', 12, 72, 2, cfg.s)
     + bgSlider('o', 'ความเข้มลาย', 8, 100, 2, cfg.o)
     + `<div class="u-flex u-gap-8 u-wrap u-mt-12">${btn('random', 'สุ่มลายและสี')}${btn('mix', cfg.c.length === 2 ? 'ใช้สีพื้นสีเดียว' : 'ผสมสีพื้น (ไล่สี)')}</div>`;
+}
+
+// ---------- สีหลัก + ความโปร่งใสของส่วนต่างๆ (ตรรกะสี/การบันทึกอยู่ที่ js/theme.js: getLookPref / setLookPref / resetLookPref) ----------
+const LOOK_COLORS = [['#0381fe', 'น้ำเงิน'], ['#7b52e6', 'ม่วง'], ['#0f9f88', 'เขียวอมฟ้า'], ['#f0731f', 'ส้ม'], ['#e83e7a', 'ชมพู'], ['#e5484d', 'แดง']];
+const LOOK_SLIDERS = [['card', 'การ์ดและกล่องเนื้อหา', 0, 90], ['menu', 'เมนูข้างและแถบเมนูล่าง', 0, 90]];
+
+function lookHtml() {
+  const sw = LOOK_COLORS.map(([hex, label]) =>
+    `<button type="button" class="look-sw" data-look-color="${hex}" aria-pressed="false" aria-label="${escapeHtml(label)}" title="${escapeHtml(label)}" style="--sw:${hex}"><span class="bg-check">${icon('check')}</span></button>`).join('');
+  const sliders = LOOK_SLIDERS.map(([key, label, lo, hi]) => bgSlider(key, label, lo, hi, 5, 0)).join('')
+    + bgSlider('blur', 'ความเบลอหลังเมนู', 0, 40, 2, 0);
+  return `
+    <div class="card card-pad set-look">
+      <h2 class="card-title">สีและความโปร่งใส</h2>
+      <div class="u-note">เลือกสีหลักของแอป (ปุ่ม เมนูที่เลือก ไฮไลต์) และปรับความโปร่งใสของแต่ละส่วน 0% = ทึบ ยิ่งมากยิ่งเห็นพื้นหลังทะลุ</div>
+      <div class="u-note u-semibold u-mt-12">สีหลัก</div>
+      <div class="look-swatches" role="group" aria-label="สีหลัก">
+        <button type="button" class="look-sw" data-look-color="" aria-pressed="false" aria-label="ค่าเริ่มต้น" title="ค่าเริ่มต้น" style="--sw:var(--hue-blue)"><span class="bg-check">${icon('check')}</span></button>
+        ${sw}
+      </div>
+      ${bgColorField('pc', 'เลือกสีเอง', '#0381fe')}
+      <div class="u-note u-semibold u-mt-16">ความโปร่งใส</div>
+      ${sliders}
+      <div class="u-flex u-gap-8 u-wrap u-mt-12"><button type="button" class="btn btn-ghost btn-sm" data-look-reset>คืนค่าเริ่มต้น</button></div>
+    </div>`;
+}
+
+function initLook(view) {
+  const box = view.querySelector('.set-look');
+  const isDark = () => document.documentElement.dataset.theme === 'dark';
+  const sync = () => {
+    const L = getLookPref(), D = getLookDefaults();
+    const pc = L.pc || (isDark() ? '#3e91ff' : '#0381fe');
+    box.querySelectorAll('[data-look-color]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.lookColor === (L.pc || ''))));
+    const inp = box.querySelector('.bg-color[data-key="pc"]'); inp.value = pc;
+    box.querySelector('[data-hex="pc"]').textContent = pc;
+    ['card', 'menu', 'blur'].forEach(k => {
+      const v = L[k] ?? D[k];
+      box.querySelector(`.bg-range[data-key="${k}"]`).value = v;
+      box.querySelector(`[data-val="${k}"]`).textContent = v + BG_UNITS[k];
+    });
+  };
+  box.addEventListener('input', e => {
+    const key = e.target.dataset.key; if (!key) return;
+    if (key === 'pc') setLookPref({ pc: e.target.value });
+    else setLookPref({ [key]: Number(e.target.value) });
+    sync();
+  });
+  box.addEventListener('click', e => {
+    const c = e.target.closest('[data-look-color]');
+    if (c) { setLookPref({ pc: c.dataset.lookColor || null }); sync(); return; }
+    if (e.target.closest('[data-look-reset]')) { resetLookPref(); sync(); }
+  });
+  sync();
+  return { sync };
 }
 
 // ผูกตัวควบคุมพื้นหลังกำหนดเองในหน้าตั้งค่า · onChange = เรียกเมื่อมีการใช้พื้นหลังกำหนดเอง (ให้ช่องสำเร็จรูปเลิกติ๊กถูก)
@@ -311,6 +366,7 @@ function renderSettings() {
       </div>
       <div id="bg-custom-panel" class="hidden"></div>
     </div>
+    ${lookHtml()}
     <div class="card card-pad set-priv">
       <h2 class="card-title">ความเป็นส่วนตัวและข้อมูลของฉัน</h2>
       <div class="u-note u-lh-165 u-mt-4">
@@ -336,9 +392,11 @@ function renderSettings() {
     const cur = getThemePref();
     view.querySelectorAll('.theme-opt[data-theme-pref]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.themePref === cur)));
   };
+  const look = initLook(view);
   view.querySelectorAll('.theme-opt[data-theme-pref]').forEach(b => b.addEventListener('click', () => {
     setThemePref(b.dataset.themePref);
     syncThemeButtons();
+    look.sync(); // ค่าเริ่มต้นของการ์ด/สีหลักต่างกันตามโหมดสว่าง-มืด
   }));
   syncThemeButtons();
   const syncBgButtons = () => {
