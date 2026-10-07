@@ -78,19 +78,23 @@ function paReportDetailCard(d) {
 }
 
 // ------------------------------------------------------------------
-// render หน้ารายงาน PA — entry point เรียกจาก app.js
+// render แท็บ "แบบฟอร์มรายงาน" — วาดลงพื้นที่เนื้อหาของหน้า PA (โครงหน้า+แท็บอยู่ใน pa.js)
 // ------------------------------------------------------------------
-async function renderPAReportPage() {
-  const view = document.getElementById('view');
-  showLoading('list');
+async function renderPAReportView() {
+  const view = paMount();
+  showLoading('list', view);
 
   let list = [];
   try {
     list = await paReportLoadList();
   } catch (err) {
+    if (!view.isConnected || PAState.tab !== 'report') return; // ผู้ใช้สลับแท็บ/ออกจากหน้าไปแล้ว
+    clearLoading(view);
+    view.classList.remove('is-switching');
     view.innerHTML = `<div class="card card-pad"><div class="empty-state">โหลดข้อมูลไม่สำเร็จ: ${escapeHtml(err.message)}</div></div>`;
     return;
   }
+  if (!view.isConnected || PAState.tab !== 'report') return; // สลับไปแท็บอื่นระหว่างรอข้อมูล — ไม่วาดทับ
 
   const empty = list.length === 0 ? `
     <div class="card">
@@ -119,7 +123,6 @@ async function renderPAReportPage() {
   const cards = list.map(d => paReportDetailCard(d)).join('');
 
   view.innerHTML = `
-    ${pageHeaderHtml('รายงานข้อตกลง PA')}
     ${statsHtml}
     ${empty}
     <div class="par-cards">${cards}</div>
@@ -146,10 +149,10 @@ async function renderPAReportPage() {
       @media(max-width:600px){.par-stats{grid-template-columns:repeat(2,1fr)}.par-lbl{width:100px}}
     </style>`;
 
-  // ปุ่มไปหน้า PA
-  view.querySelector('.par-goto-pa')?.addEventListener('click', () => navigate('pa-page'));
+  // ปุ่มไปแท็บข้อตกลง
+  view.querySelector('.par-goto-pa')?.addEventListener('click', () => paSwitchTab('agreement'));
 
-  // ปุ่มแก้ไข: ไปที่หน้า PA พร้อมเลือก doc
+  // ปุ่มแก้ไข: สลับไปแท็บข้อตกลงพร้อมเปิดฟอร์มของรายการนั้น
   view.querySelectorAll('.par-edit-btn').forEach(b => b.addEventListener('click', () => {
     const id = b.dataset.id;
     const d = list.find(x => x.id === id);
@@ -158,9 +161,9 @@ async function renderPAReportPage() {
     PAState.doc = JSON.parse(JSON.stringify(d));
     if (!Array.isArray(PAState.doc.tasks) || PAState.doc.tasks.length === 0) PAState.doc.tasks = [paBlankTask()];
     PAState.view = 'form';
-    navigate('pa-page'); // เปลี่ยนหน้าไป PA แล้ว renderPAFormView จะถูกเรียก
-    renderPAFormView();
+    paSwitchTab('agreement'); // paSwitchTab วาดฟอร์มให้เอง (PAState.view = 'form')
   }));
 
-  playViewEnter();
+  view.classList.remove('is-switching');
+  paSwapIn(view);
 }

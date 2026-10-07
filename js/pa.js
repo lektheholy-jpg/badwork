@@ -4,7 +4,9 @@
 // ==========================================================================
 
 const PAState = {
-  view: 'list',     // 'list' | 'form'
+  tab: 'agreement', // แท็บที่เปิดอยู่: 'agreement' (แบบฟอร์มข้อตกลง) | 'report' (แบบฟอร์มรายงาน)
+  nextTab: null,    // navigate('pa-report-page') ตั้งค่านี้ให้ renderPAPage เปิดแท็บรายงานเลย
+  view: 'list',     // มุมมองในแท็บข้อตกลง: 'list' | 'form'
   docId: null,      // null = สร้างใหม่ | string = แก้ไขที่มีอยู่
   doc: null,        // ข้อมูล PA ที่กำลังแก้
   list: null,       // แคชรายการ
@@ -100,20 +102,85 @@ function paStatusBadge(status) {
 }
 
 // ------------------------------------------------------------------
-// หน้ารายการ PA
+// โครงหน้า: หัวเรื่อง + แท็บ (แบบฟอร์มข้อตกลง | แบบฟอร์มรายงาน) + พื้นที่เนื้อหา
+// ปุ่มเมนูข้างปุ่มเดียว (pa-page) เปิดหน้านี้ — สลับสองมุมมองด้วยแท็บโดยไม่วาดทั้งหน้าใหม่
+// ------------------------------------------------------------------
+const PA_TABS = [['agreement', 'แบบฟอร์มข้อตกลง'], ['report', 'แบบฟอร์มรายงาน']];
+
+function paBuildShell() {
+  const view = document.getElementById('view');
+  view.innerHTML = `
+    ${pageHeaderHtml('ข้อตกลง PA')}
+    <div class="tabs" id="pa-tabs" role="tablist">
+      ${PA_TABS.map(([id, label]) => `<div class="tab ${PAState.tab === id ? 'active' : ''}" data-tab="${id}" role="tab" aria-selected="${PAState.tab === id}" tabindex="0">${label}</div>`).join('')}
+    </div>
+    <div id="pa-tab-body"></div>`;
+  const tabs = view.querySelector('#pa-tabs');
+  initNavPill(tabs, '.tab', 'seg-pill');
+  tabs.querySelectorAll('.tab').forEach(t => {
+    t.addEventListener('click', () => paSwitchTab(t.dataset.tab));
+    t.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); paSwitchTab(t.dataset.tab); }
+    });
+  });
+}
+
+// พื้นที่เนื้อหาของแท็บ — ถ้ายังไม่มีโครง (เช่นถูกเรียกก่อน renderPAPage) ให้สร้างให้
+function paMount() {
+  const view = document.getElementById('view');
+  if (!view.querySelector('#pa-tab-body')) paBuildShell();
+  return view.querySelector('#pa-tab-body');
+}
+
+// เนื้อหาใหม่มาแล้ว: ยกเลิกตัวโหลด + จางเข้าเฉพาะพื้นที่เนื้อหา (แท็บไม่กะพริบ)
+function paSwapIn(body) {
+  clearLoading(body);
+  body.classList.remove('is-switching', 'tab-swap');
+  void body.offsetWidth; // รีสตาร์ทแอนิเมชันถ้าสลับซ้ำเร็วๆ
+  body.classList.add('tab-swap');
+}
+
+function paRenderTab() {
+  if (PAState.tab === 'report') return renderPAReportView();
+  return PAState.view === 'form' ? renderPAFormView() : renderPAListView();
+}
+
+async function paSwitchTab(tab) {
+  if (tab === PAState.tab || !PA_TABS.some(t => t[0] === tab)) return;
+  // กำลังกรอกฟอร์มอยู่: เก็บค่าที่พิมพ์ค้างไว้ใน PAState.doc กลับมาที่แท็บข้อตกลงแล้วยังอยู่ครบ
+  if (PAState.tab === 'agreement' && PAState.view === 'form') paCollectFormData();
+  PAState.tab = tab;
+  const tabs = document.getElementById('pa-tabs');
+  tabs?.querySelectorAll('.tab').forEach(x => {
+    const on = x.dataset.tab === tab;
+    x.classList.toggle('active', on);
+    x.setAttribute('aria-selected', String(on));
+  });
+  tabs?.__pillPlace?.(true);
+  document.getElementById('pa-tab-body')?.classList.add('is-switching'); // หรี่เนื้อหาเดิมทันที ระหว่างรอข้อมูล
+  await paRenderTab();
+}
+
+// ------------------------------------------------------------------
+// หน้ารายการ PA (แท็บแบบฟอร์มข้อตกลง)
 // ------------------------------------------------------------------
 async function renderPAListView() {
-  const view = document.getElementById('view');
-  showLoading('list');
+  const view = paMount(); // = พื้นที่เนื้อหาของแท็บ
+  showLoading('list', view);
 
   let list = [];
   try {
     list = await paLoadList();
     PAState.list = list;
   } catch (err) {
+    if (!view.isConnected || PAState.tab !== 'agreement') return; // ผู้ใช้สลับแท็บ/ออกจากหน้าไปแล้ว
+    clearLoading(view);
+    view.classList.remove('is-switching');
     view.innerHTML = `<div class="card card-pad"><div class="empty-state">โหลดข้อมูลไม่สำเร็จ: ${escapeHtml(err.message)}</div></div>`;
     return;
   }
+
+  if (!view.isConnected || PAState.tab !== 'agreement' || PAState.view !== 'list') return;
 
   const rows = list.map(d => `
     <div class="pa-row card" data-id="${escapeHtml(d.id)}">
@@ -142,7 +209,6 @@ async function renderPAListView() {
     </div>` : '';
 
   view.innerHTML = `
-    ${pageHeaderHtml('ข้อตกลง PA')}
     <div class="pa-toolbar">
       <span style="color:var(--ink-soft);font-size:14px">${list.length > 0 ? `${list.length} รายการ` : ''}</span>
       ${list.length > 0 ? `<button type="button" class="btn btn-primary btn-sm pa-new-btn">${PA_ICO_ADD} สร้างใหม่</button>` : ''}
@@ -200,21 +266,22 @@ async function renderPAListView() {
     b.disabled = true;
     try {
       await paDelete(id);
-      await renderPAPage();
+      await renderPAListView();
     } catch (err) {
       b.disabled = false;
       alert('ลบไม่สำเร็จ: ' + err.message);
     }
   }));
 
-  playViewEnter();
+  view.classList.remove('is-switching');
+  paSwapIn(view);
 }
 
 // ------------------------------------------------------------------
-// หน้าฟอร์ม PA
+// หน้าฟอร์ม PA (อยู่ในแท็บแบบฟอร์มข้อตกลง)
 // ------------------------------------------------------------------
 function renderPAFormView() {
-  const view = document.getElementById('view');
+  const view = paMount(); // = พื้นที่เนื้อหาของแท็บ
   const d = PAState.doc;
   const isNew = !PAState.docId;
 
@@ -255,9 +322,9 @@ function renderPAFormView() {
     </div>`).join('');
 
   view.innerHTML = `
-    <div class="page-header" style="margin-bottom:20px">
-      <button type="button" class="btn btn-ghost btn-sm pa-back-btn" style="margin-bottom:12px">← กลับ</button>
-      <h1>${isNew ? 'สร้างข้อตกลง PA ใหม่' : 'แก้ไขข้อตกลง PA'}</h1>
+    <div class="pa-form-head">
+      <button type="button" class="btn btn-ghost btn-sm pa-back-btn">← กลับ</button>
+      <h2 class="pa-form-title">${isNew ? 'สร้างข้อตกลง PA ใหม่' : 'แก้ไขข้อตกลง PA'}</h2>
     </div>
 
     <form id="pa-form" novalidate>
@@ -314,6 +381,8 @@ function renderPAFormView() {
     </form>
 
     <style>
+      .pa-form-head{display:flex;align-items:center;gap:12px;margin-bottom:20px}
+      .pa-form-title{font-size:20px;font-weight:700;margin:0;color:var(--ink)}
       .pa-section-title{font-size:13px;font-weight:700;color:var(--ink-soft);letter-spacing:.5px;text-transform:uppercase;margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid var(--border)}
       .pa-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px 16px;margin-bottom:12px}
       .pa-field{display:flex;flex-direction:column;gap:5px}
@@ -372,7 +441,8 @@ function renderPAFormView() {
     }
   });
 
-  playViewEnter();
+  view.classList.remove('is-switching');
+  paSwapIn(view);
 }
 
 // ------------------------------------------------------------------
@@ -404,6 +474,9 @@ function paCollectFormData() {
 // renderPAPage — entry point เรียกจาก app.js
 // ------------------------------------------------------------------
 async function renderPAPage() {
+  PAState.tab = PAState.nextTab || 'agreement'; // กดจากเมนูข้าง = เริ่มที่แท็บข้อตกลง (ยกเว้นมีคนขอแท็บรายงานมา)
+  PAState.nextTab = null;
   PAState.view = 'list';
-  await renderPAListView();
+  paBuildShell();
+  await paRenderTab();
 }
