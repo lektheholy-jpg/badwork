@@ -165,7 +165,9 @@ const IslandUI = (() => {
   // ---------- ออนไลน์ / ออฟไลน์ ----------
   window.addEventListener('offline', () => {
     setOffline(true);
-    present({ key: 'net', kind: 'offline', text: 'ออฟไลน์ · ข้อมูลยังไม่ซิงค์', prio: 'net', ms: 4500 });
+    // เปิดแคชออฟไลน์อยู่ (FS_PERSISTENCE = 'on') → คะแนนที่พิมพ์จะเก็บในเครื่องและซิงค์ให้เองทีหลัง
+    const local = typeof FS_PERSISTENCE !== 'undefined' && FS_PERSISTENCE === 'on';
+    present({ key: 'net', kind: 'offline', text: local ? 'ออฟไลน์ · คะแนนจะบันทึกในเครื่อง แล้วซิงค์ให้เอง' : 'ออฟไลน์ · ข้อมูลยังไม่ซิงค์', prio: 'net', ms: 4500 });
   });
   window.addEventListener('online', async () => {
     setOffline(false);
@@ -183,6 +185,23 @@ const IslandUI = (() => {
         : { key: 'net', kind: 'warn', text: 'กลับมาออนไลน์ · ยังซิงค์ต่อเบื้องหลัง', prio: 'net', ms: 3600 });
     }
   });
+
+  // ---------- คะแนนที่ค้างคิวมาจากรอบก่อน (รีเฟรช/ปิดแท็บตอนออฟไลน์) ----------
+  // ตอนเปิดแอป ถ้า Firestore ยังมีคิวเขียนค้างอยู่ ให้บอกผู้ใช้ แล้วแจ้ง "ซิงค์แล้ว" เมื่อคิวหมด
+  async function checkCarriedOverWrites() {
+    if (typeof db === 'undefined' || !db.waitForPendingWrites) return;
+    try { if (typeof FS_PERSISTENCE_READY !== 'undefined') await FS_PERSISTENCE_READY; } catch (e) { return; }
+    if (typeof FS_PERSISTENCE === 'undefined' || FS_PERSISTENCE !== 'on') return;
+    const SLOW = Symbol('slow');
+    const pending = db.waitForPendingWrites();
+    const first = await Promise.race([pending.then(() => 'done', () => 'done'), new Promise(r => setTimeout(() => r(SLOW), 2500))]);
+    if (first !== SLOW) return; // ไม่มีคิวค้าง (หรือส่งเสร็จเร็ว)
+    present({ key: 'net', kind: 'warn', text: 'มีคะแนนที่บันทึกในเครื่องรอซิงค์ · จะส่งให้เองเมื่อมีอินเทอร์เน็ต', prio: 'net', ms: 5000 });
+    try { await pending; } catch (e) { return; }
+    present({ key: 'net', kind: 'success', text: 'ซิงค์คะแนนที่ค้างแล้ว', prio: 'net', ms: 2600 });
+  }
+  // เรียกหลังผู้ใช้ล็อกอินแล้ว (คิวเขียนผูกกับบัญชี) — auth.js เรียกผ่าน islandCheckPending()
+  window.islandCheckPending = () => { checkCarriedOverWrites(); };
 
   // ---------- เริ่มทำงาน ----------
   if (offline) el.classList.add('is-offline');
@@ -222,6 +241,7 @@ function islandSave(state, info) {
   if (!IslandUI) return;
   if (state === 'saving') IslandUI.present({ key: 'save', kind: 'loading', text: 'กำลังบันทึก...', prio: 'save', ms: 20000 });
   else if (state === 'saved') IslandUI.present({ key: 'save', kind: 'success', text: 'บันทึกแล้ว', prio: 'save', ms: 1600 });
+  else if (state === 'queued') IslandUI.present({ key: 'save', kind: 'warn', text: `บันทึกในเครื่องแล้ว · รอซิงค์ ${(info && info.count) || ''} ช่อง`.replace('  ', ' '), prio: 'save', ms: 4000 });
   else if (state === 'error') {
     IslandUI.present({
       key: 'save', kind: 'error', text: `บันทึกไม่สำเร็จ ${(info && info.count) || ''} ช่อง`.replace('  ', ' '), prio: 'error', ms: 8000,

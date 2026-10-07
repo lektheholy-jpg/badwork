@@ -6,8 +6,10 @@
   "scripts": {
     "build:css": "sh build-css.sh",
     "check:css": "sh build-css.sh --check",
-    "test": "node tests/score-logic.test.js",
-    "prepare": "git config core.hooksPath .githooks || true"
+    "test": "node tests/score-logic.test.js .",
+    "prepare": "git config core.hooksPath .githooks || true",
+    "test:sw": "node tests/sw.test.js",
+    "check:sw": "node tools/check-sw.js"
   },
   "devDependencies": {
     "csso-cli": "4.0.2",

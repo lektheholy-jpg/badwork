@@ -13,6 +13,7 @@ if ! npm ls csso-cli postcss >/dev/null 2>&1; then
 fi
 
 node tools/check-inline.js
+node tools/check-sw.js
 node tools/check-css.js css/style.css
 
 SRC=css/style.css

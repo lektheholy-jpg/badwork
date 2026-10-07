@@ -188,6 +188,46 @@ async function makeEnv({ nStudents = 4, nAssess = 8, max = 10, seed = {} } = {})
     ok(r[0][0] === 'no', 'ตัด BOM หน้าไฟล์ CSV');
   }
 
+  console.log('\n[9] ออฟไลน์: "บันทึกในเครื่อง รอซิงค์" แยกจาก "บันทึกแล้ว"');
+  {
+    const setOnline = (w, v) => Object.defineProperty(w.navigator, 'onLine', { get: () => v, configurable: true });
+    const unload = w => { const ev = new w.Event('beforeunload', { cancelable: true }); w.dispatchEvent(ev); return ev.defaultPrevented; };
+
+    // (ก) เปิดแคชออฟไลน์ + ออฟไลน์ (set ไม่จบเพราะรอเซิร์ฟเวอร์ตอบ) → "บันทึกในเครื่องแล้ว · รอซิงค์"
+    const e = await makeEnv();
+    e.w.FS_PERSISTENCE = 'on'; setOnline(e.w, false);
+    let release; e.setBehavior = () => new Promise(r => { release = r; });
+    e.type('s1', 'a1', '7'); await sleep(40);
+    ok(/บันทึกในเครื่องแล้ว · รอซิงค์ 1 ช่อง/.test(e.status().textContent), 'ออฟไลน์ + เปิดแคช → "บันทึกในเครื่องแล้ว · รอซิงค์ 1 ช่อง"', e.status().textContent);
+    ok(!/ยังไม่ได้บันทึก/.test(e.status().textContent), 'ไม่ขึ้นข้อความตกใจ "ยังไม่ได้บันทึก"');
+    ok(unload(e.w) === false, 'ปิดหน้าได้โดยไม่ถูกเตือน (คะแนนอยู่ในเครื่องแล้ว)');
+    // กลับมาออนไลน์ → เซิร์ฟเวอร์ตอบรับ → "บันทึกแล้ว"
+    setOnline(e.w, true); release(); await sleep(40);
+    e.w.dispatchEvent(new e.w.Event('online')); await sleep(20);
+    ok(/บันทึกแล้ว/.test(e.status().textContent) && !/รอซิงค์/.test(e.status().textContent), 'เซิร์ฟเวอร์ตอบรับแล้ว → "บันทึกแล้ว"', e.status().textContent);
+
+    // (ข) ไม่มีแคชออฟไลน์ + ออฟไลน์ → ยังเตือนตามเดิม (คะแนนอยู่แค่ในหน้านี้)
+    const f = await makeEnv();
+    f.w.FS_PERSISTENCE = 'off'; setOnline(f.w, false);
+    f.setBehavior = () => new Promise(() => {});
+    f.type('s1', 'a1', '7'); await sleep(40);
+    ok(/ออฟไลน์ — ยังไม่ได้บันทึก/.test(f.status().textContent), 'ไม่มีแคช + ออฟไลน์ → เตือนว่ายังไม่ได้บันทึก', f.status().textContent);
+    ok(unload(f.w) === true, 'ไม่มีแคช + ออฟไลน์ → เตือนก่อนปิดหน้า');
+
+    // (ค) ออนไลน์แต่เซิร์ฟเวอร์เงียบนาน (ไวไฟไม่ออกเน็ต) + เปิดแคช → "รอซิงค์" ไม่ค้างที่ "กำลังบันทึก..."
+    const g = await makeEnv();
+    g.w.FS_PERSISTENCE = 'on'; setOnline(g.w, true);
+    g.setBehavior = () => new Promise(() => {});
+    g.type('s1', 'a1', '7'); await sleep(60);
+    ok(/รอซิงค์ 1 ช่อง/.test(g.status().textContent), 'ออนไลน์แต่เซิร์ฟเวอร์ไม่ตอบ → "รอซิงค์"', g.status().textContent);
+
+    // (ง) ปกติ (ออนไลน์ เซิร์ฟเวอร์ตอบเร็ว) ยังเป็น "บันทึกแล้ว" เหมือนเดิม
+    const h = await makeEnv();
+    h.w.FS_PERSISTENCE = 'on'; setOnline(h.w, true);
+    h.type('s1', 'a1', '7'); await sleep(60);
+    ok(/บันทึกแล้ว/.test(h.status().textContent) && h.store.s1.a1 === 7, 'ออนไลน์ปกติ → "บันทึกแล้ว"', h.status().textContent);
+  }
+
   console.log(`\nผลรวม: ผ่าน ${pass}, ไม่ผ่าน ${fail}`);
   process.exit(fail ? 1 : 0);
 })().catch(e => { console.error('HARNESS ERROR', e); process.exit(2); });

@@ -198,27 +198,49 @@ function wireScoreInputs(container, course, section, students, collectItems, mid
   const pendingSaves = new Map(); // key -> { timer, item }  รอครบ 500ms
   const latestSeq = new Map();    // key -> ลำดับการแก้ล่าสุด กันค่าเก่าทับค่าใหม่ตอน retry
   const failed = new Map();       // key -> item ที่บันทึกไม่สำเร็จหลัง retry ครบ
-  let pendingCount = 0;           // จำนวนช่องที่ยังรอ/กำลังบันทึก/กำลัง retry
+  let pendingCount = 0;           // จำนวนช่องที่ยังไม่ถึงเซิร์ฟเวอร์ (รอ debounce / ส่งให้ Firestore แล้วรอตอบ / รอ retry)
+  let awaitingAck = 0;            // จำนวนช่องที่ส่งให้ Firestore แล้ว (เขียนลงคิวในเครื่องแล้ว) แต่เซิร์ฟเวอร์ยังไม่ตอบรับ
+  let ackSlow = false;            // ส่งแล้วแต่เซิร์ฟเวอร์เงียบเกิน ACK_SLOW_MS ทั้งที่เบราว์เซอร์ว่าออนไลน์ (เน็ตอ่อน/ไวไฟไม่ออกเน็ต)
+  let slowTimer = 0;
   let seqCounter = 0;
   const MAX_RETRY = 4;            // ลองซ้ำ 4 ครั้ง หน่วง 1.5s, 3s, 6s, 12s
+  const ACK_SLOW_MS = 4000;
+
+  // เปิดแคชออฟไลน์สำเร็จหรือไม่ (js/firebase-config.js) — ถ้าเปิดอยู่ คะแนนที่ส่งให้ Firestore แล้วจะอยู่ในเครื่องแม้รีเฟรช
+  const localQueueOn = () => typeof FS_PERSISTENCE !== 'undefined' && FS_PERSISTENCE === 'on';
+  const isOffline = () => navigator.onLine === false;
+  // "รอซิงค์": ทุกช่องที่ค้างอยู่ถูกเขียนลงเครื่องแล้ว ขาดแค่เซิร์ฟเวอร์ตอบรับ
+  const isQueued = () => localQueueOn() && awaitingAck > 0 && pendingCount === awaitingAck && (isOffline() || ackSlow);
+
+  function trackAck(delta) {
+    awaitingAck = Math.max(0, awaitingAck + delta);
+    clearTimeout(slowTimer);
+    if (awaitingAck === 0) { ackSlow = false; return; }
+    if (!ackSlow) slowTimer = setTimeout(() => { if (awaitingAck > 0) { ackSlow = true; renderStatus(); } }, ACK_SLOW_MS);
+  }
 
   let islandState = 'saved'; // สถานะล่าสุดที่ส่งให้ Dynamic Island (ส่งเฉพาะตอนเปลี่ยน ไม่รัวทุกตัวอักษร)
   function syncIsland() {
-    let st = failed.size > 0 ? 'error' : (pendingCount > 0 ? 'saving' : 'saved');
-    if (st === 'saving' && navigator.onLine === false) { islandState = 'saving'; return; } // ออฟไลน์: แคปซูลแสดงสถานะออฟไลน์อยู่แล้ว
+    const st = failed.size > 0 ? 'error' : (pendingCount > 0 ? (isQueued() ? 'queued' : 'saving') : 'saved');
+    // ออฟไลน์: แคปซูลแสดงสถานะออฟไลน์อยู่แล้ว ไม่ต้องทับ
+    if ((st === 'saving' || st === 'queued') && isOffline()) { islandState = st; return; }
     if (st === islandState) return;
     islandState = st;
-    islandSave(st, { count: failed.size, retry: retryFailed });
+    islandSave(st, { count: failed.size || awaitingAck, retry: retryFailed });
   }
 
   function renderStatus() {
     syncIsland();
+    const queued = failed.size === 0 && isQueued();
     statusEl.classList.toggle('saving', failed.size === 0 && pendingCount > 0);
     statusEl.classList.toggle('is-clickable', failed.size > 0);
     if (failed.size > 0) {
       statusEl.innerHTML = `<span class="dot dot-danger"></span> บันทึกไม่สำเร็จ ${failed.size} ช่อง — แตะเพื่อลองใหม่`;
+    } else if (queued) {
+      // บันทึกลงเครื่องแล้ว (รอดแม้ปิด/รีเฟรชหน้า) — ยังไม่ขึ้นเซิร์ฟเวอร์
+      statusEl.innerHTML = `<span class="dot"></span> บันทึกในเครื่องแล้ว · รอซิงค์ ${awaitingAck} ช่อง`;
     } else if (pendingCount > 0) {
-      statusEl.innerHTML = navigator.onLine === false
+      statusEl.innerHTML = isOffline() && !localQueueOn()
         ? `<span class="dot dot-danger"></span> ออฟไลน์ — ยังไม่ได้บันทึก (อย่าปิดหน้านี้)`
         : `<span class="dot"></span> กำลังบันทึก...`;
     } else {
@@ -231,10 +253,17 @@ function wireScoreInputs(container, course, section, students, collectItems, mid
     // มีการแก้ช่องเดิมซ้ำหลังจากนี้แล้ว: ไม่ต้องเขียนค่าเก่า
     if (attempt > 0 && latestSeq.get(item.key) !== item.seq) return done();
     const payload = item.value === null ? firebase.firestore.FieldValue.delete() : item.value;
+    let sent = false; // ส่งให้ Firestore แล้ว (เขียนลงคิวในเครื่องทันที) แต่ promise จะจบก็ต่อเมื่อเซิร์ฟเวอร์ตอบรับ
+    const release = () => { if (sent) { sent = false; trackAck(-1); } };
     try {
-      await base.collection('scores').doc(item.studentId).set({ [item.assessmentId]: payload }, { merge: true });
-      invalidateCourseData(course.id); // หน้าแรก/รายงานต้องโหลดวิชานี้ใหม่
+      const write = base.collection('scores').doc(item.studentId).set({ [item.assessmentId]: payload }, { merge: true });
+      sent = true; trackAck(+1);
+      // ล้างแคชหน้าแรก/รายงานทันที: ตอนออฟไลน์ promise ไม่จบ แต่การอ่านจะเห็นค่าที่เพิ่งเขียนจากคิวในเครื่อง
+      invalidateCourseData(course.id);
+      renderStatus();
+      await write;
     } catch (err) {
+      release();
       console.error(err);
       if (latestSeq.get(item.key) !== item.seq) return done();
       if (attempt < MAX_RETRY) {
@@ -247,6 +276,7 @@ function wireScoreInputs(container, course, section, students, collectItems, mid
       renderStatus();
       return;
     }
+    release();
     done();
   }
 
@@ -288,8 +318,9 @@ function wireScoreInputs(container, course, section, students, collectItems, mid
   if (AppState._scoreNetChange) { window.removeEventListener('online', AppState._scoreNetChange); window.removeEventListener('offline', AppState._scoreNetChange); }
   AppState._scoreBeforeUnload = (e) => {
     flushPendingSaves();
-    // เตือนก่อนปิดหน้าเมื่อมีคะแนนที่ยังไม่ถึงเซิร์ฟเวอร์จริง ๆ (บันทึกพลาด หรือออฟไลน์อยู่)
-    if (failed.size > 0 || (pendingCount > 0 && navigator.onLine === false)) { e.preventDefault(); e.returnValue = ''; }
+    // เตือนก่อนปิดหน้าเมื่อคะแนนมีโอกาสหาย: บันทึกพลาด หรือออฟไลน์โดยไม่มีแคชในเครื่อง
+    // (ถ้าเปิดแคชออฟไลน์ไว้ คะแนนที่ค้างอยู่ในเครื่องแล้ว ปิดหน้าได้ — จะซิงค์เองตอนเปิดแอปตอนมีเน็ต)
+    if (failed.size > 0 || (pendingCount > 0 && isOffline() && !localQueueOn())) { e.preventDefault(); e.returnValue = ''; }
   };
   AppState._scoreNetChange = () => { if (navigator.onLine !== false && failed.size > 0) retryFailed(); else renderStatus(); };
   window.addEventListener('beforeunload', AppState._scoreBeforeUnload);
