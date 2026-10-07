@@ -407,7 +407,7 @@ function detectImportHeader(aoa) {
   return { headerRowIdx, map: bestMap };
 }
 
-// แปลง 1 แถวข้อมูลเป็น { no, code, firstName, lastName, room } — ถ้าไม่มีช่องนามสกุล จะแยกคำสุดท้ายของชื่อเต็มออกมาเป็นนามสกุล
+// แปลง 1 แถวข้อมูลเป็น { no, studentId, code, firstName, lastName, room } — ถ้าไม่มีช่องนามสกุล จะแยกคำสุดท้ายของชื่อเต็มออกมาเป็นนามสกุล
 function buildImportRow(r, map) {
   const get = (field) => (field in map) ? String(r[map[field]] ?? '').trim() : '';
   let firstName = get('firstName') || get('fullName');
@@ -419,7 +419,7 @@ function buildImportRow(r, map) {
       firstName = parts.join(' ');
     }
   }
-  return { no: get('no'), code: get('code'), firstName, lastName, room: get('room') };
+  return { no: get('no'), studentId: get('studentId'), code: get('code'), firstName, lastName, room: get('room') };
 }
 
 // ตัวอ่านรายชื่อจากไฟล์ Excel/CSV ตัวเดียว (ใช้ร่วมกันทั้งโหมดห้องเดียวและหลายห้อง)

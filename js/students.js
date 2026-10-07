@@ -27,11 +27,12 @@ async function renderStudentsTab(container, course, section) {
     ${students.length === 0 ? `<div class="card"><div class="empty-state"><div class="icon">${icon('user')}</div>ยังไม่มีนักเรียนในห้องนี้</div></div>` : `
       <div class="sheet-wrap">
         <table class="sheet sheet-simple">
-          <thead><tr><th>เลขที่</th><th>รหัสนักเรียน</th><th>ชื่อ</th><th>นามสกุล</th><th></th></tr></thead>
+          <thead><tr><th>เลขที่</th><th>ID</th><th>รหัสนักเรียน</th><th>ชื่อ</th><th>นามสกุล</th><th></th></tr></thead>
           <tbody>
             ${students.map(s => `
               <tr data-id="${s.id}">
                 <td class="name-cell">${escapeHtml(s.no)}</td>
+                <td class="name-cell">${escapeHtml(s.studentId || '')}</td>
                 <td class="name-cell">${escapeHtml(s.code)}</td>
                 <td class="name-cell">${escapeHtml(s.firstName)}</td>
                 <td class="name-cell">${escapeHtml(s.lastName)}</td>
@@ -85,6 +86,7 @@ function openAddOneStudentModal(course, section) {
     <div class="modal-sub">เพิ่มนักเรียนทีละคน — ห้อง ${escapeHtml(section.room)}</div>
     <div class="field-row">
       <div class="field"><label>เลขที่</label><input id="s-no" placeholder="1"></div>
+      <div class="field"><label>ID</label><input id="s-sid" placeholder="495001"></div>
       <div class="field"><label>รหัสนักเรียน</label><input id="s-code" placeholder="16001"></div>
     </div>
     <div class="field-row">
@@ -101,12 +103,15 @@ function openAddOneStudentModal(course, section) {
     const first = document.getElementById('s-first').value.trim();
     if (!first) { showToast('กรุณากรอกชื่อ'); return; }
     const uid = AppState.user.uid;
-    await sectionRef(uid, course.id, section.id).collection('students').add({
+    const sid = document.getElementById('s-sid').value.trim();
+    const studentData = {
       no: document.getElementById('s-no').value.trim(),
       code: document.getElementById('s-code').value.trim(),
       firstName: first,
       lastName: document.getElementById('s-last').value.trim(),
-    });
+    };
+    if (sid) studentData.studentId = sid;
+    await sectionRef(uid, course.id, section.id).collection('students').add(studentData);
     invalidateCourseData(course.id);
     closeModal();
     showToast('เพิ่มนักเรียนสำเร็จ');
@@ -248,9 +253,9 @@ async function importStudentsToRooms(course, existingSections, groups, onProgres
   for (let i = 0; i < ops.length; i += CHUNK) {
     const batch = db.batch();
     ops.slice(i, i + CHUNK).forEach(({ secRef, stu }) => {
-      batch.set(secRef.collection('students').doc(), {
-        no: stu.no, code: stu.code, firstName: stu.firstName, lastName: stu.lastName,
-      });
+      const d = { no: stu.no, code: stu.code, firstName: stu.firstName, lastName: stu.lastName };
+      if (stu.studentId) d.studentId = stu.studentId;
+      batch.set(secRef.collection('students').doc(), d);
     });
     await batch.commit();
     if (onProgress) onProgress(Math.min(i + CHUNK, ops.length), ops.length);
@@ -380,7 +385,9 @@ function openImportStudentsModal(course, section) {
       for (let i = 0; i < total; i += CHUNK) {
         const batch = db.batch();
         parsedRows.slice(i, i + CHUNK).forEach(r => {
-          batch.set(colRef.doc(), { no: r.no, code: r.code, firstName: r.firstName, lastName: r.lastName });
+          const d = { no: r.no, code: r.code, firstName: r.firstName, lastName: r.lastName };
+          if (r.studentId) d.studentId = r.studentId;
+          batch.set(colRef.doc(), d);
         });
         await batch.commit();
         done = Math.min(i + CHUNK, total);
