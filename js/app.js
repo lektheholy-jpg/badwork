@@ -93,7 +93,7 @@ document.getElementById('view')?.addEventListener('animationend', e => {
 });
 
 // หน้าที่ต้องโหลดสคริปต์เพิ่มก่อนวาด (ดู LAZY_MODULES ใน utils.js)
-const ROUTE_MODULES = { 'report-page': 'report', tools: 'tools', profile: 'profile' };
+const ROUTE_MODULES = { 'report-page': 'report', tools: 'tools', profile: 'profile', 'pa-page': null, 'pa-report-page': null };
 
 function navigate(route) {
   AppState.enterNext = false; // ยกเลิกเฟดที่ค้างจากการเปิดรายวิชา (เช่น วิชาถูกลบแล้วเด้งกลับ)
@@ -137,6 +137,8 @@ function renderRoute(route) {
   else if (route === 'tools') return renderToolsPage();
   else if (route === 'settings') return renderSettings();
   else if (route === 'profile') return renderProfilePage();
+  else if (route === 'pa-page') return renderPAPage();
+  else if (route === 'pa-report-page') return renderPAReportPage();
 }
 
 // ช่องเลือกพื้นหลังในหน้าตั้งค่า: แต่ละช่องส่งสีผ่านตัวแปร --sw (ค่าสีจริงอยู่ที่ --bgp-* ใน css/style.css)
