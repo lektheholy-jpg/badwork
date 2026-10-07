@@ -88,6 +88,40 @@ async function saveTimetable(tt) {
   }
 }
 
+// ---------- ไปหน้าบันทึกคะแนนจากชื่อวิชาในตาราง ----------
+// คาบที่ผูกกับรายวิชา (courseId) และยังมีวิชานั้นอยู่ → ชื่อวิชากดได้ · courseIds = ชุด id วิชาที่รู้ว่ายังมี (null = ยังไม่รู้ ให้ตรวจตอนกด)
+function ttLinkable(e, courseIds) {
+  return e.kind === 'class' && !!e.courseId && (!courseIds || courseIds.has(e.courseId));
+}
+// หาห้อง (section) ของคาบ: ป้ายห้องในตารางเขียนเป็น "ชั้น/ห้อง" (เช่น ม.2/7) ตรงกับที่ปุ่มเลือกห้องในหน้าต่างคาบสร้างไว้
+function ttFindSection(e, course, sections) {
+  const norm = t => String(t || '').replace(/\s+/g, '');
+  const label = s => norm((course.level ? course.level + '/' : '') + s.room);
+  const cls = norm(e.cls);
+  return sections.find(s => cls && label(s) === cls)
+    || sections.find(s => cls && cls.endsWith('/' + norm(s.room)))
+    || (sections.length === 1 ? sections[0] : null);
+}
+let ttGoBusy = false;
+async function ttOpenScores(e) {
+  if (ttGoBusy) return;
+  ttGoBusy = true;
+  try {
+    const uid = AppState.user.uid;
+    const courseDoc = await db.collection('users').doc(uid).collection('courses').doc(e.courseId).get();
+    if (!courseDoc.exists) { showToast('ไม่พบรายวิชานี้แล้ว — แก้คาบให้เลือกรายวิชาใหม่', 'warn'); return; }
+    const course = { id: courseDoc.id, ...courseDoc.data() };
+    const section = ttFindSection(e, course, await loadSections(uid, course.id));
+    if (!section) { showToast('ไม่พบห้องของคาบนี้ — แก้คาบแล้วเลือกห้องจากรายการ', 'warn'); return; }
+    AppState.scoresPageCourseId = course.id;
+    AppState.scoresPageSectionId = section.id;
+    navigate('scores-page');
+  } catch (err) {
+    console.error(err);
+    showToast('เปิดหน้าบันทึกคะแนนไม่สำเร็จ: ' + (err.message || err), 'error');
+  } finally { ttGoBusy = false; }
+}
+
 // ---------- วาดตาราง ----------
 function ttMonday(now) {
   const d = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -106,17 +140,19 @@ function ttLayoutDay(entries, day) {
   return starts;
 }
 
-function ttItemHtml(e) {
+function ttItemHtml(e, courseIds) {
   const meta = [e.cls, e.room].filter(Boolean).map(t => `<span>${escapeHtml(t)}</span>`).join('');
   return `
     <button type="button" class="tt-item" style="--w:var(--hue-${e.hue})" data-id="${escapeHtml(e.id)}" aria-label="แก้ไข ${escapeHtml(e.title)}">
       ${e.code ? `<span class="tt-code">${escapeHtml(e.code)}</span>` : ''}
-      <span class="tt-title">${escapeHtml(e.title)}</span>
+      ${ttLinkable(e, courseIds)
+        ? `<span class="tt-title tt-link" role="link" data-score-go="${escapeHtml(e.id)}" title="ไปหน้าบันทึกคะแนน">${escapeHtml(e.title)}</span>`
+        : `<span class="tt-title">${escapeHtml(e.title)}</span>`}
       ${meta ? `<span class="tt-meta">${meta}</span>` : ''}
     </button>`;
 }
 
-function ttGridHtml(tt, now) {
+function ttGridHtml(tt, now, courseIds) {
   const { periods, entries } = tt;
   const monday = ttMonday(now);
   const today = now.getDay();
@@ -133,7 +169,7 @@ function ttGridHtml(tt, now) {
     for (let i = 0; i < periods.length; i++) {
       const e = starts.get(i);
       if (e) {
-        cells.push(`<td class="tt-cell" colspan="${e.span}">${ttItemHtml(e)}</td>`);
+        cells.push(`<td class="tt-cell" colspan="${e.span}">${ttItemHtml(e, courseIds)}</td>`);
         i += e.span - 1;
       } else {
         cells.push(`<td class="tt-cell"><button type="button" class="tt-add" data-day="${n}" data-period="${i}" aria-label="เพิ่มคาบ วัน${name} คาบ ${i + 1}">${icon('plus')}</button></td>`);
@@ -417,7 +453,7 @@ async function renderTimetableTab(body, isActive = () => true) {
     const keep = prev ? { l: prev.scrollLeft, t: prev.scrollTop } : null;
     const s = ttStats(state.tt);
     body.querySelector('#tt-stats').innerHTML = ttStatsHtml(s);
-    gridEl.innerHTML = ttGridHtml(state.tt, new Date());
+    gridEl.innerHTML = ttGridHtml(state.tt, new Date(), new Set(state.courses.map(c => c.id)));
     body.querySelector('#tt-legend').innerHTML = ttLegendHtml(s.placed);
     const wrap = gridEl.querySelector('.tt-wrap');
     if (keep) { wrap.scrollLeft = keep.l; wrap.scrollTop = keep.t; }
@@ -449,8 +485,11 @@ async function renderTimetableTab(body, isActive = () => true) {
   const ctx = { state, commit, removeEntries };
 
   gridEl.addEventListener('click', ev => {
-    const item = ev.target.closest('.tt-item'), add = ev.target.closest('.tt-add');
-    if (item) {
+    const item = ev.target.closest('.tt-item'), add = ev.target.closest('.tt-add'), go = ev.target.closest('[data-score-go]');
+    if (go) {
+      const entry = state.tt.entries.find(e => e.id === go.dataset.scoreGo);
+      if (entry) ttOpenScores(entry);
+    } else if (item) {
       const entry = state.tt.entries.find(e => e.id === item.dataset.id);
       if (entry) ttEntryModal(ctx, { entry });
     } else if (add) {
@@ -488,7 +527,7 @@ function ttwWeekStart(now) { // วันจันทร์ของสัปด
   return m;
 }
 
-function ttwItemHtml(e, periods, tag) {
+function ttwItemHtml(e, periods, tag, courseIds) {
   const start = periods[e.period].start, end = periods[e.period + e.span - 1].end;
   const label = e.span > 1 ? `คาบ ${e.period + 1}-${e.period + e.span}` : `คาบ ${e.period + 1}`;
   const meta = [e.cls, e.room && 'ห้อง ' + e.room].filter(Boolean).map(escapeHtml).join(' · ');
@@ -498,7 +537,9 @@ function ttwItemHtml(e, periods, tag) {
     <div class="ttw-item${tag === 'now' ? ' is-now' : ''}" style="--w:var(--hue-${e.hue})">
       <div class="ttw-time"><b>${label}</b><span>${start} - ${end}</span></div>
       <div class="ttw-info">
-        <span class="ttw-title">${escapeHtml([e.code, e.title].filter(Boolean).join(' '))}</span>
+        ${ttLinkable(e, courseIds)
+          ? `<button type="button" class="ttw-title ttw-link" data-ttw-score="${escapeHtml(e.id)}" title="ไปหน้าบันทึกคะแนน">${escapeHtml([e.code, e.title].filter(Boolean).join(' '))}</button>`
+          : `<span class="ttw-title">${escapeHtml([e.code, e.title].filter(Boolean).join(' '))}</span>`}
         ${meta ? `<span class="ttw-meta">${meta}</span>` : ''}
       </div>
       ${badge}
@@ -538,7 +579,8 @@ async function initTimetableWidget(root) {
         else if (s > nowMin && nextIdx < 0) nextIdx = i;
       });
     }
-    listEl.innerHTML = entries.map((e, i) => ttwItemHtml(e, tt.periods, i === nowIdx ? 'now' : i === nextIdx ? 'next' : '')).join('');
+    const courseIds = Array.isArray(AppState.courses) ? new Set(AppState.courses.map(c => c.id)) : null; // หน้าแรกโหลดรายวิชาไว้แล้ว · ถ้ายังไม่มีให้ตรวจตอนกด
+    listEl.innerHTML = entries.map((e, i) => ttwItemHtml(e, tt.periods, i === nowIdx ? 'now' : i === nextIdx ? 'next' : '', courseIds)).join('');
   };
 
   const load = async () => {
@@ -564,7 +606,9 @@ async function initTimetableWidget(root) {
     draw();
   });
   root.addEventListener('click', ev => {
-    if (ev.target.closest('[data-ttw-go]')) { AppState.profileTab = 'timetable'; navigate('profile'); }
+    const sc = ev.target.closest('[data-ttw-score]');
+    if (sc) { const entry = tt && tt.entries.find(x => x.id === sc.dataset.ttwScore); if (entry) ttOpenScores(entry); }
+    else if (ev.target.closest('[data-ttw-go]')) { AppState.profileTab = 'timetable'; navigate('profile'); }
     else if (ev.target.closest('[data-ttw-retry]')) load();
   });
   const timer = setInterval(() => { if (!root.isConnected) clearInterval(timer); else draw(); }, 60000);
