@@ -115,14 +115,17 @@ async function paAiGenerate(prompt) {
 function paAiError(err) {
   console.error('PA AI:', err);
   const m = String((err && (err.message || err.code)) || err);
+  const code = (m.match(/\[(\d{3})\b/) || m.match(/\b(4\d\d|5\d\d)\b/) || [])[1]; // รหัส HTTP ถ้ามี
+  const tag = code ? ` (รหัส ${code})` : '';
   let msg;
-  if (!navigator.onLine || /Failed to fetch|dynamically imported module|NetworkError|network/i.test(m)) msg = 'ใช้ AI ไม่ได้ — ไม่มีอินเทอร์เน็ตหรือโหลดชุดคำสั่งไม่สำเร็จ';
-  else if (/app-?check|appcheck|recaptcha|403|permission|PERMISSION/i.test(m)) msg = 'AI ไม่ผ่านการตรวจสิทธิ์ — ตรวจ App Check/reCAPTCHA (โดเมนต้องอยู่ในรายการ และ debug token ตอนทดสอบบนเครื่อง)';
-  else if (/429|quota|rate|RESOURCE_EXHAUSTED/i.test(m)) msg = 'ใช้ AI ถี่เกินโควตา รอสักครู่แล้วลองใหม่';
-  else if (/404|not found|model/i.test(m)) msg = `ไม่พบโมเดล ${PA_AI.MODEL} — ตรวจชื่อรุ่นใน js/pa-ai.js (PA_AI.MODEL) และการเปิด AI Logic`;
+  if (!navigator.onLine || /Failed to fetch|dynamically imported module|NetworkError/i.test(m)) msg = 'ใช้ AI ไม่ได้ — ไม่มีอินเทอร์เน็ตหรือโหลดชุดคำสั่งไม่สำเร็จ';
+  else if (/app-?check|recaptcha/i.test(m)) msg = 'AI ไม่ผ่านการตรวจ App Check/reCAPTCHA — ตรวจ Site key โดเมน และ debug token (ดูรายละเอียดใน Console)';
+  else if (code === '404' || /not found|is not supported|no longer available/i.test(m)) msg = `ไม่พบโมเดล ${PA_AI.MODEL}${tag} — ตรวจชื่อรุ่นใน js/pa-ai.js (PA_AI.MODEL)`;
+  else if (code === '403' || /PERMISSION_DENIED|API has not been used|API_KEY_SERVICE_BLOCKED|not enabled/i.test(m)) msg = `AI ถูกปฏิเสธสิทธิ์${tag} — ตรวจว่าเปิด AI Logic แล้ว และ API key ของโปรเจกต์อนุญาต Firebase AI Logic API`;
+  else if (code === '429' || /RESOURCE_EXHAUSTED|quota exceeded|too many requests|rate limit/i.test(m)) msg = `โควตา AI เต็มหรือเรียกถี่เกิน${tag} — รอ 1 นาทีแล้วลองใหม่ (ดูโควตาใน Firebase Console > AI Logic)`;
   else if (/timeout/i.test(m)) msg = 'AI ตอบช้าเกินไป ลองใหม่อีกครั้ง';
   else if (/JSON|รูปแบบคำตอบ/i.test(m)) msg = 'AI ตอบในรูปแบบที่อ่านไม่ได้ ลองใหม่อีกครั้ง';
-  else msg = 'เรียก AI ไม่สำเร็จ: ' + m.slice(0, 120);
+  else msg = `เรียก AI ไม่สำเร็จ${tag}: ` + m.slice(0, 120);
   showToast(msg);
 }
 
