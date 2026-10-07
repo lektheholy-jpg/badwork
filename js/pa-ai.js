@@ -83,7 +83,7 @@ function paAiLoadModel() {
       const app = appMod.initializeApp(firebase.app().options, 'pa-ai'); // แอปแยกจาก compat — ใช้ config เดียวกัน
       // ทดสอบบนเครื่อง: ให้ App Check พิมพ์ debug token ใน Console ของเบราว์เซอร์ แล้วนำไปลงทะเบียนใน Firebase Console
       if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
-      checkMod.initializeAppCheck(app, { provider: new checkMod.ReCaptchaV3Provider(PA_AI.SITE_KEY), isTokenAutoRefreshEnabled: true });
+      checkMod.initializeAppCheck(app, { provider: new checkMod.ReCaptchaEnterpriseProvider(PA_AI.SITE_KEY), isTokenAutoRefreshEnabled: true });
       const ai = aiMod.getAI(app, { backend: new aiMod.GoogleAIBackend() });
       return () => aiMod.getGenerativeModel(ai, {
         model: PA_AI.MODEL,
