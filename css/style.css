@@ -33,7 +33,7 @@
   --radius-xs: 12px;  --radius-s: 16px;  --radius-m: 24px;  --radius-l: 28px;  --radius-xl: 32px;  --radius-pill: 999px;
   --paper-shadow: none;
   --bg: #F4F4F4;  --canvas: #F4F4F4;
-  --card-glass: rgb(255 255 255 / 46%);  --card-glass-hover: rgb(255 255 255 / 62%);  /* พื้นการ์ดขาวโปร่ง ให้เห็นพื้นหลังที่ผู้ใช้เลือก (การ์ดสภาพอากาศไม่ใช้) */
+  --card-glass: rgb(255 255 255 / 35%);  --card-glass-hover: rgb(255 255 255 / 50%);  /* พื้นการ์ดขาวโปร่ง ให้เห็นพื้นหลังที่ผู้ใช้เลือก (การ์ดสภาพอากาศไม่ใช้) */
   --on-bg: var(--ink);  --on-bg-soft: var(--ink-soft);  --on-bg-hover: var(--sidebar-hover);  --on-bg-halo: transparent;  --on-bg-accent: var(--primary-dark);  /* ตัวหนังสือที่วางบนพื้นหลังหน้าโดยตรง (เมนู หัวหน้า) · เปลี่ยนตามพื้นหลังที่ผู้ใช้เลือกเอง (js/theme.js) */
   --on-brand: var(--ink);  --on-brand-halo: transparent;  /* ชื่อแอป "เวรกรรม.." มุมบนซ้าย · คำนวณแยกจากบริเวณที่ตัวอักษรอยู่ */
   --page-bg: var(--bg);  /* พื้นหลังหน้า: ค่าเริ่มต้น = --bg · ผู้ใช้เลือกสีทึบ/ไล่สีได้ที่ ตั้งค่า → พื้นหลัง (js/theme.js ตั้งค่านี้) */
@@ -82,7 +82,7 @@
   --zebra: #F7F8FA;  --row-on: #E8F0FE;
   --viz-track: #E3E6EC;
   --viz-bar: var(--viz-blue);
-  --glass:      20%;    /* sidebar/tabbar/more-sheet opacity — ยิ่งน้อยยิ่งโปร่ง */
+  --glass:      30%;    /* sidebar/tabbar/more-sheet opacity — ยิ่งน้อยยิ่งโปร่ง */
   --glass-blur: 30px;
   color-scheme: light;
 }
