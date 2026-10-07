@@ -4,7 +4,7 @@
 //   - ปุ่มใต้ช่องส่วนที่ 2 (ประเด็นท้าทาย) : ช่วยเขียน/เติม · ปรับสำนวน · ทำให้กระชับ
 //   - ปุ่มใต้งานมาตรฐานตำแหน่งแต่ละข้อ (1.1–3.3) : ช่วยเขียนช่องที่ว่าง · ปรับสำนวนทั้งข้อ
 //   - ปุ่มบนสุดของฟอร์ม : ร่างช่องส่วนที่ 2 ที่ยังว่างในครั้งเดียว (1 คำขอ) โดยอ่านจากข้อมูลที่มีอยู่ในเอกสาร
-//   ข้อความจาก AI แสดงในกรอบให้ตรวจ/แก้ก่อน "ใช้" เสมอ · ไม่บันทึกอัตโนมัติ · ตัวเลขที่ไม่มีข้อมูลให้เป็น "…"
+//   ข้อความจาก AI แสดงในหน้าต่าง (.modal) ให้ตรวจ/แก้ก่อน "ใช้" เสมอ · สไตล์อยู่ที่ css/style.css (ส่วน .pa-ai-*) · ไม่บันทึกอัตโนมัติ · ตัวเลขที่ไม่มีข้อมูลให้เป็น "…"
 //   โหลดแบบ lazy: SDK ของ Firebase AI จะถูกดึงเมื่อกดปุ่ม AI ครั้งแรกเท่านั้น
 //   ต้องโหลดหลัง pa.js · pa.js เรียก paAiMount(view, form) ท้าย renderPAFormView
 // ==========================================================================
@@ -220,53 +220,76 @@ async function paAiGuard(btn, fn) {
   if (paAiBusy) { showToast('AI กำลังทำงานอยู่ รอสักครู่'); return undefined; }
   if (!paAiConsent()) return undefined;
   paAiBusy = true;
+  // ปิดปุ่ม AI ทุกปุ่มระหว่างรอ ให้เห็นชัดว่ากำลังทำงานอยู่ (ไม่ต้องรอให้กดซ้ำแล้วเจอ toast)
+  const all = [...(btn.closest('form') || document).querySelectorAll('[data-pa-ai]')];
   const old = btn.innerHTML;
-  btn.disabled = true;
-  btn.textContent = 'กำลังคิด…';
+  all.forEach(b => { b.disabled = true; });
+  btn.innerHTML = 'กำลังคิด<span class="loader-dots" aria-hidden="true"><i></i><i></i><i></i></span>';
   try { return await fn(t => { btn.textContent = t; }); }
   catch (err) { paAiError(err); return undefined; }
-  finally { paAiBusy = false; btn.disabled = false; btn.innerHTML = old; }
+  finally { paAiBusy = false; all.forEach(b => { b.disabled = false; }); btn.innerHTML = old; }
 }
 
 // ------------------------------------------------------------------
-// กรอบตรวจทานข้อความที่ AI เสนอ
+// หน้าต่างตรวจทานข้อความที่ AI เสนอ (ใช้ .modal มาตรฐานของแอป)
 // ------------------------------------------------------------------
 function paAiReview(items, warn) {
   const prev = document.activeElement;
-  const ov = document.createElement('div');
-  ov.className = 'pa-ai-ov';
-  ov.setAttribute('role', 'dialog');
-  ov.setAttribute('aria-modal', 'true');
-  ov.setAttribute('aria-label', 'ข้อความที่ AI เสนอ');
-  ov.innerHTML = `<div class="pa-ai-box">
-    <div class="pa-ai-hd"><b>ข้อความที่ AI เสนอ (${items.length} ช่อง)</b><button type="button" class="btn btn-ghost btn-sm" data-x="close" aria-label="ปิด">ปิด</button></div>
-    <div class="pa-ai-note">AI อาจผิดพลาด — ตรวจทานและแก้ไขในกรอบได้ก่อนกดใช้ · ตำแหน่งที่เป็น “…” คือค่าที่ครูต้องกรอกเอง${warn ? ' · ' + escapeHtml(warn) : ''}</div>
-    <div class="pa-ai-tools"><button type="button" class="btn btn-ghost btn-sm" data-x="all">เลือกทั้งหมด</button><button type="button" class="btn btn-ghost btn-sm" data-x="none">ไม่เลือก</button></div>
-    <div class="pa-ai-list">${items.map((it, i) => `<div class="pa-ai-item">
-      <label class="pa-check"><input type="checkbox" data-i="${i}" checked> ${escapeHtml(it.label)}</label>
-      ${it.current ? `<details class="pa-ai-old"><summary>ข้อความเดิม (จะถูกแทนที่ถ้าเลือกช่องนี้)</summary><div class="pa-legacy-text">${escapeHtml(it.current)}</div></details>` : ''}
-      <textarea data-t="${i}" rows="4" aria-label="${escapeHtml(it.label)}">${escapeHtml(it.proposed)}</textarea>
-    </div>`).join('')}</div>
-    <div class="pa-ai-ft"><button type="button" class="btn btn-ghost" data-x="close">ยกเลิก</button><button type="button" class="btn btn-primary" data-x="apply">ใช้ที่เลือก</button></div>
-  </div>`;
-  document.body.appendChild(ov);
+  let lastGrp = '';
+  const body = items.map((it, i) => {
+    let head = '';
+    const grp = it.group ? it.item : 'part2'; // หัวกลุ่ม: แต่ละข้อของส่วนที่ 1 · ช่องส่วนที่ 2 รวมเป็นกลุ่มเดียว
+    if (grp !== lastGrp) { head = `<div class="pa-ai-grp">${it.group ? 'ข้อ ' + escapeHtml(it.item) : 'ส่วนที่ 2 ประเด็นท้าทาย'}</div>`; lastGrp = grp; }
+    const name = it.group ? it.fieldLabel : it.label;
+    return `${head}<div class="pa-ai-item">
+      <label class="pa-check"><input type="checkbox" data-i="${i}" checked> ${escapeHtml(name)}</label>
+      ${it.current ? `<details class="pa-ai-old"><summary>ข้อความเดิม (จะถูกแทนที่ถ้าเลือกช่องนี้)</summary><div class="pa-ai-old-text">${escapeHtml(it.current)}</div></details>` : ''}
+      <div class="field"><textarea data-t="${i}" rows="4" aria-label="${escapeHtml(name)}">${escapeHtml(it.proposed)}</textarea></div>
+    </div>`;
+  }).join('');
 
-  const checks = [...ov.querySelectorAll('input[data-i]')];
-  const areas = [...ov.querySelectorAll('textarea[data-t]')];
-  const applyBtn = ov.querySelector('[data-x="apply"]');
+  openModal(`<h2>ข้อความที่ AI เสนอ</h2>
+    <div class="modal-sub">${items.length} ช่อง · แก้ไขในกล่องได้ก่อนกด “ใช้ที่เลือก” · ข้อความจะยังไม่ถูกบันทึกจนกว่าจะกด “บันทึกข้อตกลง PA”</div>
+    ${warn ? `<div class="pa-ai-warn">${escapeHtml(warn)}</div>` : ''}
+    <div class="pa-ai-bar">
+      <span class="u-note-sm">“…” คือตัวเลขที่ครูต้องกรอกเอง · AI อาจผิดพลาด โปรดตรวจทาน</span>
+      <div class="u-flex u-gap-8">
+        <button type="button" class="btn btn-ghost btn-sm" data-x="all">เลือกทั้งหมด</button>
+        <button type="button" class="btn btn-ghost btn-sm" data-x="none">ไม่เลือก</button>
+      </div>
+    </div>
+    <div class="pa-ai-list">${body}</div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-ghost" data-x="close">ยกเลิก</button>
+      <button type="button" class="btn btn-primary" data-x="apply">ใช้ที่เลือก</button>
+    </div>`);
+
+  const modal = document.querySelector('#modal-root .modal');
+  modal.classList.add('modal-wide', 'pa-ai-modal');
+  modal.setAttribute('role', 'dialog');
+  modal.setAttribute('aria-modal', 'true');
+  modal.setAttribute('aria-label', 'ข้อความที่ AI เสนอ');
+
+  const checks = [...modal.querySelectorAll('input[data-i]')];
+  const areas = [...modal.querySelectorAll('textarea[data-t]')];
+  const applyBtn = modal.querySelector('[data-x="apply"]');
   const upd = () => {
     const n = checks.filter(c => c.checked).length;
     applyBtn.textContent = `ใช้ที่เลือก (${n})`;
     applyBtn.disabled = !n;
   };
-  const close = () => { ov.remove(); document.removeEventListener('keydown', onKey); if (prev && prev.isConnected) prev.focus(); };
-  const onKey = e => { if (e.key === 'Escape') close(); };
+  const restoreFocus = () => { if (prev && prev.isConnected) prev.focus(); };
+  const close = () => { closeModal(); restoreFocus(); };
+  const onKey = e => {
+    if (!modal.isConnected) { document.removeEventListener('keydown', onKey); return; } // ปิดด้วยทางอื่นแล้ว
+    if (e.key === 'Escape') close();
+  };
   document.addEventListener('keydown', onKey);
+  document.getElementById('modal-backdrop').addEventListener('click', e => { if (e.target.id === 'modal-backdrop') restoreFocus(); });
   upd();
 
-  ov.addEventListener('change', e => { if (e.target.matches('input[data-i]')) upd(); });
-  ov.addEventListener('click', e => {
-    if (e.target === ov) { close(); return; }
+  modal.addEventListener('change', e => { if (e.target.matches('input[data-i]')) upd(); });
+  modal.addEventListener('click', e => {
     const a = e.target.closest('[data-x]')?.dataset.x;
     if (!a) return;
     if (a === 'close') close();
@@ -315,39 +338,27 @@ async function paAiDraftAll(btn) {
 // ------------------------------------------------------------------
 const PA_AI_ICON = `<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M19 15l.7 1.8 1.8.7-1.8.7L19 20l-.7-1.8-1.8-.7 1.8-.7z"/></svg>`;
 
-function paAiEnsureStyle() {
-  if (document.getElementById('pa-ai-style')) return;
-  const st = document.createElement('style');
-  st.id = 'pa-ai-style';
-  st.textContent = `
-    .pa-ai-top{display:grid;gap:8px;justify-items:start}
-    .pa-ai-top-t{display:flex;align-items:center;gap:6px}
-    .pa-ai-row{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
-    .pa-ai-witem{margin-top:8px}
-    .pa-ai-ov{position:fixed;inset:0;z-index:2000;display:flex;align-items:center;justify-content:center;padding:12px;background:var(--shadow-ink-lg)}
-    .pa-ai-box{display:flex;flex-direction:column;width:min(720px,100%);max-height:92vh;border-radius:var(--radius-m);background:var(--surface);color:var(--ink);box-shadow:var(--shadow)}
-    .pa-ai-hd{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:14px 16px 8px}
-    .pa-ai-note{padding:0 16px 8px;font-size:13px;color:var(--ink-soft)}
-    .pa-ai-tools{display:flex;gap:6px;padding:0 16px 8px}
-    .pa-ai-list{flex:1;overflow:auto;padding:0 16px}
-    .pa-ai-item{padding:10px 0;border-top:1px solid var(--border)}
-    .pa-ai-item textarea{width:100%;margin-top:6px}
-    .pa-ai-old{margin-top:6px;font-size:13px}
-    .pa-ai-ft{display:flex;justify-content:flex-end;gap:8px;padding:12px 16px;border-top:1px solid var(--border)}`;
-  document.head.appendChild(st);
-}
-
 function paAiMount(view, form) {
   if (!form || form.dataset.paAi) return;
   form.dataset.paAi = '1';
-  paAiEnsureStyle();
 
-  // 1) การ์ดบนสุด: ร่างทุกช่องที่ว่าง
+  // 1) การ์ดบนสุด: อธิบายสั้นๆ + ร่างส่วนที่ 2
   const top = document.createElement('div');
   top.className = 'card card-pad pa-ai-top';
-  top.innerHTML = `<div class="pa-ai-top-t">${PA_AI_ICON}<b>ผู้ช่วย AI (Gemini)</b></div>
-    <div class="u-note">ร่างข้อความส่วนที่ 2 (ประเด็นท้าทาย) ที่ยังว่างในครั้งเดียว ส่วนงานตามมาตรฐานตำแหน่งใช้ปุ่มใต้แต่ละข้อ โดยอ่านจากข้อมูลที่มีอยู่แล้วในเอกสารนี้ (รายวิชา ชั่วโมงสอน ประเภทห้องเรียน และข้อความที่กรอกไว้) · แสดงให้ตรวจทานก่อนใช้เสมอ ไม่บันทึกอัตโนมัติ · ช่องที่กรอกแล้วจะไม่ถูกเขียนทับ · ไม่ควรพิมพ์ชื่อหรือข้อมูลที่ระบุตัวนักเรียนลงในช่อง</div>
-    <button type="button" class="btn btn-primary btn-sm" data-pa-ai="all">${PA_AI_ICON} ร่างส่วนที่ 2 ที่ว่าง</button>`;
+  top.innerHTML = `<div class="pa-ai-head">
+      <span class="course-chip pa-ai-chip">${PA_AI_ICON}</span>
+      <div>
+        <h2 class="card-title">ผู้ช่วย AI</h2>
+        <div class="u-note">ช่วยร่าง ปรับสำนวน และย่อข้อความ โดยใช้ Gemini</div>
+      </div>
+    </div>
+    <ul class="pa-ai-points u-note">
+      <li>อ่านจากข้อมูลที่มีในเอกสารนี้ เช่น รายวิชา ชั่วโมงสอน และข้อความที่กรอกไว้</li>
+      <li>เสนอให้ตรวจก่อนใช้เสมอ ไม่เขียนทับช่องที่กรอกแล้ว และไม่บันทึกให้เอง</li>
+      <li>ปุ่มนี้ร่างส่วนที่ 2 ที่ว่าง · งานข้อ 1.1–3.3 กดปุ่มใต้แต่ละข้อ</li>
+    </ul>
+    <div class="pa-ai-warn">อย่าพิมพ์ชื่อหรือข้อมูลที่ระบุตัวนักเรียนลงในช่อง</div>
+    <button type="button" class="btn btn-primary" data-pa-ai="all">${PA_AI_ICON} ร่างส่วนที่ 2 ที่ว่าง</button>`;
   form.insertBefore(top, form.firstChild);
 
   // 2) ใต้ช่องส่วนที่ 2
@@ -355,19 +366,21 @@ function paAiMount(view, form) {
     const ta = form.querySelector('#' + f.el);
     if (!ta) return;
     ta.closest('.field').insertAdjacentHTML('beforeend', `<div class="pa-ai-row">
-      <button type="button" class="btn btn-ghost btn-sm" data-pa-ai="f-write" data-key="${f.key}">${PA_AI_ICON} ช่วยเขียน/เติม</button>
-      <button type="button" class="btn btn-ghost btn-sm" data-pa-ai="f-polish" data-key="${f.key}">ปรับสำนวน</button>
-      <button type="button" class="btn btn-ghost btn-sm" data-pa-ai="f-shorten" data-key="${f.key}">ทำให้กระชับ</button>
+      <span class="pa-ai-tag">${PA_AI_ICON} ผู้ช่วย AI</span>
+      <button type="button" class="btn btn-ghost btn-sm" data-pa-ai="f-write" data-key="${f.key}">เขียน/เติมให้</button>
+      <button type="button" class="btn btn-sm pa-ai-quiet" data-pa-ai="f-polish" data-key="${f.key}">ปรับสำนวน</button>
+      <button type="button" class="btn btn-sm pa-ai-quiet" data-pa-ai="f-shorten" data-key="${f.key}">ย่อให้กระชับ</button>
     </div>`);
   });
 
-  // 3) ใต้งานตามมาตรฐานตำแหน่งแต่ละข้อ
+  // 3) ใต้งานตามมาตรฐานตำแหน่งแต่ละข้อ (ชื่อข้ออยู่ในหัวกล่องอยู่แล้ว ไม่ต้องพูดซ้ำในปุ่ม)
   form.querySelectorAll('.pa-witem').forEach(w => {
     const id = w.querySelector('[data-wi]')?.dataset.wi;
     if (!id) return;
-    w.insertAdjacentHTML('beforeend', `<div class="pa-ai-row pa-ai-witem">
-      <button type="button" class="btn btn-ghost btn-sm" data-pa-ai="i-write" data-item="${id}">${PA_AI_ICON} ช่วยเขียนช่องที่ว่างของข้อ ${id}</button>
-      <button type="button" class="btn btn-ghost btn-sm" data-pa-ai="i-polish" data-item="${id}">ปรับสำนวนทั้งข้อ</button>
+    w.insertAdjacentHTML('beforeend', `<div class="pa-ai-row">
+      <span class="pa-ai-tag">${PA_AI_ICON} ผู้ช่วย AI</span>
+      <button type="button" class="btn btn-ghost btn-sm" data-pa-ai="i-write" data-item="${id}">เขียนช่องที่ว่าง</button>
+      <button type="button" class="btn btn-sm pa-ai-quiet" data-pa-ai="i-polish" data-item="${id}">ปรับสำนวนทั้งข้อ</button>
     </div>`);
   });
 

@@ -2054,3 +2054,35 @@ table.tt tr.is-today td.tt-cell { background: color-mix(in srgb, var(--hue-orang
 .par-badge { flex-shrink: 0; }
 .par-ok { color: var(--hue-teal); }
 .par-edit-btn .ico { width: 14px; height: 14px; }
+
+/* ==========================================================================
+   ผู้ช่วย AI ในฟอร์ม PA (js/pa-ai.js) — การ์ดบนสุด · แถวปุ่มใต้ช่อง · หน้าต่างตรวจทาน
+   ใช้ .card / .btn / .modal / .field เดิม · ที่นี่มีเฉพาะส่วนที่ของเดิมไม่มี
+   ========================================================================== */
+.pa-ai-chip { --w: var(--hue-violet); }
+.pa-ai-head { display: flex; align-items: center; gap: 14px; margin-bottom: 12px; }
+.pa-ai-head .card-title { margin: 0 0 2px; }
+.pa-ai-points { display: grid; gap: 4px; margin: 0 0 14px; padding-left: 20px; }
+.pa-ai-warn { margin: 0 0 14px; padding: 10px 14px; border-radius: var(--radius-s); background: var(--warning-tint); color: var(--ink); font-size: 13px; }
+.pa-ai-top .btn .ico { width: 18px; height: 18px; }
+
+.pa-ai-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; }
+.pa-ai-tag { display: inline-flex; align-items: center; gap: 5px; margin-right: 4px; font-size: 12.5px; font-weight: 700; color: var(--primary-dark); }
+.pa-ai-tag .ico { width: 16px; height: 16px; }
+.pa-ai-quiet { background: transparent; color: var(--ink-soft); }
+.pa-ai-quiet:hover { background: var(--hover-wash); color: var(--ink); }
+
+.modal.pa-ai-modal { display: flex; flex-direction: column; overflow: hidden; }
+.pa-ai-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; margin-bottom: 10px; }
+.pa-ai-list { flex: 1; min-height: 0; overflow-y: auto; margin: 0 -8px; padding: 0 8px; }
+.pa-ai-grp { margin-top: 10px; padding-top: 12px; border-top: 1px solid var(--border); font-size: 13.5px; font-weight: 700; color: var(--ink); }
+.pa-ai-list > .pa-ai-grp:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
+.pa-ai-item { margin-top: 10px; }
+.pa-ai-item .pa-check { font-weight: 700; }
+.pa-ai-item .field { margin: 8px 0 4px; }
+.pa-ai-old { margin-top: 6px; font-size: 13px; color: var(--ink-soft); }
+.pa-ai-old summary { cursor: pointer; font-weight: 600; }
+.pa-ai-old-text { margin-top: 6px; padding: 10px 12px; border-radius: var(--radius-s); background: var(--surface-sunken); white-space: pre-wrap; overflow-wrap: anywhere; }
+@media (max-width: 540px) {
+  .pa-ai-top .btn { width: 100%; }
+}
