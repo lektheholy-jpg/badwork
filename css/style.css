@@ -75,10 +75,10 @@
   --th-bg: #EBEEF3;  --th-ink: #1B2130;  --th-line: #C9D0DB;
   --head-grad: var(--th-bg);  --head-solid: #2B3345;  --sheet-head: var(--th-bg);
   --tbl-total-bg: color-mix(in srgb, var(--primary-solid) 34%, var(--card));  --tbl-total-ink: var(--ink);  /* คอลัมน์ "รวม" ในตาราง: ฟ้าตามธีมเข้มกว่าพื้นกลุ่มคะแนน */
-  --col-collect-strong: #1F66D6;  --col-collect: #E6F0FF;
-  --col-mid-strong: #0E8A63;      --col-mid: #E1F5EC;
-  --col-final-strong: #6740CC;    --col-final: #EEE8FD;
-  --grp-collect-h: #CFE2FF;  --grp-mid-h: #C8EBDB;  --grp-final-h: #DDD2FA;
+  --col-collect-strong: #8A919E;  --col-collect: #F7F7F8;
+  --col-mid-strong: #8A919E;      --col-mid: #F3F3F4;
+  --col-final-strong: #8A919E;    --col-final: #EFEFF0;
+  --grp-collect-h: #ECECED;  --grp-mid-h: #E7E7E8;  --grp-final-h: #E2E2E4;
   --zebra: #F7F8FA;  --row-on: #E8F0FE;
   --viz-track: #E3E6EC;
   --viz-bar: var(--viz-blue);
@@ -705,6 +705,29 @@ table.sheet :is(th, td).sticky-right-2 { right: 0; width: var(--r2-w); min-width
 @keyframes island-slide { from { transform: translateX(-100%); } to { transform: translateX(263%); } }
 @media print { .island { display: none; } }
 
+/* ===== จอ 2 คอลัมน์ (≥1360px): island ชิดกึ่งกลางระหว่าง 2 คอลัมน์ของ .dash พอดี =====
+   สูตร: sidebar-w + padding-l + left-col (1.25/2.25 ของ grid-width) + half-gap
+   grid-width = 100vw - sidebar-w - 2*padding - gap                                    */
+@media (min-width: 1360px) {
+  .island {
+    left: calc(
+      var(--sidebar-w) +
+      clamp(24px, 3vw, 72px) +
+      (100vw - var(--sidebar-w) - 2 * clamp(24px, 3vw, 72px) - clamp(24px, 2vw, 44px)) * 0.5556 +
+      clamp(24px, 2vw, 44px) * 0.5
+    );
+    transform: translateX(-50%);
+  }
+  #app.sidebar-collapsed .island {
+    left: calc(
+      var(--sidebar-w-collapsed) +
+      clamp(24px, 3vw, 72px) +
+      (100vw - var(--sidebar-w-collapsed) - 2 * clamp(24px, 3vw, 72px) - clamp(24px, 2vw, 44px)) * 0.5556 +
+      clamp(24px, 2vw, 44px) * 0.5
+    );
+  }
+}
+
 /* ==========================================================================
    Responsive: mobile — off-canvas sidebar with hamburger
    ========================================================================== */
@@ -1161,10 +1184,10 @@ table.sheet tbody tr:last-child td { border-bottom: none; }
   --th-bg: #2A2D38;  --th-ink: #F1F3F8;  --th-line: #444A5A;
   --head-grad: var(--th-bg);  --head-solid: #3A4156;  --sheet-head: var(--th-bg);
   --tbl-total-bg: color-mix(in srgb, var(--primary-solid) 45%, var(--card));  --tbl-total-ink: var(--ink);
-  --col-collect-strong: #7DB4FF;  --col-collect: #162A44;
-  --col-mid-strong: #4FDDB0;      --col-mid: #102E26;
-  --col-final-strong: #C5ADFF;    --col-final: #2A2050;
-  --grp-collect-h: #1F3B63;  --grp-mid-h: #164336;  --grp-final-h: #3A2E6E;
+  --col-collect-strong: #9AA0AE;  --col-collect: #222428;
+  --col-mid-strong: #9AA0AE;      --col-mid: #1F2126;
+  --col-final-strong: #9AA0AE;    --col-final: #1C1E24;
+  --grp-collect-h: #2A2D38;  --grp-mid-h: #272A35;  --grp-final-h: #242730;
   --zebra: #1D1F28;  --row-on: #28324A;
   --viz-track: #343848;
   --viz-bar: var(--viz-blue);
@@ -1883,7 +1906,7 @@ table.sheet tbody tr:nth-child(n) td.over-max { background: var(--danger-tint); 
 .bg-cap { position: absolute; left: 6px; bottom: 6px; max-width: calc(100% - 12px); padding: 0 8px; border-radius: var(--radius-pill); background: var(--card); color: var(--ink); font-size: 11px; font-weight: 600; line-height: 1.7; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* ----- หน้าตั้งค่า: จอกว้าง 2 คอลัมน์ (บัญชี·ธีม·ความเป็นส่วนตัว ซ้าย / พื้นหลัง ขวา) · มือถือ 1 คอลัมน์ตามลำดับเดิม ----- */
-.settings-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; align-items: start; max-width: 1040px; }
+.settings-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; align-items: start; }
 .settings-grid > .card { margin: 0; min-width: 0; }
 .settings-grid .card-title { margin: 0 0 4px; }
 .settings-profile { display: flex; align-items: center; gap: 12px; margin: 10px 0 14px; min-width: 0; }
