@@ -1545,7 +1545,7 @@ button.brand:hover .mark { transform: rotate(-6deg) scale(1.04); }
 @media (max-width: 640px) { .site-banner { margin-bottom: 4px; } .site-banner img { height: 170px; } }
 
 /* ===== จอคอม: ขยายเนื้อหาให้เต็มพื้นที่ แทนที่จะเหลือขอบว่างสองข้าง ===== */
-/* จอกว้าง (≥1360px): หน้าแรกแบ่ง 2 คอลัมน์ — ซ้าย: นาฬิกา/อากาศ + กราฟ · ขวา: ความคืบหน้าล่าสุด */
+/* จอกว้าง (≥1360px): หน้าแรกแบ่ง 2 คอลัมน์ "เท่ากัน" — รอยแบ่งอยู่กึ่งกลางเนื้อหาพอดี ตรงกับ Dynamic Island (.island อยู่กึ่งกลางเนื้อหาเช่นกัน) · ห้ามใช้สัดส่วนไม่เท่ากัน (เช่น 1.25fr / 1fr) · ซ้าย: นาฬิกา/อากาศ + กราฟ · ขวา: ความคืบหน้าล่าสุด */
 /* จอใหญ่มาก: ให้การ์ดนาฬิกา/อากาศ และกราฟสูงขึ้นเล็กน้อยให้สมดุลกับคอลัมน์ขวา */
 @media (min-width: 1700px) { .dash { column-gap: 32px; } }
 
@@ -1610,7 +1610,7 @@ button.brand:hover .mark { transform: rotate(-6deg) scale(1.04); }
 @media (min-width: 1360px) {
   /* แถว 1: ซ้าย = วิดเจ็ตเวลา+อากาศ · ขวา = แบนเนอร์แมว (ขยายใหญ่ ความสูงเท่ากัน)
      แถว 2: ซ้าย = กราฟรายห้อง · ขวา = ความคืบหน้าล่าสุด */
-  .dash { --hero-h: clamp(200px, 14.5vw, 380px); display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(500px, 1fr); grid-template-rows: auto auto auto; column-gap: clamp(24px, 2vw, 44px); align-items: start; }
+  .dash { --hero-h: clamp(200px, 14.5vw, 380px); display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: auto auto auto; column-gap: clamp(24px, 2vw, 44px); align-items: start; }
   .dash > .cw-row { grid-column: 1; grid-row: 1; align-self: stretch; margin-bottom: clamp(12px, 1.2vw, 22px); }
   .dash > .cw-row .cw-card { min-height: var(--hero-h); }
   .dash > .site-banner { grid-column: 2; grid-row: 1; align-self: stretch; justify-content: center; gap: clamp(16px, 2.4vw, 48px); margin: 0 0 clamp(12px, 1.2vw, 22px); padding: 0 clamp(8px, 2vw, 36px); }
@@ -1637,9 +1637,8 @@ button.brand:hover .mark { transform: rotate(-6deg) scale(1.04); }
   .dash > .rc-card .rc-plot svg { position: absolute; inset: 0; width: 100%; height: 100%; }
 }
 
-/* จอ 1360–1699px: คอลัมน์ขวาแคบลงเล็กน้อยให้คอลัมน์ซ้าย (อากาศ) ไม่แน่น */
+/* จอ 1360–1699px: แถวความคืบหน้าแน่นขึ้นเล็กน้อย (คอลัมน์ยังแบ่งเท่ากัน ไม่ตั้ง grid-template-columns ใหม่ตรงนี้) */
 @media (min-width: 1360px) and (max-width: 1699px) {
-  .dash { grid-template-columns: minmax(0, 1.3fr) minmax(430px, 1fr); }
   .dash > .prog-section .prog-row { grid-template-columns: 12px minmax(0, 1.3fr) minmax(0, 1fr) 64px 40px; gap: 10px; padding: 9px 16px; }
 }
 
