@@ -705,28 +705,8 @@ table.sheet :is(th, td).sticky-right-2 { right: 0; width: var(--r2-w); min-width
 @keyframes island-slide { from { transform: translateX(-100%); } to { transform: translateX(263%); } }
 @media print { .island { display: none; } }
 
-/* ===== จอ 2 คอลัมน์ (≥1360px): island ชิดกึ่งกลางระหว่าง 2 คอลัมน์ของ .dash พอดี =====
-   สูตร: sidebar-w + padding-l + left-col (1.25/2.25 ของ grid-width) + half-gap
-   grid-width = 100vw - sidebar-w - 2*padding - gap                                    */
-@media (min-width: 1360px) {
-  .island {
-    left: calc(
-      var(--sidebar-w) +
-      clamp(24px, 3vw, 72px) +
-      (100vw - var(--sidebar-w) - 2 * clamp(24px, 3vw, 72px) - clamp(24px, 2vw, 44px)) * 0.5556 +
-      clamp(24px, 2vw, 44px) * 0.5
-    );
-    transform: translateX(-50%);
-  }
-  #app.sidebar-collapsed .island {
-    left: calc(
-      var(--sidebar-w-collapsed) +
-      clamp(24px, 3vw, 72px) +
-      (100vw - var(--sidebar-w-collapsed) - 2 * clamp(24px, 3vw, 72px) - clamp(24px, 2vw, 44px)) * 0.5556 +
-      clamp(24px, 2vw, 44px) * 0.5
-    );
-  }
-}
+/* island อยู่กึ่งกลางหน้าจอเสมอ (left: 50% + translateX(-50%) จากกฎ .island ด้านบน) ทุกหน้าและทุกขนาดจอ
+   เคยมีกฎ ≥1360px ที่คำนวณให้ชิดกลาง 2 คอลัมน์ของ .dash → ทำให้เยื้องไปทางขวาและผิดตำแหน่งในหน้าอื่นที่ไม่มี 2 คอลัมน์ จึงเอาออกแล้ว */
 
 /* ==========================================================================
    Responsive: mobile — off-canvas sidebar with hamburger
