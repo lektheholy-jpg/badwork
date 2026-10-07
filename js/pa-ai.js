@@ -3,7 +3,7 @@
 //   เรียก Gemini ผ่าน Firebase AI Logic (ไม่มี API key ในโค้ด · ป้องกันด้วย App Check + reCAPTCHA v3)
 //   - ปุ่มใต้ช่องส่วนที่ 2 (ประเด็นท้าทาย) : ช่วยเขียน/เติม · ปรับสำนวน · ทำให้กระชับ
 //   - ปุ่มใต้งานมาตรฐานตำแหน่งแต่ละข้อ (1.1–3.3) : ช่วยเขียนช่องที่ว่าง · ปรับสำนวนทั้งข้อ
-//   - ปุ่มบนสุดของฟอร์ม : ร่างทุกช่องที่ยังว่างในครั้งเดียว โดยอ่านจากข้อมูลที่มีอยู่ในเอกสาร
+//   - ปุ่มบนสุดของฟอร์ม : ร่างช่องส่วนที่ 2 ที่ยังว่างในครั้งเดียว (1 คำขอ) โดยอ่านจากข้อมูลที่มีอยู่ในเอกสาร
 //   ข้อความจาก AI แสดงในกรอบให้ตรวจ/แก้ก่อน "ใช้" เสมอ · ไม่บันทึกอัตโนมัติ · ตัวเลขที่ไม่มีข้อมูลให้เป็น "…"
 //   โหลดแบบ lazy: SDK ของ Firebase AI จะถูกดึงเมื่อกดปุ่ม AI ครั้งแรกเท่านั้น
 //   ต้องโหลดหลัง pa.js · pa.js เรียก paAiMount(view, form) ท้าย renderPAFormView
@@ -37,31 +37,40 @@ const PA_AI_MODE_TXT = {
 // ช่องส่วนที่ 2 (ตรงกับ id ใน renderPAFormView)
 const PA_AI_PART2 = [
   { key: 'challengeTitle', el: 'pa-challengeTitle', label: 'เรื่อง ประเด็นท้าทาย',
-    hint: 'ชื่อเรื่องเดียว ขึ้นต้นด้วย "การพัฒนา…" ระบุสิ่งที่พัฒนา กลุ่มผู้เรียน และวิธีหรือนวัตกรรมโดยสังเขป ไม่เกิน 2 บรรทัด' },
+    hint: 'ชื่อเรื่องเดียว ขึ้นต้นด้วย "การพัฒนา…" ระบุสิ่งที่พัฒนา กลุ่มผู้เรียน และวิธีหรือนวัตกรรมโดยสังเขป ไม่เกิน 150 ตัวอักษร' },
   { key: 'problem', el: 'pa-problem', label: '1. สภาพปัญหาของผู้เรียนและการจัดการเรียนรู้',
-    hint: 'บรรยายสภาพปัญหาที่เกี่ยวกับประเด็นท้าทาย 1–2 ย่อหน้า ประมาณ 4–6 ประโยค ใช้ลักษณะปัญหาที่พบทั่วไปในรายวิชา/ระดับที่สอน ไม่อ้างสถิติที่ไม่ได้ให้ไว้' },
+    hint: 'บรรยายสภาพปัญหาที่เกี่ยวกับประเด็นท้าทาย ประมาณ 4–6 ประโยค ไม่เกิน 700 ตัวอักษร ใช้ลักษณะปัญหาที่พบทั่วไปในรายวิชา/ระดับที่สอน ไม่อ้างสถิติที่ไม่ได้ให้ไว้' },
   { key: 'method', el: 'pa-method', label: '2. วิธีการดำเนินการให้บรรลุผล',
-    hint: 'ลำดับขั้นตอน 4–6 ข้อ ขึ้นต้นแต่ละข้อด้วยเลข ข้อละ 1–2 บรรทัด ครอบคลุม ศึกษาและวิเคราะห์ ออกแบบ ดำเนินการ วัดและประเมินผล สรุปและรายงานผล' },
+    hint: 'ลำดับขั้นตอน 4–6 ข้อ ขึ้นต้นแต่ละข้อด้วยเลข ข้อละไม่เกิน 120 ตัวอักษร ครอบคลุม ศึกษาและวิเคราะห์ ออกแบบ ดำเนินการ วัดและประเมินผล สรุปและรายงานผล' },
   { key: 'outcomeQuant', el: 'pa-outcomeQuant', label: '3.1 ผลลัพธ์การพัฒนาที่คาดหวัง · เชิงปริมาณ',
-    hint: '2–3 ข้อ ใช้ "…" แทนจำนวนห้อง จำนวนนักเรียน และร้อยละที่ครูต้องกำหนดเอง' },
+    hint: '2–3 ข้อ ข้อละไม่เกิน 100 ตัวอักษร ใช้ "…" แทนจำนวนห้อง จำนวนนักเรียน และร้อยละที่ครูต้องกำหนดเอง' },
   { key: 'outcomeQual', el: 'pa-outcomeQual', label: '3.2 ผลลัพธ์การพัฒนาที่คาดหวัง · เชิงคุณภาพ',
-    hint: '2–3 ข้อ อธิบายการเปลี่ยนแปลงด้านคุณภาพของผู้เรียนและการจัดการเรียนรู้' },
+    hint: '2–3 ข้อ ข้อละไม่เกิน 100 ตัวอักษร อธิบายการเปลี่ยนแปลงด้านคุณภาพของผู้เรียนและการจัดการเรียนรู้' },
 ];
+
+// แนวทางของช่องงาน 4 แบบ — ส่งไปกับพร้อมต์ "ครั้งเดียวต่อคำขอ" แทนการแนบซ้ำทุกช่อง (ประหยัด token)
+const PA_AI_WORK_HINTS = {
+  s1: 'งานที่จะทำจริงในภาคเรียนนี้ ไม่เกิน 150 ตัวอักษร ขึ้นต้นด้วยคำกริยา เชื่อมกับรายวิชาที่สอน',
+  s2: 'งานที่จะทำจริงในภาคเรียนนี้ ไม่เกิน 150 ตัวอักษร ขึ้นต้นด้วยคำกริยา ต่อยอดจากภาคเรียนแรก',
+  outcome: 'ไม่เกิน 120 ตัวอักษร ระบุสิ่งที่เกิดกับผู้เรียน ไม่ใช่สิ่งที่ครูทำ',
+  indicator: 'ไม่เกิน 120 ตัวอักษร วัดได้ ใช้ "…" แทนตัวเลขเป้าหมายที่ครูต้องกำหนดเอง',
+};
 
 // ช่องงานตามมาตรฐานตำแหน่ง 15 ข้อ × 4 ช่อง (ids = ระบุเฉพาะบางข้อ หรือ null = ทั้งหมด)
 function paAiWorkSpecs(ids) {
   const [t1, t2] = paTermLabels(PAState.doc?.fiscalYear);
   const defs = [
-    ['s1', `งานที่จะดำเนินการ · ${t1}`, 'งานที่จะทำจริงในภาคเรียนนี้ 1–3 บรรทัด ขึ้นต้นด้วยคำกริยา เชื่อมกับรายวิชาที่สอน'],
-    ['s2', `งานที่จะดำเนินการ · ${t2}`, 'งานที่จะทำจริงในภาคเรียนนี้ 1–3 บรรทัด ขึ้นต้นด้วยคำกริยา ต่อยอดจากภาคเรียนแรก'],
-    ['outcome', 'ผลลัพธ์ (Outcomes) ที่คาดหวังกับผู้เรียน', '1–2 บรรทัด ระบุสิ่งที่เกิดกับผู้เรียน ไม่ใช่สิ่งที่ครูทำ'],
-    ['indicator', 'ตัวชี้วัด (Indicators)', '1–2 บรรทัด วัดได้ ใช้ "…" แทนตัวเลขเป้าหมายที่ครูต้องกำหนดเอง'],
+    ['s1', `งานที่จะดำเนินการ · ${t1}`, PA_AI_WORK_HINTS.s1],
+    ['s2', `งานที่จะดำเนินการ · ${t2}`, PA_AI_WORK_HINTS.s2],
+    ['outcome', 'ผลลัพธ์ (Outcomes) ที่คาดหวังกับผู้เรียน', PA_AI_WORK_HINTS.outcome],
+    ['indicator', 'ตัวชี้วัด (Indicators)', PA_AI_WORK_HINTS.indicator],
   ];
   const out = [];
   PA_WORK_ITEMS.forEach(([, , items]) => items.forEach(([id, label]) => {
     if (ids && !ids.includes(id)) return;
     defs.forEach(([f, fl, hint]) => out.push({
       key: `${id}.${f}`, el: `pa-wi-${id.replace('.', '_')}-${f}`, group: id[0],
+      item: `${id} ${label}`, fieldLabel: fl,
       label: `ข้อ ${id} ${label} — ${fl}`, hint,
     }));
   }));
@@ -158,7 +167,7 @@ function paAiContext(known = {}) {
   const names = { challengeTitle: 'ประเด็นท้าทาย', problem: 'สภาพปัญหา', method: 'วิธีดำเนินการ', outcomeQuant: 'ผลลัพธ์เชิงปริมาณ', outcomeQual: 'ผลลัพธ์เชิงคุณภาพ' };
   Object.entries(names).forEach(([k, lab]) => {
     const v = String(known[k] ?? d[k] ?? '').trim();
-    if (v) lines.push(`${lab} (มีอยู่แล้วในเอกสาร): ${v.slice(0, 1500)}`);
+    if (v) lines.push(`${lab} (มีอยู่แล้วในเอกสาร): ${v.slice(0, 400)}`);
   });
   return lines.join('\n');
 }
@@ -170,9 +179,27 @@ async function paAiBatch(specs, mode, known) {
     return { ...s, el, current: (el?.value || '').trim() };
   }).filter(f => f.el);
   if (!fields.length) return [];
-  const list = fields.map(f => `- "${f.key}" ชื่อช่อง: ${f.label}\n  แนวทาง: ${f.hint}\n  งาน: ${PA_AI_MODE_TXT[mode](f.current)}`
-    + (f.current ? `\n  ข้อความเดิม: """${f.current.slice(0, 2000)}"""` : '')).join('\n');
-  const prompt = `ข้อมูลประกอบ:\n${paAiContext(known)}\n\nช่องที่ต้องการ:\n${list}\n\nตอบเป็น JSON object ที่มีคีย์เหล่านี้เท่านั้น: ${JSON.stringify(fields.map(f => f.key))}`;
+  // งานหลักบอกครั้งเดียว · ช่องที่มี "ข้อความเดิม" บอกซ้ำเฉพาะเมื่อคำสั่งต่างจากค่าตั้งต้น (เช่น โหมดต่อเติม)
+  const base = PA_AI_MODE_TXT[mode]('');
+  const lines = [];
+  let lastItem = '';
+  fields.forEach(f => {
+    if (f.group) { // ช่องงาน: ชื่อข้อใส่ครั้งเดียวต่อข้อ · แนวทางอยู่ในบล็อกกลาง
+      if (f.item !== lastItem) { lines.push(`ข้อ ${f.item}`); lastItem = f.item; }
+      lines.push(`- "${f.key}" ${f.fieldLabel}`);
+    } else {
+      lastItem = '';
+      lines.push(`- "${f.key}" ชื่อช่อง: ${f.label}\n  แนวทาง: ${f.hint}`);
+    }
+    if (f.current) {
+      const t = PA_AI_MODE_TXT[mode](f.current);
+      lines.push((t !== base ? `  งาน: ${t}\n` : '') + `  ข้อความเดิม: """${f.current.slice(0, 2000)}"""`);
+    }
+  });
+  const guide = fields.some(f => f.group)
+    ? `\n\nแนวทางช่องงาน (ใช้กับทุกข้อ ตามส่วนท้ายของคีย์):\n${Object.entries(PA_AI_WORK_HINTS).map(([k, v]) => `- .${k}: ${v}`).join('\n')}`
+    : '';
+  const prompt = `ข้อมูลประกอบ:\n${paAiContext(known)}\n\nงาน (ทุกช่อง): ${base}${guide}\n\nช่องที่ต้องการ:\n${lines.join('\n')}\n\nตอบเป็น JSON object ที่มีคีย์เหล่านี้เท่านั้น: ${JSON.stringify(fields.map(f => f.key))}`;
   const out = await paAiGenerate(prompt);
   return fields.map(f => ({ ...f, proposed: String(out[f.key] ?? '').trim() })).filter(f => f.proposed);
 }
@@ -274,31 +301,13 @@ async function paAiRunFields(btn, specs, mode) {
   paAiReview(items);
 }
 
+// ปุ่มบนสุด: ร่างเฉพาะช่องส่วนที่ 2 ที่ยังว่าง (5 ช่อง = 1 คำขอ)
+// ช่องงาน 1.1–3.3 ใช้ปุ่มใต้แต่ละข้อ (ข้อละ 4 ช่อง) ไม่ยิงทั้ง 60 ช่องในครั้งเดียวอีกต่อไป
 async function paAiDraftAll(btn) {
   const empty = s => !((document.getElementById(s.el)?.value || '').trim());
-  const all = paAiWorkSpecs(null);
-  const batches = [PA_AI_PART2, ...['1', '2', '3'].map(g => all.filter(s => s.group === g))]
-    .map(b => b.filter(empty)).filter(b => b.length);
-  if (!batches.length) { showToast('ทุกช่องมีข้อความแล้ว — ใช้ปุ่มปรับสำนวนใต้แต่ละช่องได้'); return; }
-
-  const items = [];
-  let failed = null;
-  const ran = await paAiGuard(btn, async setP => {
-    const known = {};
-    for (let i = 0; i < batches.length; i++) {
-      setP(`กำลังร่าง… (${i + 1}/${batches.length})`);
-      try {
-        const got = await paAiBatch(batches[i], 'write', known);
-        items.push(...got);
-        got.forEach(g => { if (PA_AI_PART2.some(p => p.key === g.key)) known[g.key] = g.proposed; });
-      } catch (err) { failed = err; break; }
-    }
-    return true;
-  });
-  if (!ran) return;
-  if (!items.length) { if (failed) paAiError(failed); else showToast('AI ไม่ได้ส่งข้อความกลับมา ลองอีกครั้ง'); return; }
-  if (failed) console.error('PA AI (บางส่วนไม่สำเร็จ):', failed);
-  paAiReview(items, failed ? 'ร่างได้ไม่ครบ บางส่วนไม่สำเร็จ — กดร่างอีกครั้งเพื่อเติมช่องที่เหลือ' : '');
+  const pick = PA_AI_PART2.filter(empty);
+  if (!pick.length) { showToast('ช่องส่วนที่ 2 มีข้อความครบแล้ว — ใช้ปุ่มปรับสำนวนใต้แต่ละช่อง หรือปุ่มของแต่ละข้อในส่วนงานตามมาตรฐานตำแหน่งได้'); return; }
+  await paAiRunFields(btn, pick, 'write');
 }
 
 // ------------------------------------------------------------------
@@ -337,8 +346,8 @@ function paAiMount(view, form) {
   const top = document.createElement('div');
   top.className = 'card card-pad pa-ai-top';
   top.innerHTML = `<div class="pa-ai-top-t">${PA_AI_ICON}<b>ผู้ช่วย AI (Gemini)</b></div>
-    <div class="u-note">ร่างข้อความให้ทุกช่องที่ยังว่าง โดยอ่านจากข้อมูลที่มีอยู่แล้วในเอกสารนี้ (รายวิชา ชั่วโมงสอน ประเภทห้องเรียน และข้อความที่กรอกไว้) · แสดงให้ตรวจทานก่อนใช้เสมอ ไม่บันทึกอัตโนมัติ · ช่องที่กรอกแล้วจะไม่ถูกเขียนทับ · ไม่ควรพิมพ์ชื่อหรือข้อมูลที่ระบุตัวนักเรียนลงในช่อง</div>
-    <button type="button" class="btn btn-primary btn-sm" data-pa-ai="all">${PA_AI_ICON} ร่างช่องที่ว่างทั้งหมด</button>`;
+    <div class="u-note">ร่างข้อความส่วนที่ 2 (ประเด็นท้าทาย) ที่ยังว่างในครั้งเดียว ส่วนงานตามมาตรฐานตำแหน่งใช้ปุ่มใต้แต่ละข้อ โดยอ่านจากข้อมูลที่มีอยู่แล้วในเอกสารนี้ (รายวิชา ชั่วโมงสอน ประเภทห้องเรียน และข้อความที่กรอกไว้) · แสดงให้ตรวจทานก่อนใช้เสมอ ไม่บันทึกอัตโนมัติ · ช่องที่กรอกแล้วจะไม่ถูกเขียนทับ · ไม่ควรพิมพ์ชื่อหรือข้อมูลที่ระบุตัวนักเรียนลงในช่อง</div>
+    <button type="button" class="btn btn-primary btn-sm" data-pa-ai="all">${PA_AI_ICON} ร่างส่วนที่ 2 ที่ว่าง</button>`;
   form.insertBefore(top, form.firstChild);
 
   // 2) ใต้ช่องส่วนที่ 2
