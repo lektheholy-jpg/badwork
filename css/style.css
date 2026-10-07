@@ -1962,8 +1962,12 @@ table.tt tr.is-today td.tt-cell { background: color-mix(in srgb, var(--hue-orang
 .tt-item { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; width: 100%; min-height: 84px; padding: 8px 10px; border: none; border-radius: var(--radius-s); background: var(--w); color: var(--on-w); font: inherit; text-align: left; cursor: pointer; overflow: hidden; }
 .tt-item:hover { filter: brightness(1.08); }
 .tt-item:focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; }
-.tt-link { cursor: pointer; text-underline-offset: 3px; }
-.tt-link:hover { text-decoration: underline; }
+.tt-item.is-link { position: relative; }
+.tt-item.is-link .tt-title { padding-right: 22px; }
+.tt-edit { position: absolute; top: 6px; right: 6px; display: grid; place-items: center; width: 26px; height: 26px; padding: 0; border: none; border-radius: 50%; background: color-mix(in srgb, var(--on-w) 22%, var(--w)); color: var(--on-w); cursor: pointer; }
+.tt-edit:hover { background: color-mix(in srgb, var(--on-w) 38%, var(--w)); }
+.tt-edit:focus-visible { outline: 3px solid var(--on-w); outline-offset: 1px; }
+.tt-edit .ico { width: 14px; height: 14px; }
 .tt-code { padding: 1px 8px; border-radius: var(--radius-pill); background: color-mix(in srgb, var(--on-w) 22%, var(--w)); color: var(--on-w); font-size: 11.5px; font-weight: 700; }
 .tt-title { font-size: 13px; font-weight: 700; line-height: 1.35; overflow-wrap: anywhere; }
 .tt-meta { display: flex; flex-wrap: wrap; gap: 2px 8px; font-size: 12px; color: color-mix(in srgb, var(--on-w) 78%, var(--w)); }

@@ -142,13 +142,20 @@ function ttLayoutDay(entries, day) {
 
 function ttItemHtml(e, courseIds) {
   const meta = [e.cls, e.room].filter(Boolean).map(t => `<span>${escapeHtml(t)}</span>`).join('');
-  return `
-    <button type="button" class="tt-item" style="--w:var(--hue-${e.hue})" data-id="${escapeHtml(e.id)}" aria-label="แก้ไข ${escapeHtml(e.title)}">
+  const inner = `
       ${e.code ? `<span class="tt-code">${escapeHtml(e.code)}</span>` : ''}
-      ${ttLinkable(e, courseIds)
-        ? `<span class="tt-title tt-link" role="link" data-score-go="${escapeHtml(e.id)}" title="ไปหน้าบันทึกคะแนน">${escapeHtml(e.title)}</span>`
-        : `<span class="tt-title">${escapeHtml(e.title)}</span>`}
-      ${meta ? `<span class="tt-meta">${meta}</span>` : ''}
+      <span class="tt-title">${escapeHtml(e.title)}</span>
+      ${meta ? `<span class="tt-meta">${meta}</span>` : ''}`;
+  const id = escapeHtml(e.id), hue = `style="--w:var(--hue-${e.hue})"`;
+  // คาบที่ผูกกับรายวิชา: กดทั้งกรอบ = ไปหน้าบันทึกคะแนน · แก้ไขคาบใช้ปุ่มดินสอมุมกรอบ
+  if (ttLinkable(e, courseIds)) {
+    return `
+    <div class="tt-item is-link" role="link" tabindex="0" ${hue} data-id="${id}" data-score-go="${id}" aria-label="ไปหน้าบันทึกคะแนน ${escapeHtml(e.title)}" title="ไปหน้าบันทึกคะแนน">
+      <button type="button" class="tt-edit" data-edit="${id}" aria-label="แก้ไข ${escapeHtml(e.title)}" title="แก้ไขคาบ">${icon('edit')}</button>${inner}
+    </div>`;
+  }
+  return `
+    <button type="button" class="tt-item" ${hue} data-id="${id}" aria-label="แก้ไข ${escapeHtml(e.title)}">${inner}
     </button>`;
 }
 
@@ -484,9 +491,20 @@ async function renderTimetableTab(body, isActive = () => true) {
   };
   const ctx = { state, commit, removeEntries };
 
+  gridEl.addEventListener('keydown', ev => {
+    const go = ev.target.closest('[data-score-go]');
+    if (!go || ev.target !== go || (ev.key !== 'Enter' && ev.key !== ' ')) return;
+    ev.preventDefault();
+    const entry = state.tt.entries.find(e => e.id === go.dataset.scoreGo);
+    if (entry) ttOpenScores(entry);
+  });
   gridEl.addEventListener('click', ev => {
-    const item = ev.target.closest('.tt-item'), add = ev.target.closest('.tt-add'), go = ev.target.closest('[data-score-go]');
-    if (go) {
+    const item = ev.target.closest('.tt-item'), add = ev.target.closest('.tt-add');
+    const edit = ev.target.closest('[data-edit]'), go = ev.target.closest('[data-score-go]');
+    if (edit) {
+      const entry = state.tt.entries.find(e => e.id === edit.dataset.edit);
+      if (entry) ttEntryModal(ctx, { entry });
+    } else if (go) {
       const entry = state.tt.entries.find(e => e.id === go.dataset.scoreGo);
       if (entry) ttOpenScores(entry);
     } else if (item) {
