@@ -74,6 +74,7 @@
   --viz-sky: #1A9FD0;   --viz-mint: #3FB86B;   --viz-orchid: #A25BE0;
   --th-bg: #EBEEF3;  --th-ink: #1B2130;  --th-line: #C9D0DB;
   --head-grad: var(--th-bg);  --head-solid: #2B3345;  --sheet-head: var(--th-bg);
+  --tbl-total-bg: color-mix(in srgb, var(--primary-solid) 34%, var(--card));  --tbl-total-ink: var(--ink);  /* คอลัมน์ "รวม" ในตาราง: ฟ้าตามธีมเข้มกว่าพื้นกลุ่มคะแนน */
   --col-collect-strong: #1F66D6;  --col-collect: #E6F0FF;
   --col-mid-strong: #0E8A63;      --col-mid: #E1F5EC;
   --col-final-strong: #6740CC;    --col-final: #EEE8FD;
@@ -469,7 +470,7 @@ table.sheet td input.score-input:focus {
 }
 
 table.sheet td.total-cell.sticky-right-1 { font-family: var(--font-mono); font-weight: 700; text-align: center; padding: 10px 6px;
-  background: var(--head-solid); color: var(--white); }
+  background: var(--tbl-total-bg); color: var(--tbl-total-ink); }
 table.sheet td.total-cell.sticky-right-2 { padding: 10px 6px; text-align: center; background: var(--card); }
 table.sheet td.over-max input { color: var(--danger); }
 
@@ -766,10 +767,10 @@ table.sheet :is(th, td).sticky-right-2 { right: 0; width: var(--r2-w); min-width
 .gs-select, .grade-room-filter {
   font-size: 12.5px; border: 1.5px solid transparent; border-radius: var(--radius-s); font-family: var(--font); padding: 12px 14px; background: var(--surface-sunken); color: var(--ink);
 }
-.gs-wrap { overflow-x: auto; border: none; border-radius: var(--radius-m); box-shadow: inset 0 0 0 1px var(--border); background: var(--card); }
-.gs-table { border-collapse: collapse; width: 100%; min-width: 760px; font-size: 14px; }
-.gs-table th, .gs-table td { text-align: center; line-height: 1.35; background: var(--sheet-head); border: none; border-bottom: 1px solid var(--border); padding: 9px 8px; color: var(--ink); font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
-.gs-table thead th { white-space: nowrap; padding: 8px 6px;
+.gs-wrap { overflow-x: auto; border: none; border-radius: var(--radius-l); box-shadow: inset 0 0 0 1px var(--border); background: var(--card); }
+.gs-table { border-collapse: collapse; width: 100%; min-width: 760px; font-size: 13.5px; }
+.gs-table th, .gs-table td { text-align: center; line-height: 1.35; background: var(--card); border: none; border-bottom: 1px solid var(--border); padding: 9px 8px; color: var(--ink); font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.gs-table thead th { white-space: nowrap; padding: 8px 6px; font-family: var(--font);
   background: var(--th-bg); color: var(--th-ink); font-weight: 700;
   border-bottom: 2px solid var(--th-line); text-shadow: none; border-right: 1px solid var(--th-line); }
 .gs-table td.gs-n { font-weight: 700; }
@@ -797,8 +798,8 @@ table.sheet :is(th, td).sticky-right-2 { right: 0; width: var(--r2-w); min-width
 .grade-stat-card .dist-row .g-count { width: 20px; }
 /* ---------- แปลงคะแนน SGS (พรีวิวในหน้ารายงาน) ---------- */
 .modal.modal-wide { width: 880px; }
-.ns-table-wrap { max-height: 320px; overflow: auto; border: 1px solid var(--border); margin-top: 8px; border-color: var(--border); border-radius: var(--radius-s); background: var(--card); }
-.ns-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.ns-table-wrap { max-height: 320px; overflow: auto; border: 1px solid var(--border); margin-top: 8px; border-color: var(--border); border-radius: var(--radius-m); background: var(--card); }
+.ns-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .ns-table th { position: sticky; top: 0; padding: 8px 8px; text-align: center; white-space: nowrap;
   background: var(--th-bg); color: var(--th-ink); font-weight: 700;
   border-bottom: 2px solid var(--th-line); text-shadow: none; }
@@ -886,7 +887,7 @@ table.sheet tbody tr:nth-child(even) td.grp-sub-total { background: var(--col-co
 .main .group-creator { border-radius: 4px; }
 
 /* ตารางบันทึกคะแนนกว้างกว่ากระดาษ → ให้เลื่อนในกรอบตัวเอง ไม่ดันแผ่นกระดาษให้ล้น */
-.main .sheet-wrap { border: 1px solid var(--paper-rule); border-radius: 2px; box-shadow: none; max-width: 100%; }
+.main .sheet-wrap { border: 1px solid var(--paper-rule); border-radius: var(--radius-l); box-shadow: none; max-width: 100%; }
 
 /* เฉพาะจอกลาง: บนมือถือ (<=860px) ให้ใช้ระยะขอบของกฎมือถือด้านบน ไม่ให้กฎนี้มาทับ */
 @media (min-width: 861px) and (max-width: 1100px) {
@@ -1159,6 +1160,7 @@ table.sheet tbody tr:last-child td { border-bottom: none; }
   --viz-sky: #4CC3F0;   --viz-mint: #6FD98C;   --viz-orchid: #CF9BFF;
   --th-bg: #2A2D38;  --th-ink: #F1F3F8;  --th-line: #444A5A;
   --head-grad: var(--th-bg);  --head-solid: #3A4156;  --sheet-head: var(--th-bg);
+  --tbl-total-bg: color-mix(in srgb, var(--primary-solid) 45%, var(--card));  --tbl-total-ink: var(--ink);
   --col-collect-strong: #7DB4FF;  --col-collect: #162A44;
   --col-mid-strong: #4FDDB0;      --col-mid: #102E26;
   --col-final-strong: #C5ADFF;    --col-final: #2A2050;
@@ -1645,7 +1647,7 @@ table.sheet tbody tr:nth-child(even) td.grp-collect-total, table.sheet tbody tr:
   background: var(--grp-collect-h); color: var(--th-ink); font-weight: 700;
 }
 table.sheet tbody tr:hover td.total-cell.sticky-right-1 {
-  background: var(--head-solid); color: var(--white);
+  background: var(--tbl-total-bg); color: var(--tbl-total-ink);
 }
 table.sheet tbody tr:nth-child(n) td.over-max { background: var(--danger-tint); }
 
@@ -1900,3 +1902,4 @@ table.sheet tbody tr:nth-child(n) td.over-max { background: var(--danger-tint); 
   .settings-actions .btn { flex: 1 1 100%; justify-content: center; }
   .bg-grid { grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); }
 }
+@media (max-width: 860px) { .main .sheet-wrap { border-radius: var(--radius-m); } }
