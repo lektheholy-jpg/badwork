@@ -225,7 +225,7 @@ const PARPT_LIST_CSS = `
 async function parptRenderList() {
   const view = paMount();
   const seq = PAState.seq;
-  showLoading('list', view);
+  paShowLoading(view);
   let list = [];
   try {
     list = await parptLoadList();
@@ -316,7 +316,7 @@ async function parptRenderForm() {
   const seq = PAState.seq;
   const d = PARptState.doc = parptNormalize(PARptState.doc);
   const isNew = !PARptState.docId;
-  showLoading('list', view);
+  paShowLoading(view);
   const { live, owner: o } = await parptOwner(d);
   if (paStale(view, seq) || PAState.tab !== 'rpt' || PARptState.view !== 'form') return;
   const frozen = d.status === 'submitted' && d.owner;

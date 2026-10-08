@@ -30,7 +30,7 @@ function paReportLegacyHtml(d) {
 async function renderPAReportView() {
   const view = paMount();
   const seq = PAState.seq;
-  showLoading('list', view);
+  paShowLoading(view);
 
   let list = [];
   try {

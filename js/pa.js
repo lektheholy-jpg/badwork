@@ -485,6 +485,22 @@ function paSwapIn(body) {
   body.classList.add(fromDim ? 'tab-swap-dim' : 'tab-swap');
 }
 
+// ตัวโหลดของหน้า PA — แก้อาการวาบตอนกดสลับแท็บ/เปิดหน้า
+//   เดิมใช้ showLoading() ซึ่งหลัง 180ms จะเอาเนื้อหาเดิมไปเปลี่ยนเป็นโครง skeleton (มีก้อนทรงปุ่มสีฟ้า)
+//   แล้วเนื้อหาจริงมาทับอีกที = วาบ 2 จังหวะ ทั้งที่รออยู่แค่แป๊บเดียว
+//   • มีเนื้อหาเดิมอยู่ (กดสลับแท็บ): ไม่ต้องทำอะไร — paSwitchTab หรี่เนื้อหาเดิม (.is-switching) ค้างไว้อยู่แล้ว
+//   • พื้นที่ว่าง (เปิดหน้า PA ครั้งแรก): รอ 450ms ก่อนค่อยโชว์ skeleton ถ้าข้อมูลมาเร็วกว่านั้นจะไม่เห็นเลย
+const PA_LOAD_DELAY_MS = 450;
+function paShowLoading(view) {
+  if (!view) return;
+  clearLoading(view);
+  if (view.firstChild) return;
+  _loadTimers.set(view, setTimeout(() => {
+    _loadTimers.delete(view);
+    if (view.isConnected && !view.firstChild) view.innerHTML = loaderHtml('list');
+  }, PA_LOAD_DELAY_MS));
+}
+
 // เรนเดอร์นี้ล้าสมัยแล้วหรือยัง: ออกจากหน้าไปแล้ว หรือมีการกดสลับแท็บรอบใหม่ระหว่างรอข้อมูล
 function paStale(view, seq) { return !view.isConnected || PAState.seq !== seq; }
 
@@ -542,7 +558,7 @@ function paDuplicate(src) {
 async function renderPAListView() {
   const view = paMount(); // = พื้นที่เนื้อหาของแท็บ
   const seq = PAState.seq;
-  showLoading('list', view);
+  paShowLoading(view);
 
   let list = [];
   try {
@@ -689,7 +705,7 @@ async function renderPAFormView() {
   const seq = PAState.seq;
   const d = PAState.doc = paNormalize(PAState.doc);
   const isNew = !PAState.docId;
-  showLoading('list', view);
+  paShowLoading(view);
   let p;
   try { await loadModule('profile'); p = await loadTeacherProfile(); } catch (err) { p = AppState.teacherProfile || {}; }
   if (paStale(view, seq) || PAState.tab !== 'agreement' || PAState.view !== 'form') return; // ผู้ใช้สลับแท็บ/ออกไปแล้ว
@@ -947,5 +963,13 @@ async function renderPAPage() {
   PAState.nextTab = null;
   PAState.view = 'list';
   paBuildShell();
-  await paRenderTab();
+  // ห้าม await ข้อมูลตรงนี้: drawRoute (app.js) เล่นเฟดเข้าทั้งหน้าเมื่อฟังก์ชันนี้ resolve
+  // ถ้ารอข้อมูลก่อน หัวเรื่อง+แท็บจะโผล่ แล้วดับเป็นโปร่งใส แล้วเฟดเข้าใหม่ (วาบ) และซ้อนกับเฟดของพื้นที่แท็บอีกชั้น
+  // → ปล่อยให้โครงหน้าเฟดเข้าทันที ส่วนเนื้อหาในแท็บโหลดต่อและเฟดเข้าเองด้วย paSwapIn
+  paRenderTab().catch(err => {
+    console.error('PA render failed', err);
+    const body = document.getElementById('pa-tab-body');
+    if (body && body.isConnected) { clearLoading(body); body.classList.remove('is-switching'); }
+    if (typeof showToast === 'function') showToast('เปิดหน้าไม่สำเร็จ ลองกดอีกครั้ง');
+  });
 }
