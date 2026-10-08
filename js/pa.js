@@ -280,6 +280,18 @@ const PA1_CSS = `
 .pa1 .p1-dir{margin-top:1.4em;break-inside:avoid;page-break-inside:avoid}
 .pa1 .p1-dir .p1-sign{margin-top:1.1em}
 .pa1 .p1-line{border-bottom:1px dotted #000;height:1.45em}
+.pa1 .mt0{margin-top:0}
+.pa1 .mt2{margin-top:.2em}
+.pa1 .mt3{margin-top:.3em}
+.pa1 .mt5{margin-top:.5em}
+.pa1 .mt10{margin-top:1em}
+.pa1 .mt11{margin-top:1.1em}
+.pa1 .keep-next{break-after:avoid;page-break-after:avoid}
+.pa1 .ti0{text-indent:0}
+.pa1 col.c1{width:24%}
+.pa1 col.c2{width:30%}
+.pa1 col.c3{width:25%}
+.pa1 col.c4{width:21%}
 `;
 
 function paBuildDocHtml(d, o) {
@@ -346,17 +358,17 @@ function paBuildDocHtml(d, o) {
     <div>ชื่อ ${val(first)} นามสกุล ${val(last)} ตำแหน่ง ${val(o.position)} วิทยฐานะ ${val(o.standing)}</div>
     <div>สถานศึกษา ${e(o.school || dots)} สังกัด ${e(o.affiliation || dots)}</div>
     <div>รับเงินเดือนในตำแหน่ง ${e(o.pay || dots)}</div>
-    <div class="p1-p" style="margin-top:.2em"><b>ประเภทห้องเรียนที่จัดการเรียนรู้</b> (สามารถระบุได้มากกว่า 1 ประเภทห้องเรียน ตามสภาพการจัดการเรียนรู้จริง)</div>
+    <div class="p1-p mt2"><b>ประเภทห้องเรียนที่จัดการเรียนรู้</b> (สามารถระบุได้มากกว่า 1 ประเภทห้องเรียน ตามสภาพการจัดการเรียนรู้จริง)</div>
     <div class="p1-list">${PA_CLASSROOM_TYPES.map(([k, l]) => `<div>${box(d.classroomTypes[k])}<span>${l}</span></div>`).join('')}</div>
-    <div class="p1-p" style="margin-top:.5em">ข้าพเจ้าขอแสดงเจตจำนงในการจัดทำข้อตกลงในการพัฒนางานตำแหน่ง ${e(o.position || 'ครู')} วิทยฐานะ${e(o.standing || dots)} ซึ่งเป็นตำแหน่งและวิทยฐานะที่ดำรงอยู่ในปัจจุบันกับผู้อำนวยการสถานศึกษา ไว้ดังต่อไปนี้</div>
+    <div class="p1-p mt5">ข้าพเจ้าขอแสดงเจตจำนงในการจัดทำข้อตกลงในการพัฒนางานตำแหน่ง ${e(o.position || 'ครู')} วิทยฐานะ${e(o.standing || dots)} ซึ่งเป็นตำแหน่งและวิทยฐานะที่ดำรงอยู่ในปัจจุบันกับผู้อำนวยการสถานศึกษา ไว้ดังต่อไปนี้</div>
 
-    <div class="p1-h" style="margin-top:1em">ส่วนที่ 1 ข้อตกลงในการพัฒนางานตามมาตรฐานตำแหน่ง</div>
+    <div class="p1-h mt10">ส่วนที่ 1 ข้อตกลงในการพัฒนางานตามมาตรฐานตำแหน่ง</div>
     <div class="p1-ind1">1. ภาระงาน จะมีภาระงานเป็นไปตามที่ก.ค.ศ. กำหนด</div>
     ${loadHtml}
 
-    <div class="p1-p" style="margin-top:.3em;break-after:avoid;page-break-after:avoid">2. งานที่จะปฏิบัติตามมาตรฐานตำแหน่งครู (ให้ระบุรายละเอียดของงานที่จะปฏิบัติในแต่ละด้านว่าจะดำเนินการอย่างไร โดยอาจระบุระยะเวลาที่ใช้ในการดำเนินการด้วยก็ได้)</div>
+    <div class="p1-p mt3 keep-next">2. งานที่จะปฏิบัติตามมาตรฐานตำแหน่งครู (ให้ระบุรายละเอียดของงานที่จะปฏิบัติในแต่ละด้านว่าจะดำเนินการอย่างไร โดยอาจระบุระยะเวลาที่ใช้ในการดำเนินการด้วยก็ได้)</div>
     <table>
-      <colgroup><col style="width:24%"><col style="width:30%"><col style="width:25%"><col style="width:21%"></colgroup>
+      <colgroup><col class="c1"><col class="c2"><col class="c3"><col class="c4"></colgroup>
       <thead><tr>
         <th><b>ลักษณะงานที่ปฏิบัติ<br>ตามมาตรฐานตำแหน่ง</b></th>
         <th><b>งาน</b> (Tasks)<br>ที่จะดำเนินการพัฒนา<br>ตามข้อตกลงใน 1 รอบ<br>การประเมิน<br>(โปรดระบุ)</th>
@@ -372,17 +384,17 @@ function paBuildDocHtml(d, o) {
     </div>
 
     <div class="p1-break"></div>
-    <div class="p1-h" style="margin-top:0">ส่วนที่ 2 ข้อตกลงในการพัฒนางานที่เป็นประเด็นท้าทายในการพัฒนาผลลัพธ์การเรียนรู้ของผู้เรียน</div>
-    <div class="p1-p" style="margin-top:.5em">ประเด็นที่ท้าทายในการพัฒนาผลลัพธ์การเรียนรู้ของผู้เรียนของผู้จัดทำข้อตกลง ซึ่งปัจจุบันดำรงตำแหน่ง ครู ต้องแสดงให้เห็นถึงระดับการปฏิบัติที่คาดหวัง คือ <i><u>การปรับประยุกต์</u></i> การจัดการเรียนรู้และการพัฒนาคุณภาพการเรียนรู้ของผู้เรียน ให้เกิดการเปลี่ยนแปลงไปในทางที่ดีขึ้นหรือมีการพัฒนามากขึ้น (ทั้งนี้ ประเด็นท้าทายอาจจะแสดงให้เห็นถึงระดับการปฏิบัติที่คาดหวังที่สูงกว่าได้)</div>
+    <div class="p1-h mt0">ส่วนที่ 2 ข้อตกลงในการพัฒนางานที่เป็นประเด็นท้าทายในการพัฒนาผลลัพธ์การเรียนรู้ของผู้เรียน</div>
+    <div class="p1-p mt5">ประเด็นที่ท้าทายในการพัฒนาผลลัพธ์การเรียนรู้ของผู้เรียนของผู้จัดทำข้อตกลง ซึ่งปัจจุบันดำรงตำแหน่ง ครู ต้องแสดงให้เห็นถึงระดับการปฏิบัติที่คาดหวัง คือ <i><u>การปรับประยุกต์</u></i> การจัดการเรียนรู้และการพัฒนาคุณภาพการเรียนรู้ของผู้เรียน ให้เกิดการเปลี่ยนแปลงไปในทางที่ดีขึ้นหรือมีการพัฒนามากขึ้น (ทั้งนี้ ประเด็นท้าทายอาจจะแสดงให้เห็นถึงระดับการปฏิบัติที่คาดหวังที่สูงกว่าได้)</div>
     <div class="p1-p"><b>ประเด็นท้าทาย</b> เรื่อง ${paNl(d.challengeTitle) || dots}</div>
     <div class="p1-hd">1. สภาพปัญหาของผู้เรียนและการจัดการเรียนรู้</div>
     ${paras(d.problem, 'p1-p')}
-    <div class="p1-hd" style="margin-top:1.1em">2. วิธีการดำเนินการให้บรรลุผล</div>
+    <div class="p1-hd mt11">2. วิธีการดำเนินการให้บรรลุผล</div>
     ${paras(d.method, 'p1-tx')}
-    <div class="p1-hd" style="margin-top:1.1em">3. ผลลัพธ์การพัฒนาที่คาดหวัง</div>
+    <div class="p1-hd mt11">3. ผลลัพธ์การพัฒนาที่คาดหวัง</div>
     ${legacyOutcome ? paras(d.outcome, 'p1-tx') : `
     <div class="p1-ind3">3.1 เชิงปริมาณ</div>${paras(d.outcomeQuant, 'p1-tx')}
-    <div class="p1-ind3" style="margin-top:.2em">3.2 เชิงคุณภาพ</div>${paras(d.outcomeQual, 'p1-tx')}`}
+    <div class="p1-ind3 mt2">3.2 เชิงคุณภาพ</div>${paras(d.outcomeQual, 'p1-tx')}`}
 
     <div class="p1-sign">
       <div>ลงชื่อ........................................................................</div>
@@ -393,9 +405,9 @@ function paBuildDocHtml(d, o) {
     </div>
 
     <div class="p1-dir">
-      <div class="p1-h" style="margin-top:0">ความเห็นของผู้อำนวยการสถานศึกษา</div>
+      <div class="p1-h mt0">ความเห็นของผู้อำนวยการสถานศึกษา</div>
       <div class="p1-ind2">(&nbsp;&nbsp;&nbsp;) เห็นชอบให้เป็นข้อตกลงในการพัฒนางาน</div>
-      <div class="p1-ind2" style="text-indent:0">(&nbsp;&nbsp;&nbsp;) ไม่เห็นชอบให้เป็นข้อตกลงในการพัฒนางาน โดยมีข้อเสนอแนะเพื่อนำไปแก้ไข และเสนอเพื่อพิจารณาอีกครั้ง ดังนี้</div>
+      <div class="p1-ind2 ti0">(&nbsp;&nbsp;&nbsp;) ไม่เห็นชอบให้เป็นข้อตกลงในการพัฒนางาน โดยมีข้อเสนอแนะเพื่อนำไปแก้ไข และเสนอเพื่อพิจารณาอีกครั้ง ดังนี้</div>
       <div class="p1-line"></div><div class="p1-line"></div>
       <div class="p1-sign">
         <div>ลงชื่อ........................................................................</div>

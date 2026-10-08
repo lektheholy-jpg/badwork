@@ -2174,7 +2174,7 @@ table.tt tr.is-today td.tt-cell { background: color-mix(in srgb, var(--hue-orang
 
 .pa-ai-ctx { margin: 0 0 14px; padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--radius-s); background: var(--surface-sunken); }
 .pa-ai-ctx > summary { cursor: pointer; }
-.pa-ai-ctx [data-ctx-count] { margin-left: 8px; }
+.pa-ai-ctx [data-ctx-count], .pa-ai-ctx [data-ctx-save] { margin-left: 8px; }
 .pa-ai-ctx-note { margin: 8px 0 12px; }
 .pa-ai-ctx-grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
 

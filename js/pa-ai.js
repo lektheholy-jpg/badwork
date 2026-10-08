@@ -15,6 +15,7 @@ const PA_AI = {
   SDK: 'https://www.gstatic.com/firebasejs/12.17.0',    // Firebase JS SDK แบบ modular (แยกจากชุด compat 10.13.0 ที่แอปใช้)
   MODEL: 'gemini-3.5-flash',                            // ถ้าเปลี่ยนรุ่น แก้ที่นี่ที่เดียว (ดูชื่อรุ่นล่าสุดใน Firebase Console > AI Logic)
   TIMEOUT: 90000,
+  CTX_KEY: 'pa-ai-ctx-v1', // สำรองบริบทล่าสุดในเครื่องนี้ (ใช้เมื่อยังไม่มีเอกสารให้บันทึก)
   CONSENT_KEY: 'pa-ai-consent-v2', // v2: เพิ่มบริบทงาน (ระดับชั้น จำนวนห้อง/นักเรียน ปัญหา ผลปีก่อน) — ผู้ใช้เดิมต้องยินยอมใหม่
 };
 
@@ -386,6 +387,52 @@ async function paAiDraftAll(btn) {
 // ------------------------------------------------------------------
 const PA_AI_ICON = `<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M19 15l.7 1.8 1.8.7-1.8.7L19 20l-.7-1.8-1.8-.7 1.8-.7z"/></svg>`;
 
+// ------------------------------------------------------------------
+// บันทึกบริบทอัตโนมัติ: มีเอกสารแล้ว → เขียนเฉพาะ aiCtx ลง Firestore ทันที (ไม่แตะช่องอื่นที่ยังพิมพ์ค้าง)
+//   ยังเป็นเอกสารใหม่ → สำรองในเครื่อง แล้วเก็บเข้าเอกสารเมื่อกดบันทึก · เอกสารใหม่ถัดไปจะหยิบบริบทล่าสุดมาให้แก้ต่อ
+// ------------------------------------------------------------------
+function paAiCtxValues() {
+  const v = {};
+  Object.keys(PA_AI_CTX_FIELDS).forEach(k => { v[k] = (document.getElementById('pa-ctx-' + k)?.value || '').trim().slice(0, PA_CTX_MAX[k]); });
+  return v;
+}
+
+function paAiCtxLoadLocal() {
+  try {
+    const o = JSON.parse(localStorage.getItem(PA_AI.CTX_KEY) || 'null');
+    return o && typeof o === 'object' ? o : null;
+  } catch (err) { return null; }
+}
+
+// เอกสารใหม่ที่ยังไม่มีบริบท → หยิบจากเอกสารล่าสุดที่มี (รายการเรียงใหม่→เก่า) หรือที่สำรองในเครื่อง · ทำครั้งเดียวต่อเอกสาร
+function paAiSeedCtx(d) {
+  if (PAState.docId || d._ctxSeeded || paAiCtxCount(d.aiCtx || {})) return;
+  d._ctxSeeded = true; // ขึ้นต้น _ → paSave ตัดทิ้ง
+  const last = (PAState.list || []).find(x => x.aiCtx && paAiCtxCount(x.aiCtx));
+  const src = last ? last.aiCtx : paAiCtxLoadLocal();
+  if (!src) return;
+  d.aiCtx = {};
+  Object.entries(PA_CTX_MAX).forEach(([k, n]) => { d.aiCtx[k] = String(src[k] || '').slice(0, n); });
+}
+
+let paAiCtxTimer = null;
+async function paAiCtxSave(statusEl) {
+  clearTimeout(paAiCtxTimer);
+  paAiCtxTimer = null;
+  const v = paAiCtxValues();
+  PAState.doc.aiCtx = v;
+  try { localStorage.setItem(PA_AI.CTX_KEY, JSON.stringify(v)); } catch (err) { /* ใช้ storage ไม่ได้ — ข้าม */ }
+  const uid = AppState.user?.uid, id = PAState.docId;
+  if (!id || !uid) { if (statusEl) statusEl.textContent = 'จะเก็บกับเอกสารเมื่อกดบันทึก'; return; }
+  try {
+    await paRef(uid, id).update({ aiCtx: v });
+    if (statusEl?.isConnected) statusEl.textContent = 'บันทึกอัตโนมัติแล้ว';
+  } catch (err) {
+    console.error('PA AI ctx save:', err);
+    if (statusEl?.isConnected) statusEl.textContent = 'บันทึกอัตโนมัติไม่สำเร็จ — กด “บันทึกข้อตกลง PA” เพื่อเก็บ';
+  }
+}
+
 // การ์ดพับได้ "บริบทงานของฉัน" — เปิดไว้เมื่อยังว่าง · พับเมื่อกรอกแล้ว
 function paAiCtxCount(c) { return Object.keys(PA_AI_CTX_FIELDS).filter(k => String(c[k] || '').trim()).length; }
 
@@ -395,7 +442,7 @@ function paAiCtxHtml(c) {
   const one = (k, ph) => `<div class="field"><label for="pa-ctx-${k}">${L[k]}</label><input id="pa-ctx-${k}" type="text" maxlength="${mx[k]}"${k === 'rooms' || k === 'students' ? ' inputmode="numeric"' : ''} value="${escapeHtml(c[k] || '')}" placeholder="${ph}"></div>`;
   const many = (k, ph) => `<div class="field"><label for="pa-ctx-${k}">${L[k]}</label><textarea id="pa-ctx-${k}" rows="2" maxlength="${mx[k]}" placeholder="${ph}">${escapeHtml(c[k] || '')}</textarea></div>`;
   return `<details class="pa-ai-ctx"${n ? '' : ' open'}>
-    <summary><b>บริบทงานของฉัน</b> <span class="u-note-sm" data-ctx-count>กรอกแล้ว ${n}/${total}</span></summary>
+    <summary><b>บริบทงานของฉัน</b> <span class="u-note-sm" data-ctx-count>กรอกแล้ว ${n}/${total}</span> <span class="u-note-sm" data-ctx-save role="status"></span></summary>
     <div class="u-note pa-ai-ctx-note">ยิ่งระบุตามจริง AI ยิ่งเขียนตรงงาน และไม่ต้องกด “สร้างใหม่” หลายรอบ · ว่างไว้ได้ AI จะเขียนกว้าง ๆ และใช้ “…” แทนตัวเลข · ส่งให้ AI เฉพาะส่วนที่เกี่ยวกับช่องที่กด</div>
     <div class="pa-ai-ctx-grid">${one('level', 'เช่น ม.2')}${one('rooms', 'เช่น 4')}${one('students', 'เช่น 148')}</div>
     ${many('problems', 'เช่น นักเรียนอ่านโจทย์ปัญหาไม่คล่อง · ส่งงานไม่ครบ')}
@@ -407,6 +454,7 @@ function paAiCtxHtml(c) {
 function paAiMount(view, form) {
   if (!form || form.dataset.paAi) return;
   form.dataset.paAi = '1';
+  paAiSeedCtx(PAState.doc);
 
   // 1) การ์ดบนสุด: อธิบายสั้นๆ + ร่างส่วนที่ 2
   const top = document.createElement('div');
@@ -429,12 +477,15 @@ function paAiMount(view, form) {
   form.insertBefore(top, form.firstChild);
   // นับช่องบริบทที่กรอกแล้วแบบสด
   const ctxBox = top.querySelector('.pa-ai-ctx');
+  const saveEl = ctxBox?.querySelector('[data-ctx-save]');
   ctxBox?.addEventListener('input', () => {
-    const v = {};
-    Object.keys(PA_AI_CTX_FIELDS).forEach(k => { v[k] = document.getElementById('pa-ctx-' + k)?.value || ''; });
     const cnt = ctxBox.querySelector('[data-ctx-count]');
-    if (cnt) cnt.textContent = `กรอกแล้ว ${paAiCtxCount(v)}/${Object.keys(PA_AI_CTX_FIELDS).length}`;
+    if (cnt) cnt.textContent = `กรอกแล้ว ${paAiCtxCount(paAiCtxValues())}/${Object.keys(PA_AI_CTX_FIELDS).length}`;
+    if (saveEl) saveEl.textContent = 'กำลังบันทึก…';
+    clearTimeout(paAiCtxTimer);
+    paAiCtxTimer = setTimeout(() => paAiCtxSave(saveEl), 700);
   });
+  ctxBox?.addEventListener('focusout', () => { if (paAiCtxTimer) paAiCtxSave(saveEl); }); // ออกจากช่อง = บันทึกทันที ไม่รอ
 
   // 2) ใต้ช่องส่วนที่ 2
   PA_AI_PART2.forEach(f => {

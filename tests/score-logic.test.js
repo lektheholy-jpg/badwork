@@ -8,7 +8,7 @@ let pass = 0, fail = 0;
 const ok = (c, msg, extra) => { if (c) { pass++; console.log('  ✓', msg); } else { fail++; console.log('  ✗', msg, extra !== undefined ? JSON.stringify(extra) : ''); } };
 
 async function makeEnv({ nStudents = 4, nAssess = 8, max = 10, seed = {} } = {}) {
-  const dom = new JSDOM(`<!DOCTYPE html><body><div id="toast"></div><div id="view"></div></body>`, { runScripts: 'outside-only', url: 'http://localhost/' });
+  const dom = new JSDOM(`<!DOCTYPE html><body><div id="island"><div class="island-idle"><span class="island-idle-main"><span class="island-idle-date"></span><span class="island-idle-time"></span></span><span class="island-idle-page"><span class="pg"></span><span class="pg"></span></span></div><div class="island-body"><span class="island-icon"></span><span class="island-text"></span><button type="button" class="island-action" hidden></button></div><div class="island-bar"><i></i></div></div><div id="view"></div></body>`, { runScripts: 'outside-only', url: 'http://localhost/' });
   const w = dom.window;
   const DELETE = { __delete: true };
   const store = {};            // studentId -> {assessmentId: value}
@@ -50,6 +50,10 @@ async function makeEnv({ nStudents = 4, nAssess = 8, max = 10, seed = {} } = {})
   w.removeEventListener = (t, ...x) => { if (t === 'beforeunload') counts.rem++; return r(t, ...x); };
   env.counts = counts;
   w.eval(['island.js', 'utils.js', 'scores.js'].map(f => fs.readFileSync(`${root}/js/${f}`, 'utf8')).join('\n;\n') + '\n;this.__calcGrade = calcGrade; this.__parse = parseDelimitedText; this.renderScoresTab = renderScoresTab;');
+  // แจ้งเตือนผ่าน Dynamic Island: ข้อความอาจถูกสถานะ "บันทึกแล้ว" (ลำดับความสำคัญสูงกว่า) ทับก่อนตรวจ → ดักที่การเรียก showToast แทนอ่านจาก DOM
+  env.toasts = [];
+  const realToast = w.showToast;
+  w.showToast = (m, k) => { env.toasts.push(String(m)); return realToast(m, k); };
   const container = w.document.getElementById('view');
   env.render = async () => { await w.renderScoresTab(container, { id: 'c1' }, { id: 'sec1', room: '1' }); };
   await env.render();
@@ -111,7 +115,7 @@ async function makeEnv({ nStudents = 4, nAssess = 8, max = 10, seed = {} } = {})
     const i = e.type('s1', 'a1', '25'); await sleep(60);
     ok(i.value === '10', 'ช่องถูกปรับเป็น 10', i.value);
     ok(e.store.s1.a1 === 10, 'ฐานข้อมูลได้ 10 ไม่ใช่ 25', e.store.s1);
-    ok(/คะแนนเต็ม/.test(e.w.document.getElementById('toast').textContent), 'มีข้อความแจ้งเตือน');
+    ok(e.toasts.some(t => /คะแนนเต็ม/.test(t)), 'มีข้อความแจ้งเตือน', e.toasts);
     ok(e.cell('[data-total-for="s1"]').textContent === '10', 'ผลรวมนับ 10');
   }
 
