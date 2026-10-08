@@ -82,6 +82,7 @@
   --zebra: #F7F8FA;  --row-on: #E8F0FE;
   --viz-track: #E3E6EC;
   --viz-bar: var(--viz-blue);
+  --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23666666' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 6l4 4 4-4'/%3E%3C/svg%3E");  /* ลูกศร dropdown (สีเท่า --ink-soft) · ใช้ใน select ที่เบราว์เซอร์ยังไม่รองรับ appearance: base-select */
   --glass:      30%;    /* sidebar/tabbar/more-sheet opacity — ยิ่งน้อยยิ่งโปร่ง */
   --glass-blur: 30px;
   color-scheme: light;
@@ -286,15 +287,71 @@ a { color: inherit; }
 
 .field { margin-bottom: 14px; }
 .field label { display: block; margin-bottom: 5px; color: var(--ink-soft); font-weight: 600; font-size: 13.5px; }
-.field input, .field select, .field textarea {
-  width: 100%;
-  font-size: 14px; border: 1.5px solid transparent; border-radius: var(--radius-s); font-family: var(--font); padding: 12px 14px; background: var(--surface-sunken); color: var(--ink);
+.field input, .field textarea, .pa-l-name, .pa-l-hours {
+  width: 100%; min-width: 0; resize: vertical;
+  font-size: 14px; line-height: 1.6; border: 1.5px solid transparent; border-radius: var(--radius-s); font-family: var(--font); padding: 12px 14px; background: var(--surface-sunken); color: var(--ink);
+  transition: border-color .15s ease, background-color .15s ease, box-shadow .15s ease;
 }
-.field input:focus, .field select:focus, .field textarea:focus {
+.field input:hover, .field textarea:hover, .pa-l-name:hover, .pa-l-hours:hover { border-color: var(--border); }
+.field input:focus, .field textarea:focus, .pa-l-name:focus, .pa-l-hours:focus {
   outline: none; border-color: var(--primary); box-shadow: 0 0 0 4px var(--primary-tint); background: var(--card); color: var(--ink);
 }
+.field input::placeholder, .field textarea::placeholder, .pa-l-name::placeholder, .pa-l-hours::placeholder { color: var(--ink-soft); opacity: .65; }
+.field select { width: 100%; }
 .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .field-hint { font-size: 11.5px; color: var(--ink-soft); margin-top: 6px; }
+
+/* ---------- Dropdown (select) ทั้งเว็บ ----------
+   ฐาน: select ธรรมดา ปิดหน้าตาของระบบ ใช้ลูกศร --chev (ใช้ได้ทุกเบราว์เซอร์ ลิสต์ตัวเลือกยังเป็นของระบบ/มือถือ)
+   ยกระดับ: เบราว์เซอร์ที่รองรับ appearance: base-select (Chrome/Edge ≥ 135) ได้ลิสต์ตัวเลือกที่ปรับแต่งเอง
+   ตัวแปรที่ใช้ทั้งหมดมีชุดมืดอยู่แล้ว · select ที่ต้องการขนาดต่าง ให้ตั้งแค่ font-size / min-height / padding-block ที่คลาสของตัวเอง */
+select {
+  -webkit-appearance: none; appearance: none;
+  min-width: 0; max-width: 100%; min-height: 46px; padding: 10px 40px 10px 14px;
+  font-family: var(--font); font-size: 14px; line-height: 1.5; color: var(--ink);
+  border: 1.5px solid transparent; border-radius: var(--radius-s); cursor: pointer; text-overflow: ellipsis;
+  background-color: var(--surface-sunken); background-image: var(--chev); background-repeat: no-repeat; background-position: right 14px center; background-size: 16px 16px;
+  transition: border-color .15s ease, background-color .15s ease, box-shadow .15s ease;
+}
+select:hover { border-color: var(--border); }
+select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 4px var(--primary-tint); background-color: var(--card); }
+select:disabled { opacity: .55; cursor: not-allowed; }
+option { background: var(--card); color: var(--ink); }
+
+@supports (appearance: base-select) {
+  select {
+    appearance: base-select;
+    display: inline-flex; align-items: center; justify-content: space-between; gap: 10px;
+    padding: 10px 14px; background-image: none;
+  }
+  select::picker-icon {
+    content: ""; flex: none; width: 8px; height: 8px;
+    border: solid var(--ink-soft); border-width: 0 2px 2px 0; rotate: 45deg; translate: 0 -2px;
+    transition: rotate .2s ease, translate .2s ease;
+  }
+  select:open::picker-icon { rotate: 225deg; translate: 0 2px; }
+
+  ::picker(select) {
+    appearance: base-select;
+    max-height: min(340px, 60vh); margin-block: 6px; padding: 6px;
+    border: 1.5px solid var(--border); border-radius: var(--radius-s); background: var(--card); color: var(--ink); box-shadow: var(--shadow);
+    opacity: 1; translate: 0 0;
+    transition: opacity .16s ease-out, translate .16s ease-out, display .16s allow-discrete, overlay .16s allow-discrete;
+  }
+  @starting-style {
+    ::picker(select) { opacity: 0; translate: 0 -6px; }
+  }
+
+  option {
+    display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: var(--radius-xs);
+    font-size: 14px; line-height: 1.5; color: var(--ink); background: transparent; cursor: pointer;
+    transition: background-color .12s ease;
+  }
+  option:hover, option:focus-visible { outline: none; background: var(--hover-wash); }
+  option:checked { background: var(--primary-tint); color: var(--primary-dark); font-weight: 600; }
+  option:disabled { color: var(--ink-soft); opacity: .55; cursor: not-allowed; }
+  option::checkmark { order: 1; margin-inline-start: auto; color: var(--primary); }
+}
 
 /* ---------- Room mode toggle (create-course modal) ---------- */
 .room-mode-toggle { display: flex; gap: 6px; margin-bottom: 10px; }
@@ -778,9 +835,7 @@ table.sheet :is(th, td).sticky-right-2 { right: 0; width: var(--r2-w); min-width
 }
 
 /* ---------- Dashboard: สรุปผลการเรียน (ตารางตามแบบฟอร์ม) ---------- */
-.gs-select, .grade-room-filter {
-  font-size: 12.5px; border: 1.5px solid transparent; border-radius: var(--radius-s); font-family: var(--font); padding: 12px 14px; background: var(--surface-sunken); color: var(--ink);
-}
+.gs-select, .grade-room-filter { font-size: 13px; min-height: 40px; padding-block: 8px; }
 .gs-wrap { overflow-x: auto; border: none; border-radius: var(--radius-l); box-shadow: inset 0 0 0 1px var(--border); background: var(--card); }
 .gs-table { border-collapse: collapse; width: 100%; min-width: 760px; font-size: 13.5px; }
 .gs-table th, .gs-table td { text-align: center; line-height: 1.35; background: var(--card); border: none; border-bottom: 1px solid var(--border); padding: 9px 8px; color: var(--ink); font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
@@ -853,9 +908,7 @@ table.sheet :is(th, td).sticky-right-2 { right: 0; width: var(--r2-w); min-width
 .group-stat { font-size: 12px; color: var(--ink-soft); }
 .group-actions { margin-left: auto; display: flex; gap: 6px; }
 .struct-table td.group-col { width: 170px; }
-.struct-table select.row-group {
-  width: 100%; font-size: 12.5px; border: 1.5px solid transparent; border-radius: var(--radius-s); font-family: var(--font); padding: 12px 14px; background: var(--surface-sunken); color: var(--ink);
-}
+.struct-table select.row-group { width: 100%; font-size: 13px; min-height: 40px; padding-block: 8px; }
 .struct-table tr[data-type="item"] td.handle-col:active { cursor: grabbing; }
 .struct-table.has-groups tr[data-type="item"] td:first-child { border-left: 3px solid var(--col-collect-strong); }
 
@@ -1051,7 +1104,7 @@ table.sheet tbody tr:nth-child(even) td.grp-sub-total { background: var(--col-co
   .main .card-pad { padding: 14px 12px; }
 }
 @media print { body, #app { background: var(--white); } }
-@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } .pa-wgroup > summary::after { transition: none !important; } select::picker-icon, ::picker(select) { transition: none !important; } }
 /* เปลี่ยนหน้า: เนื้อหาใหม่จางเข้า + เลื่อนขึ้นเล็กน้อย (JS ใส่ class .view-enter เฉพาะตอนกดเปลี่ยนหน้า จึงไม่เล่นซ้ำเมื่อหน้าวาดทับตอนข้อมูลมา) */
 @keyframes view-enter { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 #view.view-enter, #rc-body.rc-swap, #course-tab-body.tab-swap, #profile-tab-body.tab-swap, #pa-tab-body.tab-swap { animation: view-enter .22s ease-out; }
@@ -1182,6 +1235,7 @@ table.sheet tbody tr:last-child td { border-bottom: none; }
   --zebra: #1D1F28;  --row-on: #28324A;
   --viz-track: #343848;
   --viz-bar: var(--viz-blue);
+  --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23A0ABB1' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 6l4 4 4-4'/%3E%3C/svg%3E");  /* ลูกศร dropdown (สีเท่า --ink-soft) · ใช้ใน select ที่เบราว์เซอร์ยังไม่รองรับ appearance: base-select */
 }
 
 /* ----- พื้นผิวที่เดิมฮาร์ดโค้ดสีขาว → ใช้ตัวแปรเพื่อให้สลับโหมดได้ ----- */
@@ -1731,7 +1785,8 @@ table.sheet tbody tr:nth-child(n) td.over-max { background: var(--danger-tint); 
   background: var(--card); color: color-mix(in oklab, var(--w) 82%, var(--ink)); }
 .tools-group-title .tools-pill { margin: 0 0 0 auto; }
 
-.tools-names select, .tools-names textarea, .tools-input {
+.tools-names select { width: 100%; margin-top: 10px; }
+.tools-names textarea, .tools-input {
   background: var(--surface-sunken); border: 1.5px solid transparent; border-radius: var(--radius-s); color: var(--ink); font: inherit; padding: 11px 14px; width: 100%; margin-top: 10px; line-height: 1.6; flex: 1 1 0; min-height: 200px; resize: none; }
 .tools-names select:focus, .tools-names textarea:focus, .tools-input:focus { outline: none; background: var(--card); border-color: var(--w); box-shadow: 0 0 0 4px color-mix(in oklab, var(--w) 20%, transparent); }
 
@@ -2040,13 +2095,63 @@ table.tt tr.is-today td.tt-cell { background: color-mix(in srgb, var(--hue-orang
 .pa-pf-note { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 12px; margin-bottom: 16px; font-size: 13px; color: var(--ink-soft); }
 .pa-sub { margin: 0 0 6px; font-size: 13.5px; font-weight: 600; color: var(--ink-soft); }
 .pa-check { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 500; }
-.pa-check input { width: 18px; height: 18px; }
+.pa-check input { width: 18px; height: 18px; accent-color: var(--primary-solid); }
+
+/* ฟอร์ม PA: ประเภทห้องเรียน (ปุ่มเลือกได้หลายอัน) */
+.pa-checks { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; }
+.pa-checks .pa-check {
+  padding: 11px 14px; border: 1.5px solid transparent; border-radius: var(--radius-s); background: var(--surface-sunken); cursor: pointer;
+  transition: background-color .15s ease, border-color .15s ease, color .15s ease;
+}
+.pa-checks .pa-check:hover { border-color: var(--border); }
+.pa-checks .pa-check:has(input:checked) { border-color: var(--primary); background: var(--primary-tint); color: var(--primary-dark); font-weight: 600; }
+.pa-checks .pa-check:has(input:focus-visible) { box-shadow: 0 0 0 4px var(--primary-tint); }
+.pa-field-date { max-width: 260px; margin-top: 14px; }
+
+/* ฟอร์ม PA: ภาระงาน 1.1–1.4 (แถว = ชื่อรายการ · ชั่วโมง · ปุ่มลบ) — เดิมเป็น <style> ใน js/pa.js */
+.pa-lblock { --pa-cols: minmax(0, 1fr) 92px 44px; margin-top: 22px; }
+.pa-lblock .pa-sub { margin-bottom: 10px; font-size: 14.5px; font-weight: 700; color: var(--ink); }
+.pa-lhead { display: grid; grid-template-columns: var(--pa-cols); gap: 8px; margin: 0 0 6px; padding: 0 2px; font-size: 12px; font-weight: 600; color: var(--ink-soft); }
+.pa-lhead span:nth-child(2) { text-align: center; white-space: nowrap; }
+.pa-lblock:has(.pa-lrows:empty) .pa-lhead { display: none; }
+.pa-lrows { display: grid; gap: 8px; }
+.pa-lrow { display: grid; grid-template-columns: var(--pa-cols); gap: 8px; align-items: center; }
+.pa-lrow .pa-l-hours { text-align: center; font-weight: 600; font-variant-numeric: tabular-nums; }
+.pa-l-del { width: 44px; min-height: 44px; padding: 0; justify-content: center; }
+.pa-l-add { margin-top: 10px; }
+.pa-lrows:empty + .pa-l-add { margin-top: 0; }
+.pa-total {
+  display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px; margin: 20px 0 0; padding: 12px 16px;
+  border-radius: var(--radius-s); background: var(--primary-tint); color: var(--primary-dark); font-size: 14px; font-weight: 600;
+}
+.pa-total b { font-family: var(--font-head); font-size: 22px; line-height: 1.2; font-variant-numeric: tabular-nums; }
+.pa-legacy { margin-bottom: 14px; }
+.pa-legacy-text { white-space: pre-wrap; font-size: 13.5px; padding: 10px 12px; border-radius: var(--radius-s); background: var(--surface-sunken); color: var(--ink-soft); }
+
+/* ฟอร์ม PA: งานตามมาตรฐานตำแหน่ง (กลุ่มพับได้ + รายข้อ) */
+.pa-wgroup { margin-bottom: 10px; border: 1.5px solid var(--border); border-radius: var(--radius-s); overflow: hidden; }
+.pa-wgroup > summary {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 13px 16px;
+  list-style: none; cursor: pointer; font-weight: 700; background: var(--surface-sunken); transition: background-color .15s ease;
+}
+.pa-wgroup > summary::-webkit-details-marker { display: none; }
+.pa-wgroup > summary:hover { background: color-mix(in srgb, var(--surface-sunken) 75%, var(--primary-tint)); }
+.pa-wgroup > summary::after {
+  content: ""; flex: none; width: 8px; height: 8px;
+  border: solid var(--ink-soft); border-width: 0 2px 2px 0; rotate: 45deg; translate: 0 -2px; transition: rotate .2s ease, translate .2s ease;
+}
+.pa-wgroup[open] > summary::after { rotate: 225deg; translate: 0 2px; }
+.pa-witem { padding: 16px; border-top: 1px solid var(--border); }
+.pa-witem-h { margin-bottom: 10px; font-weight: 700; color: var(--ink); }
+.pa-witem .field:last-child { margin-bottom: 0; }
 .pa-form-footer { display: flex; justify-content: flex-end; gap: 10px; padding-bottom: 32px; }
 .par-gap { margin-top: 16px; }
 .par-tag-block { margin: 10px 0 6px; }
 @media (max-width: 540px) {
   .pa-pf { grid-template-columns: 1fr; }
   .pa-form-footer { flex-direction: column-reverse; }
+  .pa-checks { grid-template-columns: 1fr; }
+  .pa-lblock { --pa-cols: minmax(0, 1fr) 80px 44px; }
 }
 .empty-title { margin-bottom: 8px; font-size: 17px; font-weight: 600; }
 .empty-sub { margin-bottom: 20px; color: var(--ink-soft); }

@@ -563,6 +563,7 @@ function paRowHtml(r = {}, ph = '') {
 function paLoadBlock(key, title, rows, ph) {
   return `<div class="pa-lblock">
     <div class="pa-sub">${title}</div>
+    <div class="pa-lhead" aria-hidden="true"><span>รายการ</span><span>ชม./สัปดาห์</span></div>
     <div class="pa-lrows" data-list="${key}">${rows.map(r => paRowHtml(r, ph)).join('')}</div>
     <button type="button" class="btn btn-ghost btn-sm pa-l-add" data-list="${key}" data-ph="${escapeHtml(ph)}">${PA_ICO_ADD} เพิ่มแถว</button>
   </div>`;
@@ -643,7 +644,7 @@ async function renderPAFormView() {
         <div class="pa-checks">
           ${PA_CLASSROOM_TYPES.map(([k, l]) => `<label class="pa-check"><input type="checkbox" data-ct="${k}"${d.classroomTypes[k] ? ' checked' : ''}> ${l}</label>`).join('')}
         </div>
-        <div class="field" style="margin-top:14px;max-width:260px">
+        <div class="field pa-field-date">
           <label for="pa-signDate">วันที่ลงนามของผู้จัดทำ</label>
           <input id="pa-signDate" type="date" value="${escapeHtml(d.signDate || '')}">
         </div>
@@ -651,7 +652,7 @@ async function renderPAFormView() {
 
       <div class="card card-pad">
         <h2 class="card-title">ส่วนที่ 1 · 1. ภาระงาน</h2>
-        <div class="pa-pf-note" style="margin-bottom:12px">
+        <div class="pa-pf-note u-mb-12">
           <span>1.1 ดึงจากตารางสอน (นับ 1 คาบ = 1 ชั่วโมง) เก็บเป็นสำเนาในเอกสารนี้ — แก้ไขได้ และไม่เปลี่ยนตามตารางสอนภายหลัง · ตารางสอนมีภาคเรียนเดียว ถ้า PA ครอบสองภาคเรียนให้เพิ่มรายวิชาอีกภาคเอง</span>
           <button type="button" class="btn btn-ghost btn-sm" id="pa-tt-pull">ดึงจากตารางสอนใหม่</button>
         </div>
@@ -667,7 +668,7 @@ async function renderPAFormView() {
 
       <div class="card card-pad">
         <h2 class="card-title">ส่วนที่ 1 · 2. งานที่จะปฏิบัติตามมาตรฐานตำแหน่งครู</h2>
-        <div class="u-note" style="margin-bottom:12px">กรอกแต่ละข้อ: งานที่จะทำในแต่ละภาคเรียน · ผลลัพธ์ที่คาดหวังกับผู้เรียน · ตัวชี้วัด — ข้อที่เว้นว่างจะแสดงเป็นช่องว่างในเอกสาร</div>
+        <div class="u-note u-mb-12">กรอกแต่ละข้อ: งานที่จะทำในแต่ละภาคเรียน · ผลลัพธ์ที่คาดหวังกับผู้เรียน · ตัวชี้วัด — ข้อที่เว้นว่างจะแสดงเป็นช่องว่างในเอกสาร</div>
         ${PA_WORK_ITEMS.map(([gid, gt, items]) => `
           <details class="pa-wgroup"${gid === '1' ? ' open' : ''}>
             <summary>${gt}</summary>
@@ -698,21 +699,7 @@ async function renderPAFormView() {
         <button type="button" class="btn btn-ghost pa-cancel-btn">ยกเลิก</button>
         <button type="submit" class="btn btn-primary" id="pa-save-btn">บันทึกข้อตกลง PA</button>
       </div>
-    </form>
-    <style>
-      .pa-checks{display:grid;grid-template-columns:1fr 1fr;gap:8px 16px}
-      .pa-lblock{margin-top:16px}
-      .pa-lrow{display:grid;grid-template-columns:minmax(0,1fr) 76px auto;gap:8px;margin-bottom:8px;align-items:center}
-      .pa-lrow input{width:100%;min-width:0}
-      .pa-total{margin:12px 0 0;padding:8px 12px;border-radius:var(--radius-s);background:var(--surface-sunken);font-size:14px}
-      .pa-legacy{margin-bottom:14px}
-      .pa-legacy-text{white-space:pre-wrap;font-size:13.5px;padding:10px 12px;border-radius:var(--radius-s);background:var(--surface-sunken);color:var(--ink-soft)}
-      .pa-wgroup{border:1px solid var(--border);border-radius:var(--radius-s);margin-bottom:10px;overflow:hidden}
-      .pa-wgroup>summary{cursor:pointer;padding:12px 14px;font-weight:700;background:var(--surface-sunken)}
-      .pa-witem{padding:12px 14px;border-top:1px solid var(--border)}
-      .pa-witem-h{font-weight:600;margin-bottom:8px;color:var(--ink)}
-      @media(max-width:540px){.pa-checks{grid-template-columns:1fr}}
-    </style>`;
+    </form>`;
 
   const form = view.querySelector('#pa-form');
   view.querySelectorAll('.pa-back-btn, .pa-cancel-btn').forEach(b => b.addEventListener('click', () => {

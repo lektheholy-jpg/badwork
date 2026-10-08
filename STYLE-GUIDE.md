@@ -7,7 +7,8 @@
 
 - แก้ที่ `css/style.css` เท่านั้น แล้วรัน `./build-css.sh` เพื่อสร้าง `style.min.css` (ห้ามแก้ `.min` ด้วยมือ)
 - ห้าม `!important` (ยกเว้น `.hidden` และ `prefers-reduced-motion`)
-- ห้ามฝังสไตล์ในสตริง HTML ของ JS ยกเว้นส่งตัวแปร CSS เช่น `style="--w:#0381FE"` ค่าคงที่ให้ทำเป็นคลาส
+- **ห้ามเขียน CSS ใน JS** — ไม่ใส่ `<style>` ในสตริง/template ของ JS, ไม่สร้าง stylesheet ด้วย JS (`createElement('style')`, `insertRule`), ไม่ตั้ง `el.style.*` ให้ใช้คลาสแทน (ตัวเช็กตรวจเฉพาะ `style="…"` ค่าคงที่ ส่วนที่เหลือต้องดูเองตอนรีวิว)
+- ห้ามฝัง `style="…"` ที่เป็นค่าคงที่ ส่งได้เฉพาะตัวแปร CSS เช่น `style="--w:#0381FE"` (ค่าคงที่ให้ทำเป็นคลาส)
 - ห้ามประกาศ property เดิมซ้ำใน selector เดียวกัน (ในบริบท `@media` เดียวกัน) ถ้าจะเปลี่ยนค่าให้แก้กฎเดิม ไม่เขียนทับ
 - ทดสอบทั้งโหมดสว่าง/มืด และจอแคบ (`@media (max-width: 860px)` = มือถือ, เมนูล่างแทนเมนูข้าง)
 
@@ -55,6 +56,13 @@
 - `.btn` + หนึ่งใน `.btn-primary` / `.btn-ghost` / `.btn-danger-ghost` (+ `.btn-sm` สำหรับปุ่มเล็ก)
 - ไม่ต้องเขียนอนิเมชันกดเอง `.btn` ย่อ 97% ตอนกดอยู่แล้ว ยกเว้นปุ่มที่ `disabled` และปุ่มใน `table`
 - ปุ่มสลับค่า (เลือกได้ทีละหนึ่ง): ดูหัวข้อแท็บ
+
+## 4.5 ช่องกรอกและ dropdown
+
+- ช่องกรอกในฟอร์ม: `<div class="field"><label>…</label><input|textarea|select></div>` ไม่ต้องตั้งสไตล์เอง (พื้น `--surface-sunken`, โฟกัสขอบ `--primary`)
+- `<select>` ทุกตัวได้สไตล์จากกฎกลาง `select` ใน `style.css` อัตโนมัติ ถ้าต้องการขนาดต่าง ให้ตั้งแค่ `font-size` / `min-height` / `padding-block` ที่คลาสของตัวเอง **ห้ามประกาศ border / background / padding ด้านขวาซ้ำ** (ลูกศรอยู่ที่ padding ขวา)
+- เบราว์เซอร์ที่รองรับ `appearance: base-select` (Chrome/Edge 135+) ได้ลิสต์ตัวเลือกแบบปรับแต่งเอง ที่เหลือใช้ลิสต์ของระบบ
+- แถวรายการ + ตัวเลข (ฟอร์ม PA): `.pa-lblock > .pa-lhead + .pa-lrows > .pa-lrow` ดู `paLoadBlock()` ใน `js/pa.js`
 
 ## 5. ตาราง
 
@@ -122,6 +130,7 @@ async function renderXxx() {
 
 ## 9. เช็กลิสต์ก่อนส่งหน้าใหม่
 
+- [ ] ไม่มี CSS ใน JS (`<style>`, `el.style.*`, `createElement('style')`)
 - [ ] ใช้เฉพาะคลาส/ตัวแปรในเอกสารนี้ (ถ้าเพิ่มใหม่ ทำที่ `style.css` ที่เดียวและตามกฎข้อ 0)
 - [ ] `./build-css.sh` ผ่าน และ `./build-css.sh --check` ผ่าน (commit ไฟล์ `.min` ด้วย)
 - [ ] `node --check js/*.js` ผ่าน
