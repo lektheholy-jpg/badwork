@@ -456,7 +456,11 @@ function paBuildShell() {
   const tabs = view.querySelector('#pa-tabs');
   initNavPill(tabs, '.tab', 'seg-pill');
   tabs.querySelectorAll('.tab').forEach(t => {
-    t.addEventListener('click', () => paSwitchTab(t.dataset.tab));
+    t.addEventListener('mousedown', e => e.preventDefault()); // กดด้วยเมาส์/นิ้วไม่ต้องรับโฟกัสเลย — ไม่มีกรอบ .tab:focus-visible สีน้ำเงินวาบตอนกด (คีย์บอร์ดยัง Tab/Enter ได้ตามเดิม)
+    t.addEventListener('click', () => {
+      t.blur(); // คลิกด้วยเมาส์/นิ้วแล้วไม่ต้องค้างกรอบโฟกัสสีน้ำเงิน (.tab:focus-visible) — ผู้ใช้คีย์บอร์ดกด Enter/Space ทางด้านล่างยังโฟกัสอยู่ตามเดิม
+      paSwitchTab(t.dataset.tab);
+    });
     t.addEventListener('keydown', e => {
       if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); paSwitchTab(t.dataset.tab); }
     });

@@ -448,7 +448,7 @@ option { background: var(--card); color: var(--ink); }
 
 /* ---------- Tabs ---------- */
 .tabs { display: flex; margin-bottom: 22px; overflow-x: auto; background: var(--surface-sunken); padding: 4px; border-radius: var(--radius-pill); width: fit-content; max-width: 100%; gap: 2px; position: relative; }
-.tab { font-size: 13.5px; font-weight: 700; cursor: pointer; white-space: nowrap; border: none; border-radius: var(--radius-pill); margin: 0; padding: 9px 18px; position: relative; z-index: 1; transition: transform .12s ease, color .2s ease; background: transparent; color: var(--ink-soft); -webkit-tap-highlight-color: transparent;
+.tab { font-size: 13.5px; font-weight: 700; cursor: pointer; white-space: nowrap; border: none; border-radius: var(--radius-pill); margin: 0; padding: 9px 18px; position: relative; z-index: 1; transition: transform .12s ease, color .28s ease; background: transparent; color: var(--ink-soft); -webkit-tap-highlight-color: transparent;
 }
 .tab.active { border-bottom-color: var(--primary); color: var(--primary-dark); }
 
@@ -1274,6 +1274,7 @@ table.sheet tbody tr:last-child td { border-bottom: none; }
 
 /* ----- แก้เก็บรายละเอียดโหมดมืด ----- */
 .tab:hover { background: transparent; color: var(--ink); }
+.tab.active:hover { color: var(--primary-dark); } /* แท็บที่เลือกอยู่ต้องเป็นสีน้ำเงินแม้เมาส์ค้างอยู่ — ไม่งั้น hover ทับจนแท็บใหม่ดำ แล้วแท็บเก่าที่กำลังจางค้างน้ำเงินสลับกัน */
 
 /* ==========================================================================
    วิดเจ็ตแบบ One UI — การ์ดสีพาสเทลต่อหมวด ไอคอนทรงสควิร์เคิลสีสด ตัวเลขใหญ่
