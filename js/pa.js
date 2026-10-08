@@ -12,7 +12,7 @@
 // ==========================================================================
 
 const PAState = {
-  tab: 'agreement', // แท็บที่เปิดอยู่: 'agreement' (แบบฟอร์มข้อตกลง) | 'report' (ตัวอย่าง/พิมพ์ PA 1)
+  tab: 'agreement', // แท็บที่เปิดอยู่: 'agreement' (แบบฟอร์มข้อตกลง) | 'rpt' (แบบฟอร์มรายงานผล) | 'report' (ตัวอย่าง/พิมพ์ PA 1)
   nextTab: null,    // navigate('pa-report-page') ตั้งค่านี้ให้ renderPAPage เปิดแท็บรายงานเลย
   view: 'list',     // มุมมองในแท็บข้อตกลง: 'list' | 'form'
   docId: null,      // null = สร้างใหม่ | string = แก้ไขที่มีอยู่
@@ -442,12 +442,12 @@ function paPrint(d, o) {
 // โครงหน้า: หัวเรื่อง + แท็บ (แบบฟอร์มข้อตกลง | ตัวอย่าง/พิมพ์) + พื้นที่เนื้อหา
 // ปุ่มเมนูข้างปุ่มเดียว (pa-page) เปิดหน้านี้ — สลับสองมุมมองด้วยแท็บโดยไม่วาดทั้งหน้าใหม่
 // ------------------------------------------------------------------
-const PA_TABS = [['agreement', 'แบบฟอร์มข้อตกลง'], ['report', 'ตัวอย่าง / พิมพ์ PA 1']];
+const PA_TABS = [['agreement', 'แบบฟอร์มข้อตกลง'], ['rpt', 'แบบฟอร์มรายงานผล'], ['report', 'ตัวอย่าง / พิมพ์ PA 1']];
 
 function paBuildShell() {
   const view = document.getElementById('view');
   view.innerHTML = `
-    ${pageHeaderHtml('ข้อตกลง PA')}
+    ${pageHeaderHtml('Personal Agreement')}
     <div class="tabs" id="pa-tabs" role="tablist">
       ${PA_TABS.map(([id, label]) => `<div class="tab ${PAState.tab === id ? 'active' : ''}" data-tab="${id}" role="tab" aria-selected="${PAState.tab === id}" tabindex="0">${label}</div>`).join('')}
     </div>
@@ -479,6 +479,7 @@ function paSwapIn(body) {
 
 function paRenderTab() {
   if (PAState.tab === 'report') return renderPAReportView();
+  if (PAState.tab === 'rpt') return renderPARptView(); // แบบฟอร์มรายงานผล (js/pa-rpt.js)
   return PAState.view === 'form' ? renderPAFormView() : renderPAListView();
 }
 
@@ -486,6 +487,7 @@ async function paSwitchTab(tab) {
   if (tab === PAState.tab || !PA_TABS.some(t => t[0] === tab)) return;
   // กำลังกรอกฟอร์มอยู่: เก็บค่าที่พิมพ์ค้างไว้ใน PAState.doc กลับมาที่แท็บข้อตกลงแล้วยังอยู่ครบ
   if (PAState.tab === 'agreement' && PAState.view === 'form') paCollectFormData();
+  if (PAState.tab === 'rpt' && PARptState.view === 'form') parptCollect();
   PAState.tab = tab;
   const tabs = document.getElementById('pa-tabs');
   tabs?.querySelectorAll('.tab').forEach(x => {
@@ -511,7 +513,7 @@ function paDuplicate(src) {
   PAState.doc = d;
   PAState.view = 'form';
   renderPAFormView();
-  showToast('คัดลอกแล้ว — แก้ไขตามต้องการ แล้วกด “บันทึกข้อตกลง PA” จะได้เป็นฉบับใหม่');
+  showToast('คัดลอกแล้ว — แก้ไขตามต้องการ แล้วกด “บันทึกPersonal Agreement” จะได้เป็นฉบับใหม่');
 }
 
 // ------------------------------------------------------------------
@@ -557,9 +559,9 @@ async function renderPAListView() {
     <div class="card">
       <div class="empty-state">
         <div class="icon">${PA_ICO_PA}</div>
-        <div class="empty-title">ยังไม่มีข้อตกลง PA</div>
-        <div class="empty-sub">กดปุ่มด้านล่างเพื่อสร้างข้อตกลง PA ประจำปีงบประมาณ</div>
-        <button type="button" class="btn btn-primary pa-new-btn">${PA_ICO_ADD} สร้างข้อตกลง PA ใหม่</button>
+        <div class="empty-title">ยังไม่มีPersonal Agreement</div>
+        <div class="empty-sub">กดปุ่มด้านล่างเพื่อสร้างPersonal Agreement ประจำปีงบประมาณ</div>
+        <button type="button" class="btn btn-primary pa-new-btn">${PA_ICO_ADD} สร้างPersonal Agreement ใหม่</button>
       </div>
     </div>` : '';
 
@@ -791,7 +793,7 @@ async function renderPAFormView() {
 
       <div class="pa-form-footer">
         <button type="button" class="btn btn-ghost pa-cancel-btn">ยกเลิก</button>
-        <button type="submit" class="btn btn-primary" id="pa-save-btn">บันทึกข้อตกลง PA</button>
+        <button type="submit" class="btn btn-primary" id="pa-save-btn">บันทึกPersonal Agreement</button>
       </div>
     </form>`;
 
@@ -854,12 +856,12 @@ async function renderPAFormView() {
     try {
       await paSave(PAState.doc);
       PAState.list = null; // clear cache
-      if (typeof islandToast === 'function') islandToast('บันทึกข้อตกลง PA แล้ว', 'save');
+      if (typeof islandToast === 'function') islandToast('บันทึกPersonal Agreement แล้ว', 'save');
       PAState.view = 'list';
       await renderPAListView();
     } catch (err) {
       btn.disabled = false;
-      btn.textContent = 'บันทึกข้อตกลง PA';
+      btn.textContent = 'บันทึกPersonal Agreement';
       showToast(err.code === 'permission-denied' ? 'บันทึกไม่สำเร็จ: ถูกปฏิเสธสิทธิ์ (ต้องอัปเดต firestore.rules ก่อน)' : 'บันทึกไม่สำเร็จ: ' + (err.message || err));
     }
   });

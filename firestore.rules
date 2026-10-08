@@ -78,6 +78,12 @@ service cloud.firestore {
         allow create, update: if isOwner(uid) && validDoc(30);
       }
 
+      // แบบรายงานผล Personal Agreement (แท็บ "แบบฟอร์มรายงานผล" → users/{uid}/pa_reports/{docId}) · ฟิลด์ดูที่ js/pa-rpt.js
+      match /pa_reports/{docId} {
+        allow read, delete: if isOwner(uid);
+        allow create, update: if isOwner(uid) && validDoc(30);
+      }
+
       match /courses/{courseId} {
         allow read, delete: if isOwner(uid);
         allow create, update: if isOwner(uid) && validDoc(40);

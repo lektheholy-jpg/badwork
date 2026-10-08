@@ -63,6 +63,7 @@ js/report-page.js     หน้ารายงาน
 js/pa.js              ฟอร์มข้อตกลง PA 1/ส
 js/pa-ai.js           ผู้ช่วย AI ในฟอร์ม PA
 js/pa-report.js       ตัวอย่าง/พิมพ์ PA
+js/pa-rpt.js          แบบฟอร์มรายงานผล Personal Agreement (แท็บที่ 2)
 js/report.js          [lazy] สรุปผลรายห้อง ส่งออก CSV/ปพ.5/SGS เกณฑ์เกรด แปลงคะแนน NextSchool
 js/tools.js           [lazy] เครื่องมือในห้องเรียน
 js/privacy.js         [lazy] ส่งออก/ลบข้อมูลของฉัน
@@ -107,7 +108,8 @@ users/{uid}/courses/{courseId}               วิชา + โครงสร�
     /students/{id}                           นักเรียนของห้อง
     /scores/{studentId}                      คะแนนของนักเรียน
 users/{uid}/timetable/main                   ตารางสอน
-users/{uid}/pa_agreements/{docId}            ข้อตกลง PA
+users/{uid}/pa_agreements/{docId}            Personal Agreement
+users/{uid}/pa_reports/{docId}               แบบรายงานผล Personal Agreement
 ```
 
 **แก้ฟิลด์ใดๆ ต้อง deploy `firestore.rules` ล่าสุดก่อน** ไม่เช่นนั้นบันทึกแล้วจะขึ้นว่าถูกปฏิเสธสิทธิ์
@@ -115,7 +117,7 @@ users/{uid}/pa_agreements/{docId}            ข้อตกลง PA
 - **profile**: ฟิลด์ตาม `PROFILE_FIELDS` ใน `js/profile.js` (เพิ่ม/ลบต้องแก้ rules `validTeacherProfile` ด้วย) · ดึงไปใช้ `await loadModule('profile')` แล้ว `loadTeacherProfile()` / `profileSummary(p)`
 - **timetable**: `{ periods: [{start, end}] (≤14 คาบ), entries: [{ id, kind: "class"|"activity", day: 1-5, period, span, code, title, cls, room, hue, courseId }], updatedAt }` · แก้ฟิลด์ใน entry ที่ `ttCleanEntry` + rules `validTimetable` · ดึงไปใช้ `await loadModule('timetable')` แล้ว `loadTimetable()`
 - **PA**: ฟิลด์ระดับบนต้องไม่เกิน 30 ตาม `validDoc` ใน rules · ข้อมูลผู้จัดทำดึงจากโปรไฟล์ ชั่วโมงสอนดึงจากตารางสอน
-- ส่งออก/ลบข้อมูลของฉัน (`js/privacy.js`) ครอบคลุม profile ตารางสอน และวิชา **ยังไม่รวมข้อตกลง PA (`pa_agreements`)** — ถ้าเพิ่มคอลเลกชันใหม่ ต้องเพิ่มที่ไฟล์นี้ด้วย
+- ส่งออก/ลบข้อมูลของฉัน (`js/privacy.js`) ครอบคลุม profile ตารางสอน และวิชา **ยังไม่รวม Personal Agreement (`pa_agreements`) และแบบรายงานผล (`pa_reports`)** — ถ้าเพิ่มคอลเลกชันใหม่ ต้องเพิ่มที่ไฟล์นี้ด้วย
 
 ### ตารางสอนและวิดเจ็ตหน้าแรก
 

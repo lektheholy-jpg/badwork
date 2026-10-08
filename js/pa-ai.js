@@ -1,5 +1,5 @@
 // ==========================================================================
-// ผู้ช่วย AI (Gemini) สำหรับหน้าสร้างข้อตกลง PA — ร่าง/เติม/ปรับสำนวนได้ทุกช่อง
+// ผู้ช่วย AI (Gemini) สำหรับหน้าสร้างPersonal Agreement — ร่าง/เติม/ปรับสำนวนได้ทุกช่อง
 //   เรียก Gemini ผ่าน Firebase AI Logic (ไม่มี API key ในโค้ด · ป้องกันด้วย App Check + reCAPTCHA v3)
 //   - ปุ่มใต้ช่องส่วนที่ 2 (ประเด็นท้าทาย) : ช่วยเขียน/เติม · ปรับสำนวน · ทำให้กระชับ
 //   - ปุ่มใต้งานมาตรฐานตำแหน่งแต่ละข้อ (1.1–3.3) : ช่วยเขียนช่องที่ว่าง · ปรับสำนวนทั้งข้อ
@@ -298,7 +298,7 @@ function paAiReview(items, warn) {
   }).join('');
 
   openModal(`<h2>ข้อความที่ AI เสนอ</h2>
-    <div class="modal-sub">${items.length} ช่อง · แก้ไขในกล่องได้ก่อนกด “ใช้ที่เลือก” · ข้อความจะยังไม่ถูกบันทึกจนกว่าจะกด “บันทึกข้อตกลง PA”</div>
+    <div class="modal-sub">${items.length} ช่อง · แก้ไขในกล่องได้ก่อนกด “ใช้ที่เลือก” · ข้อความจะยังไม่ถูกบันทึกจนกว่าจะกด “บันทึกPersonal Agreement”</div>
     ${warn ? `<div class="pa-ai-warn">${escapeHtml(warn)}</div>` : ''}
     <div class="pa-ai-bar">
       <span class="u-note-sm">“…” คือตัวเลขที่ครูต้องกรอกเอง · AI อาจผิดพลาด โปรดตรวจทาน</span>
@@ -357,7 +357,7 @@ function paAiReview(items, warn) {
       });
       close();
       showToast(lost ? `ใส่ได้ ${n} ช่อง (${lost} ช่องหายไปเพราะฟอร์มถูกโหลดใหม่ — ลองกดใหม่)`
-        : `ใส่ข้อความ ${n} ช่องแล้ว${dots ? ' · มี “…” ที่ต้องกรอกตัวเลข' : ''} · ตรวจแล้วกด “บันทึกข้อตกลง PA”`);
+        : `ใส่ข้อความ ${n} ช่องแล้ว${dots ? ' · มี “…” ที่ต้องกรอกตัวเลข' : ''} · ตรวจแล้วกด “บันทึกPersonal Agreement”`);
     }
   });
   areas[0]?.focus();
@@ -429,7 +429,7 @@ async function paAiCtxSave(statusEl) {
     if (statusEl?.isConnected) statusEl.textContent = 'บันทึกอัตโนมัติแล้ว';
   } catch (err) {
     console.error('PA AI ctx save:', err);
-    if (statusEl?.isConnected) statusEl.textContent = 'บันทึกอัตโนมัติไม่สำเร็จ — กด “บันทึกข้อตกลง PA” เพื่อเก็บ';
+    if (statusEl?.isConnected) statusEl.textContent = 'บันทึกอัตโนมัติไม่สำเร็จ — กด “บันทึกPersonal Agreement” เพื่อเก็บ';
   }
 }
 

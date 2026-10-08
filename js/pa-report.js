@@ -1,5 +1,5 @@
 // ==========================================================================
-// ตัวอย่าง / พิมพ์ PA 1/ส (แท็บที่สองของหน้า "ข้อตกลง PA")
+// ตัวอย่าง / พิมพ์ PA 1/ส (แท็บที่สองของหน้า "Personal Agreement")
 // แสดงข้อตกลงที่เลือกในรูปแบบเอกสารตามแบบ สพฐ. + ปุ่มพิมพ์/บันทึกเป็น PDF
 // ตัวสร้างเอกสาร (paBuildDocHtml, paPrint, PA1_CSS) อยู่ใน pa.js
 // ==========================================================================
@@ -53,9 +53,9 @@ async function renderPAReportView() {
       <div class="card">
         <div class="empty-state">
           <div class="icon icon-violet">${PA_ICO_PA}</div>
-          <div class="empty-title">ยังไม่มีข้อตกลง PA</div>
-          <div class="empty-sub">สร้างข้อตกลง PA ก่อน แล้วดูตัวอย่างและพิมพ์ที่นี่</div>
-          <button type="button" class="btn btn-primary par-goto-pa">ไปที่ข้อตกลง PA</button>
+          <div class="empty-title">ยังไม่มีPersonal Agreement</div>
+          <div class="empty-sub">สร้างPersonal Agreement ก่อน แล้วดูตัวอย่างและพิมพ์ที่นี่</div>
+          <button type="button" class="btn btn-primary par-goto-pa">ไปที่Personal Agreement</button>
         </div>
       </div>`;
     view.querySelector('.par-goto-pa').addEventListener('click', () => paSwitchTab('agreement'));
