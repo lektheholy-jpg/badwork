@@ -19,6 +19,7 @@ const PAState = {
   doc: null,        // ข้อมูล PA ที่กำลังแก้
   list: null,       // แคชรายการ
   previewId: null,  // เอกสารที่เลือกดู/พิมพ์ในแท็บรายงาน
+  seq: 0,           // เลขรอบการสลับแท็บ — เรนเดอร์ที่ค้างจากรอบก่อน (A→B→A เร็วๆ) เทียบเลขแล้วไม่วาดทับ
 };
 
 // ------------------------------------------------------------------
@@ -470,14 +471,21 @@ function paMount() {
 }
 
 // เนื้อหาใหม่มาแล้ว: ยกเลิกตัวโหลด + จางเข้าเฉพาะพื้นที่เนื้อหา (แท็บไม่กะพริบ)
+// มาจากการกดสลับแท็บ (เนื้อหาเดิมถูกหรี่ .is-switching อยู่ที่ 0.5) → จางเข้าต่อจาก 0.5 ไม่ให้วูบไปโปร่งใสแล้วค่อยขึ้น
+// ผู้เรียกห้ามถอด .is-switching เองก่อนเรียกฟังก์ชันนี้ ไม่งั้นแยกไม่ออกว่ามาจากการกดแท็บ
 function paSwapIn(body) {
   clearLoading(body);
-  body.classList.remove('is-switching', 'tab-swap');
+  const fromDim = body.classList.contains('is-switching');
+  body.classList.remove('is-switching', 'tab-swap', 'tab-swap-dim');
   void body.offsetWidth; // รีสตาร์ทแอนิเมชันถ้าสลับซ้ำเร็วๆ
-  body.classList.add('tab-swap');
+  body.classList.add(fromDim ? 'tab-swap-dim' : 'tab-swap');
 }
 
+// เรนเดอร์นี้ล้าสมัยแล้วหรือยัง: ออกจากหน้าไปแล้ว หรือมีการกดสลับแท็บรอบใหม่ระหว่างรอข้อมูล
+function paStale(view, seq) { return !view.isConnected || PAState.seq !== seq; }
+
 function paRenderTab() {
+  PAState.seq++; // รอบใหม่ — เรนเดอร์ที่ยังค้างจากรอบก่อนจะถูกมองว่าล้าสมัย
   if (PAState.tab === 'report') return renderPAReportView();
   if (PAState.tab === 'rpt') return renderPARptView(); // แบบฟอร์มรายงานผล (js/pa-rpt.js)
   return PAState.view === 'form' ? renderPAFormView() : renderPAListView();
@@ -496,8 +504,16 @@ async function paSwitchTab(tab) {
     x.setAttribute('aria-selected', String(on));
   });
   tabs?.__pillPlace?.(true);
-  document.getElementById('pa-tab-body')?.classList.add('is-switching'); // หรี่เนื้อหาเดิมทันที ระหว่างรอข้อมูล
-  await paRenderTab();
+  const body = document.getElementById('pa-tab-body');
+  body?.classList.add('is-switching'); // หรี่เนื้อหาเดิมทันที ระหว่างรอข้อมูล
+  try {
+    await paRenderTab();
+  } catch (err) {
+    // เรนเดอร์พัง: ถ้าไม่ถอดตรงนี้เนื้อหาจะค้างหรี่และกดอะไรไม่ได้ (pointer-events: none)
+    console.error('PA tab render failed', err);
+    if (body && body.isConnected) { clearLoading(body); body.classList.remove('is-switching'); }
+    if (typeof showToast === 'function') showToast('เปิดแท็บไม่สำเร็จ ลองกดอีกครั้ง');
+  }
 }
 
 // ------------------------------------------------------------------
@@ -521,6 +537,7 @@ function paDuplicate(src) {
 // ------------------------------------------------------------------
 async function renderPAListView() {
   const view = paMount(); // = พื้นที่เนื้อหาของแท็บ
+  const seq = PAState.seq;
   showLoading('list', view);
 
   let list = [];
@@ -528,14 +545,14 @@ async function renderPAListView() {
     list = await paLoadList();
     PAState.list = list;
   } catch (err) {
-    if (!view.isConnected || PAState.tab !== 'agreement') return; // ผู้ใช้สลับแท็บ/ออกจากหน้าไปแล้ว
+    if (paStale(view, seq) || PAState.tab !== 'agreement') return; // ผู้ใช้สลับแท็บ/ออกจากหน้าไปแล้ว
     clearLoading(view);
     view.classList.remove('is-switching');
     view.innerHTML = `<div class="card card-pad"><div class="empty-state">โหลดข้อมูลไม่สำเร็จ: ${escapeHtml(err.message)}</div></div>`;
     return;
   }
 
-  if (!view.isConnected || PAState.tab !== 'agreement' || PAState.view !== 'list') return;
+  if (paStale(view, seq) || PAState.tab !== 'agreement' || PAState.view !== 'list') return;
 
   const rows = list.map(d => `
     <div class="pa-row card" data-id="${escapeHtml(d.id)}">
@@ -640,7 +657,6 @@ async function renderPAListView() {
     }
   }));
 
-  view.classList.remove('is-switching');
   paSwapIn(view);
 }
 
@@ -666,12 +682,13 @@ function paLoadBlock(key, title, rows, ph) {
 
 async function renderPAFormView() {
   const view = paMount(); // = พื้นที่เนื้อหาของแท็บ
+  const seq = PAState.seq;
   const d = PAState.doc = paNormalize(PAState.doc);
   const isNew = !PAState.docId;
   showLoading('list', view);
   let p;
   try { await loadModule('profile'); p = await loadTeacherProfile(); } catch (err) { p = AppState.teacherProfile || {}; }
-  if (!view.isConnected || PAState.tab !== 'agreement' || PAState.view !== 'form') return; // ผู้ใช้สลับแท็บ/ออกไปแล้ว
+  if (paStale(view, seq) || PAState.tab !== 'agreement' || PAState.view !== 'form') return; // ผู้ใช้สลับแท็บ/ออกไปแล้ว
 
   // เอกสารที่ "ส่งแล้ว" ใช้สำเนาข้อมูลผู้จัดทำที่เก็บไว้ (ไม่เปลี่ยนตามโปรไฟล์) · นอกนั้นใช้ข้อมูลปัจจุบัน
   let liveOwner;
@@ -687,7 +704,7 @@ async function renderPAFormView() {
       const t = await paPullTimetable();
       if (!PA_LOAD_LISTS.some(k => d.load[k].length)) { d.load.subjects = t.subjects; d.load.activities = t.activities; }
     } catch (err) { /* ไม่มีตารางสอน/ออฟไลน์ — ข้าม */ }
-    if (!view.isConnected || PAState.tab !== 'agreement' || PAState.view !== 'form') return;
+    if (paStale(view, seq) || PAState.tab !== 'agreement' || PAState.view !== 'form') return;
   }
 
   const item = (label, val, wide) => `<div class="pa-pf-item${wide ? ' pa-pf-wide' : ''}"><dt>${label}</dt><dd>${val ? escapeHtml(val) : '—'}</dd></div>`;
@@ -868,7 +885,6 @@ async function renderPAFormView() {
 
   if (typeof paAiMount === 'function') paAiMount(view, form); // ปุ่มผู้ช่วย AI (js/pa-ai.js) — ไม่มีไฟล์นี้ฟอร์มก็ทำงานตามเดิม
 
-  view.classList.remove('is-switching');
   paSwapIn(view);
 }
 

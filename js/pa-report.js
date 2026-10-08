@@ -29,13 +29,14 @@ function paReportLegacyHtml(d) {
 // ------------------------------------------------------------------
 async function renderPAReportView() {
   const view = paMount();
+  const seq = PAState.seq;
   showLoading('list', view);
 
   let list = [];
   try {
     list = await paReportLoadList();
   } catch (err) {
-    if (!view.isConnected || PAState.tab !== 'report') return; // ผู้ใช้สลับแท็บ/ออกจากหน้าไปแล้ว
+    if (paStale(view, seq) || PAState.tab !== 'report') return; // ผู้ใช้สลับแท็บ/ออกจากหน้าไปแล้ว
     clearLoading(view);
     view.classList.remove('is-switching');
     view.innerHTML = `<div class="card card-pad"><div class="empty-state">โหลดข้อมูลไม่สำเร็จ: ${escapeHtml(err.message)}</div></div>`;
@@ -46,7 +47,7 @@ async function renderPAReportView() {
   let live = {};
   try { await loadModule('profile'); live = paOwnerFromProfile(await loadTeacherProfile()); } catch (err) { /* ใช้ค่าว่าง */ }
 
-  if (!view.isConnected || PAState.tab !== 'report') return; // สลับไปแท็บอื่นระหว่างรอข้อมูล — ไม่วาดทับ
+  if (paStale(view, seq) || PAState.tab !== 'report') return; // สลับไปแท็บอื่นระหว่างรอข้อมูล — ไม่วาดทับ
 
   if (list.length === 0) {
     view.innerHTML = `
@@ -59,7 +60,6 @@ async function renderPAReportView() {
         </div>
       </div>`;
     view.querySelector('.par-goto-pa').addEventListener('click', () => paSwitchTab('agreement'));
-    view.classList.remove('is-switching');
     paSwapIn(view);
     return;
   }
@@ -118,6 +118,5 @@ async function renderPAReportView() {
     paSwitchTab('agreement'); // paSwitchTab วาดฟอร์มให้เอง (PAState.view = 'form')
   });
 
-  view.classList.remove('is-switching');
   paSwapIn(view);
 }

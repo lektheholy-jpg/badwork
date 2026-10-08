@@ -224,19 +224,20 @@ const PARPT_LIST_CSS = `
 
 async function parptRenderList() {
   const view = paMount();
+  const seq = PAState.seq;
   showLoading('list', view);
   let list = [];
   try {
     list = await parptLoadList();
     PARptState.list = list;
   } catch (err) {
-    if (!view.isConnected || PAState.tab !== 'rpt') return;
+    if (paStale(view, seq) || PAState.tab !== 'rpt') return;
     clearLoading(view);
     view.classList.remove('is-switching');
     view.innerHTML = `<div class="card card-pad"><div class="empty-state">โหลดข้อมูลไม่สำเร็จ: ${escapeHtml(err.message)}</div></div>`;
     return;
   }
-  if (!view.isConnected || PAState.tab !== 'rpt' || PARptState.view !== 'list') return;
+  if (paStale(view, seq) || PAState.tab !== 'rpt' || PARptState.view !== 'list') return;
 
   const rows = list.map(d => `
     <div class="pa-row card" data-id="${escapeHtml(d.id)}">
@@ -304,7 +305,6 @@ async function parptRenderList() {
     catch (err) { b.disabled = false; alert('ลบไม่สำเร็จ: ' + err.message); }
   }));
 
-  view.classList.remove('is-switching');
   paSwapIn(view);
 }
 
@@ -313,11 +313,12 @@ async function parptRenderList() {
 // ------------------------------------------------------------------
 async function parptRenderForm() {
   const view = paMount();
+  const seq = PAState.seq;
   const d = PARptState.doc = parptNormalize(PARptState.doc);
   const isNew = !PARptState.docId;
   showLoading('list', view);
   const { live, owner: o } = await parptOwner(d);
-  if (!view.isConnected || PAState.tab !== 'rpt' || PARptState.view !== 'form') return;
+  if (paStale(view, seq) || PAState.tab !== 'rpt' || PARptState.view !== 'form') return;
   const frozen = d.status === 'submitted' && d.owner;
 
   const e = escapeHtml;
@@ -466,7 +467,6 @@ async function parptRenderForm() {
     }
   });
 
-  view.classList.remove('is-switching');
   paSwapIn(view);
 }
 
