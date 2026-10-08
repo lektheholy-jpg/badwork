@@ -614,7 +614,7 @@ async function renderPAListView() {
       .pa-list{display:flex;flex-direction:column;gap:10px}
       .pa-row{display:flex;align-items:center;gap:12px;padding:14px 16px;cursor:pointer;transition:box-shadow .15s}
       .pa-row:hover{box-shadow:0 0 0 2px var(--primary)}
-      .pa-row-icon .nav-icon{width:40px;height:40px;border-radius:var(--radius-xs);display:grid;place-items:center;flex-shrink:0}
+      .pa-row-icon .nav-icon{position:relative;isolation:isolate;width:40px;height:40px;border-radius:var(--radius-xs);display:grid;place-items:center;flex-shrink:0;overflow:hidden}
       .pa-row-icon .nav-icon::after{content:'';position:absolute;inset:0;z-index:-1;background:linear-gradient(145deg,oklch(from var(--w) calc(l + .06) calc(c * 1.18) h),oklch(from var(--w) calc(l - .05) calc(c * 1.25) h));-webkit-mask:var(--squircle) center/100% 100% no-repeat;mask:var(--squircle) center/100% 100% no-repeat}
       .pa-row-info{flex:1;min-width:0}
       .pa-row-title{font-weight:600;font-size:15px;color:var(--ink)}
