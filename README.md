@@ -63,7 +63,7 @@ js/report-page.js     หน้ารายงาน
 js/pa.js              ฟอร์มข้อตกลง PA 1/ส
 js/pa-ai.js           ผู้ช่วย AI ในฟอร์ม PA
 js/pa-report.js       ตัวอย่าง/พิมพ์ PA
-js/pa-rpt.js          แบบฟอร์มรายงานผล Personal Agreement (แท็บที่ 2) + แท็บ ตัวอย่าง/พิมพ์ รายงานผล (แท็บที่ 4)
+js/pa-rpt.js          แบบฟอร์มรายงานผล Personal Agreement (แท็บที่ 3) + แท็บ ตัวอย่าง/พิมพ์ รายงานผล (แท็บที่ 4)
 js/report.js          [lazy] สรุปผลรายห้อง ส่งออก CSV/ปพ.5/SGS เกณฑ์เกรด แปลงคะแนน NextSchool
 js/tools.js           [lazy] เครื่องมือในห้องเรียน
 js/privacy.js         [lazy] ส่งออก/ลบข้อมูลของฉัน

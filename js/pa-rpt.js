@@ -43,6 +43,19 @@ function parptNormalize(d) {
   return out;
 }
 
+// คัดลอกแบบรายงานผลเป็นฉบับร่างใหม่ (ยังไม่บันทึกจนกว่าจะกดบันทึก) — เหมือน paDuplicate ของฝั่งข้อตกลง
+function parptDuplicate(src) {
+  const d = parptNormalize(JSON.parse(JSON.stringify(src)));
+  ['id', 'createdAt', 'updatedAt', 'owner'].forEach(k => { delete d[k]; }); // owner ดึงจากโปรไฟล์ปัจจุบันตอนบันทึก
+  d.status = 'draft';
+  d.signDate = '';
+  PARptState.docId = null;
+  PARptState.doc = d;
+  PARptState.view = 'form';
+  parptRenderForm();
+  showToast('คัดลอกแล้ว — แก้ไขตามต้องการ แล้วกด “บันทึกแบบรายงานผล” จะได้เป็นฉบับใหม่');
+}
+
 function parptBlank() {
   return parptNormalize({ fiscalYear: String(paFiscalYear()), status: 'draft' });
 }
@@ -343,6 +356,7 @@ async function parptRenderList() {
       <div class="pa-row-meta">${paStatusBadge(d.status)}</div>
       <div class="pa-row-actions">
         <button type="button" class="btn btn-ghost btn-sm rpt-print-btn" data-id="${escapeHtml(d.id)}" title="พิมพ์ / บันทึกเป็น PDF">${PA_ICO_PRINT} พิมพ์</button>
+        <button type="button" class="btn btn-ghost btn-sm rpt-dup-btn" data-id="${escapeHtml(d.id)}" title="คัดลอกเป็นฉบับใหม่เพื่อนำไปปรับแก้">${PA_ICO_COPY} คัดลอก</button>
         <button type="button" class="btn btn-ghost btn-sm rpt-edit-btn" data-id="${escapeHtml(d.id)}" title="แก้ไข">${PA_ICO_EDIT} แก้ไข</button>
         <button type="button" class="btn btn-danger-ghost btn-sm rpt-del-btn" data-id="${escapeHtml(d.id)}" title="ลบ">${PA_ICO_DEL}</button>
       </div>
@@ -377,6 +391,11 @@ async function parptRenderList() {
   view.querySelectorAll('.rpt-new-btn').forEach(b => b.addEventListener('click', () => open(null)));
   view.querySelectorAll('.pa-row').forEach(r => r.addEventListener('click', () => open(r.dataset.id)));
   view.querySelectorAll('.rpt-edit-btn').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); open(b.dataset.id); }));
+  view.querySelectorAll('.rpt-dup-btn').forEach(b => b.addEventListener('click', e => {
+    e.stopPropagation();
+    const d = PARptState.list?.find(x => x.id === b.dataset.id);
+    if (d) parptDuplicate(d);
+  }));
   view.querySelectorAll('.rpt-print-btn').forEach(b => b.addEventListener('click', async e => {
     e.stopPropagation();
     PARptState.previewId = b.dataset.id;
@@ -427,6 +446,7 @@ async function parptRenderForm() {
         <h2 class="pa-form-title">แบบรายงานผล · ${isNew ? 'สร้างใหม่' : 'แก้ไข'}</h2>
         <div class="u-note">แบบรายงานผลข้อตกลงในการพัฒนางาน (PA) สำหรับข้าราชการครูและบุคลากรทางการศึกษา ตำแหน่ง ครู (สังกัด สพฐ.)</div>
       </div>
+      ${isNew ? '' : `<button type="button" class="btn btn-ghost btn-sm rpt-dup-btn" title="คัดลอกข้อมูลในฟอร์มนี้เป็นฉบับร่างใหม่">${PA_ICO_COPY} คัดลอกเป็นฉบับใหม่</button>`}
     </div>
 
     <form id="rpt-form" class="pa-form" novalidate>
@@ -515,6 +535,7 @@ async function parptRenderForm() {
 
   const form = view.querySelector('#rpt-form');
   view.querySelectorAll('.rpt-back-btn, .rpt-cancel-btn').forEach(b => b.addEventListener('click', () => { PARptState.view = 'list'; parptRenderList(); }));
+  view.querySelector('.rpt-dup-btn')?.addEventListener('click', () => { parptCollect(); parptDuplicate(PARptState.doc); }); // คัดลอกค่าที่กรอกค้างอยู่
   view.querySelector('.rpt-goto-profile').addEventListener('click', () => { parptCollect(); navigate('profile'); });
   view.querySelector('#rpt-fiscalYear').addEventListener('input', ev => { view.querySelector('#rpt-period').textContent = paPeriodText(ev.target.value); });
   form.addEventListener('input', ev => {
