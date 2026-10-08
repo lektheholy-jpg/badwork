@@ -79,7 +79,7 @@ async function renderPAReportView() {
       </div>
     </div>
     <div class="u-note parp-hint">ตัวอย่างตามแบบ PA 1/ส — กดพิมพ์แล้วเลือก "บันทึกเป็น PDF" ในหน้าต่างพิมพ์ได้ · ช่องลงนามและความเห็น ผอ. เว้นไว้ให้เซ็นบนกระดาษ${d.owner ? '' : ' · เอกสารนี้ยังไม่มีสำเนาข้อมูลผู้จัดทำ จึงใช้ข้อมูลปัจจุบันจากข้อมูลส่วนตัว (จะเก็บสำเนาเมื่อบันทึกใหม่)'}</div>
-    <div class="parp-paper"><style>${PA1_CSS}</style>${paBuildDocHtml(d, owner)}</div>
+    <div class="parp-paper"><style>${paFontCss()}${PA1_CSS}</style>${paBuildDocHtml(d, owner)}</div>
     ${paReportLegacyHtml(d)}
     <style>
       .parp-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:8px}
@@ -87,12 +87,24 @@ async function renderPAReportView() {
       .parp-actions{display:flex;gap:8px}
       .parp-actions .ico{width:16px;height:16px}
       .parp-hint{margin-bottom:12px}
-      .parp-paper{background:#fff;color:#000;border-radius:var(--radius-s);box-shadow:0 0 0 1px var(--border);padding:28px 32px;overflow-x:auto}
+      .parp-paper{background:#fff;color:#000;border-radius:var(--radius-s);box-shadow:0 0 0 1px var(--border);overflow-x:auto}
+      .parp-paper .pa1{box-sizing:border-box;width:210mm;padding:16mm 14mm}
       .parp-legacy{margin-top:14px}
       .parp-legacy>summary{cursor:pointer;font-weight:600;font-size:13.5px;color:var(--ink-soft)}
       .parp-legacy-text{white-space:pre-wrap;margin-top:8px;font-size:13.5px;padding:10px 12px;border-radius:var(--radius-s);background:var(--surface-sunken)}
-      @media(max-width:600px){.parp-paper{padding:14px 12px}.parp-actions{width:100%}.parp-actions .btn{flex:1}}
+      @media(max-width:600px){.parp-actions{width:100%}.parp-actions .btn{flex:1}}
     </style>`;
+
+  // แสดงเป็นหน้า A4 ขนาดจริง แล้วย่อให้พอดีความกว้างจอ (zoom) — พิมพ์ออกมาเหมือนที่เห็น
+  const fit = () => {
+    const paper = view.querySelector('.parp-paper'), pg = paper && paper.querySelector('.pa1');
+    if (!pg) return;
+    pg.style.zoom = 1;
+    pg.style.zoom = Math.min(1, paper.clientWidth / pg.offsetWidth);
+  };
+  requestAnimationFrame(fit);
+  const onResize = () => { if (!view.isConnected || PAState.tab !== 'report') window.removeEventListener('resize', onResize); else fit(); };
+  window.addEventListener('resize', onResize);
 
   view.querySelector('#parp-select').addEventListener('change', e => {
     PAState.previewId = e.target.value;

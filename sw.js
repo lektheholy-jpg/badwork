@@ -16,7 +16,7 @@
 // ตัวหน้าเว็บ (js/pwa.js) จะแจ้ง "มีเวอร์ชันใหม่" ให้กดอัปเดตเอง ไม่รีโหลดกลางคันตอนครูกำลังกรอกคะแนน
 // ==========================================================================
 
-const VERSION = '2026-10-08.1';
+const VERSION = '2026-10-08.2';
 const CORE = `myscore-core-${VERSION}`; // ไฟล์แอป (เปลี่ยนเวอร์ชัน = ทิ้งของเก่า)
 const RUNTIME = 'myscore-rt';           // รูป/ไฟล์ที่แคชตอนใช้งาน (คงอยู่ข้ามเวอร์ชัน)
 
@@ -66,6 +66,12 @@ const PRECACHE = [
   'assets/head-cat-sm.webp',
   'assets/banner-still.webp',
   'assets/banner-sm.webp',
+  // ฟอนต์สำรองสำหรับพิมพ์ PA 1 (Sarabun, OFL)
+  'assets/fonts/sarabun-thai-400-normal.woff2',
+  'assets/fonts/sarabun-thai-700-normal.woff2',
+  'assets/fonts/sarabun-thai-400-italic.woff2',
+  'assets/fonts/sarabun-latin-400-normal.woff2',
+  'assets/fonts/sarabun-latin-700-normal.woff2',
 ];
 
 // ไฟล์ข้ามโดเมน: ถ้าโหลดไม่ได้ตอนติดตั้งก็ไม่เป็นไร (จะแคชตอนใช้งานจริงแทน) — ต้องตรงกับ index.html
