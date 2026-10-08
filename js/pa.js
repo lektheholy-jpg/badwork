@@ -487,6 +487,22 @@ async function paSwitchTab(tab) {
 }
 
 // ------------------------------------------------------------------
+// คัดลอกข้อตกลงเป็นฉบับร่างใหม่ (ยังไม่บันทึกจนกว่าจะกดบันทึก) เพื่อเอาไปปรับแก้
+// ------------------------------------------------------------------
+function paDuplicate(src) {
+  const d = paNormalize(JSON.parse(JSON.stringify(src)));
+  ['id', 'createdAt', 'updatedAt', 'owner'].forEach(k => { delete d[k]; }); // owner ดึงจากโปรไฟล์ปัจจุบันตอนบันทึก
+  d.status = 'draft';
+  d.signDate = '';
+  d._ttTried = true; // มีชั่วโมงสอนจากฉบับเดิมแล้ว ไม่ดึงตารางสอนทับ
+  PAState.docId = null;
+  PAState.doc = d;
+  PAState.view = 'form';
+  renderPAFormView();
+  showToast('คัดลอกแล้ว — แก้ไขตามต้องการ แล้วกด “บันทึกข้อตกลง PA” จะได้เป็นฉบับใหม่');
+}
+
+// ------------------------------------------------------------------
 // หน้ารายการ PA (แท็บแบบฟอร์มข้อตกลง)
 // ------------------------------------------------------------------
 async function renderPAListView() {
@@ -519,6 +535,7 @@ async function renderPAListView() {
       </div>
       <div class="pa-row-actions">
         <button type="button" class="btn btn-ghost btn-sm pa-print-btn" data-id="${escapeHtml(d.id)}" title="ดูตัวอย่าง / พิมพ์">${PA_ICO_PRINT} พิมพ์</button>
+        <button type="button" class="btn btn-ghost btn-sm pa-dup-btn" data-id="${escapeHtml(d.id)}" title="คัดลอกเป็นฉบับใหม่เพื่อนำไปปรับแก้">${PA_ICO_COPY} คัดลอก</button>
         <button type="button" class="btn btn-ghost btn-sm pa-edit-btn" data-id="${escapeHtml(d.id)}" title="แก้ไข">${PA_ICO_EDIT} แก้ไข</button>
         <button type="button" class="btn btn-danger-ghost btn-sm pa-del-btn" data-id="${escapeHtml(d.id)}" title="ลบ">${PA_ICO_DEL}</button>
       </div>
@@ -575,6 +592,11 @@ async function renderPAListView() {
   view.querySelectorAll('.pa-edit-btn').forEach(b => b.addEventListener('click', (e) => {
     e.stopPropagation();
     openEdit(b.dataset.id);
+  }));
+  view.querySelectorAll('.pa-dup-btn').forEach(b => b.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const d = PAState.list?.find(x => x.id === b.dataset.id);
+    if (d) paDuplicate(d);
   }));
   view.querySelectorAll('.pa-row').forEach(r => r.addEventListener('click', () => openEdit(r.dataset.id)));
   view.querySelectorAll('.pa-print-btn').forEach(b => b.addEventListener('click', (e) => {
@@ -671,6 +693,7 @@ async function renderPAFormView() {
         <h2 class="pa-form-title">PA 1/ส · ${isNew ? 'สร้างข้อตกลงใหม่' : 'แก้ไขข้อตกลง'}</h2>
         <div class="u-note">แบบตกลงในการพัฒนางาน (PA) สำหรับข้าราชการครูและบุคลากรทางการศึกษา ตำแหน่ง ครู (สังกัด สพฐ.)</div>
       </div>
+      ${isNew ? '' : `<button type="button" class="btn btn-ghost btn-sm pa-dup-btn" title="คัดลอกข้อมูลในฟอร์มนี้เป็นฉบับร่างใหม่">${PA_ICO_COPY} คัดลอกเป็นฉบับใหม่</button>`}
     </div>
 
     <form id="pa-form" class="pa-form" novalidate>
@@ -764,6 +787,7 @@ async function renderPAFormView() {
   view.querySelectorAll('.pa-back-btn, .pa-cancel-btn').forEach(b => b.addEventListener('click', () => {
     PAState.view = 'list'; renderPAListView();
   }));
+  view.querySelector('.pa-dup-btn')?.addEventListener('click', () => { paCollectFormData(); paDuplicate(PAState.doc); }); // รวมสิ่งที่พิมพ์ค้างไว้ด้วย
   view.querySelector('.pa-goto-profile').addEventListener('click', () => { paCollectFormData(); navigate('profile'); });
   view.querySelector('#pa-fiscalYear').addEventListener('input', e => {
     view.querySelector('#pa-period').textContent = paPeriodText(e.target.value);

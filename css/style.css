@@ -2085,6 +2085,7 @@ table.tt tr.is-today td.tt-cell { background: color-mix(in srgb, var(--hue-orang
 
 /* ---------- ข้อตกลง PA · ฟอร์ม PA 1/ส (js/pa.js) และการ์ดรายงาน (js/pa-report.js) ---------- */
 .pa-form-head { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+.pa-form-head .pa-dup-btn { margin-left: auto; flex-shrink: 0; }
 .pa-form-title { font-size: 20px; font-weight: 700; margin: 0 0 2px; color: var(--ink); }
 .pa-form .card { margin-bottom: 16px; }
 .pa-form .card-title { margin: 0 0 12px; }
