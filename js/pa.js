@@ -7,7 +7,8 @@
 // ข้อมูลผู้จัดทำดึงจากหน้าข้อมูลส่วนตัว · ชั่วโมงสอนดึงจากตารางสอน (เก็บเป็นสำเนาในเอกสาร แก้ได้)
 // ฟิลด์ระดับบนของเอกสาร (≤ 30 ตาม firestore.rules validDoc):
 //   fiscalYear, status, classroomTypes{}, load{}, workItems{}, challengeTitle, problem, method,
-//   outcomeQuant, outcomeQual, signDate, owner{}  (+ ฟิลด์แบบเดิม: workload, outcome, tasks, selfDev ที่ยังอ่านได้)
+//   outcomeQuant, outcomeQual, signDate, owner{}, aiCtx{}  (+ ฟิลด์แบบเดิม: workload, outcome, tasks, selfDev ที่ยังอ่านได้)
+//   aiCtx = บริบทงานจริงสั้นๆ ที่ผู้ช่วย AI ใช้ (ระดับชั้น/ห้อง/นักเรียน/ปัญหา/ผลปีก่อน/จุดเน้น) — 1 ฟิลด์ระดับบน ไม่เกิน validDoc(30)
 // ==========================================================================
 
 const PAState = {
@@ -141,6 +142,9 @@ const paFmtH = n => String(Math.round((Number(n) || 0) * 100) / 100);
 const paSum = rows => (rows || []).reduce((s, r) => s + (Number(r.hours) || 0), 0);
 const paNl = s => escapeHtml(s || '').replace(/\n/g, '<br>');
 
+// บริบทงานจริงของครู (ให้ผู้ช่วย AI เขียนตรงงาน) — ค่าสูงสุดของแต่ละช่อง (ตัวอักษร) · ป้ายชื่อช่องอยู่ที่ js/pa-ai.js
+const PA_CTX_MAX = { level: 40, rooms: 6, students: 6, problems: 240, prev: 200, focus: 160 };
+
 // เติมค่าเริ่มต้นให้ครบทุกฟิลด์ (รองรับเอกสารรุ่นเก่าที่มีแค่ classroomBasic / workload / outcome)
 function paNormalize(d) {
   d = d || {};
@@ -156,6 +160,9 @@ function paNormalize(d) {
   });
   d.workItems = d.workItems && typeof d.workItems === 'object' ? d.workItems : {};
   ['challengeTitle', 'problem', 'method', 'outcomeQuant', 'outcomeQual', 'signDate'].forEach(k => { d[k] = String(d[k] || ''); });
+  const c = d.aiCtx && typeof d.aiCtx === 'object' ? d.aiCtx : {};
+  d.aiCtx = {};
+  Object.entries(PA_CTX_MAX).forEach(([k, n]) => { d.aiCtx[k] = String(c[k] || '').slice(0, n); });
   return d;
 }
 
@@ -853,6 +860,10 @@ function paCollectFormData() {
   });
   Object.keys(workItems).forEach(k => { if (!Object.values(workItems[k]).some(Boolean)) delete workItems[k]; });
 
+  // ช่องบริบท AI อยู่ในการ์ดที่ pa-ai.js ติดให้ — ถ้าไม่มีช่อง (ไม่โหลดไฟล์นั้น) คงค่าเดิมไว้
+  const aiCtx = {};
+  Object.entries(PA_CTX_MAX).forEach(([k, n]) => { aiCtx[k] = el('pa-ctx-' + k) ? get('pa-ctx-' + k).slice(0, n) : (PAState.doc.aiCtx?.[k] || ''); });
+
   Object.assign(PAState.doc, {
     fiscalYear: get('pa-fiscalYear'),
     status: get('pa-status') || 'draft',
@@ -865,6 +876,7 @@ function paCollectFormData() {
     method: get('pa-method'),
     outcomeQuant: get('pa-outcomeQuant'),
     outcomeQual: get('pa-outcomeQual'),
+    aiCtx,
   });
 }
 

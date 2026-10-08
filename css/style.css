@@ -2171,6 +2171,12 @@ table.tt tr.is-today td.tt-cell { background: color-mix(in srgb, var(--hue-orang
 .pa-ai-warn { margin: 0 0 14px; padding: 10px 14px; border-radius: var(--radius-s); background: var(--warning-tint); color: var(--ink); font-size: 13px; }
 .pa-ai-top .btn .ico { width: 18px; height: 18px; }
 
+.pa-ai-ctx { margin: 0 0 14px; padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--radius-s); background: var(--surface-sunken); }
+.pa-ai-ctx > summary { cursor: pointer; }
+.pa-ai-ctx [data-ctx-count] { margin-left: 8px; }
+.pa-ai-ctx-note { margin: 8px 0 12px; }
+.pa-ai-ctx-grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
+
 .pa-ai-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; }
 .pa-ai-tag { display: inline-flex; align-items: center; gap: 5px; margin-right: 4px; font-size: 12.5px; font-weight: 700; color: var(--primary-dark); }
 .pa-ai-tag .ico { width: 16px; height: 16px; }
@@ -2190,4 +2196,5 @@ table.tt tr.is-today td.tt-cell { background: color-mix(in srgb, var(--hue-orang
 .pa-ai-old-text { margin-top: 6px; padding: 10px 12px; border-radius: var(--radius-s); background: var(--surface-sunken); white-space: pre-wrap; overflow-wrap: anywhere; }
 @media (max-width: 540px) {
   .pa-ai-top .btn { width: 100%; }
+  .pa-ai-ctx-grid { grid-template-columns: minmax(0, 1fr); }
 }
