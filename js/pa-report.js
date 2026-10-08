@@ -25,6 +25,40 @@ function paReportLegacyHtml(d) {
 }
 
 // ------------------------------------------------------------------
+// คัดลอกเอกสาร PA ไปวางใน Word / Google Docs — ได้ทั้งแบบมีรูปแบบ (HTML) และข้อความล้วน
+//   CSS ของเอกสารเป็นคลาส ซึ่งหายตอนวางข้ามแอป จึงฝังสไตล์ที่คำนวณแล้วลงทุกองค์ประกอบในสำเนา
+// ------------------------------------------------------------------
+const PA_COPY_PROPS = ['font-family', 'font-size', 'font-weight', 'font-style', 'line-height', 'text-align', 'text-indent',
+  'margin-top', 'margin-bottom', 'margin-left', 'padding-left', 'text-decoration-line', 'white-space'];
+
+async function paCopyDoc(pg) {
+  const text = pg.innerText.replace(/\n{3,}/g, '\n\n').trim();
+  const clone = pg.cloneNode(true);
+  const src = [pg, ...pg.querySelectorAll('*')], dst = [clone, ...clone.querySelectorAll('*')];
+  src.forEach((el, i) => {
+    const cs = getComputedStyle(el);
+    dst[i].setAttribute('style', PA_COPY_PROPS.map(k => [k, cs.getPropertyValue(k)]).filter(([, v]) => v).map(([k, v]) => `${k}:${v}`).join(';'));
+    dst[i].removeAttribute('class');
+  });
+  clone.removeAttribute('style'); // ตัดความกว้าง A4 / zoom ของหน้าจอออก
+  const html = clone.outerHTML;
+  try {
+    if (!(navigator.clipboard && window.ClipboardItem)) throw new Error('no-rich-clipboard');
+    await navigator.clipboard.write([new ClipboardItem({
+      'text/html': new Blob([html], { type: 'text/html' }),
+      'text/plain': new Blob([text], { type: 'text/plain' }),
+    })]);
+  } catch (err) { // เบราว์เซอร์ไม่รองรับ/ไม่อนุญาต → เลือกเนื้อหาในหน้าแล้วสั่งคัดลอก
+    const sel = getSelection(), range = document.createRange();
+    range.selectNodeContents(pg);
+    sel.removeAllRanges(); sel.addRange(range);
+    const ok = document.execCommand('copy');
+    sel.removeAllRanges();
+    if (!ok) throw new Error('คัดลอกไม่สำเร็จ — ลองกด “พิมพ์ / บันทึกเป็น PDF” แทน');
+  }
+}
+
+// ------------------------------------------------------------------
 // render แท็บ "ตัวอย่าง / พิมพ์ PA 1" — วาดลงพื้นที่เนื้อหาของหน้า PA (โครงหน้า+แท็บอยู่ใน pa.js)
 // ------------------------------------------------------------------
 async function renderPAReportView() {
@@ -75,10 +109,11 @@ async function renderPAReportView() {
       </select>
       <div class="parp-actions">
         <button type="button" class="btn btn-ghost btn-sm parp-edit">${PA_ICO_EDIT} แก้ไข</button>
+        <button type="button" class="btn btn-ghost btn-sm parp-copy">${PA_ICO_COPY} คัดลอก</button>
         <button type="button" class="btn btn-primary btn-sm parp-print">${PA_ICO_PRINT} พิมพ์ / บันทึกเป็น PDF</button>
       </div>
     </div>
-    <div class="u-note parp-hint">ตัวอย่างตามแบบ PA 1/ส — กดพิมพ์แล้วเลือก "บันทึกเป็น PDF" ในหน้าต่างพิมพ์ได้ · ช่องลงนามและความเห็น ผอ. เว้นไว้ให้เซ็นบนกระดาษ${d.owner ? '' : ' · เอกสารนี้ยังไม่มีสำเนาข้อมูลผู้จัดทำ จึงใช้ข้อมูลปัจจุบันจากข้อมูลส่วนตัว (จะเก็บสำเนาเมื่อบันทึกใหม่)'}</div>
+    <div class="u-note parp-hint">ตัวอย่างตามแบบ PA 1/ส — กดพิมพ์แล้วเลือก "บันทึกเป็น PDF" ในหน้าต่างพิมพ์ได้ หรือกด “คัดลอก” ไปวางใน Word/Google Docs · ช่องลงนามและความเห็น ผอ. เว้นไว้ให้เซ็นบนกระดาษ${d.owner ? '' : ' · เอกสารนี้ยังไม่มีสำเนาข้อมูลผู้จัดทำ จึงใช้ข้อมูลปัจจุบันจากข้อมูลส่วนตัว (จะเก็บสำเนาเมื่อบันทึกใหม่)'}</div>
     <div class="parp-paper"><style>${paFontCss()}${PA1_CSS}</style>${paBuildDocHtml(d, owner)}</div>
     ${paReportLegacyHtml(d)}
     <style>
@@ -111,6 +146,12 @@ async function renderPAReportView() {
     renderPAReportView();
   });
   view.querySelector('.parp-print').addEventListener('click', () => paPrint(d, owner));
+  view.querySelector('.parp-copy').addEventListener('click', async () => {
+    const pg = view.querySelector('.parp-paper .pa1');
+    if (!pg) return;
+    try { await paCopyDoc(pg); showToast('คัดลอกฟอร์ม PA แล้ว — ไปวางใน Word หรือ Google Docs ได้เลย'); }
+    catch (err) { showToast(err.message || 'คัดลอกไม่สำเร็จ'); }
+  });
   view.querySelector('.parp-edit').addEventListener('click', () => {
     PAState.docId = d.id;
     PAState.doc = paNormalize(JSON.parse(JSON.stringify(d)));
