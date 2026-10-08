@@ -443,7 +443,7 @@ function paPrint(d, o) {
 // โครงหน้า: หัวเรื่อง + แท็บ (แบบฟอร์มข้อตกลง | ตัวอย่าง/พิมพ์) + พื้นที่เนื้อหา
 // ปุ่มเมนูข้างปุ่มเดียว (pa-page) เปิดหน้านี้ — สลับสองมุมมองด้วยแท็บโดยไม่วาดทั้งหน้าใหม่
 // ------------------------------------------------------------------
-const PA_TABS = [['agreement', 'แบบฟอร์มข้อตกลง'], ['rpt', 'แบบฟอร์มรายงานผล'], ['report', 'ตัวอย่าง / พิมพ์ PA 1']];
+const PA_TABS = [['agreement', 'แบบฟอร์มข้อตกลง'], ['rpt', 'แบบฟอร์มรายงานผล'], ['report', 'ตัวอย่าง / พิมพ์ PA 1'], ['rptprev', 'ตัวอย่าง / พิมพ์ รายงานผล']];
 
 function paBuildShell() {
   const view = document.getElementById('view');
@@ -508,6 +508,7 @@ function paRenderTab() {
   PAState.seq++; // รอบใหม่ — เรนเดอร์ที่ยังค้างจากรอบก่อนจะถูกมองว่าล้าสมัย
   if (PAState.tab === 'report') return renderPAReportView();
   if (PAState.tab === 'rpt') return renderPARptView(); // แบบฟอร์มรายงานผล (js/pa-rpt.js)
+  if (PAState.tab === 'rptprev') return renderPARptPreviewView(); // ตัวอย่าง/พิมพ์ รายงานผล (js/pa-rpt.js)
   return PAState.view === 'form' ? renderPAFormView() : renderPAListView();
 }
 

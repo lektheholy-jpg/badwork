@@ -13,6 +13,7 @@ const PARptState = {
   docId: null,   // null = สร้างใหม่
   doc: null,
   list: null,
+  previewId: null, // เอกสารที่เลือกดู/พิมพ์ในแท็บ 'rptprev'
 };
 
 function parptCol(uid) {
@@ -192,6 +193,99 @@ function parptPrint(d, o) {
 }
 
 // ------------------------------------------------------------------
+// แท็บ "ตัวอย่าง / พิมพ์ รายงานผล" — ทำงานเหมือนแท็บ "ตัวอย่าง / พิมพ์ PA 1" (js/pa-report.js)
+// แสดงแบบรายงานผลเป็นหน้า A4 + ปุ่มพิมพ์/บันทึกเป็น PDF (ใช้ parptBuildDocHtml / parptPrint ข้างบน)
+// ------------------------------------------------------------------
+async function renderPARptPreviewView() {
+  const view = paMount();
+  const seq = PAState.seq;
+  paShowLoading(view);
+
+  let list = [];
+  try {
+    list = await parptLoadList();
+    PARptState.list = list;
+  } catch (err) {
+    if (paStale(view, seq) || PAState.tab !== 'rptprev') return;
+    clearLoading(view);
+    view.classList.remove('is-switching');
+    view.innerHTML = `<div class="card card-pad"><div class="empty-state">โหลดข้อมูลไม่สำเร็จ: ${escapeHtml(err.message)}</div></div>`;
+    return;
+  }
+
+  const d0 = list.find(x => x.id === PARptState.previewId) || list[0] || null;
+  const { owner } = await parptOwner(d0);
+
+  if (paStale(view, seq) || PAState.tab !== 'rptprev') return; // สลับแท็บระหว่างรอข้อมูล — ไม่วาดทับ
+
+  if (!d0) {
+    view.innerHTML = `
+      <div class="card">
+        <div class="empty-state">
+          <div class="icon icon-violet">${PA_ICO_PA}</div>
+          <div class="empty-title">ยังไม่มีแบบรายงานผล</div>
+          <div class="empty-sub">สร้างแบบรายงานผลก่อน แล้วดูตัวอย่างและพิมพ์ที่นี่</div>
+          <button type="button" class="btn btn-primary parp-goto-rpt">ไปที่แบบฟอร์มรายงานผล</button>
+        </div>
+      </div>`;
+    view.querySelector('.parp-goto-rpt').addEventListener('click', () => paSwitchTab('rpt'));
+    paSwapIn(view);
+    return;
+  }
+
+  const d = d0;
+  PARptState.previewId = d.id;
+
+  view.innerHTML = `
+    <div class="parp-bar">
+      <select id="parp-select" aria-label="เลือกแบบรายงานผล">
+        ${list.map(x => `<option value="${escapeHtml(x.id)}"${x.id === d.id ? ' selected' : ''}>${escapeHtml(paDocTitle(x))}${x.status === 'submitted' ? ' · ส่งแล้ว' : ' · ร่าง'}</option>`).join('')}
+      </select>
+      <div class="parp-actions">
+        <button type="button" class="btn btn-ghost btn-sm parp-edit">${PA_ICO_EDIT} แก้ไข</button>
+        <button type="button" class="btn btn-primary btn-sm parp-print">${PA_ICO_PRINT} พิมพ์ / บันทึกเป็น PDF</button>
+      </div>
+    </div>
+    <div class="u-note parp-hint">ตัวอย่างแบบรายงานผลข้อตกลงในการพัฒนางาน (PA) — กดพิมพ์แล้วเลือก "บันทึกเป็น PDF" ในหน้าต่างพิมพ์ได้ · ช่องลงนามและความเห็น ผอ. เว้นไว้ให้เซ็นบนกระดาษ</div>
+    <div class="parp-paper"><style>${paFontCss()}${PA1_CSS}</style>${parptBuildDocHtml(d, owner)}</div>
+    <style>
+      .parp-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+      .parp-bar select{min-width:0;max-width:100%}
+      .parp-actions{display:flex;gap:8px}
+      .parp-actions .ico{width:16px;height:16px}
+      .parp-hint{margin-bottom:12px}
+      .parp-paper{width:fit-content;max-width:100%;margin:0 auto;background:#fff;color:#000;border-radius:var(--radius-s);box-shadow:0 0 0 1px var(--border);overflow-x:auto}
+      .parp-paper .pa1{box-sizing:border-box;width:210mm;padding:16mm 14mm}
+      @media(max-width:600px){.parp-actions{width:100%}.parp-actions .btn{flex:1}}
+    </style>`;
+
+  // แสดงเป็นหน้า A4 ขนาดจริง แล้วย่อให้พอดีความกว้างจอ (zoom) — พิมพ์ออกมาเหมือนที่เห็น
+  const fit = () => {
+    const paper = view.querySelector('.parp-paper'), pg = paper && paper.querySelector('.pa1');
+    if (!pg) return;
+    pg.style.zoom = 1;
+    pg.style.zoom = Math.min(1, paper.clientWidth / pg.offsetWidth);
+  };
+  requestAnimationFrame(fit);
+  const onResize = () => { if (!view.isConnected || PAState.tab !== 'rptprev') window.removeEventListener('resize', onResize); else fit(); };
+  window.addEventListener('resize', onResize);
+
+  view.querySelector('#parp-select').addEventListener('change', e => {
+    PARptState.previewId = e.target.value;
+    renderPARptPreviewView();
+  });
+  view.querySelector('.parp-print').addEventListener('click', () => parptPrint(d, owner));
+  view.querySelector('.parp-edit').addEventListener('click', () => {
+    PARptState.docId = d.id;
+    PARptState.doc = parptNormalize(JSON.parse(JSON.stringify(d)));
+    PARptState.view = 'form';
+    paSwitchTab('rpt'); // paSwitchTab วาดฟอร์มให้เอง (PARptState.view = 'form')
+  });
+
+  paSwapIn(view);
+}
+
+// ------------------------------------------------------------------
 // เข้าแท็บ: รายการ | ฟอร์ม
 // ------------------------------------------------------------------
 function renderPARptView() {
@@ -285,10 +379,8 @@ async function parptRenderList() {
   view.querySelectorAll('.rpt-edit-btn').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); open(b.dataset.id); }));
   view.querySelectorAll('.rpt-print-btn').forEach(b => b.addEventListener('click', async e => {
     e.stopPropagation();
-    const d = PARptState.list?.find(x => x.id === b.dataset.id);
-    if (!d) return;
-    const { owner } = await parptOwner(d);
-    parptPrint(d, owner);
+    PARptState.previewId = b.dataset.id;
+    paSwitchTab('rptprev'); // เปิดแท็บตัวอย่าง/พิมพ์ รายงานผล (เหมือนปุ่มพิมพ์ของแท็บข้อตกลง)
   }));
   view.querySelectorAll('.rpt-del-btn').forEach(b => b.addEventListener('click', async e => {
     e.stopPropagation();
