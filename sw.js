@@ -16,7 +16,7 @@
 // ตัวหน้าเว็บ (js/pwa.js) จะแจ้ง "มีเวอร์ชันใหม่" ให้กดอัปเดตเอง ไม่รีโหลดกลางคันตอนครูกำลังกรอกคะแนน
 // ==========================================================================
 
-const VERSION = '2026-10-08.14';
+const VERSION = '2026-10-08.15';
 const CORE = `myscore-core-${VERSION}`; // ไฟล์แอป (เปลี่ยนเวอร์ชัน = ทิ้งของเก่า)
 const RUNTIME = 'myscore-rt';           // รูป/ไฟล์ที่แคชตอนใช้งาน (คงอยู่ข้ามเวอร์ชัน)
 
@@ -58,6 +58,7 @@ const PRECACHE = [
   'js/vendor/xlsx.mini.min.js',
   // ไอคอน + รูปขนาดเล็ก (รูปเต็มแคชตอนใช้งานจริง)
   'assets/icons/android-chrome-192x192.png',
+  'assets/icons/logo-128.webp',
   'assets/icons/android-chrome-512x512.png',
   'assets/icons/apple-touch-icon.png',
   'assets/icons/favicon-32x32.png',
@@ -65,8 +66,6 @@ const PRECACHE = [
   'assets/icons/favicon.ico',
   'assets/head-cat-still.webp',
   'assets/head-cat-sm.webp',
-  'assets/banner-still.webp',
-  'assets/banner-sm.webp',
   // ฟอนต์สำรองสำหรับพิมพ์ PA 1 (Sarabun, OFL)
   'assets/fonts/sarabun-thai-400-normal.woff2',
   'assets/fonts/sarabun-thai-700-normal.woff2',

@@ -509,7 +509,15 @@ const LAZY_MODULES = {
   tools: 'js/tools.js',     // เครื่องมือในห้องเรียน
   profile: 'js/profile.js', // หน้าข้อมูลส่วนตัวของครู (ตำแหน่ง/สังกัด/ผู้ลงนามในเอกสาร)
   timetable: 'js/timetable.js', // แท็บตารางสอนในหน้าข้อมูลส่วนตัว
+  // กลุ่ม Personal Agreement — ต้องโหลดตามลำดับนี้ (pa.js ก่อน) ใช้ loadModules(LAZY_BUNDLES.pa)
+  pa: 'js/pa.js',
+  'pa-ai': 'js/pa-ai.js',
+  'pa-report': 'js/pa-report.js',
+  'pa-rpt': 'js/pa-rpt.js',
 };
+const LAZY_BUNDLES = { pa: ['pa', 'pa-ai', 'pa-report', 'pa-rpt'] };
+// โหลดหลายโมดูลทีละไฟล์ตามลำดับ (สคริปต์ที่แทรกด้วย JS ไม่รับประกันลำดับถ้าโหลดพร้อมกัน)
+async function loadModules(names) { for (const n of [].concat(names)) await loadModule(n); }
 const _modulePromises = {};
 function loadModule(name) {
   const src = LAZY_MODULES[name];

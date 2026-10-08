@@ -181,7 +181,7 @@ function parptBuildDocHtml(d, o) {
     <div class="p1-break"></div>
     <div class="p1-c">เอกสารอ้างอิง</div>
     <table>
-      <colgroup><col style="width:9%"><col style="width:50%"><col style="width:41%"></colgroup>
+      <colgroup><col class="r1"><col class="r2"><col class="r3"></colgroup>
       <thead><tr><th><b>ข้อที่</b></th><th><b>รายละเอียด</b></th><th><b>เอกสารอ้างอิง</b></th></tr></thead>
       <tbody>${refRows}</tbody>
     </table>

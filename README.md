@@ -60,7 +60,7 @@ js/structure.js       โครงสร้างคะแนนระดับ�
 js/scores.js          บันทึกคะแนนแบบสเปรดชีต + autosave
 js/picker-pages.js    หน้าเลือกวิชา/ห้อง
 js/report-page.js     หน้ารายงาน
-js/pa.js              ฟอร์มข้อตกลง PA 1/ส
+js/pa.js              ฟอร์มข้อตกลง PA 1/ส (lazy — โหลดตอนเข้าหน้า PA พร้อม pa-ai/pa-report/pa-rpt ผ่าน LAZY_BUNDLES.pa)
 js/pa-ai.js           ผู้ช่วย AI ในฟอร์ม PA
 js/pa-report.js       ตัวอย่าง/พิมพ์ PA
 js/pa-rpt.js          แบบฟอร์มรายงานผล Personal Agreement (แท็บที่ 3) + แท็บ ตัวอย่าง/พิมพ์ รายงานผล (แท็บที่ 4)
@@ -184,3 +184,13 @@ users/{uid}/pa_reports/{docId}               แบบรายงานผล P
 - คะแนนเกินคะแนนเต็มถูกปรับเป็นคะแนนเต็มทั้งตอนพิมพ์และวาง (ให้โบนัสโดยเพิ่มคะแนนเต็มที่หน้าโครงสร้างวิชา)
 - วางจาก Excel: `parseDelimitedText(text, { keepBlank: true })` คงตำแหน่งแถว/ช่อง · ช่องว่าง = ล้างช่อง · ข้อความที่ไม่ใช่ตัวเลขถูกข้าม · รองรับ CSV ที่ครอบช่องด้วย `"..."`
 - บันทึกพลาดลองซ้ำอัตโนมัติ 4 ครั้ง แล้วแสดง "บันทึกไม่สำเร็จ N ช่อง — แตะเพื่อลองใหม่" และเตือนก่อนปิดหน้า
+
+## บันทึกการลดขนาด (2026-10-08)
+
+- ลบรูป `assets/banner*.webp` (ซ้ำกับ `head-cat*.webp` ทุกไฟล์ และโค้ดไม่ได้เรียกใช้) และ `js/score-logic.test.js` (ฉบับเก่า — ใช้ `tests/score-logic.test.js`)
+- กลุ่มหน้า PA (`pa.js`, `pa-ai.js`, `pa-report.js`, `pa-rpt.js`) ย้ายเป็น lazy: `LAZY_MODULES` + `LAZY_BUNDLES.pa` ใน `js/utils.js` โหลดตามลำดับด้วย `loadModules()` — ลด JS ตอนเปิดแอป ~174 KB (ยังอยู่ใน `PRECACHE` ออฟไลน์ได้เหมือนเดิม)
+- ลบ CSS variable ที่ไม่มีใครใช้ 32 ตัว, คลาสที่ไม่มีใครใช้ 9 คลาส, ยุบ `--font-modern` เป็น `--font-head`
+  (อย่าลบ `--bgp-*` — `theme.js` ประกอบชื่อตอนรัน: `'var(--bgp-' + id + ')'`)
+- โลโก้ในหน้าแอปใช้ `assets/icons/logo-128.webp` (PNG 192/512 ยังอยู่สำหรับ manifest / iOS)
+- `css/style.min.css` ถูกสร้างใหม่ด้วยสคริปต์ชั่วคราว (ผลเทียบกับ `style.css` ทีละ declaration ตรงกันทุกค่า) แต่ไม่ได้ผ่าน csso — **รัน `./build-css.sh` หนึ่งครั้งเพื่อให้ `--check` ผ่านและ commit ไฟล์ .min ที่ได้**
+- `pa-ai.js` โหลด Firebase modular SDK 12.17.0 ด้วย `import()` เฉพาะตอนกดปุ่ม AI ครั้งแรก (ไม่กระทบตอนเปิดแอป) — คงไว้เพราะ Firebase AI Logic ไม่มีใน compat SDK

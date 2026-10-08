@@ -93,11 +93,12 @@ document.getElementById('view')?.addEventListener('animationend', e => {
 });
 
 // หน้าที่ต้องโหลดสคริปต์เพิ่มก่อนวาด (ดู LAZY_MODULES ใน utils.js)
-const ROUTE_MODULES = { 'report-page': 'report', tools: 'tools', profile: 'profile', 'pa-page': null };
+const ROUTE_MODULES = { 'report-page': 'report', tools: 'tools', profile: 'profile', 'pa-page': LAZY_BUNDLES.pa };
 
 function navigate(route) {
   // รายงาน PA ไม่มีปุ่มเมนูแยกแล้ว — เป็นแท็บในหน้า PA (ใช้ได้กับลิงก์/โค้ดเดิมที่ยังเรียก 'pa-report-page')
-  if (route === 'pa-report-page') { PAState.nextTab = 'report'; route = 'pa-page'; }
+  let paTab = null; // PAState อยู่ใน js/pa.js (lazy) — ตั้งค่าหลังโหลดเสร็จ
+  if (route === 'pa-report-page') { paTab = 'report'; route = 'pa-page'; }
   AppState.enterNext = false; // ยกเลิกเฟดที่ค้างจากการเปิดรายวิชา (เช่น วิชาถูกลบแล้วเด้งกลับ)
   AppState.flushScoreSaves?.(); // กันคะแนนหายถ้าเพิ่งพิมพ์คะแนนแล้วรีบกดออกจากหน้าวิชา
   AppState.currentRoute = route;
@@ -112,8 +113,10 @@ function navigate(route) {
   // โหลดสคริปต์ของหน้านั้นครั้งแรก — ถ้าผู้ใช้เปลี่ยนหน้าไปก่อนโหลดเสร็จ ไม่ต้องวาดทับ
   const view = document.getElementById('view');
   if (view) showLoading('cat');
-  loadModule(mod).then(() => {
-    if (AppState.currentRoute === route) drawRoute(route);
+  loadModules(mod).then(() => {
+    if (AppState.currentRoute !== route) return;
+    if (paTab) PAState.nextTab = paTab;
+    drawRoute(route);
   }).catch(err => {
     console.error(err);
     if (AppState.currentRoute !== route) return;

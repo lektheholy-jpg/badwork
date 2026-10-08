@@ -29,10 +29,8 @@
   --sidebar-w-collapsed: 78px;
   --font: 'Noto Sans Thai', system-ui, sans-serif;
   --font-head: 'IBM Plex Sans Thai', 'Noto Sans Thai', system-ui, sans-serif;
-  --font-modern: var(--font-head);
   --radius-xs: 12px;  --radius-s: 16px;  --radius-m: 24px;  --radius-l: 28px;  --radius-xl: 32px;  --radius-pill: 999px;
-  --paper-shadow: none;
-  --bg: #F4F4F4;  --canvas: #F4F4F4;
+  --bg: #F4F4F4;
   --card-glass: rgb(255 255 255 / 35%);  --card-glass-hover: rgb(255 255 255 / 50%);  /* พื้นการ์ดขาวโปร่ง ให้เห็นพื้นหลังที่ผู้ใช้เลือก (การ์ดสภาพอากาศไม่ใช้) */
   --on-bg: var(--ink);  --on-bg-soft: var(--ink-soft);  --on-bg-hover: var(--sidebar-hover);  --on-bg-halo: transparent;  --on-bg-accent: var(--primary-dark);  /* ตัวหนังสือที่วางบนพื้นหลังหน้าโดยตรง (เมนู หัวหน้า) · เปลี่ยนตามพื้นหลังที่ผู้ใช้เลือกเอง (js/theme.js) */
   --on-brand: var(--ink);  --on-brand-halo: transparent;  /* ชื่อแอป "เวรกรรม.." มุมบนซ้าย · คำนวณแยกจากบริเวณที่ตัวอักษรอยู่ */
@@ -42,38 +40,28 @@
   --bgp-aurora: radial-gradient(circle at 50% 24%, #C8F0B8 0, transparent 58%), linear-gradient(180deg, #9FDCF5, #B8DDF8);
   --bgp-sunny: linear-gradient(180deg, #FFF3A0, #E4FF8F);
   --bgp-dusk: linear-gradient(180deg, #BBD1FF, #D9C4FF);
-  --surface: #FFFFFF;  --paper: #FFFFFF;  --card: #FFFFFF;
+  --surface: #FFFFFF;  --card: #FFFFFF;
   --surface-sunken: #ECECEF;
   --primary: #3E91FF;  --primary-solid: #0381FE;  --primary-dark: #1B67D6;  --primary-tint: #E3EFFF;
   --on-primary: #FFFFFF;
   --white: #FFFFFF;  /* ขาวคงที่ทุกธีม (ตัวหนังสือบนพื้นสีทึบ) — ถ้าต้องสลับตามธีมให้ใช้ --on-primary / --on-w */
   --shadow-ink-sm: rgba(0, 0, 0, .10);  --shadow-ink-md: rgba(0, 0, 0, .18);  --shadow-ink-lg: rgba(0, 0, 0, .30);
   --ink: #111111;  --ink-soft: #666666;
-  --border: #E5E6EA;  --paper-edge: #E5E6EA;  --paper-rule: #E5E6EA;
+  --border: #E5E6EA;  --paper-rule: #E5E6EA;
   --success: #12935F;  --success-tint: #DDF4E8;
   --warning: #C77A00;  --warning-tint: #FFEFD0;
   --danger: #E5484D;   --danger-tint: #FFE3E4;
   --shadow: 0 8px 28px rgba(16, 17, 20, .10);
   --scrim: rgba(16, 17, 20, .40);
-  --hover-wash: rgba(16, 17, 20, .05);
-  --row-alt: #F8F8FA;  --row-hover: #F0F4FB;  --tip-bg: #101114;
+  --hover-wash: rgba(16, 17, 20, .05);  --tip-bg: #101114;
 
-  --sidebar-bg: #FFFFFF;  --sidebar-hover: #F0F1F4;
-  --spine: #FFFFFF;  --spine-deep: #1B67D6;
-  --accent: #7C5CFF;  --sun: #FFB547;
-  --cream: #FFFFFF;  --cream-dim: #666666;  --hero-orb: rgba(255, 255, 255, .55);
-  --ic1-bg: #E3EFFF;  --ic1: #0381FE;
-  --ic2-bg: #DDF5F0;  --ic2: #0F8F7B;
-  --ic3-bg: #FFE9DF;  --ic3: #D9582F;
-  --ic4-bg: #EDE6FF;  --ic4: #7B52E6;
-  --login-a: #E6F0FF;  --login-b: #F4F4F4;  --login-c: #EFE9FF;
+  --sidebar-bg: #FFFFFF;  --sidebar-hover: #F0F1F4;  --login-b: #F4F4F4;
   --on-w: #FFFFFF;
   --hue-blue: #0381FE;  --hue-violet: #7B52E6;  --hue-teal: #0F9F88;  --hue-orange: #F0731F;
-  --hue-pink: #E83E7A;  --hue-amber: #D98E00;   --hue-gray: #666666;  --hue-red: #E5484D; --hero-a: #B9D3FF; --hero-b: #CDBFFF; --hero-c: #F2C4DC; --wmix: 38%; --track: color-mix(in oklab, var(--ink) 12%, transparent); --wmix-main: 38%; --wmix-head: 24%; --wmix-soft: 15%; --sky-shade: .08;
+  --hue-pink: #E83E7A;  --hue-amber: #D98E00;   --hue-gray: #666666;  --hue-red: #E5484D; --wmix: 38%; --wmix-main: 38%; --wmix-head: 24%; --wmix-soft: 15%; --sky-shade: .08;
   --viz-blue: #0381FE;  --viz-green: #12A87A;  --viz-purple: #7B52E6;
   --viz-sky: #1A9FD0;   --viz-mint: #3FB86B;   --viz-orchid: #A25BE0;
   --th-bg: #EBEEF3;  --th-ink: #1B2130;  --th-line: #C9D0DB;
-  --head-grad: var(--th-bg);  --head-solid: #2B3345;  --sheet-head: var(--th-bg);
   --tbl-total-bg: color-mix(in srgb, var(--primary-solid) 34%, var(--card));  --tbl-total-ink: var(--ink);  /* คอลัมน์ "รวม" ในตาราง: ฟ้าตามธีมเข้มกว่าพื้นกลุ่มคะแนน */
   --col-collect-strong: #8A919E;  --col-collect: #F7F7F8;
   --col-mid-strong: #8A919E;      --col-mid: #F3F3F4;
@@ -128,7 +116,7 @@ a { color: inherit; }
   display: flex;
   align-items: center;
   font-weight: 700;
-  white-space: nowrap; letter-spacing: .2px; flex: 1; min-width: 0; gap: 12px; font-family: var(--font-modern); overflow: visible; color: var(--on-brand); font-size: 18px;
+  white-space: nowrap; letter-spacing: .2px; flex: 1; min-width: 0; gap: 12px; font-family: var(--font-head); overflow: visible; color: var(--on-brand); font-size: 18px;
 }
 #app.sidebar-collapsed .brand { display: none; }
 .brand .mark {
@@ -149,7 +137,7 @@ a { color: inherit; }
   background: none;
   text-align: left;
   width: 100%;
-  transition: background .15s ease, color .15s ease; font-family: var(--font-modern); color: var(--on-bg); border: none; border-radius: var(--radius-pill); font-size: 15px; font-weight: 500; --w: var(--hue-blue); gap: 14px; padding: 5px 10px; min-height: 52px;
+  transition: background .15s ease, color .15s ease; font-family: var(--font-head); color: var(--on-bg); border: none; border-radius: var(--radius-pill); font-size: 15px; font-weight: 500; --w: var(--hue-blue); gap: 14px; padding: 5px 10px; min-height: 52px;
  -webkit-tap-highlight-color: transparent;
 }
 .nav-item .nav-icon {
@@ -181,7 +169,7 @@ a { color: inherit; }
   padding: 6px 11px;
   font-size: 12px; font-weight: 600; white-space: nowrap;
   box-shadow: var(--shadow);
-  z-index: 70; pointer-events: none; font-family: var(--font-modern); border-radius: var(--radius-xs); background: var(--tip-bg); color: var(--white);
+  z-index: 70; pointer-events: none; font-family: var(--font-head); border-radius: var(--radius-xs); background: var(--tip-bg); color: var(--white);
 }
 .sidebar-footer { position: relative; margin-top: auto; padding-top: 14px; border-top: none; display: flex; flex-direction: column; gap: 6px; }
 .user-chip {
@@ -700,7 +688,7 @@ table.sheet :is(th, td).sticky-right-2 { right: 0; width: var(--r2-w); min-width
 .island-idle {
   position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: max-content;
   display: flex; align-items: center; white-space: nowrap;
-  font-family: var(--font-modern); font-size: 12.5px; font-weight: 600; line-height: 1; font-variant-numeric: tabular-nums;
+  font-family: var(--font-head); font-size: 12.5px; font-weight: 600; line-height: 1; font-variant-numeric: tabular-nums;
   color: rgba(255, 255, 255, .9); transition: opacity .18s ease;
 }
 .island.open .island-idle { opacity: 0; }
@@ -731,7 +719,7 @@ table.sheet :is(th, td).sticky-right-2 { right: 0; width: var(--r2-w); min-width
 .island-body {
   flex: none; box-sizing: border-box; display: flex; align-items: center; gap: 8px;
   width: max-content; max-width: min(calc(100vw - 24px), 520px); height: 100%; padding: 0 16px;
-  font-family: var(--font-modern); font-size: 13.5px; font-weight: 600; line-height: 1; white-space: nowrap;
+  font-family: var(--font-head); font-size: 13.5px; font-weight: 600; line-height: 1; white-space: nowrap;
   opacity: 0; transition: opacity .15s ease;
 }
 .island.open .island-body { opacity: 1; }
@@ -1029,8 +1017,6 @@ table.sheet tbody tr:nth-child(even) td.grp-sub-total { background: var(--col-co
 /* ----- ตารางสรุปผล: เหมือนตารางในหนังสือ ตัวเลขแบบเซริฟ ----- */
 
 /* ----- ตารางบันทึกคะแนน: ตัวเลขยังใช้ monospace เพื่อให้ตรงหลัก ----- */
-@media (max-width: 860px) {
-}
 
 /* ==========================================================================
    สันปก (เมนูข้าง) แบบสมัยใหม่: สีเรียบ ตัวอักษรหนา
@@ -1165,7 +1151,6 @@ table.sheet th.grp-collect, table.sheet th.grp-mid, table.sheet th.grp-final { b
 table.sheet tbody td { border-bottom: 1px solid var(--border); padding-top: 2px; padding-bottom: 2px; }
 table.sheet tbody tr:last-child td { border-bottom: none; }
 .search-box input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 4px var(--primary-tint); }
-@media (max-width: 860px) { }
 
 /* ----- หน้าแรก: ความคืบหน้าล่าสุด 1 แถวต่อห้อง ----- */
 .prog-section { margin: 4px 0 28px; }
@@ -1197,42 +1182,33 @@ table.sheet tbody tr:last-child td { border-bottom: none; }
 
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --bg: #121212;  --canvas: #121212;
+  --bg: #121212;
   --card-glass: rgb(70 70 78 / 40%);  --card-glass-hover: rgb(70 70 78 / 56%);  /* พื้นการ์ดดำโปร่ง */
   --bgp-lemon: #2E2A0A;  --bgp-sky: #0B1B33;  --bgp-lilac: #1E1230;  --bgp-mint: #0C2418;
   --bgp-ocean: linear-gradient(180deg, #0F2347, #12301E);
   --bgp-aurora: radial-gradient(circle at 50% 24%, #1C4A2C 0, transparent 58%), linear-gradient(180deg, #0A2A3C, #0B1E33);
   --bgp-sunny: linear-gradient(180deg, #332E08, #1F2A06);
   --bgp-dusk: linear-gradient(180deg, #0F1F3E, #25163F);
-  --surface: #212121;  --paper: #212121;  --card: #212121;
+  --surface: #212121;  --card: #212121;
   --surface-sunken: #2A2A2E;
   --primary: #3E91FF;  --primary-solid: #3E91FF;  --primary-dark: #8DBDFF;  --primary-tint: #16304F;
   --on-primary: #04122A;
   --ink: #F5F5F5;  --ink-soft: #A0ABB1;
-  --border: #2E2E33;  --paper-edge: #2E2E33;  --paper-rule: #2E2E33;
+  --border: #2E2E33;  --paper-rule: #2E2E33;
   --success: #3DD598;  --success-tint: #12301F;
   --warning: #FFB84D;  --warning-tint: #3A2A0C;
   --danger: #FF6B70;   --danger-tint: #3D1B1E;
   --shadow: 0 8px 28px rgba(0, 0, 0, .6);
   --scrim: rgba(0, 0, 0, .65);
-  --hover-wash: rgba(255, 255, 255, .07);
-  --row-alt: #212125;  --row-hover: #262B36;  --tip-bg: #3A3A40;
+  --hover-wash: rgba(255, 255, 255, .07);  --tip-bg: #3A3A40;
 
-  --sidebar-bg: #191919;  --sidebar-hover: #222226;
-  --spine: #191919;  --spine-deep: #8DBDFF;
-  --cream: #F5F5F5;  --cream-dim: #A0ABB1;  --hero-orb: rgba(255, 255, 255, .06);
-  --ic1-bg: #16304F;  --ic1: #6FAEFF;
-  --ic2-bg: #0F2E2A;  --ic2: #3DD6BC;
-  --ic3-bg: #3D2218;  --ic3: #FF9A78;
-  --ic4-bg: #2A1F4D;  --ic4: #B79BFF;
-  --login-a: #0B1A30;  --login-b: #121212;  --login-c: #1A1230;
+  --sidebar-bg: #191919;  --sidebar-hover: #222226;  --login-b: #121212;
   --on-w: #0B0B0D;
   --hue-blue: #5AA2FF;  --hue-violet: #B79BFF;  --hue-teal: #2FC9AE;  --hue-orange: #FF9A5C;
-  --hue-pink: #FF7BA5;  --hue-amber: #FFC247;   --hue-gray: #A0ABB1;  --hue-red: #FF6B70; --hero-a: #1D3F78; --hero-b: #38297D; --hero-c: #5A2A55; --wmix: 34%; --track: color-mix(in oklab, #fff 15%, transparent); --wmix-main: 34%; --wmix-head: 26%; --wmix-soft: 19%; --sky-shade: .28;
+  --hue-pink: #FF7BA5;  --hue-amber: #FFC247;   --hue-gray: #A0ABB1;  --hue-red: #FF6B70; --wmix: 34%; --wmix-main: 34%; --wmix-head: 26%; --wmix-soft: 19%; --sky-shade: .28;
   --viz-blue: #5AA2FF;  --viz-green: #2FD1A0;  --viz-purple: #B79BFF;
   --viz-sky: #4CC3F0;   --viz-mint: #6FD98C;   --viz-orchid: #CF9BFF;
   --th-bg: #2A2D38;  --th-ink: #F1F3F8;  --th-line: #444A5A;
-  --head-grad: var(--th-bg);  --head-solid: #3A4156;  --sheet-head: var(--th-bg);
   --tbl-total-bg: color-mix(in srgb, var(--primary-solid) 45%, var(--card));  --tbl-total-ink: var(--ink);
   --col-collect-strong: #9AA0AE;  --col-collect: #222428;
   --col-mid-strong: #9AA0AE;      --col-mid: #1F2126;
@@ -1335,7 +1311,6 @@ table.sheet tbody tr:last-child td { border-bottom: none; }
 @media (min-width: 861px) {
   #app.sidebar-collapsed .nav-item { padding: 5px; justify-content: center; gap: 0; }
 }
-@media (max-width: 860px) { }
 
 /* ----- มือถือ ----- */
 @media (max-width: 860px) {
@@ -1376,7 +1351,7 @@ table.sheet td input.score-input:hover { background: var(--hover-wash); }
   display: flex; align-items: center; gap: 18px;
   background: color-mix(in oklab, var(--w) var(--wmix), var(--card)); color: var(--ink); border-radius: var(--radius-l); box-shadow: none; --wmix: var(--wmix-main); min-height: 136px; padding: 18px 26px;
 }
-:root[data-theme="dark"] .cw-card { --cw-b: 1.1; }
+:root[data-theme="dark"] .cw-card { }
 .cw-wx-ico { display: grid; place-items: center; flex-shrink: 0; width: 68px; height: 68px; border-radius: var(--radius-m); font-size: 36px; background: var(--w); box-shadow: 0 6px 14px -6px var(--w); }
 .cw-wx-main { min-width: 0; }
 .cw-temp { font-family: var(--font-head); line-height: 1.2; font-size: 46px; font-weight: 800; }
@@ -1625,23 +1600,22 @@ button.brand:hover .mark { transform: rotate(-6deg) scale(1.04); }
 
 /* ----- อากาศ ----- */
 .cw-row .cw-weather {
-  --sky: none;
   color: var(--white); position: relative; overflow: hidden;
   display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 16px;
   transition: background .4s ease; background: color-mix(in srgb, rgb(0 18 60) calc(var(--sky-shade, 0) * 100%), var(--sky-solid, #5AA9FA));
 }
-.cw-weather[data-sky="clear-day"]  { --sky: none; --sky-solid: #4A9AF7; }
-.cw-weather[data-sky="part-day"]   { --sky: none; --sky-solid: #6C9FDB; }
-.cw-weather[data-sky="cloud-day"]  { --sky: none; --sky-solid: #7E92AB; }
-.cw-weather[data-sky="rain-day"]   { --sky: none; --sky-solid: #58779B; }
-.cw-weather[data-sky="fog-day"]    { --sky: none; --sky-solid: #8A9CAD; }
-.cw-weather[data-sky="snow"]       { --sky: none; --sky-solid: #86AAD0; }
-.cw-weather[data-sky="storm"]      { --sky: none; --sky-solid: #464C78; }
-.cw-weather[data-sky="clear-night"]{ --sky: none; --sky-solid: #172A5E; }
-.cw-weather[data-sky="part-night"] { --sky: none; --sky-solid: #27385F; }
-.cw-weather[data-sky="cloud-night"]{ --sky: none; --sky-solid: #384359; }
-.cw-weather[data-sky="rain-night"] { --sky: none; --sky-solid: #2A3B57; }
-.cw-weather[data-sky="fog-night"]  { --sky: none; --sky-solid: #465160; }
+.cw-weather[data-sky="clear-day"]  { --sky-solid: #4A9AF7; }
+.cw-weather[data-sky="part-day"]   { --sky-solid: #6C9FDB; }
+.cw-weather[data-sky="cloud-day"]  { --sky-solid: #7E92AB; }
+.cw-weather[data-sky="rain-day"]   { --sky-solid: #58779B; }
+.cw-weather[data-sky="fog-day"]    { --sky-solid: #8A9CAD; }
+.cw-weather[data-sky="snow"]       { --sky-solid: #86AAD0; }
+.cw-weather[data-sky="storm"]      { --sky-solid: #464C78; }
+.cw-weather[data-sky="clear-night"]{ --sky-solid: #172A5E; }
+.cw-weather[data-sky="part-night"] { --sky-solid: #27385F; }
+.cw-weather[data-sky="cloud-night"]{ --sky-solid: #384359; }
+.cw-weather[data-sky="rain-night"] { --sky-solid: #2A3B57; }
+.cw-weather[data-sky="fog-night"]  { --sky-solid: #465160; }
 
 .cw-row .cw-wx-main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: .12em; text-shadow: 0 1px 8px rgba(0, 20, 60, .22); }
 .cw-row .cw-temp { font-size: clamp(40px, 15cqi, 112px); line-height: 1.05; font-weight: 700; color: var(--white); letter-spacing: -.02em; }
@@ -1878,7 +1852,6 @@ table.sheet tbody tr:nth-child(n) td.over-max { background: var(--danger-tint); 
 :root .u-mt-4 { margin-top: 4px; }
 :root .u-mt-6 { margin-top: 6px; }
 :root .u-mt-12 { margin-top: 12px; }
-:root .u-mt-14 { margin-top: 14px; }
 :root .u-mt-16 { margin-top: 16px; }
 :root .u-mt-18 { margin-top: 18px; }
 :root .u-mb-0 { margin-bottom: 0; }
@@ -1904,10 +1877,8 @@ table.sheet tbody tr:nth-child(n) td.over-max { background: var(--danger-tint); 
 :root .u-w-70 { width: 70px; }
 :root .u-w-80 { width: 80px; }
 :root .u-w-84 { width: 84px; }
-:root .u-maxw-420 { max-width: 420px; }
 :root .u-fs-13 { font-size: 13px; }
 :root .u-fs-135 { font-size: 13.5px; }
-:root .u-fs-145 { font-size: 14.5px; }
 :root .u-note { font-size: 13px; color: var(--ink-soft); }
 :root .u-note-sm { font-size: 12.5px; color: var(--ink-soft); }
 :root .u-soft { color: var(--ink-soft); }
@@ -1916,7 +1887,6 @@ table.sheet tbody tr:nth-child(n) td.over-max { background: var(--danger-tint); 
 :root .u-text-left { text-align: left; }
 :root .u-cursor-default { cursor: default; }
 :root .u-link-plain { text-decoration: none; color: inherit; }
-:root .u-link-primary { color: var(--primary); font-weight: 600; }
 :root .u-badge-inline { vertical-align: middle; margin-left: 6px; }
 :root .u-avatar-48 { width: 48px; height: 48px; border-radius: 50%; }
 :root .u-input-sm { padding: 7px; border: 1px solid var(--border); border-radius: 6px; }
@@ -1927,8 +1897,6 @@ table.sheet tbody tr:nth-child(n) td.over-max { background: var(--danger-tint); 
    ปรับความโปร่งที่ --glass ใน :root {} บนสุด (ยิ่งน้อยยิ่งโปร่ง · ตอนนี้ 42%)
    ========================================================================== */
 /* --glass และ --glass-blur ย้ายขึ้นรวมใน :root {} หลักแล้ว — ไม่ต้องซ้ำที่นี่ */
-@media (max-width: 860px) {
-}
 
 /* ----- ตั้งค่า → พื้นหลัง: ช่องเลือกสีทึบ/ไล่สี (js/app.js renderSettings · ค่าเก็บใน js/theme.js) ----- */
 .bg-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 10px; margin-top: 10px; }
@@ -2116,7 +2084,7 @@ table.tt tr.is-today td.tt-cell { background: color-mix(in srgb, var(--hue-orang
 .pa-checks .pa-check:has(input:focus-visible) { box-shadow: 0 0 0 4px var(--primary-tint); }
 .pa-field-date { max-width: 260px; margin-top: 14px; }
 
-/* ฟอร์ม PA: ภาระงาน 1.1–1.4 (แถว = ชื่อรายการ · ชั่วโมง · ปุ่มลบ) — เดิมเป็น <style> ใน js/pa.js */
+/* ฟอร์ม PA: ภาระงาน 1.1–1.4 (แถว = ชื่อรายการ · ชั่วโมง · ปุ่มลบ) — เดิมเป็น \3c style> ใน js/pa.js */
 .pa-lblock { --pa-cols: minmax(0, 1fr) 92px 44px; margin-top: 22px; }
 .pa-lblock .pa-sub { margin-bottom: 10px; font-size: 14.5px; font-weight: 700; color: var(--ink); }
 .pa-lhead { display: grid; grid-template-columns: var(--pa-cols); gap: 8px; margin: 0 0 6px; padding: 0 2px; font-size: 12px; font-weight: 600; color: var(--ink-soft); }
@@ -2153,8 +2121,6 @@ table.tt tr.is-today td.tt-cell { background: color-mix(in srgb, var(--hue-orang
 .pa-witem-h { margin-bottom: 10px; font-weight: 700; color: var(--ink); }
 .pa-witem .field:last-child { margin-bottom: 0; }
 .pa-form-footer { display: flex; justify-content: flex-end; gap: 10px; padding-bottom: 32px; }
-.par-gap { margin-top: 16px; }
-.par-tag-block { margin: 10px 0 6px; }
 @media (max-width: 540px) {
   .pa-pf { grid-template-columns: 1fr; }
   .pa-form-footer { flex-direction: column-reverse; }
@@ -2164,9 +2130,6 @@ table.tt tr.is-today td.tt-cell { background: color-mix(in srgb, var(--hue-orang
 .empty-title { margin-bottom: 8px; font-size: 17px; font-weight: 600; }
 .empty-sub { margin-bottom: 20px; color: var(--ink-soft); }
 .empty-state .icon-violet { background: var(--hue-violet); }
-.par-badge { flex-shrink: 0; }
-.par-ok { color: var(--hue-teal); }
-.par-edit-btn .ico { width: 14px; height: 14px; }
 
 /* ==========================================================================
    ผู้ช่วย AI ในฟอร์ม PA (js/pa-ai.js) — การ์ดบนสุด · แถวปุ่มใต้ช่อง · หน้าต่างตรวจทาน

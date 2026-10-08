@@ -293,6 +293,9 @@ const PA1_CSS = `
 .pa1 col.c2{width:30%}
 .pa1 col.c3{width:25%}
 .pa1 col.c4{width:21%}
+.pa1 col.r1{width:9%}
+.pa1 col.r2{width:50%}
+.pa1 col.r3{width:41%}
 `;
 
 function paBuildDocHtml(d, o) {
