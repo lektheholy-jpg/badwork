@@ -13,8 +13,17 @@
 const PA_AI = {
   SITE_KEY: '6LeHa-MtAAAAAAqvvQSRvBUl0RVFa7-KoFthxWxm', // reCAPTCHA v3 Site key (ค่าสาธารณะ) — ต้องตรงกับที่ลงทะเบียนใน Firebase App Check
   SDK: 'https://www.gstatic.com/firebasejs/12.17.0',    // Firebase JS SDK แบบ modular (แยกจากชุด compat 10.13.0 ที่แอปใช้)
-  MODEL: 'gemini-3.5-flash',                            // ถ้าเปลี่ยนรุ่น แก้ที่นี่ที่เดียว (ดูชื่อรุ่นล่าสุดใน Firebase Console > AI Logic)
+  MODEL: 'gemini-3.8-flash',                            // รุ่นเริ่มต้น (ต้องอยู่ใน MODELS ด้านล่าง) · ชื่อรุ่น/รุ่นที่ใช้ฟรีได้ ดู ai.google.dev/gemini-api/docs/models และ /pricing
   TIMEOUT: 90000,
+  MODEL_KEY: 'pa-ai-model-v1', // รุ่นที่ผู้ใช้เลือก (จำไว้ในเครื่องนี้)
+  // รายชื่อรุ่นที่ให้เลือก — ชื่อต้องตรงกับที่ Firebase AI Logic รองรับ (ดู Firebase Console > AI Logic) · เพิ่ม/ลบรุ่นที่นี่ที่เดียว
+  MODELS: [
+    { id: 'gemini-3.8-flash', label: 'Gemini 3.8 Flash', hint: 'ค่าเริ่มต้น · รุ่น Flash ใหม่สุด ใช้ฟรีได้ · เหมาะกับร่างข้อความยาว' },
+    { id: 'gemini-3.7-flash', label: 'Gemini 3.7 Flash', hint: 'ใช้ฟรีได้ · ถ้ารุ่นเริ่มต้นโควตาเต็ม ลองสลับมารุ่นนี้ (โควตานับแยกรุ่น)' },
+    { id: 'gemini-3.5-flash', label: 'Gemini 3.5 Flash', hint: 'ใช้ฟรีได้ · รุ่นที่ใช้อยู่เดิม Google จัดเป็นรุ่นเก่า' },
+    { id: 'gemini-3.5-flash-lite', label: 'Gemini 3.5 Flash-Lite', hint: 'ใช้ฟรีได้ · เร็วและเบา เหมาะกับปรับสำนวน/ย่อข้อความสั้น ๆ' },
+    { id: 'gemini-3.1-flash-lite', label: 'Gemini 3.1 Flash-Lite', hint: 'ใช้ฟรีได้ · เบาที่สุดในรายการ สำรองเมื่อรุ่นอื่นเต็ม' },
+  ],
   CTX_KEY: 'pa-ai-ctx-v1', // สำรองบริบทล่าสุดในเครื่องนี้ (ใช้เมื่อยังไม่มีเอกสารให้บันทึก)
   CONSENT_KEY: 'pa-ai-consent-v2', // v2: เพิ่มบริบทงาน (ระดับชั้น จำนวนห้อง/นักเรียน ปัญหา ผลปีก่อน) — ผู้ใช้เดิมต้องยินยอมใหม่
 };
@@ -121,6 +130,17 @@ function paAiWorkSpecs(ids) {
 // เรียก Gemini (โหลด SDK ตอนใช้ครั้งแรก)
 // ------------------------------------------------------------------
 let paAiModelP = null;
+
+// รุ่นที่เลือกอยู่ (ไม่ตรงรายการ/อ่านไม่ได้ → ใช้ค่าเริ่มต้น PA_AI.MODEL) · อ่านตอนเรียกทุกครั้ง เปลี่ยนรุ่นแล้วมีผลทันทีโดยไม่ต้องโหลด SDK ใหม่
+function paAiModelId() {
+  let v = null;
+  try { v = localStorage.getItem(PA_AI.MODEL_KEY); } catch (err) { /* ใช้ storage ไม่ได้ — ใช้ค่าเริ่มต้น */ }
+  return PA_AI.MODELS.some(m => m.id === v) ? v : PA_AI.MODEL;
+}
+// Gemini 3 ใช้ thinkingLevel · Gemini 2.5 ใช้ thinkingBudget (ส่ง thinkingLevel ให้ 2.5 จะถูกปฏิเสธ)
+function paAiThinking(aiMod, id) {
+  return /^gemini-3/.test(id) ? { thinkingLevel: aiMod.ThinkingLevel.LOW } : { thinkingBudget: 512 };
+}
 function paAiLoadModel() {
   if (!paAiModelP) {
     paAiModelP = (async () => {
@@ -134,15 +154,14 @@ function paAiLoadModel() {
       if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
       checkMod.initializeAppCheck(app, { provider: new checkMod.ReCaptchaEnterpriseProvider(PA_AI.SITE_KEY), isTokenAutoRefreshEnabled: true });
       const ai = aiMod.getAI(app, { backend: new aiMod.GoogleAIBackend() });
-      return () => aiMod.getGenerativeModel(ai, {
-        model: PA_AI.MODEL,
-        systemInstruction: PA_AI_SYSTEM,
-        generationConfig: {
-  responseMimeType: 'application/json',
-  temperature: 0.6,
-  thinkingConfig: { thinkingLevel: aiMod.ThinkingLevel.LOW },
-},
-      }, { timeout: PA_AI.TIMEOUT });
+      return () => {
+        const id = paAiModelId();
+        return aiMod.getGenerativeModel(ai, {
+          model: id,
+          systemInstruction: PA_AI_SYSTEM,
+          generationConfig: { responseMimeType: 'application/json', temperature: 0.6, thinkingConfig: paAiThinking(aiMod, id) },
+        }, { timeout: PA_AI.TIMEOUT });
+      };
     })().catch(err => { paAiModelP = null; throw err; });
   }
   return paAiModelP;
@@ -173,7 +192,7 @@ function paAiError(err) {
   let msg;
   if (!navigator.onLine || /Failed to fetch|dynamically imported module|NetworkError/i.test(m)) msg = 'ใช้ AI ไม่ได้ — ไม่มีอินเทอร์เน็ตหรือโหลดชุดคำสั่งไม่สำเร็จ';
   else if (/app-?check|recaptcha/i.test(m)) msg = 'AI ไม่ผ่านการตรวจ App Check/reCAPTCHA — ตรวจ Site key โดเมน และ debug token (ดูรายละเอียดใน Console)';
-  else if (code === '404' || /not found|is not supported|no longer available/i.test(m)) msg = `ไม่พบโมเดล ${PA_AI.MODEL}${tag} — ตรวจชื่อรุ่นใน js/pa-ai.js (PA_AI.MODEL)`;
+  else if (code === '404' || /not found|is not supported|no longer available/i.test(m)) msg = `ไม่พบโมเดล ${paAiModelId()}${tag} — ลองเลือกรุ่นอื่นในการ์ดผู้ช่วย AI หรือตรวจชื่อรุ่นใน js/pa-ai.js (PA_AI.MODELS)`;
   else if (code === '403' || /PERMISSION_DENIED|API has not been used|API_KEY_SERVICE_BLOCKED|not enabled/i.test(m)) msg = `AI ถูกปฏิเสธสิทธิ์${tag} — ตรวจว่าเปิด AI Logic แล้ว และ API key ของโปรเจกต์อนุญาต Firebase AI Logic API`;
   else if (code === '429' || /RESOURCE_EXHAUSTED|quota exceeded|too many requests|rate limit/i.test(m)) msg = `โควตา AI เต็มหรือเรียกถี่เกิน${tag} — รอ 1 นาทีแล้วลองใหม่ (ดูโควตาใน Firebase Console > AI Logic)`;
   else if (/timeout/i.test(m)) msg = 'AI ตอบช้าเกินไป ลองใหม่อีกครั้ง';
@@ -472,9 +491,21 @@ function paAiMount(view, form) {
       <li>ปุ่มนี้ร่างส่วนที่ 2 ที่ว่าง · งานข้อ 1.1–3.3 กดปุ่มใต้แต่ละข้อ</li>
     </ul>
     ${paAiCtxHtml(PAState.doc.aiCtx || {})}
+    <div class="field pa-ai-model">
+      <label for="pa-ai-model">โมเดล AI</label>
+      <select id="pa-ai-model">${PA_AI.MODELS.map(m => `<option value="${m.id}"${m.id === paAiModelId() ? ' selected' : ''}>${m.label}</option>`).join('')}</select>
+      <div class="field-hint" data-model-hint>${escapeHtml((PA_AI.MODELS.find(m => m.id === paAiModelId()) || {}).hint || '')}</div>
+    </div>
     <div class="pa-ai-warn">อย่าพิมพ์ชื่อหรือข้อมูลที่ระบุตัวนักเรียนลงในช่อง</div>
     <button type="button" class="btn btn-primary" data-pa-ai="all">${PA_AI_ICON} ร่างส่วนที่ 2 ที่ว่าง</button>`;
   form.insertBefore(top, form.firstChild);
+  top.querySelector('#pa-ai-model').addEventListener('change', e => {
+    const m = PA_AI.MODELS.find(x => x.id === e.target.value);
+    if (!m) return;
+    try { localStorage.setItem(PA_AI.MODEL_KEY, m.id); } catch (err) { /* ใช้ storage ไม่ได้ — มีผลเฉพาะครั้งนี้ */ }
+    top.querySelector('[data-model-hint]').textContent = m.hint;
+    showToast('ใช้ ' + m.label + ' แล้ว');
+  });
   // นับช่องบริบทที่กรอกแล้วแบบสด
   const ctxBox = top.querySelector('.pa-ai-ctx');
   const saveEl = ctxBox?.querySelector('[data-ctx-save]');
