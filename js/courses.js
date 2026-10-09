@@ -188,11 +188,13 @@ async function renderCoursesList() {
   });
 }
 
-function openCourse(courseId) {
+// restore = { sectionId, tab } เมื่อมาจากการย้อนกลับ (NavHistory) — กลับไปเห็นแท็บ/ห้องเดิม
+function openCourse(courseId, restore) {
   AppState.currentRoute = 'course';
   AppState.currentCourseId = courseId;
-  AppState.currentSectionId = null;
-  AppState.currentTab = 'overview';
+  AppState.currentSectionId = restore?.sectionId || null;
+  AppState.currentTab = restore?.tab || 'overview';
+  NavHistory.record({ kind: 'course', courseId });
   setActiveNav(null);
   markViewPending();
   renderCourseShell();
@@ -258,9 +260,10 @@ async function renderCourseShell() {
     </div>
     <div id="course-tab-body"></div>
   `;
+  NavHistory.patch({ courseId, sectionId: AppState.currentSectionId, tab: AppState.currentTab }); // จำแท็บ/ห้องไว้ใน entry ของประวัติ
   if (AppState.enterNext) { AppState.enterNext = false; playViewEnter(); } // มาจากการเปิดรายวิชา (ไม่ใช่สลับแท็บ/ห้อง) → เฟดเข้า
 
-  document.getElementById('back-to-courses').addEventListener('click', (e) => { e.preventDefault(); navigate('courses'); });
+  document.getElementById('back-to-courses').addEventListener('click', (e) => { e.preventDefault(); if (!NavHistory.backTo('courses')) navigate('courses'); });
   document.getElementById('archive-course-btn')?.addEventListener('click', () => {
     openConfirmModal({
       title: 'เก็บวิชานี้เข้าคลัง?',

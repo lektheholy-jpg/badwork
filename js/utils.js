@@ -12,15 +12,19 @@ document.addEventListener('wheel', (e) => {
 
 // แจ้งเตือน/สถานะแบบ Dynamic Island (showToast, islandSave, islandUndo, islandProgress) อยู่ที่ js/island.js
 
+// ป๊อปอัปเป็น "ชั้น" ในประวัติ (js/nav-history.js): กดย้อนกลับของระบบ = ปิดป๊อปอัป ไม่ใช่ออกจากหน้า
+let _modalLayer = null;
 function openModal(html) {
   const root = document.getElementById('modal-root');
   root.innerHTML = `<div class="modal-backdrop" id="modal-backdrop"><div class="modal">${html}</div></div>`;
   document.getElementById('modal-backdrop').addEventListener('click', (e) => {
     if (e.target.id === 'modal-backdrop') closeModal();
   });
+  if (!_modalLayer || !_modalLayer.active) _modalLayer = NavHistory.layer(() => { document.getElementById('modal-root').innerHTML = ''; });
 }
 function closeModal() {
   document.getElementById('modal-root').innerHTML = '';
+  if (_modalLayer) { _modalLayer.release(); _modalLayer = null; }
 }
 
 // --------------------------------------------------------------------------

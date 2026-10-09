@@ -65,6 +65,7 @@ js/structure.js       โครงสร้างคะแนนระดับ�
 js/scores.js          บันทึกคะแนนแบบสเปรดชีต + autosave
 js/picker-pages.js    หน้าเลือกวิชา/ห้อง
 js/report-page.js     หน้ารายงาน
+js/nav-history.js     ปุ่ม/ท่าย้อนกลับของระบบ (History API): entry ต่อหน้า/รายวิชา + "ชั้น" ของป๊อปอัป · record · patch · layer · backTo
 js/doc-system.js      ระบบเอกสาร (context ต่อระบบ): config + state (sys.state · sys.rptState) + sys.col(kind, uid) · แทน global PAState/PARptState — โหลดก่อน pa-config.js
 js/doc-shell.js       โครงหน้ากลางของทุกระบบเอกสาร: หัวเรื่อง+แท็บ · สลับแท็บ/ตัวโหลด · ตัวช่วยร่วม (วันที่ไทย/ปีงบ/ไอคอน/ป้ายสถานะ/ฟอนต์พิมพ์) · registerDocUi · renderDocPage(id)
 js/pa-config.js       PA_CONFIG: ค่าคงที่ของระบบ PA ที่เดียว (ชื่อ collection · แท็บ · โครงฟอร์ม PA 1/ส · ช่องบริบท AI · พร้อต์/รุ่น/คีย์ของผู้ช่วย AI) — โหลดหลัง doc-system.js ก่อน pa.js (ท้ายไฟล์ลงทะเบียนเป็นระบบ 'pa')
@@ -183,6 +184,13 @@ users/{uid}/pa_reports/{docId}               แบบรายงานผล P
 4. `app.js`: เพิ่ม route → `renderDocPage('<id>')` และ `ROUTE_MODULES` · `index.html`: ปุ่มเมนู
 5. `sw.js`: เพิ่มไฟล์ใน PRECACHE + เลข VERSION (รัน `npm run check:sw`) · `firestore.rules`: เพิ่ม collection ใหม่ใต้ `users/{uid}/`
 6. เทสต์: ดูตัวอย่างระบบจำลอง `idp` ใน `tests/pa-config.test.js` (ทะเบียน/state แยกกัน)
+
+### ปุ่ม/ท่าย้อนกลับของระบบ (`js/nav-history.js`)
+- `navigate()` และ `openCourse()` เรียก `NavHistory.record(...)` → ปุ่ม Back / ปัดย้อนกลับของ Android และ Safari ถอยไปหน้าก่อนหน้าในแอป (ไม่ออกจากแอป) · หน้าแรกของเซสชันใช้ `replaceState` จึงกด Back ที่หน้าแรกแล้วออกจากแอปตามปกติ
+- `openModal()` เปิด "ชั้น" ใหม่ในประวัติ: กดย้อนกลับขณะมีป๊อปอัป = ปิดป๊อปอัป · ปิดด้วย `closeModal()` จะถอด entry ของชั้นให้ · สร้างชั้นใหม่ที่อื่นด้วย `NavHistory.layer(onBack)` แล้วเรียก `.release()` เมื่อปิดเอง
+- `history.back()` เป็นอะซิงก์ → ถ้า `closeModal()` ตามด้วย `navigate()` ทันที การ push หน้าใหม่ต้องรอ จึงมีคิวใน `nav-history.js` อย่าเรียก `history.pushState` ตรงๆ จากที่อื่น
+- ยังไม่ผูก: มุมมองฟอร์ม↔รายการใน PA, เมนูข้าง/แผ่น "เพิ่มเติม" บนมือถือ, หน้าแก้โครงสร้างคะแนน (`structureEditingCourseId`) — ย้อนกลับจากที่เหล่านี้จะถอยทั้งหน้า
+- เทสต์: `npm run test:nav` (jsdom + history จริง) · เทสต์ในเบราว์เซอร์จริงต้องลองบน Android/iPhone เอง
 
 ## ออฟไลน์ (Service Worker + แคช Firestore)
 

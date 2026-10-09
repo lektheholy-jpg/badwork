@@ -419,6 +419,7 @@ function openCourseSection(courseId, sectionId) {
   AppState.currentCourseId = courseId;
   AppState.currentSectionId = sectionId;
   AppState.currentTab = 'scores';
+  NavHistory.record({ kind: 'course', courseId });
   setActiveNav(null);
   markViewPending();
   renderCourseShell();

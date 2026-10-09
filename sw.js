@@ -16,7 +16,7 @@
 // ตัวหน้าเว็บ (js/pwa.js) จะแจ้ง "มีเวอร์ชันใหม่" ให้กดอัปเดตเอง ไม่รีโหลดกลางคันตอนครูกำลังกรอกคะแนน
 // ==========================================================================
 
-const VERSION = '2026-10-09.8';
+const VERSION = '2026-10-09.9';
 const CORE = `myscore-core-${VERSION}`; // ไฟล์แอป (เปลี่ยนเวอร์ชัน = ทิ้งของเก่า)
 const RUNTIME = 'myscore-rt';           // รูป/ไฟล์ที่แคชตอนใช้งาน (คงอยู่ข้ามเวอร์ชัน)
 
@@ -34,6 +34,7 @@ const PRECACHE = [
   'js/theme.js',
   'js/firebase-config.js',
   'js/island.js',
+  'js/nav-history.js',
   'js/utils.js',
   'js/auth.js',
   'js/dashboard.js',
