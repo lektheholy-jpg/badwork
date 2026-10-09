@@ -871,7 +871,7 @@ async function renderPAFormView() {
     }
   });
 
-  if (typeof paAiMount === 'function') paAiMount(view, form); // ปุ่มผู้ช่วย AI (js/pa-ai.js) — ไม่มีไฟล์นี้ฟอร์มก็ทำงานตามเดิม
+  if (typeof badworkAiMount === 'function') badworkAiMount(view, form); // ปุ่มผู้ช่วย AI (js/badwork-ai.js) — ไม่มีไฟล์นี้ฟอร์มก็ทำงานตามเดิม
 
   paSwapIn(view);
 }
@@ -904,7 +904,7 @@ function paCollectFormData() {
   });
   Object.keys(workItems).forEach(k => { if (!Object.values(workItems[k]).some(Boolean)) delete workItems[k]; });
 
-  // ช่องบริบท AI อยู่ในการ์ดที่ pa-ai.js ติดให้ — ถ้าไม่มีช่อง (ไม่โหลดไฟล์นั้น) คงค่าเดิมไว้
+  // ช่องบริบท AI อยู่ในการ์ดที่ badwork-ai.js ติดให้ — ถ้าไม่มีช่อง (ไม่โหลดไฟล์นั้น) คงค่าเดิมไว้
   const aiCtx = {};
   Object.entries(sys.config.aiCtx.maxLen).forEach(([k, n]) => { aiCtx[k] = el('pa-ctx-' + k) ? get('pa-ctx-' + k).slice(0, n) : (sys.state.doc.aiCtx?.[k] || ''); });
 

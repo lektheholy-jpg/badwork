@@ -7,11 +7,11 @@
 //   ข้อความจาก AI แสดงในหน้าต่าง (.modal) ให้ตรวจ/แก้ก่อน "ใช้" เสมอ · สไตล์อยู่ที่ css/style.css (ส่วน .pa-ai-*) · ไม่บันทึกอัตโนมัติ · ตัวเลขที่ไม่มีข้อมูลให้เป็น "…"
 //   การ์ดบนสุดมี "บริบทงานของฉัน" (ระดับชั้น/ห้อง/นักเรียน/ปัญหา/ผลปีก่อน/จุดเน้น) เก็บใน doc.aiCtx · ส่งเข้าพร้อต์เฉพาะส่วนที่เกี่ยวกับช่องนั้น (PA_CONFIG.ai.prompts.scope)
 //   ไม่ต้องโหลด SDK เพิ่ม — ใช้ fetch ธรรมดา
-//   ต้องโหลดหลัง pa.js · pa.js เรียก paAiMount(view, form) ท้าย renderPAFormView
+//   ต้องโหลดหลัง pa.js · pa.js เรียก badworkAiMount(view, form) ท้าย renderPAFormView
 // ==========================================================================
 
 // รวมบริบทที่ชุดช่องนี้ต้องใช้ (ช่องงาน key = "1.1.s1" → ข้อ "1.1" · ช่องส่วนที่ 2 = "part2")
-function paAiScope(fields) {
+function badworkAiScope(fields) {
   const sys = docSystem();
   const set = new Set();
   fields.forEach(f => {
@@ -22,7 +22,7 @@ function paAiScope(fields) {
 }
 
 // ช่องงานตามมาตรฐานตำแหน่ง 15 ข้อ × 4 ช่อง (ids = ระบุเฉพาะบางข้อ หรือ null = ทั้งหมด)
-function paAiWorkSpecs(ids) {
+function badworkAiWorkSpecs(ids) {
   const sys = docSystem();
   const [t1, t2] = paTermLabels(sys.state.doc?.fiscalYear);
   const defs = [
@@ -46,31 +46,31 @@ function paAiWorkSpecs(ids) {
 // ------------------------------------------------------------------
 // เรียก Gemini (โหลด SDK ตอนใช้ครั้งแรก)
 // ------------------------------------------------------------------
-function paAiModelId() {
+function badworkAiModelId() {
   const sys = docSystem();
   let v = null;
   try { v = localStorage.getItem(sys.config.ai.storageKeys.model); } catch (err) { /* ใช้ storage ไม่ได้ — ใช้ค่าเริ่มต้น */ }
   return sys.config.ai.models.some(m => m.id === v) ? v : sys.config.ai.model;
 }
 // Gemini 3 ใช้ thinkingLevel · Gemini 2.5 ใช้ thinkingBudget (ส่ง thinkingLevel ให้ 2.5 จะถูกปฏิเสธ)
-function paAiThinking(id) {
+function badworkAiThinking(id) {
   return /^gemini-3/.test(id) ? { thinkingLevel: 'low' } : { thinkingBudget: 512 };
 }
 
-function paAiParseJson(text) {
+function badworkAiParseJson(text) {
   const t = String(text || '').trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
   const o = JSON.parse(t);
   if (!o || typeof o !== 'object' || Array.isArray(o)) throw new Error('รูปแบบคำตอบไม่ถูกต้อง');
   return o;
 }
 
-async function paAiGenerate(prompt) {
+async function badworkAiGenerate(prompt) {
   const ai = docSystem().config.ai;
-  const id = paAiModelId();
+  const id = badworkAiModelId();
   const body = {
     systemInstruction: { parts: [{ text: ai.prompts.system }] },
     contents: [{ role: 'user', parts: [{ text: prompt }] }],
-    generationConfig: { responseMimeType: 'application/json', temperature: 0.6, thinkingConfig: paAiThinking(id) },
+    generationConfig: { responseMimeType: 'application/json', temperature: 0.6, thinkingConfig: badworkAiThinking(id) },
   };
   const headers = { 'Content-Type': 'application/json' };
   let url;
@@ -96,14 +96,14 @@ async function paAiGenerate(prompt) {
     const parts = (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) || [];
     const text = parts.map(x => x.text || '').join('');
     if (!text) throw new Error('รูปแบบคำตอบไม่ถูกต้อง'); // ถูกบล็อก/ไม่มีข้อความ
-    return paAiParseJson(text);
+    return badworkAiParseJson(text);
   } catch (err) {
     if (err && err.name === 'AbortError') throw new Error('timeout');
     throw err;
   } finally { clearTimeout(timer); }
 }
 
-function paAiError(err) {
+function badworkAiError(err) {
   console.error('PA AI:', err);
   const m = String((err && (err.message || err.code)) || err);
   const code = (m.match(/\[(\d{3})\b/) || m.match(/\b(4\d\d|5\d\d)\b/) || [])[1]; // รหัส HTTP ถ้ามี
@@ -111,7 +111,7 @@ function paAiError(err) {
   let msg;
   if (!navigator.onLine || /Failed to fetch|dynamically imported module|NetworkError/i.test(m)) msg = 'ใช้ AI ไม่ได้ — ไม่มีอินเทอร์เน็ตหรือโหลดชุดคำสั่งไม่สำเร็จ';
   else if (/API key not valid|API_KEY_INVALID|ยังไม่ได้ตั้ง/i.test(m)) msg = `API key ไม่ถูกต้องหรือยังไม่ได้ตั้ง${tag} — ตรวจ ai.apiKey ใน js/pa-config.js (สร้างคีย์ที่ aistudio.google.com/apikey)`;
-  else if (code === '404' || /not found|is not supported|no longer available/i.test(m)) msg = `ไม่พบโมเดล ${paAiModelId()}${tag} — ลองเลือกรุ่นอื่นในการ์ดผู้ช่วย AI หรือตรวจชื่อรุ่นใน js/pa-config.js (PA_CONFIG.ai.models)`;
+  else if (code === '404' || /not found|is not supported|no longer available/i.test(m)) msg = `ไม่พบโมเดล ${badworkAiModelId()}${tag} — ลองเลือกรุ่นอื่นในการ์ดผู้ช่วย AI หรือตรวจชื่อรุ่นใน js/pa-config.js (PA_CONFIG.ai.models)`;
   else if (code === '403' || /PERMISSION_DENIED|API has not been used|API_KEY_SERVICE_BLOCKED|not enabled/i.test(m)) msg = `AI ถูกปฏิเสธสิทธิ์${tag} — ตรวจว่า API key อนุญาต Generative Language API และโดเมนของเว็บอยู่ในรายการ HTTP referrer ที่อนุญาต`;
   else if (code === '429' || /RESOURCE_EXHAUSTED|quota exceeded|too many requests|rate limit/i.test(m)) msg = `โควตา AI เต็มหรือเรียกถี่เกิน${tag} — รอ 1 นาทีแล้วลองใหม่ (ดูโควตาใน Google AI Studio > Usage)`;
   else if (/timeout/i.test(m)) msg = 'AI ตอบช้าเกินไป ลองใหม่อีกครั้ง';
@@ -124,7 +124,7 @@ function paAiError(err) {
 // สร้างคำสั่ง
 // ------------------------------------------------------------------
 // บรรทัดบริบทเรียงลำดับคงที่เสมอ (ส่วนที่ซ้ำกันอยู่ต้นข้อความ → ช่วย implicit caching) · scope = Set ของส่วนที่ต้องส่ง (null = ทุกส่วน)
-function paAiContext(known = {}, scope = null) {
+function badworkAiContext(known = {}, scope = null) {
   const sys = docSystem();
   paCollectFormData(); // ดึงค่าที่พิมพ์ค้างในฟอร์มเข้า sys.state.doc
   const d = sys.state.doc, L = d.load || {}, c = d.aiCtx || {};
@@ -160,7 +160,7 @@ function paAiContext(known = {}, scope = null) {
 }
 
 // ขอข้อความสำหรับกลุ่มช่องหนึ่งชุด → [{...spec, el, current, proposed}]
-async function paAiBatch(specs, mode, known) {
+async function badworkAiBatch(specs, mode, known) {
   const sys = docSystem();
   const fields = specs.map(s => {
     const el = document.getElementById(s.el);
@@ -188,15 +188,15 @@ async function paAiBatch(specs, mode, known) {
   const guide = fields.some(f => f.group)
     ? `\n\nแนวทางช่องงาน (ใช้กับทุกข้อ ตามส่วนท้ายของคีย์):\n${Object.entries(sys.config.ai.prompts.workHints).map(([k, v]) => `- .${k}: ${v}`).join('\n')}`
     : '';
-  const prompt = `ข้อมูลประกอบ:\n${paAiContext(known, paAiScope(fields))}${guide}\n\nงาน (ทุกช่อง): ${base}\n\nช่องที่ต้องการ:\n${lines.join('\n')}\n\nตอบเป็น JSON object ที่มีคีย์เหล่านี้เท่านั้น: ${JSON.stringify(fields.map(f => f.key))}`;
-  const out = await paAiGenerate(prompt);
+  const prompt = `ข้อมูลประกอบ:\n${badworkAiContext(known, badworkAiScope(fields))}${guide}\n\nงาน (ทุกช่อง): ${base}\n\nช่องที่ต้องการ:\n${lines.join('\n')}\n\nตอบเป็น JSON object ที่มีคีย์เหล่านี้เท่านั้น: ${JSON.stringify(fields.map(f => f.key))}`;
+  const out = await badworkAiGenerate(prompt);
   return fields.map(f => ({ ...f, proposed: String(out[f.key] ?? '').trim() })).filter(f => f.proposed);
 }
 
 // ------------------------------------------------------------------
 // ความยินยอม + ตัวกันกดซ้ำ
 // ------------------------------------------------------------------
-function paAiConsent() {
+function badworkAiConsent() {
   const sys = docSystem();
   try { if (localStorage.getItem(sys.config.ai.storageKeys.consent) === '1') return true; } catch (err) { /* ใช้ storage ไม่ได้ — ถามทุกครั้ง */ }
   const ok = confirm('ข้อความในฟอร์ม PA นี้ (รายวิชา ชั่วโมงสอน ข้อความที่กรอกไว้ และ "บริบทงานของฉัน" เช่น ระดับชั้น จำนวนห้อง/นักเรียนรวม ปัญหาหลัก ผลปีก่อน จุดเน้น ไม่รวมชื่อ-นามสกุล) จะถูกส่งไปประมวลผลที่ Google Gemini เฉพาะส่วนที่เกี่ยวกับช่องที่กด\n\n'
@@ -205,25 +205,25 @@ function paAiConsent() {
   return ok;
 }
 
-let paAiBusy = false;
-async function paAiGuard(btn, fn) {
-  if (paAiBusy) { showToast('AI กำลังทำงานอยู่ รอสักครู่'); return undefined; }
-  if (!paAiConsent()) return undefined;
-  paAiBusy = true;
+let badworkAiBusy = false;
+async function badworkAiGuard(btn, fn) {
+  if (badworkAiBusy) { showToast('AI กำลังทำงานอยู่ รอสักครู่'); return undefined; }
+  if (!badworkAiConsent()) return undefined;
+  badworkAiBusy = true;
   // ปิดปุ่ม AI ทุกปุ่มระหว่างรอ ให้เห็นชัดว่ากำลังทำงานอยู่ (ไม่ต้องรอให้กดซ้ำแล้วเจอ toast)
   const all = [...(btn.closest('form') || document).querySelectorAll('[data-pa-ai]')];
   const old = btn.innerHTML;
   all.forEach(b => { b.disabled = true; });
   btn.innerHTML = 'กำลังคิด<span class="loader-dots" aria-hidden="true"><i></i><i></i><i></i></span>';
   try { return await fn(t => { btn.textContent = t; }); }
-  catch (err) { paAiError(err); return undefined; }
-  finally { paAiBusy = false; all.forEach(b => { b.disabled = false; }); btn.innerHTML = old; }
+  catch (err) { badworkAiError(err); return undefined; }
+  finally { badworkAiBusy = false; all.forEach(b => { b.disabled = false; }); btn.innerHTML = old; }
 }
 
 // ------------------------------------------------------------------
 // หน้าต่างตรวจทานข้อความที่ AI เสนอ (ใช้ .modal มาตรฐานของแอป)
 // ------------------------------------------------------------------
-function paAiReview(items, warn) {
+function badworkAiReview(items, warn) {
   const prev = document.activeElement;
   let lastGrp = '';
   const body = items.map((it, i) => {
@@ -307,21 +307,21 @@ function paAiReview(items, warn) {
 // ------------------------------------------------------------------
 // การทำงานของปุ่ม
 // ------------------------------------------------------------------
-async function paAiRunFields(btn, specs, mode) {
-  const items = await paAiGuard(btn, () => paAiBatch(specs, mode, {}));
+async function badworkAiRunFields(btn, specs, mode) {
+  const items = await badworkAiGuard(btn, () => badworkAiBatch(specs, mode, {}));
   if (!items) return; // error แสดงไปแล้ว
   if (!items.length) { showToast('AI ไม่ได้ส่งข้อความกลับมา ลองอีกครั้ง'); return; }
-  paAiReview(items);
+  badworkAiReview(items);
 }
 
 // ปุ่มบนสุด: ร่างเฉพาะช่องส่วนที่ 2 ที่ยังว่าง (5 ช่อง = 1 คำขอ)
 // ช่องงาน 1.1–3.3 ใช้ปุ่มใต้แต่ละข้อ (ข้อละ 4 ช่อง) ไม่ยิงทั้ง 60 ช่องในครั้งเดียวอีกต่อไป
-async function paAiDraftAll(btn) {
+async function badworkAiDraftAll(btn) {
   const sys = docSystem();
   const empty = s => !((document.getElementById(s.el)?.value || '').trim());
   const pick = sys.config.ai.prompts.part2.filter(empty);
   if (!pick.length) { showToast('ช่องส่วนที่ 2 มีข้อความครบแล้ว — ใช้ปุ่มปรับสำนวนใต้แต่ละช่อง หรือปุ่มของแต่ละข้อในส่วนงานตามมาตรฐานตำแหน่งได้'); return; }
-  await paAiRunFields(btn, pick, 'write');
+  await badworkAiRunFields(btn, pick, 'write');
 }
 
 // ------------------------------------------------------------------
@@ -333,14 +333,14 @@ const PA_AI_ICON = `<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="cur
 // บันทึกบริบทอัตโนมัติ: มีเอกสารแล้ว → เขียนเฉพาะ aiCtx ลง Firestore ทันที (ไม่แตะช่องอื่นที่ยังพิมพ์ค้าง)
 //   ยังเป็นเอกสารใหม่ → สำรองในเครื่อง แล้วเก็บเข้าเอกสารเมื่อกดบันทึก · เอกสารใหม่ถัดไปจะหยิบบริบทล่าสุดมาให้แก้ต่อ
 // ------------------------------------------------------------------
-function paAiCtxValues() {
+function badworkAiCtxValues() {
   const sys = docSystem();
   const v = {};
   Object.keys(sys.config.aiCtx.fields).forEach(k => { v[k] = (document.getElementById('pa-ctx-' + k)?.value || '').trim().slice(0, sys.config.aiCtx.maxLen[k]); });
   return v;
 }
 
-function paAiCtxLoadLocal() {
+function badworkAiCtxLoadLocal() {
   const sys = docSystem();
   try {
     const o = JSON.parse(localStorage.getItem(sys.config.ai.storageKeys.ctx) || 'null');
@@ -349,23 +349,23 @@ function paAiCtxLoadLocal() {
 }
 
 // เอกสารใหม่ที่ยังไม่มีบริบท → หยิบจากเอกสารล่าสุดที่มี (รายการเรียงใหม่→เก่า) หรือที่สำรองในเครื่อง · ทำครั้งเดียวต่อเอกสาร
-function paAiSeedCtx(d) {
+function badworkAiSeedCtx(d) {
   const sys = docSystem();
-  if (sys.state.docId || d._ctxSeeded || paAiCtxCount(d.aiCtx || {})) return;
+  if (sys.state.docId || d._ctxSeeded || badworkAiCtxCount(d.aiCtx || {})) return;
   d._ctxSeeded = true; // ขึ้นต้น _ → paSave ตัดทิ้ง
-  const last = (sys.state.list || []).find(x => x.aiCtx && paAiCtxCount(x.aiCtx));
-  const src = last ? last.aiCtx : paAiCtxLoadLocal();
+  const last = (sys.state.list || []).find(x => x.aiCtx && badworkAiCtxCount(x.aiCtx));
+  const src = last ? last.aiCtx : badworkAiCtxLoadLocal();
   if (!src) return;
   d.aiCtx = {};
   Object.entries(sys.config.aiCtx.maxLen).forEach(([k, n]) => { d.aiCtx[k] = String(src[k] || '').slice(0, n); });
 }
 
-let paAiCtxTimer = null;
-async function paAiCtxSave(statusEl) {
+let badworkAiCtxTimer = null;
+async function badworkAiCtxSave(statusEl) {
   const sys = docSystem();
-  clearTimeout(paAiCtxTimer);
-  paAiCtxTimer = null;
-  const v = paAiCtxValues();
+  clearTimeout(badworkAiCtxTimer);
+  badworkAiCtxTimer = null;
+  const v = badworkAiCtxValues();
   sys.state.doc.aiCtx = v;
   try { localStorage.setItem(sys.config.ai.storageKeys.ctx, JSON.stringify(v)); } catch (err) { /* ใช้ storage ไม่ได้ — ข้าม */ }
   const uid = AppState.user?.uid, id = sys.state.docId;
@@ -380,11 +380,11 @@ async function paAiCtxSave(statusEl) {
 }
 
 // การ์ดพับได้ "บริบทงานของฉัน" — เปิดไว้เมื่อยังว่าง · พับเมื่อกรอกแล้ว
-function paAiCtxCount(c) { const sys = docSystem(); return Object.keys(sys.config.aiCtx.fields).filter(k => String(c[k] || '').trim()).length; }
+function badworkAiCtxCount(c) { const sys = docSystem(); return Object.keys(sys.config.aiCtx.fields).filter(k => String(c[k] || '').trim()).length; }
 
-function paAiCtxHtml(c) {
+function badworkAiCtxHtml(c) {
   const sys = docSystem();
-  const n = paAiCtxCount(c), total = Object.keys(sys.config.aiCtx.fields).length;
+  const n = badworkAiCtxCount(c), total = Object.keys(sys.config.aiCtx.fields).length;
   const L = sys.config.aiCtx.fields, mx = sys.config.aiCtx.maxLen;
   const one = (k, ph) => `<div class="field"><label for="pa-ctx-${k}">${L[k]}</label><input id="pa-ctx-${k}" type="text" maxlength="${mx[k]}"${k === 'rooms' || k === 'students' ? ' inputmode="numeric"' : ''} value="${escapeHtml(c[k] || '')}" placeholder="${ph}"></div>`;
   const many = (k, ph) => `<div class="field"><label for="pa-ctx-${k}">${L[k]}</label><textarea id="pa-ctx-${k}" rows="2" maxlength="${mx[k]}" placeholder="${ph}">${escapeHtml(c[k] || '')}</textarea></div>`;
@@ -398,11 +398,11 @@ function paAiCtxHtml(c) {
   </details>`;
 }
 
-function paAiMount(view, form) {
+function badworkAiMount(view, form) {
   const sys = docSystem();
   if (!form || form.dataset.paAi) return;
   form.dataset.paAi = '1';
-  paAiSeedCtx(sys.state.doc);
+  badworkAiSeedCtx(sys.state.doc);
 
   // 1) การ์ดบนสุด: อธิบายสั้นๆ + ร่างส่วนที่ 2
   const top = document.createElement('div');
@@ -419,11 +419,11 @@ function paAiMount(view, form) {
       <li>เสนอให้ตรวจก่อนใช้เสมอ ไม่เขียนทับช่องที่กรอกแล้ว และไม่บันทึกให้เอง</li>
       <li>ปุ่มนี้ร่างส่วนที่ 2 ที่ว่าง · งานข้อ 1.1–3.3 กดปุ่มใต้แต่ละข้อ</li>
     </ul>
-    ${paAiCtxHtml(sys.state.doc.aiCtx || {})}
+    ${badworkAiCtxHtml(sys.state.doc.aiCtx || {})}
     <div class="field pa-ai-model">
       <label for="pa-ai-model">โมเดล AI</label>
-      <select id="pa-ai-model">${sys.config.ai.models.map(m => `<option value="${m.id}"${m.id === paAiModelId() ? ' selected' : ''}>${m.label}</option>`).join('')}</select>
-      <div class="field-hint" data-model-hint>${escapeHtml((sys.config.ai.models.find(m => m.id === paAiModelId()) || {}).hint || '')}</div>
+      <select id="pa-ai-model">${sys.config.ai.models.map(m => `<option value="${m.id}"${m.id === badworkAiModelId() ? ' selected' : ''}>${m.label}</option>`).join('')}</select>
+      <div class="field-hint" data-model-hint>${escapeHtml((sys.config.ai.models.find(m => m.id === badworkAiModelId()) || {}).hint || '')}</div>
     </div>
     <div class="pa-ai-warn">อย่าพิมพ์ชื่อหรือข้อมูลที่ระบุตัวนักเรียนลงในช่อง</div>
     <button type="button" class="btn btn-primary" data-pa-ai="all">${PA_AI_ICON} ร่างส่วนที่ 2 ที่ว่าง</button>`;
@@ -440,12 +440,12 @@ function paAiMount(view, form) {
   const saveEl = ctxBox?.querySelector('[data-ctx-save]');
   ctxBox?.addEventListener('input', () => {
     const cnt = ctxBox.querySelector('[data-ctx-count]');
-    if (cnt) cnt.textContent = `กรอกแล้ว ${paAiCtxCount(paAiCtxValues())}/${Object.keys(sys.config.aiCtx.fields).length}`;
+    if (cnt) cnt.textContent = `กรอกแล้ว ${badworkAiCtxCount(badworkAiCtxValues())}/${Object.keys(sys.config.aiCtx.fields).length}`;
     if (saveEl) saveEl.textContent = 'กำลังบันทึก…';
-    clearTimeout(paAiCtxTimer);
-    paAiCtxTimer = setTimeout(() => paAiCtxSave(saveEl), 700);
+    clearTimeout(badworkAiCtxTimer);
+    badworkAiCtxTimer = setTimeout(() => badworkAiCtxSave(saveEl), 700);
   });
-  ctxBox?.addEventListener('focusout', () => { if (paAiCtxTimer) paAiCtxSave(saveEl); }); // ออกจากช่อง = บันทึกทันที ไม่รอ
+  ctxBox?.addEventListener('focusout', () => { if (badworkAiCtxTimer) badworkAiCtxSave(saveEl); }); // ออกจากช่อง = บันทึกทันที ไม่รอ
 
   // 2) ใต้ช่องส่วนที่ 2
   sys.config.ai.prompts.part2.forEach(f => {
@@ -475,17 +475,17 @@ function paAiMount(view, form) {
     if (!b) return;
     const a = b.dataset.paAi;
     const has = s => !!(document.getElementById(s.el)?.value || '').trim();
-    if (a === 'all') { paAiDraftAll(b); return; }
+    if (a === 'all') { badworkAiDraftAll(b); return; }
     if (a.startsWith('f-')) {
       const mode = a.slice(2), spec = sys.config.ai.prompts.part2.find(s => s.key === b.dataset.key);
       if (!spec) return;
       if (mode !== 'write' && !has(spec)) { showToast('ช่องนี้ยังว่าง — กด “ช่วยเขียน/เติม” ก่อน'); return; }
-      paAiRunFields(b, [spec], mode);
+      badworkAiRunFields(b, [spec], mode);
     } else if (a.startsWith('i-')) {
-      const mode = a.slice(2), specs = paAiWorkSpecs([b.dataset.item]);
+      const mode = a.slice(2), specs = badworkAiWorkSpecs([b.dataset.item]);
       const pick = mode === 'write' ? specs.filter(s => !has(s)) : specs.filter(has);
       if (!pick.length) { showToast(mode === 'write' ? 'ช่องในข้อนี้มีข้อความครบแล้ว — ใช้ “ปรับสำนวนทั้งข้อ” ได้' : 'ข้อนี้ยังไม่มีข้อความให้ปรับสำนวน'); return; }
-      paAiRunFields(b, pick, mode);
+      badworkAiRunFields(b, pick, mode);
     }
   });
 }

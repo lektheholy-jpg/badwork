@@ -67,8 +67,8 @@ js/picker-pages.js    หน้าเลือกวิชา/ห้อง
 js/report-page.js     หน้ารายงาน
 js/doc-system.js      ระบบเอกสาร (context ต่อระบบ): config + state (sys.state · sys.rptState) + sys.col(kind, uid) · แทน global PAState/PARptState — โหลดก่อน pa-config.js
 js/pa-config.js       PA_CONFIG: ค่าคงที่ของระบบ PA ที่เดียว (ชื่อ collection · แท็บ · โครงฟอร์ม PA 1/ส · ช่องบริบท AI · พร้อต์/รุ่น/คีย์ของผู้ช่วย AI) — โหลดหลัง doc-system.js ก่อน pa.js (ท้ายไฟล์ลงทะเบียนเป็นระบบ 'pa')
-js/pa.js              ฟอร์มข้อตกลง PA 1/ส (lazy — โหลดตอนเข้าหน้า PA พร้อม pa-config/pa-ai/pa-report/pa-rpt ผ่าน LAZY_BUNDLES.pa)
-js/pa-ai.js           ผู้ช่วย AI ในฟอร์ม PA
+js/pa.js              ฟอร์มข้อตกลง PA 1/ส (lazy — โหลดตอนเข้าหน้า PA พร้อม pa-config/badwork-ai/pa-report/pa-rpt ผ่าน LAZY_BUNDLES.pa)
+js/badwork-ai.js           ผู้ช่วย AI ในฟอร์ม PA
 js/pa-report.js       ตัวอย่าง/พิมพ์ PA
 js/pa-rpt.js          แบบฟอร์มรายงานผล Personal Agreement (แท็บที่ 3) + แท็บ ตัวอย่าง/พิมพ์ รายงานผล (แท็บที่ 4)
 js/report.js          [lazy] สรุปผลรายห้อง ส่งออก CSV/ปพ.5/SGS เกณฑ์เกรด แปลงคะแนน NextSchool
@@ -169,7 +169,7 @@ users/{uid}/pa_reports/{docId}               แบบรายงานผล P
   - ชื่อ collection อยู่ที่ `PA_CONFIG.collections` ที่เดียว (ต้องตรง `firestore.rules`) · `tests/pa-config.test.js` ตรวจว่าไม่มี `PAState`/`PARptState`/`PA_CONFIG`/ชื่อ `pa_*` ตรงๆ หลุดออกนอก `pa-config.js`
   - ยังเป็นของ PA เฉพาะ (รอขั้นตอนถัดไป): รหัสแท็บ `'agreement'/'report'/'rpt'/'rptprev'` ใน `paRenderTab` · id ช่องฟอร์มและ HTML ของฟอร์ม · การอ่าน `records` ใน `parptLoadRecordsForYear`
 - `js/pa.js` ฟอร์มตามแบบ PA 1/ส ของ สพฐ. (ส่วนที่ 1: ภาระงาน + งานตามมาตรฐานตำแหน่ง 15 ข้อ · ส่วนที่ 2: ประเด็นท้าทาย) · `js/pa-report.js` ตัวอย่างและพิมพ์/บันทึก PDF
-- `js/pa-ai.js` เรียก Gemini REST ผ่านพร็อกซีของเรา (`PA_CONFIG.ai.proxyUrl` → `worker/worker.js` บน Cloudflare) · แนบ Firebase ID token ให้พร็อกซีตรวจ · **คีย์ Gemini อยู่เป็น secret ที่เซิร์ฟเวอร์ ไม่อยู่ในโค้ดหน้าเว็บ** (`PA_CONFIG.ai.apiKey` ต้องว่างเสมอ — `tests/pa-config.test.js` ตรวจ) · ไม่โหลด SDK เพิ่ม ใช้ `fetch` · ชื่อรุ่นแก้ที่ `PA_CONFIG.ai.model` (รายชื่อที่เลือกได้อยู่ที่ `PA_CONFIG.ai.models`) ใน `js/pa-config.js` · โหมดตรง (ใส่ `apiKey` ในหน้าเว็บ) ยังมีในโค้ดแต่ไม่แนะนำ
+- `js/badwork-ai.js` เรียก Gemini REST ผ่านพร็อกซีของเรา (`PA_CONFIG.ai.proxyUrl` → `worker/worker.js` บน Cloudflare) · แนบ Firebase ID token ให้พร็อกซีตรวจ · **คีย์ Gemini อยู่เป็น secret ที่เซิร์ฟเวอร์ ไม่อยู่ในโค้ดหน้าเว็บ** (`PA_CONFIG.ai.apiKey` ต้องว่างเสมอ — `tests/pa-config.test.js` ตรวจ) · ไม่โหลด SDK เพิ่ม ใช้ `fetch` · ชื่อรุ่นแก้ที่ `PA_CONFIG.ai.model` (รายชื่อที่เลือกได้อยู่ที่ `PA_CONFIG.ai.models`) ใน `js/pa-config.js` · โหมดตรง (ใส่ `apiKey` ในหน้าเว็บ) ยังมีในโค้ดแต่ไม่แนะนำ
 - ปุ่มบนสุดร่างเฉพาะส่วนที่ 2 ที่ว่าง (1 คำขอ) · งานข้อ 1.1–3.3 ใช้ปุ่มใต้แต่ละข้อ (ข้อละ 4 ช่อง) · ไม่เขียนทับช่องที่กรอกแล้ว · ข้อความที่ AI เสนอแสดงในหน้าต่างให้ตรวจก่อนใช้ ไม่บันทึกอัตโนมัติ
 - ประหยัดโควต้า: คำแนะนำช่องงานอยู่ที่ `PA_CONFIG.ai.prompts.workHints` (ส่งครั้งเดียวต่อคำขอ) · จำกัดความยาวเป็นตัวอักษรใน `workHints` / `PA_CONFIG.ai.prompts.part2` · อย่าเพิ่มปุ่มที่ยิงหลายสิบช่องในคำขอเดียว
 - ข้อความผู้ใช้ส่งไปประมวลผลที่ Google · ต้องมีหน้าต่างขอความยินยอมก่อนใช้ครั้งแรก (คีย์ `PA_CONFIG.ai.storageKeys.consent`) · ห้ามกรอกชื่อ/ข้อมูลที่ระบุตัวนักเรียนลงในช่อง
@@ -228,9 +228,9 @@ users/{uid}/pa_reports/{docId}               แบบรายงานผล P
 ## บันทึกการลดขนาด (2026-10-08)
 
 - ลบรูป `assets/banner*.webp` (ซ้ำกับ `head-cat*.webp` ทุกไฟล์ และโค้ดไม่ได้เรียกใช้) และ `js/score-logic.test.js` (ฉบับเก่า — ใช้ `tests/score-logic.test.js`)
-- กลุ่มหน้า PA (`doc-system.js`, `pa-config.js`, `pa.js`, `pa-ai.js`, `pa-report.js`, `pa-rpt.js`) ย้ายเป็น lazy: `LAZY_MODULES` + `LAZY_BUNDLES.pa` ใน `js/utils.js` โหลดตามลำดับด้วย `loadModules()` — ลด JS ตอนเปิดแอป ~174 KB (ยังอยู่ใน `PRECACHE` ออฟไลน์ได้เหมือนเดิม)
+- กลุ่มหน้า PA (`doc-system.js`, `pa-config.js`, `pa.js`, `badwork-ai.js`, `pa-report.js`, `pa-rpt.js`) ย้ายเป็น lazy: `LAZY_MODULES` + `LAZY_BUNDLES.pa` ใน `js/utils.js` โหลดตามลำดับด้วย `loadModules()` — ลด JS ตอนเปิดแอป ~174 KB (ยังอยู่ใน `PRECACHE` ออฟไลน์ได้เหมือนเดิม)
 - ลบ CSS variable ที่ไม่มีใครใช้ 32 ตัว, คลาสที่ไม่มีใครใช้ 9 คลาส, ยุบ `--font-modern` เป็น `--font-head`
   (อย่าลบ `--bgp-*` — `theme.js` ประกอบชื่อตอนรัน: `'var(--bgp-' + id + ')'`)
 - โลโก้ในหน้าแอปใช้ `assets/icons/logo-128.webp` (PNG 192/512 ยังอยู่สำหรับ manifest / iOS)
 - `css/style.min.css` ถูกสร้างใหม่ด้วยสคริปต์ชั่วคราว (ผลเทียบกับ `style.css` ทีละ declaration ตรงกันทุกค่า) แต่ไม่ได้ผ่าน csso — **รัน `./build-css.sh` หนึ่งครั้งเพื่อให้ `--check` ผ่านและ commit ไฟล์ .min ที่ได้**
-- (เดิม `pa-ai.js` โหลด Firebase AI Logic SDK ด้วย `import()` — เลิกใช้แล้ว ตอนนี้เรียกผ่านพร็อกซีด้วย `fetch`)
+- (เดิม `badwork-ai.js` โหลด Firebase AI Logic SDK ด้วย `import()` — เลิกใช้แล้ว ตอนนี้เรียกผ่านพร็อกซีด้วย `fetch`)

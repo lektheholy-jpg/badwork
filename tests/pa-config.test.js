@@ -1,4 +1,4 @@
-// ทดสอบกลุ่มหน้า Personal Agreement (js/doc-system.js + pa-config.js + pa.js + pa-ai.js + pa-report.js + pa-rpt.js) ด้วย jsdom
+// ทดสอบกลุ่มหน้า Personal Agreement (js/doc-system.js + pa-config.js + pa.js + badwork-ai.js + pa-report.js + pa-rpt.js) ด้วย jsdom
 // วิธีรัน: node tests/pa-config.test.js   (หรือ npm run test:pa)
 //
 // ทำอะไร
@@ -201,9 +201,9 @@ globalThis.__probes = {
   'fn.docHtml': () => paBuildDocHtml(paNormalize(clone(PA_FIXTURE)), OWNER_FIXTURE) + '\\n----\\n' + paBuildDocHtml(paNormalize({ fiscalYear: '2569' }), {}) + '\\n----\\n' + paBuildDocHtml(paNormalize(clone(PA_LEGACY_FIXTURE)), OWNER_FIXTURE),
   'fn.rptHtml': () => parptBuildDocHtml(parptNormalize(clone(RPT_FIXTURE)), OWNER_FIXTURE, '') + '\\n----\\n' + parptBuildDocHtml(parptNormalize({ fiscalYear: '2569' }), {}, '<p>ภาคผนวก</p>'),
   'fn.css': () => PA1_CSS + '\\n----\\n' + PARPT_LIST_CSS + '\\n----\\n' + paFontCss(),
-  'fn.aiScopes': () => J(['part2', ...cfg().workItems.flatMap(([, , items]) => items.map(([id]) => id))].map(id => [id, [...paAiScope(id === 'part2' ? [{ key: 'problem' }] : [{ group: id[0], key: id + '.s1' }])].sort()])),
-  'fn.aiWorkSpecs': () => J([paAiWorkSpecs(null), paAiWorkSpecs(['1.1', '2.3']), paAiWorkSpecs(['9.9'])]),
-  'fn.aiCtxHtml': () => paAiCtxHtml({}) + '\\n----\\n' + paAiCtxHtml(clone(PA_FIXTURE).aiCtx) + '\\n----\\n' + J([paAiCtxCount({}), paAiCtxCount(PA_FIXTURE.aiCtx)]),
+  'fn.aiScopes': () => J(['part2', ...cfg().workItems.flatMap(([, , items]) => items.map(([id]) => id))].map(id => [id, [...badworkAiScope(id === 'part2' ? [{ key: 'problem' }] : [{ group: id[0], key: id + '.s1' }])].sort()])),
+  'fn.aiWorkSpecs': () => J([badworkAiWorkSpecs(null), badworkAiWorkSpecs(['1.1', '2.3']), badworkAiWorkSpecs(['9.9'])]),
+  'fn.aiCtxHtml': () => badworkAiCtxHtml({}) + '\\n----\\n' + badworkAiCtxHtml(clone(PA_FIXTURE).aiCtx) + '\\n----\\n' + J([badworkAiCtxCount({}), badworkAiCtxCount(PA_FIXTURE.aiCtx)]),
 
   // --- หน้าจอ ---
   'ui.shell': () => { docSystem('pa').state.tab = 'rpt'; paBuildShell(); return view(); },
@@ -227,23 +227,23 @@ globalThis.__probes = {
     return J(seen);
   },
 
-  // --- AI: พร้อต์ที่ส่งออก (จับที่ paAiGenerate ก่อนถึงเครือข่าย) ---
+  // --- AI: พร้อต์ที่ส่งออก (จับที่ badworkAiGenerate ก่อนถึงเครือข่าย) ---
   'ai.prompts': async () => {
     docSystem('pa').state.tab = 'agreement'; docSystem('pa').state.view = 'form'; docSystem('pa').state.docId = 'a1'; docSystem('pa').state.doc = clone(PA_FIXTURE); await renderPAFormView(); await settle();
-    const got = []; const real = paAiGenerate; paAiGenerate = async p => { got.push(p); return {}; };
-    const sets = { part2: cfg().part2.map(f => ({ key: f.key, el: f.el, label: f.label, hint: f.hint })), work: paAiWorkSpecs(['1.1', '2.3', '3.3']), all: paAiWorkSpecs(null) };
+    const got = []; const real = badworkAiGenerate; badworkAiGenerate = async p => { got.push(p); return {}; };
+    const sets = { part2: cfg().part2.map(f => ({ key: f.key, el: f.el, label: f.label, hint: f.hint })), work: badworkAiWorkSpecs(['1.1', '2.3', '3.3']), all: badworkAiWorkSpecs(null) };
     document.getElementById('pa-method').value = '1. ข้อความที่พิมพ์ค้าง';
-    for (const [n, specs] of Object.entries(sets)) for (const mode of ['write', 'polish', 'shorten']) { got.push('### ' + n + ' / ' + mode); await paAiBatch(specs, mode, {}); }
-    paAiGenerate = real;
+    for (const [n, specs] of Object.entries(sets)) for (const mode of ['write', 'polish', 'shorten']) { got.push('### ' + n + ' / ' + mode); await badworkAiBatch(specs, mode, {}); }
+    badworkAiGenerate = real;
     return got.join('\\n=====\\n');
   },
   'ai.ctxStorage': async () => {
     docSystem('pa').state.tab = 'agreement'; docSystem('pa').state.view = 'form'; docSystem('pa').state.docId = 'a1'; docSystem('pa').state.doc = clone(PA_FIXTURE); await renderPAFormView(); await settle();
     resetDb();
-    const sel = document.getElementById('pa-ai-model'); const out = [paAiModelId()];
-    sel.value = sel.options[sel.options.length - 1].value; sel.dispatchEvent(new Event('change')); out.push(paAiModelId(), document.querySelector('[data-model-hint]').textContent);
-    document.getElementById('pa-ctx-level').value = 'ม.3'; await paAiCtxSave(null); out.push(J(paAiCtxLoadLocal()));
-    docSystem('pa').state.docId = null; await paAiCtxSave(null);
+    const sel = document.getElementById('pa-ai-model'); const out = [badworkAiModelId()];
+    sel.value = sel.options[sel.options.length - 1].value; sel.dispatchEvent(new Event('change')); out.push(badworkAiModelId(), document.querySelector('[data-model-hint]').textContent);
+    document.getElementById('pa-ctx-level').value = 'ม.3'; await badworkAiCtxSave(null); out.push(J(badworkAiCtxLoadLocal()));
+    docSystem('pa').state.docId = null; await badworkAiCtxSave(null);
     return J([out, lslog.slice(), dblog.slice(), toasts.slice()]);
   },
 
@@ -277,12 +277,12 @@ globalThis.__probes = {
     ok(C.ai.models.some(m => m.id === C.ai.model), 'รุ่น AI เริ่มต้นอยู่ในรายการรุ่นที่เลือกได้');
     ok(Object.values(C.ai.storageKeys).every(k => /^pa-ai-/.test(k)), 'คีย์ localStorage ของ AI ขึ้นต้น pa-ai-');
     const legacy = ['PA_TABS', 'PA_CLASSROOM_TYPES', 'PA_WORK_ITEMS', 'PA_LOAD_LISTS', 'PA_CTX_MAX', 'PA_AI_SYSTEM', 'PA_AI_MODE_TXT', 'PA_AI_PART2', 'PA_AI_WORK_HINTS', 'PA_AI_CTX_FIELDS', 'PA_AI_SCOPE'];
-    const stray = ['js/pa.js', 'js/pa-ai.js', 'js/pa-rpt.js', 'js/pa-report.js'].flatMap(f => legacy.filter(n => new RegExp('\\b' + n + '\\b').test(read(f))).map(n => f + ':' + n))
-      .concat(['js/pa.js', 'js/pa-ai.js', 'js/pa-rpt.js'].filter(f => /PA_AI\./.test(read(f)) || /'pa_(agreements|reports)'/.test(read(f))).map(f => f + ':literal'));
+    const stray = ['js/pa.js', 'js/badwork-ai.js', 'js/pa-rpt.js', 'js/pa-report.js'].flatMap(f => legacy.filter(n => new RegExp('\\b' + n + '\\b').test(read(f))).map(n => f + ':' + n))
+      .concat(['js/pa.js', 'js/badwork-ai.js', 'js/pa-rpt.js'].filter(f => /PA_AI\./.test(read(f)) || /'pa_(agreements|reports)'/.test(read(f))).map(f => f + ':literal'));
     ok(stray.length === 0, 'ไม่มีค่าคงที่ PA เดิมหรือชื่อ collection ค้างอยู่นอก PA_CONFIG', stray.join(', '));
     ok(bundleFiles()[0] === 'js/doc-system.js' && bundleFiles()[1] === 'js/pa-config.js' && bundleFiles()[2] === 'js/pa.js', 'ลำดับโหลด LAZY_BUNDLES.pa: doc-system.js → pa-config.js → pa.js');
     // ตัดคอมเมนต์ก่อนตรวจ — คอมเมนต์อ้างชื่อเดิมเพื่ออธิบายได้ แต่โค้ดห้ามใช้
-    // ข้อความแจ้ง error ที่บอกผู้ใช้ว่าให้แก้รุ่นที่ไหน (pa-ai.js) เป็นข้อความ ไม่ใช่การอ้างค่า — ยกเว้นประโยคนี้ประโยคเดียว
+    // ข้อความแจ้ง error ที่บอกผู้ใช้ว่าให้แก้รุ่นที่ไหน (badwork-ai.js) เป็นข้อความ ไม่ใช่การอ้างค่า — ยกเว้นประโยคนี้ประโยคเดียว
     const code = f => read(f).replace('js/pa-config.js (PA_CONFIG.ai.models)', '').replace(/^\s*\/\/.*$/gm, '').replace(/\s\/\/ .*$/gm, '');
     const jsFiles = fs.readdirSync(path.join(ROOT, 'js')).filter(f => f.endsWith('.js')).map(f => 'js/' + f);
     const oldState = jsFiles.filter(f => /\b(PAState|PARptState)\b/.test(code(f)));
@@ -292,7 +292,7 @@ globalThis.__probes = {
     const colLit = jsFiles.filter(f => f !== 'js/pa-config.js' && /pa_(agreements|reports)/.test(code(f)));
     ok(colLit.length === 0, 'ชื่อ collection ไม่ถูกเขียนตรงในโค้ดนอก pa-config.js — อ่านผ่าน sys.col(kind, uid)', colLit.join(', '));
     // ไฟล์ PA ไม่ต่อ db.collection('users')... เอง ยกเว้นอ่าน 'records' (อบรม/เกียรติบัตร ของแอปหลัก ไม่ใช่ collection ของระบบเอกสาร) ที่ pa-rpt.js จุดเดียว
-    const direct = ['js/pa.js', 'js/pa-ai.js', 'js/pa-report.js', 'js/pa-rpt.js'].flatMap(f => (code(f).match(/collection\(\s*['"`]users['"`]\s*\)[^;]*/g) || []).map(m => f + ': ' + m.replace(/\s+/g, ' ').slice(0, 60)));
+    const direct = ['js/pa.js', 'js/badwork-ai.js', 'js/pa-report.js', 'js/pa-rpt.js'].flatMap(f => (code(f).match(/collection\(\s*['"`]users['"`]\s*\)[^;]*/g) || []).map(m => f + ': ' + m.replace(/\s+/g, ' ').slice(0, 60)));
     ok(direct.length === 1 && /^js\/pa-rpt\.js: .*\.collection\('records'\)/.test(direct[0]), 'ไฟล์ PA ไม่ต่อ db.collection(\'users\')... เอง — collection ของระบบเอกสารผ่าน sys.col เท่านั้น (ยกเว้นอ่าน records จุดเดียว)', direct.join(' | '));
   } else console.log('  (ไม่มี js/pa-config.js — โค้ดก่อนรีแฟกเตอร์ ข้ามส่วนนี้)');
 

@@ -514,12 +514,12 @@ const LAZY_MODULES = {
   'doc-system': 'js/doc-system.js', // บริบทของระบบเอกสาร: config + state + collection ต่อระบบ (ใช้ร่วมกับระบบเอกสารอื่นในอนาคต)
   'pa-config': 'js/pa-config.js',
   pa: 'js/pa.js',
-  'pa-ai': 'js/pa-ai.js',
+  'badwork-ai': 'js/badwork-ai.js',
   'pa-report': 'js/pa-report.js',
   'pa-rpt': 'js/pa-rpt.js',
 };
 const LAZY_BUNDLES = {
-  pa: ['doc-system', 'pa-config', 'pa', 'pa-ai', 'pa-report', 'pa-rpt'],
+  pa: ['doc-system', 'pa-config', 'pa', 'badwork-ai', 'pa-report', 'pa-rpt'],
   // เฉพาะ config ของทุกระบบเอกสาร (เบา · ไม่มี UI) — privacy.js ใช้รู้ชื่อ collection · ระบบเอกสารใหม่ต้องเพิ่มไฟล์ config ของตัวเองที่นี่
   docConfigs: ['doc-system', 'pa-config'],
 };
