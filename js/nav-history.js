@@ -15,6 +15,11 @@
 //     const l = NavHistory.layer(onBack)                 เปิดชั้น: onBack ถูกเรียกเมื่อผู้ใช้กดย้อนกลับ
 //     l.release()                                        ปิดชั้นจากโค้ดเอง (ปุ่มปิด/ยกเลิก) — ถอด entry ของชั้นออกให้
 //     NavHistory.backTo('courses')                       ปุ่ม "กลับ" ในหน้า: ถ้า entry ก่อนหน้าคือหน้านั้นพอดีจะถอยจริง (ไม่ซ้อน entry)
+//     NavHistory.applyScroll()                           เรียกเมื่อหน้าวาดเสร็จ (drawRoute / renderCourseShell): ย้อนกลับ/เดินหน้า = เลื่อนกลับตำแหน่งเดิมของ entry นั้น,
+//                                                        เปลี่ยนหน้าใหม่ = เลื่อนขึ้นบนสุด · เรียกซ้ำโดยไม่มีงานค้าง (เช่น สลับแท็บ) ไม่ทำอะไร
+//
+//   ตำแหน่งเลื่อน: เก็บตอน "ออก" จาก entry (push หน้าใหม่ หรือ popstate) ในหน่วยความจำของเซสชัน (scrolls[idx]) แล้วเลื่อนกลับหลังวาดเสร็จ
+//     ตั้ง history.scrollRestoration = 'manual' เพื่อไม่ให้เบราว์เซอร์เลื่อนเองไปชนกัน (มันเลื่อนก่อนที่แอปจะวาดหน้า → ถูกบีบกลับขึ้นบนสุด)
 //
 //   ข้อควรระวัง: history.back() ทำงานแบบอะซิงก์ — ถ้าปิดชั้นแล้วเปลี่ยนหน้าต่อทันที การ pushState ของหน้าใหม่
 //   ต้องรอให้ถอยเสร็จก่อน (ไม่งั้นจะไปทับ entry ผิดตัว) จึงมีคิว queued ด้านล่าง
@@ -28,13 +33,25 @@ const NavHistory = (() => {
   let restoring = false;       // กำลังวาดหน้าตาม popstate → ห้ามเขียนประวัติซ้ำ
   const layers = [];           // ชั้นที่เปิดค้าง (ใหม่สุดอยู่ท้าย)
   let backPending = false, queued = [], backTimer = null;
+  const scrolls = {};          // scrolls[i] = ตำแหน่งเลื่อน (px) ของหน้าใน entry ลำดับ i ตอนที่ผู้ใช้ออกจากมัน
+  let pendingScroll = null;    // ตำแหน่งที่รอเลื่อนไปเมื่อหน้าวาดเสร็จ (ตัวเลข px) · null = ไม่มีงานค้าง
+  if (ok && 'scrollRestoration' in history) { try { history.scrollRestoration = 'manual'; } catch (e) { /* ข้าม */ } }
+
+  const getY = () => (typeof window !== 'undefined' && (window.scrollY || document.documentElement.scrollTop)) || 0;
+  // จำตำแหน่งเลื่อนของ entry i (ข้าม entry ของชั้น — ชั้นไม่มีหน้าของตัวเอง)
+  function saveScroll(i) {
+    const s = stack[i] || (ok && history.state && history.state.idx === i ? history.state : null);
+    if (s && s.kind !== 'layer') scrolls[i] = getY();
+  }
 
   const cur = () => stack[idx] || (ok && history.state) || null;
 
   function write(mode, st) {
     if (mode === 'push') {
+      saveScroll(idx);    // จำตำแหน่งเลื่อนของหน้าที่กำลังจะออกจาก
       idx++;
       stack.length = idx; // ตัด entry ข้างหน้า (forward) ที่ไม่ใช้แล้วออกจากความจำ
+      for (const k of Object.keys(scrolls)) if (+k >= idx) delete scrolls[k];
       st = { ...st, nh: 1, idx };
       stack[idx] = st;
       history.pushState(st, '');
@@ -66,6 +83,7 @@ const NavHistory = (() => {
   function record(st) {
     if (!ok || restoring) return;
     defer(() => {
+      pendingScroll = 0; // หน้าใหม่ (ไม่ใช่ย้อนกลับ) → เริ่มที่บนสุดเมื่อวาดเสร็จ
       if (!booted) { booted = true; write('replace', st); return; }
       // เปลี่ยนหน้าขณะมีชั้นค้างอยู่ (เช่นกดปุ่มในป๊อปอัปแล้ว navigate): ชั้นนั้นเลิกนับ — entry ของมันที่ค้างอยู่จะถูกข้ามเองตอนกดย้อน
       for (const l of layers) l.active = false;
@@ -121,6 +139,7 @@ const NavHistory = (() => {
 
   function restore(st) {
     AppState.flushScoreSaves?.(); // กันคะแนนหายถ้าเพิ่งพิมพ์แล้วรีบกดย้อนกลับ
+    pendingScroll = scrolls[st.idx] || 0; // วาดเสร็จแล้วเลื่อนกลับตำแหน่งเดิม (applyScroll)
     restoring = true;
     try {
       if (st.kind === 'course' && typeof openCourse === 'function') openCourse(st.courseId, { sectionId: st.sectionId, tab: st.tab });
@@ -131,7 +150,7 @@ const NavHistory = (() => {
   if (ok) {
     window.addEventListener('popstate', e => {
       const st = e.state;
-      if (st && st.nh) { idx = st.idx; stack[idx] = st; }
+      if (st && st.nh) { saveScroll(idx); idx = st.idx; stack[idx] = st; } // จำตำแหน่งเลื่อนของ entry ที่กำลังออกก่อนสลับ idx
       if (backPending) { finishBack(); return; }       // ถอยที่เราสั่งเอง (ปิดชั้น) — ไม่ต้องทำอะไรต่อ
       if (layers.length) {                              // ผู้ใช้กดย้อนขณะมีชั้นเปิดอยู่ → ปิดชั้นบนสุด
         const l = layers.pop();
@@ -147,5 +166,17 @@ const NavHistory = (() => {
     });
   }
 
-  return { record, patch, layer, backTo, _debug: () => ({ idx, stack: stack.slice(), layers: layers.length, backPending }) };
+  // เรียกเมื่อหน้าวาดเสร็จจริง (หลัง await ข้อมูล) — ทำครั้งเดียวต่อการเปลี่ยนหน้า
+  function applyScroll() {
+    if (pendingScroll === null || typeof window === 'undefined') return;
+    const y = pendingScroll;
+    pendingScroll = null;
+    window.scrollTo(0, y);
+    // เนื้อหาบางส่วนยังขยายตามมา (รูป/วิดเจ็ตที่โหลดทีหลัง) → ถ้าครั้งแรกถูกบีบด้วยความสูงหน้า ลองอีกครั้งในเฟรมถัดไป
+    if (y > 0 && typeof requestAnimationFrame === 'function') {
+      requestAnimationFrame(() => { if (pendingScroll === null && Math.abs(getY() - y) > 2) window.scrollTo(0, y); });
+    }
+  }
+
+  return { record, patch, layer, backTo, applyScroll, _debug: () => ({ idx, stack: stack.slice(), layers: layers.length, backPending, scrolls: { ...scrolls }, pendingScroll }) };
 })();

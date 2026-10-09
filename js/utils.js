@@ -13,17 +13,31 @@ document.addEventListener('wheel', (e) => {
 // แจ้งเตือน/สถานะแบบ Dynamic Island (showToast, islandSave, islandUndo, islandProgress) อยู่ที่ js/island.js
 
 // ป๊อปอัปเป็น "ชั้น" ในประวัติ (js/nav-history.js): กดย้อนกลับของระบบ = ปิดป๊อปอัป ไม่ใช่ออกจากหน้า
+//   ปิดแบบย่อ+จางออก ~0.15 วินาทีแล้วค่อยลบ DOM (class .closing ใน css/style.css) — ไม่กระทบชั้นใน NavHistory เพราะปล่อยชั้นทันทีตอนสั่งปิด
+//   ผู้ใช้ตั้ง reduced-motion (หรือไม่มี matchMedia) = ลบทันทีเหมือนเดิม
 let _modalLayer = null;
+const MODAL_CLOSE_MS = 150; // ให้ตรงกับ .modal-backdrop.closing ใน css/style.css
+function _dismissModal() {
+  const root = document.getElementById('modal-root');
+  const bd = document.getElementById('modal-backdrop');
+  if (!bd) { root.innerHTML = ''; return; }
+  const still = typeof matchMedia === 'function' && !matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (!still) { root.innerHTML = ''; return; }
+  if (bd.classList.contains('closing')) return; // กำลังปิดอยู่แล้ว (กดซ้ำ/ย้อนกลับซ้อน)
+  bd.classList.add('closing');
+  // ถ้าระหว่างนั้นมี openModal ใหม่วาดทับ bd ตัวเก่าจะหลุดจาก root แล้ว → ไม่ลบของใหม่ทิ้ง
+  setTimeout(() => { if (bd.parentNode === root) root.innerHTML = ''; }, MODAL_CLOSE_MS + 30);
+}
 function openModal(html) {
   const root = document.getElementById('modal-root');
   root.innerHTML = `<div class="modal-backdrop" id="modal-backdrop"><div class="modal">${html}</div></div>`;
   document.getElementById('modal-backdrop').addEventListener('click', (e) => {
     if (e.target.id === 'modal-backdrop') closeModal();
   });
-  if (!_modalLayer || !_modalLayer.active) _modalLayer = NavHistory.layer(() => { document.getElementById('modal-root').innerHTML = ''; });
+  if (!_modalLayer || !_modalLayer.active) _modalLayer = NavHistory.layer(_dismissModal);
 }
 function closeModal() {
-  document.getElementById('modal-root').innerHTML = '';
+  _dismissModal();
   if (_modalLayer) { _modalLayer.release(); _modalLayer = null; }
 }
 

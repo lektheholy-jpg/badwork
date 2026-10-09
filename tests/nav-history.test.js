@@ -18,16 +18,21 @@ function makeEnv() {
   w.AppState = { user: { uid: 'u1' }, currentRoute: null, currentCourseId: null, currentSectionId: null, currentTab: null, flushScoreSaves() { log.push('flush'); } };
   // จำลอง navigate / openCourse ของแอป: ตั้ง state แล้ว record เหมือนของจริง
   w.eval(`
-    function navigate(route) { AppState.currentRoute = route; AppState.currentCourseId = null; NavHistory.record({ kind: 'route', route }); window.__log.push('navigate:' + route); }
+    function navigate(route) { AppState.currentRoute = route; AppState.currentCourseId = null; NavHistory.record({ kind: 'route', route }); window.__log.push('navigate:' + route); NavHistory.applyScroll(); }
     function openCourse(courseId, restore) {
       AppState.currentRoute = 'course'; AppState.currentCourseId = courseId;
       AppState.currentSectionId = restore && restore.sectionId || null; AppState.currentTab = restore && restore.tab || 'overview';
       NavHistory.record({ kind: 'course', courseId });
       window.__log.push('openCourse:' + courseId + ':' + AppState.currentTab + ':' + AppState.currentSectionId);
       NavHistory.patch({ courseId, sectionId: AppState.currentSectionId, tab: AppState.currentTab }); // renderCourseShell ทำแบบนี้
+      NavHistory.applyScroll(); // วาดเสร็จ → เลื่อนกลับตำแหน่งเดิม (renderCourseShell ทำแบบนี้)
     }
   `);
   w.__log = log;
+  // จำลองการเลื่อนหน้าต่าง: __y คือ scrollY ปัจจุบัน
+  w.__y = 0;
+  Object.defineProperty(w, 'scrollY', { get: () => w.__y, configurable: true });
+  w.scrollTo = (x, y) => { w.__y = y; };
   w.eval(J('nav-history.js') + '\nwindow.NavHistory = NavHistory;');
   w.eval(modalSrc);
   const modalOpen = () => w.document.getElementById('modal-root').innerHTML !== '';
@@ -120,6 +125,88 @@ function makeEnv() {
     f.w.navigate('dashboard'); f.w.openModal('<p>a</p>'); f.w.navigate('profile');
     f.w.history.back(); await sleep(TICK * 3);
     ok(f.app.currentRoute === 'dashboard', 'entry ค้างของป๊อปอัปถูกข้ามอัตโนมัติ', { r: f.app.currentRoute, st: f.st() });
+  }
+
+
+  console.log('ตำแหน่งเลื่อน');
+  {
+    const e = makeEnv(), w = e.w;
+    w.navigate('dashboard'); w.__y = 300;           // เลื่อนหน้าแรกลงมา 300
+    w.navigate('courses');
+    ok(w.__y === 0, 'เปลี่ยนไปหน้าใหม่ → เริ่มที่บนสุด', w.__y);
+    w.__y = 120; w.navigate('profile');
+    ok(w.__y === 0, 'หน้าใหม่ถัดไปก็เริ่มที่บนสุด');
+    w.history.back(); await sleep(TICK);
+    ok(e.app.currentRoute === 'courses' && w.__y === 120, 'ย้อนกลับ → เลื่อนกลับตำแหน่งเดิมของหน้านั้น (120)', w.__y);
+    w.history.back(); await sleep(TICK);
+    ok(e.app.currentRoute === 'dashboard' && w.__y === 300, 'ย้อนต่อ → หน้าแรกกลับมาที่ 300', w.__y);
+    w.history.forward(); await sleep(TICK);
+    ok(e.app.currentRoute === 'courses' && w.__y === 120, 'เดินหน้า (forward) ก็เลื่อนกลับตำแหน่งที่จำไว้', w.__y);
+    // ไม่มีงานค้าง (เช่นสลับแท็บ) → applyScroll ไม่แตะตำแหน่งเลื่อน
+    w.__y = 77; e.nav.applyScroll();
+    ok(w.__y === 77, 'applyScroll ตอนไม่มีงานค้าง ไม่ทำอะไร');
+  }
+  {
+    const e = makeEnv(), w = e.w;
+    w.navigate('dashboard'); w.navigate('courses'); w.openCourse('c1'); w.__y = 500;
+    w.navigate('profile');
+    w.history.back(); await sleep(TICK);
+    ok(w.__y === 500 && e.log.includes('openCourse:c1:overview:null'), 'ย้อนกลับเข้ารายวิชา → ตำแหน่งเลื่อนเดิม (500) + แท็บเดิม', { y: w.__y, log: e.log });
+    // ผู้ใช้ย้อนกลับแล้วไปทางใหม่: entry ข้างหน้าถูกตัด ตำแหน่งเก่าของมันต้องไม่หลงมาใช้กับหน้าใหม่
+    w.history.back(); await sleep(TICK);
+    w.__y = 40; w.navigate('settings');
+    ok(w.__y === 0, 'หน้าใหม่หลังย้อนกลับ เริ่มที่บนสุด ไม่ใช้ตำแหน่งของ entry ที่ถูกตัด');
+    w.history.back(); await sleep(TICK);
+    ok(w.__y === 40, 'ย้อนกลับจากหน้าใหม่ → ตำแหน่ง 40 ที่จำไว้ของหน้าก่อนหน้า', w.__y);
+  }
+  {
+    const e = makeEnv(), w = e.w;
+    w.navigate('dashboard'); w.navigate('courses'); w.__y = 220;
+    w.openModal('<p>x</p>'); w.__y = 220;
+    w.closeModal(); await sleep(TICK);
+    w.navigate('profile');
+    w.history.back(); await sleep(TICK);
+    ok(w.__y === 220, 'เปิด/ปิดป๊อปอัปคั่นกลาง ไม่ทำให้ตำแหน่งเลื่อนของหน้าเพี้ยน', w.__y);
+    if ('scrollRestoration' in w.history) ok(w.history.scrollRestoration === 'manual', 'ตั้ง scrollRestoration = manual (กันเบราว์เซอร์เลื่อนชนกับแอป)');
+  }
+
+  console.log('ป๊อปอัปปิดแบบมีอนิเมชัน');
+  {
+    const fakeMedia = (e, reduce) => { e.w.matchMedia = q => ({ matches: reduce && /reduced-motion/.test(q) }); };
+    const bd = e => e.w.document.getElementById('modal-backdrop');
+    const CLOSE = 150 + 30 + 60; // MODAL_CLOSE_MS + เผื่อ
+
+    let e = makeEnv(); fakeMedia(e, false);
+    e.w.navigate('dashboard'); e.w.navigate('courses'); e.w.openModal('<p>x</p>');
+    const len0 = e.len();
+    e.w.closeModal();
+    ok(bd(e) && bd(e).classList.contains('closing'), 'closeModal → ใส่ .closing ยังไม่ลบทันที');
+    ok(e.w.closeModal() === undefined && bd(e).classList.contains('closing'), 'กดปิดซ้ำระหว่างปิด ไม่พัง');
+    await sleep(CLOSE);
+    ok(!e.modalOpen(), 'ครบเวลาแล้วลบ DOM');
+    ok(e.len() === len0 && e.st().kind === 'route' && e.st().route === 'courses', 'ชั้นในประวัติปล่อยทันทีตามเดิม ไม่ขึ้นกับอนิเมชัน', e.st());
+    e.w.history.back(); await sleep(TICK);
+    ok(e.app.currentRoute === 'dashboard', 'ย้อนกลับครั้งถัดไปถอยหน้าจริง');
+
+    // กดย้อนกลับของระบบขณะมีป๊อปอัป → ก็ปิดแบบมีอนิเมชัน
+    e = makeEnv(); fakeMedia(e, false);
+    e.w.navigate('dashboard'); e.w.navigate('courses'); e.w.openModal('<p>x</p>');
+    e.w.history.back(); await sleep(TICK);
+    ok(e.modalOpen() && bd(e).classList.contains('closing') && e.app.currentRoute === 'courses', 'ย้อนกลับของระบบ → ป๊อปอัปจางออก ไม่เปลี่ยนหน้า');
+    await sleep(CLOSE);
+    ok(!e.modalOpen(), 'แล้วจึงลบ DOM');
+
+    // เปิดป๊อปอัปใหม่ระหว่างที่อันเก่ากำลังปิด → อันใหม่ต้องไม่ถูกลบทิ้งโดยตัวจับเวลาของอันเก่า
+    e = makeEnv(); fakeMedia(e, false);
+    e.w.navigate('dashboard'); e.w.openModal('<p>old</p>');
+    e.w.closeModal(); e.w.openModal('<p id="new-modal">new</p>');
+    await sleep(CLOSE + 100);
+    ok(e.w.document.getElementById('new-modal') && !bd(e).classList.contains('closing'), 'ป๊อปอัปใหม่ที่เปิดคั่นระหว่างปิด ยังอยู่ครบ');
+
+    // reduced-motion → ลบทันที
+    e = makeEnv(); fakeMedia(e, true);
+    e.w.navigate('dashboard'); e.w.openModal('<p>x</p>'); e.w.closeModal();
+    ok(!e.modalOpen(), 'ผู้ใช้ตั้ง reduced-motion → ลบทันที ไม่หน่วง');
   }
 
   console.log('กรณีขอบ');

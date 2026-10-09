@@ -19,6 +19,8 @@ function orderAssessmentsLikeSheet(assessments, groups) {
 //   • แคชแยกรายวิชา: แก้คะแนน/นักเรียนวิชาไหน ล้างเฉพาะวิชานั้น (invalidateCourseData(courseId))
 //   • เปลี่ยนรายการวิชา (สร้าง/เก็บเข้าคลัง/ลบ) ล้างทั้งหมด (invalidateCourseData())
 //   • มีอายุ 5 นาที เผื่อมีการแก้จากอุปกรณ์อื่น; บังคับโหลดใหม่ได้ด้วย loadCoursesWithGrades({ force: true })
+//   • cc.list ใช้ร่วมกับหน้า "รายวิชาของฉัน" และ cc.shell (เอกสารวิชา + ห้อง) ใช้กับหัวหน้าวิชา (courses.js) แบบ "วาดจากแคชทันที แล้วถามเซิร์ฟเวอร์เงียบๆ" —
+//     ย้อนกลับมาหน้าที่เพิ่งดูแล้วเห็นทันที ถ้าข้อมูลบนเซิร์ฟเวอร์ต่างไปค่อยวาดทับ
 // --------------------------------------------------------------------------
 const COURSE_DATA_TTL_MS = 5 * 60 * 1000;
 const COURSE_LOAD_CONCURRENCY = 6; // จำนวนวิชาที่โหลดพร้อมกัน (กันยิงคำขอเป็นร้อยพร้อมกัน)
@@ -28,7 +30,7 @@ function getCourseDataCache() {
   const uid = AppState.user?.uid || null;
   let cc = AppState.courseDataCache;
   if (!cc || cc.uid !== uid) { // เปลี่ยนบัญชี → เริ่มแคชใหม่
-    cc = AppState.courseDataCache = { uid, version: 0, list: null, listAt: 0, byCourse: new Map(), inflight: null };
+    cc = AppState.courseDataCache = { uid, version: 0, list: null, listAt: 0, byCourse: new Map(), shell: new Map(), inflight: null };
   }
   return cc;
 }
@@ -38,8 +40,8 @@ function invalidateCourseData(courseId) {
   const cc = getCourseDataCache();
   cc.version++;        // โหลดที่กำลังวิ่งอยู่ (เริ่มก่อนเขียน) จะไม่ถูกเก็บลงแคช
   cc.inflight = null;
-  if (courseId) cc.byCourse.delete(courseId);
-  else { cc.list = null; cc.byCourse.clear(); }
+  if (courseId) { cc.byCourse.delete(courseId); cc.shell.delete(courseId); }
+  else { cc.list = null; cc.byCourse.clear(); cc.shell.clear(); }
 }
 
 // map แบบขนาน จำกัดจำนวนงานพร้อมกัน และคืนผลตามลำดับเดิม

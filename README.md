@@ -65,7 +65,7 @@ js/structure.js       โครงสร้างคะแนนระดับ�
 js/scores.js          บันทึกคะแนนแบบสเปรดชีต + autosave
 js/picker-pages.js    หน้าเลือกวิชา/ห้อง
 js/report-page.js     หน้ารายงาน
-js/nav-history.js     ปุ่ม/ท่าย้อนกลับของระบบ (History API): entry ต่อหน้า/รายวิชา + "ชั้น" ของป๊อปอัป · record · patch · layer · backTo
+js/nav-history.js     ปุ่ม/ท่าย้อนกลับของระบบ (History API): entry ต่อหน้า/รายวิชา + "ชั้น" ของป๊อปอัป · record · patch · layer · backTo · applyScroll
 js/doc-system.js      ระบบเอกสาร (context ต่อระบบ): config + state (sys.state · sys.rptState) + sys.col(kind, uid) · แทน global PAState/PARptState — โหลดก่อน pa-config.js
 js/doc-shell.js       โครงหน้ากลางของทุกระบบเอกสาร: หัวเรื่อง+แท็บ · สลับแท็บ/ตัวโหลด · ตัวช่วยร่วม (วันที่ไทย/ปีงบ/ไอคอน/ป้ายสถานะ/ฟอนต์พิมพ์) · registerDocUi · renderDocPage(id)
 js/pa-config.js       PA_CONFIG: ค่าคงที่ของระบบ PA ที่เดียว (ชื่อ collection · แท็บ · โครงฟอร์ม PA 1/ส · ช่องบริบท AI · พร้อต์/รุ่น/คีย์ของผู้ช่วย AI) — โหลดหลัง doc-system.js ก่อน pa.js (ท้ายไฟล์ลงทะเบียนเป็นระบบ 'pa')
@@ -190,7 +190,14 @@ users/{uid}/pa_reports/{docId}               แบบรายงานผล P
 - `openModal()` เปิด "ชั้น" ใหม่ในประวัติ: กดย้อนกลับขณะมีป๊อปอัป = ปิดป๊อปอัป · ปิดด้วย `closeModal()` จะถอด entry ของชั้นให้ · สร้างชั้นใหม่ที่อื่นด้วย `NavHistory.layer(onBack)` แล้วเรียก `.release()` เมื่อปิดเอง
 - `history.back()` เป็นอะซิงก์ → ถ้า `closeModal()` ตามด้วย `navigate()` ทันที การ push หน้าใหม่ต้องรอ จึงมีคิวใน `nav-history.js` อย่าเรียก `history.pushState` ตรงๆ จากที่อื่น
 - ยังไม่ผูก: มุมมองฟอร์ม↔รายการใน PA, เมนูข้าง/แผ่น "เพิ่มเติม" บนมือถือ, หน้าแก้โครงสร้างคะแนน (`structureEditingCourseId`) — ย้อนกลับจากที่เหล่านี้จะถอยทั้งหน้า
+- ตำแหน่งเลื่อน: เก็บตอนออกจากแต่ละ entry (`scrolls[idx]` ในหน่วยความจำของเซสชัน) แล้ว `NavHistory.applyScroll()` เลื่อนกลับเมื่อหน้าวาดเสร็จ (`drawRoute` ใน app.js และ `renderCourseShell` ใน courses.js) · ย้อนกลับ/เดินหน้า = ตำแหน่งเดิม, เปลี่ยนหน้าใหม่ = บนสุด · ตั้ง `history.scrollRestoration = 'manual'` เพื่อไม่ให้เบราว์เซอร์เลื่อนเองชนกัน · หน้าใหม่ที่ทำหน้าวาดเองต้องเรียก `applyScroll()` ตอนวาดเสร็จ
+- ป๊อปอัปปิดแบบย่อ+จางออก ~0.15 วินาที (`.modal-backdrop.closing` ใน style.css · `MODAL_CLOSE_MS` ใน utils.js ต้องตรงกัน) แล้วค่อยลบ DOM — ปล่อยชั้นในประวัติทันทีตอนสั่งปิด · ผู้ใช้ตั้ง reduced-motion = ลบทันที · `openModal()` ซ้อนระหว่างปิดจะวาดทับทันที (ตัวจับเวลาของอันเก่าไม่ลบของใหม่)
 - เทสต์: `npm run test:nav` (jsdom + history จริง) · เทสต์ในเบราว์เซอร์จริงต้องลองบน Android/iPhone เอง
+
+### แคชวาดทันที (stale-while-revalidate) ของหน้ารายวิชา
+- `cc.list` (แคชกลางใน dashboard.js) ใช้กับหน้า "รายวิชาของฉัน" · `cc.shell` (เอกสารวิชา + ห้อง) ใช้กับหัวหน้าวิชา — มีแคช = วาดทันทีโดยไม่รอ Firestore แล้วถามเซิร์ฟเวอร์เงียบๆ ตามหลัง; ถ้าข้อมูลต่างจริงค่อยวาดทับ (คงตำแหน่งเลื่อน · ไม่วาดทับขณะผู้ใช้กำลังพิมพ์หรือมีป๊อปอัปเปิดอยู่)
+- `cc.shell` ถามซ้ำเมื่อแคชเก่ากว่า 15 วินาที (`COURSE_SHELL_RECHECK_MS`) กันสลับแท็บรัวๆ แล้วยิงซ้ำ · `invalidateCourseData()` ล้างทั้งสองแคชตามเดิม — เขียนข้อมูลวิชา/ห้องลง Firestore ที่ไหนต้องเรียกทุกครั้ง
+- เทสต์: `npm run test:cache`
 
 ## ออฟไลน์ (Service Worker + แคช Firestore)
 

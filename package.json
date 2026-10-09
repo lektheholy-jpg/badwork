@@ -2,7 +2,9 @@
   "name": "badwork",
   "private": true,
   "description": "เครื่องมือ build/ตรวจ CSS ของโปรเจกต์ — ล็อกเวอร์ชันแบบเป๊ะ (ไม่ใช้ ^ หรือ ~) เพื่อให้ผลลัพธ์เหมือนเดิมทุกเครื่อง",
-  "engines": { "node": ">=18" },
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "build:css": "sh build-css.sh",
     "check:css": "sh build-css.sh --check",
@@ -15,6 +17,7 @@
     "test:worker": "node tests/worker.test.js",
     "test:priv": "node tests/privacy.test.js",
     "test:nav": "node tests/nav-history.test.js",
+    "test:cache": "node tests/course-cache.test.js",
     "check:sw": "node tools/check-sw.js"
   },
   "devDependencies": {

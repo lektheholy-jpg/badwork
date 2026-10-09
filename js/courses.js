@@ -167,14 +167,14 @@ function courseRowHtml(c) {
   `;
 }
 
+// หน้า "รายวิชาของฉัน": วาดจากแคชกลาง (cc.list ใน dashboard.js) ทันทีถ้ามี แล้วถามเซิร์ฟเวอร์เงียบๆ — ต่างจากที่วาดไว้ค่อยวาดทับ (คงตำแหน่งเลื่อน)
 async function renderCoursesList() {
   const view = document.getElementById('view');
-  showLoading('list');
   const uid = AppState.user.uid;
-  const snap = await db.collection('users').doc(uid).collection('courses').orderBy('createdAt', 'desc').get();
-  const courses = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(c => !c.archived);
-
-  view.innerHTML = `
+  const cc = getCourseDataCache();
+  const startVersion = cc.version;
+  const toCourses = docs => docs.map(d => ({ id: d.id, ...d.data }));
+  const pageHtml = courses => `
     ${pageHeaderHtml('รายวิชาของฉัน')}
     ${courses.length === 0 ? `
       <div class="card"><div class="empty-state">
@@ -183,9 +183,36 @@ async function renderCoursesList() {
       </div></div>
     ` : courseListGroupsHtml(courses)}
   `;
-  view.querySelectorAll('.course-row').forEach(row => {
-    row.addEventListener('click', () => openCourse(row.dataset.courseId));
-  });
+  const draw = html => {
+    view.innerHTML = html;
+    view.querySelectorAll('.course-row').forEach(row => {
+      row.addEventListener('click', () => openCourse(row.dataset.courseId));
+    });
+  };
+  // อ่านรายการวิชาที่เปิดใช้งาน (รูปแบบเดียวกับ cc.list) และอัปเดตแคชกลางถ้าไม่มีการเขียนข้อมูลระหว่างทาง
+  const fetchFresh = async () => {
+    const snap = await db.collection('users').doc(uid).collection('courses').orderBy('createdAt', 'desc').get();
+    const docs = snap.docs.filter(d => !d.data().archived).map(d => ({ id: d.id, data: d.data() }));
+    if (cc.version === startVersion) { cc.list = docs; cc.listAt = Date.now(); }
+    return docs;
+  };
+
+  if (cc.list) {
+    const shown = pageHtml(toCourses(cc.list));
+    draw(shown);
+    fetchFresh().then(docs => {
+      if (AppState.currentRoute !== 'courses' || !view.isConnected || AppState.user?.uid !== uid) return; // ผู้ใช้ไปหน้าอื่นแล้ว
+      const fresh = pageHtml(toCourses(docs));
+      if (fresh === shown) return;
+      const y = window.scrollY;
+      draw(fresh);
+      window.scrollTo(0, y);
+    }).catch(err => console.warn('รีเฟรชรายการวิชาเงียบๆ ไม่สำเร็จ (ใช้ของเดิมต่อ):', err));
+    return;
+  }
+
+  showLoading('list');
+  draw(pageHtml(toCourses(await fetchFresh())));
 }
 
 // restore = { sectionId, tab } เมื่อมาจากการย้อนกลับ (NavHistory) — กลับไปเห็นแท็บ/ห้องเดิม
@@ -206,15 +233,57 @@ async function loadSections(uid, courseId) {
   return snap.docs.map(d => ({ id: d.id, ...d.data() }));
 }
 
+// หัวหน้าวิชา (เอกสารวิชา + รายชื่อห้อง) แคชไว้ใน cc.shell — เข้าซ้ำ/สลับแท็บ-ห้อง/ย้อนกลับ วาดทันทีโดยไม่รอ Firestore สองรอบ
+//   ถ้าแคชเก่ากว่า COURSE_SHELL_RECHECK_MS จะถามเซิร์ฟเวอร์เงียบๆ ตามหลัง · ถ้าข้อมูลเปลี่ยนจริงจึงวาดทับ (ไม่วาดทับขณะผู้ใช้กำลังพิมพ์/เปิดป๊อปอัป)
+const COURSE_SHELL_RECHECK_MS = 15 * 1000;
+const shellSig = x => JSON.stringify([x.course, x.sections]);
+
+function revalidateCourseShell(cc, uid, courseId, hit) {
+  if (hit.checking || Date.now() - hit.at < COURSE_SHELL_RECHECK_MS) return;
+  hit.checking = true;
+  const v = cc.version;
+  (async () => {
+    const doc = await db.collection('users').doc(uid).collection('courses').doc(courseId).get();
+    const fresh = doc.exists ? { course: { id: doc.id, ...doc.data() }, sections: await loadSections(uid, courseId) } : null;
+    if (cc.version !== v) return; // มีการเขียนข้อมูลระหว่างทาง → แคชถูกล้าง/โหลดใหม่เองอยู่แล้ว
+    if (fresh) cc.shell.set(courseId, { ...fresh, at: Date.now() }); else cc.shell.delete(courseId);
+    if (fresh && shellSig(fresh) === shellSig(hit)) return;
+    const a = document.activeElement;
+    const typing = !!a && a !== document.body && (/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) || a.isContentEditable);
+    const modalOpen = !!document.getElementById('modal-root')?.firstChild;
+    if (AppState.currentRoute !== 'course' || AppState.currentCourseId !== courseId || typing || modalOpen) return; // แคชใหม่แล้ว รอบหน้าจะได้ของใหม่
+    const y = window.scrollY;
+    await renderCourseShell();
+    window.scrollTo(0, y);
+  })().catch(err => console.warn('รีเฟรชหัววิชาเงียบๆ ไม่สำเร็จ (ใช้ของเดิมต่อ):', err))
+    .finally(() => { hit.checking = false; });
+}
+
 async function renderCourseShell() {
+  try { await renderCourseShellInner(); }
+  finally { NavHistory.applyScroll(); } // วาดเสร็จทั้งหัวและเนื้อแท็บแล้วค่อยเลื่อนกลับตำแหน่งเดิม (ไม่มีงานค้าง เช่นสลับแท็บ = ไม่ทำอะไร)
+}
+
+async function renderCourseShellInner() {
   const uid = AppState.user.uid;
   const courseId = AppState.currentCourseId;
-  const courseDoc = await db.collection('users').doc(uid).collection('courses').doc(courseId).get();
-  if (!courseDoc.exists) { navigate('courses'); return; }
-  const course = { id: courseDoc.id, ...courseDoc.data() };
+  const cc = getCourseDataCache();
+  let course, sections;
+  const hit = cc.shell.get(courseId);
+  if (hit) {
+    // สำเนาตื้น — โค้ดแท็บต่างๆ แก้ AppState.currentCourse/sections ได้โดยไม่กระทบแคช
+    course = { ...hit.course };
+    sections = hit.sections.map(s => ({ ...s }));
+    revalidateCourseShell(cc, uid, courseId, hit);
+  } else {
+    const v = cc.version;
+    const courseDoc = await db.collection('users').doc(uid).collection('courses').doc(courseId).get();
+    if (!courseDoc.exists) { navigate('courses'); return; }
+    course = { id: courseDoc.id, ...courseDoc.data() };
+    sections = await loadSections(uid, courseId);
+    if (cc.version === v) cc.shell.set(courseId, { course: { ...course }, sections: sections.map(s => ({ ...s })), at: Date.now() });
+  }
   AppState.currentCourse = course;
-
-  const sections = await loadSections(uid, courseId);
   AppState.sections = sections;
   if (!AppState.currentSectionId || !sections.some(s => s.id === AppState.currentSectionId)) {
     AppState.currentSectionId = sections[0]?.id || null;

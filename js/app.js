@@ -129,7 +129,9 @@ function navigate(route) {
 // วาดหน้า แล้วเฟดเข้าเมื่อวาดเสร็จจริง (หน้าส่วนใหญ่วาด "กำลังโหลด..." ก่อน แล้วรอ Firestore ค่อยวาดเนื้อหา — ถ้าเฟดทันที จะเฟดทับข้อความโหลดแล้วเนื้อหาจริงโผล่แข็ง)
 function drawRoute(route) {
   Promise.resolve(renderRoute(route)).then(() => {
-    if (AppState.currentRoute === route) playViewEnter();
+    if (AppState.currentRoute !== route) return;
+    playViewEnter();
+    NavHistory.applyScroll(); // ย้อนกลับ = เลื่อนกลับตำแหน่งเดิม · หน้าใหม่ = ขึ้นบนสุด (js/nav-history.js)
   });
 }
 
