@@ -1,6 +1,7 @@
 // ==========================================================================
 // ความเป็นส่วนตัว: ส่งออกข้อมูลทั้งหมดของครู / ลบบัญชีและข้อมูลทั้งหมด
-// โครงสร้าง: users/{uid}/timetable/{ปี}-{ภาค} (ตารางสอนแยกภาคเรียน เช่น 2569-1 · main = แบบเดิม)
+// โครงสร้าง: users/{uid}/records/{id} (อบรม/เกียรติบัตร/รางวัล · ต้นฉบับไฟล์อยู่ใน Storage users/{uid}/records/...)
+//            users/{uid}/timetable/{ปี}-{ภาค} (ตารางสอนแยกภาคเรียน เช่น 2569-1 · main = แบบเดิม)
 //            users/{uid}/courses/{id}/{assessments,settings,sections}
 //            และ sections/{id}/{students,scores}
 // ==========================================================================
@@ -10,8 +11,9 @@ async function _collectAll(uid, onProgress) {
   const plain = async (ref) => (await ref.get()).docs.map(d => ({ id: d.id, ...d.data() }));
 
   // อ่านอย่างเดียว จึงขนานได้ปลอดภัย — วิชา/ห้องโหลดพร้อมกันแบบจำกัดจำนวน (mapLimit ใน dashboard.js) ผลเรียงตามลำดับเดิม
-  const [profileSnap, courseSnap, timetable] = await Promise.all([userRef.get(), userRef.collection('courses').get(), plain(userRef.collection('timetable'))]);
-  const out = { exportedAt: new Date().toISOString(), profile: profileSnap.exists ? profileSnap.data() : null, timetable, courses: [] };
+  const [profileSnap, courseSnap, timetable, records] = await Promise.all([userRef.get(), userRef.collection('courses').get(), plain(userRef.collection('timetable')), plain(userRef.collection('records'))]);
+  // records มีรูปย่อ + ข้อมูลไฟล์ (path/ชื่อ) — ไฟล์ต้นฉบับใน Storage ไม่ได้รวมในไฟล์ส่งออก (เปิดดู/ดาวน์โหลดได้จากแท็บอบรม/เกียรติบัตร)
+  const out = { exportedAt: new Date().toISOString(), profile: profileSnap.exists ? profileSnap.data() : null, timetable, records, courses: [] };
 
   let coursesDone = 0;
   out.courses = await mapLimit(courseSnap.docs, COURSE_LOAD_CONCURRENCY, async (c) => {
@@ -75,6 +77,9 @@ function deleteMyAccount() {
         }
         await deleteCollectionDocs(userRef.collection('courses'));
         await deleteCollectionDocs(userRef.collection('timetable'));
+        await loadModule('records');
+        await recDeleteAllFiles(user.uid); // ไฟล์ต้นฉบับใน Storage — พลาดแล้วหยุดทั้งหมด (ไม่ลบบัญชีทิ้งไฟล์ค้าง)
+        await deleteCollectionDocs(userRef.collection('records'));
         await userRef.delete();
         try {
           await user.delete();

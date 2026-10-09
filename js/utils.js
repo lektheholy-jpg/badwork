@@ -509,6 +509,7 @@ const LAZY_MODULES = {
   tools: 'js/tools.js',     // เครื่องมือในห้องเรียน
   profile: 'js/profile.js', // หน้าข้อมูลส่วนตัวของครู (ตำแหน่ง/สังกัด/ผู้ลงนามในเอกสาร)
   timetable: 'js/timetable.js', // แท็บตารางสอนในหน้าข้อมูลส่วนตัว
+  records: 'js/records.js', // แท็บอบรม/เกียรติบัตร/รางวัล (รูปย่อใน Firestore + ต้นฉบับใน Storage)
   // กลุ่ม Personal Agreement — ต้องโหลดตามลำดับนี้ (pa.js ก่อน) ใช้ loadModules(LAZY_BUNDLES.pa)
   pa: 'js/pa.js',
   'pa-ai': 'js/pa-ai.js',

@@ -58,6 +58,19 @@ service cloud.firestore {
         && d.get('entries', []) is list && d.get('entries', []).size() <= 100;
     }
 
+    // การอบรม/เกียรติบัตร/รางวัล (แท็บ "อบรม/เกียรติบัตร/รางวัล" → users/{uid}/records/{id}) · ฟิลด์ต้องตรงกับ js/records.js
+    // thumb = รูปย่อ data URL (ไม่เกิน ~90,000 ตัวอักษร) · file = ข้อมูลไฟล์ต้นฉบับใน Storage หรือ null
+    function validRecord() {
+      let d = request.resource.data;
+      return d.keys().hasOnly(['type', 'title', 'org', 'date', 'year', 'hours', 'note', 'thumb', 'file', 'createdAt', 'updatedAt'])
+        && d.get('type', '') in ['training', 'certificate', 'award']
+        && d.get('title', '') is string && d.get('title', '').size() > 0 && d.get('title', '').size() <= 200
+        && okStr(d.get('org', null), 200) && okStr(d.get('note', null), 500) && okStr(d.get('date', null), 10)
+        && d.get('year', 0) is number && d.get('hours', 0) is number
+        && okStr(d.get('thumb', null), 90000)
+        && (d.get('file', null) == null || (d.file is map && d.file.keys().hasOnly(['path', 'name', 'size', 'type'])));
+    }
+
     // เอกสารใต้รายวิชา: จำกัดจำนวนฟิลด์ (เอกสาร scores เก็บคะแนนต่อชิ้นงานจึงเผื่อไว้มากกว่า)
     function validDoc(maxKeys) {
       return request.resource.data.keys().size() <= maxKeys;
@@ -70,6 +83,11 @@ service cloud.firestore {
       match /timetable/{docId} {
         allow read, delete: if isOwner(uid);
         allow create, update: if isOwner(uid) && validTimetable();
+      }
+
+      match /records/{docId} {
+        allow read, delete: if isOwner(uid);
+        allow create, update: if isOwner(uid) && validRecord();
       }
 
       // ข้อตกลง PA (หน้า "ข้อตกลง PA" → users/{uid}/pa_agreements/{docId}) · ฟิลด์ดูที่ js/pa.js

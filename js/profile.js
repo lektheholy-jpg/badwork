@@ -153,7 +153,7 @@ function readProfileForm(form) {
 }
 
 // ---------- แท็บในหน้าข้อมูลส่วนตัว ----------
-const PROFILE_TABS = [['info', 'ข้อมูลส่วนตัว'], ['timetable', 'ตารางสอน']];
+const PROFILE_TABS = [['info', 'ข้อมูลส่วนตัว'], ['timetable', 'ตารางสอน'], ['records', 'อบรม/เกียรติบัตร/รางวัล']];
 let profileTabToken = 0; // เพิ่มทุกครั้งที่วาดแท็บใหม่ — ผลของการวาดที่ช้ากว่าจะถูกทิ้ง
 
 async function renderProfileInfoTab(body, isActive) {
@@ -222,6 +222,10 @@ async function drawProfileTab(body, animate = false) {
       await loadModule('timetable'); // js/timetable.js โหลดครั้งแรกที่เปิดแท็บนี้
       if (!isActive()) return;
       await renderTimetableTab(body, isActive);
+    } else if (AppState.profileTab === 'records') {
+      await loadModule('records'); // js/records.js โหลดครั้งแรกที่เปิดแท็บนี้
+      if (!isActive()) return;
+      await renderRecordsTab(body, isActive);
     } else {
       await renderProfileInfoTab(body, isActive);
     }
