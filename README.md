@@ -33,6 +33,7 @@ npm install              # ครั้งแรก: ติดตั้งเค
 ./build-css.sh --check   # ตรวจว่า .min ตรงกับ style.css (ใช้ก่อน deploy / ใน CI)
 npm test                 # tests/score-logic.test.js
 npm run test:sw          # จำลอง Service Worker + เน็ตเปิด/ปิด
+npm run test:tt          # ตารางสอนแยกภาคเรียน + วิดเจ็ตหน้าแรก
 ```
 
 - หน้าเว็บโหลด `css/style.min.css` · commit `.min` และ `package-lock.json` ด้วย
@@ -107,7 +108,7 @@ users/{uid}/courses/{courseId}               วิชา + โครงสร�
   /sections/{sectionId}                      ห้อง { room, order }
     /students/{id}                           นักเรียนของห้อง
     /scores/{studentId}                      คะแนนของนักเรียน
-users/{uid}/timetable/main                   ตารางสอน
+users/{uid}/timetable/{ปี}-{ภาค}              ตารางสอนแยกภาคเรียน เช่น 2569-1 (main = แบบเดิมก่อนแยกภาค)
 users/{uid}/pa_agreements/{docId}            Personal Agreement
 users/{uid}/pa_reports/{docId}               แบบรายงานผล Personal Agreement
 ```
@@ -115,15 +116,16 @@ users/{uid}/pa_reports/{docId}               แบบรายงานผล P
 **แก้ฟิลด์ใดๆ ต้อง deploy `firestore.rules` ล่าสุดก่อน** ไม่เช่นนั้นบันทึกแล้วจะขึ้นว่าถูกปฏิเสธสิทธิ์
 
 - **profile**: ฟิลด์ตาม `PROFILE_FIELDS` ใน `js/profile.js` (เพิ่ม/ลบต้องแก้ rules `validTeacherProfile` ด้วย) · ดึงไปใช้ `await loadModule('profile')` แล้ว `loadTeacherProfile()` / `profileSummary(p)`
-- **timetable**: `{ periods: [{start, end}] (≤14 คาบ), entries: [{ id, kind: "class"|"activity", day: 1-5, period, span, code, title, cls, room, hue, courseId }], updatedAt }` · แก้ฟิลด์ใน entry ที่ `ttCleanEntry` + rules `validTimetable` · ดึงไปใช้ `await loadModule('timetable')` แล้ว `loadTimetable()`
+- **timetable**: เอกสารละภาคเรียน รหัส `{ปีการศึกษา}-{1|2}` (ปี/ภาคอยู่ที่รหัส ไม่มีฟิลด์เพิ่ม จึงไม่ต้องแก้ rules) · เนื้อหา `{ periods: [{start, end}] (≤14 คาบ), entries: [{ id, kind: "class"|"activity", day: 1-5, period, span, code, title, cls, room, hue, courseId }], updatedAt }` · แก้ฟิลด์ใน entry ที่ `ttCleanEntry` + rules `validTimetable` · ดึงไปใช้ `await loadModule('timetable')` แล้ว `loadTimetable()` (ได้ `{ term, periods, entries }` ของภาคเรียนปัจจุบัน) · ตารางแบบเดิม `main` ใช้เป็นตั้งต้นของภาคเรียนปัจจุบันจนกว่าจะบันทึกครั้งแรก (ไม่ลบ/ไม่แก้ main)
 - **PA**: ฟิลด์ระดับบนต้องไม่เกิน 30 ตาม `validDoc` ใน rules · ข้อมูลผู้จัดทำดึงจากโปรไฟล์ ชั่วโมงสอนดึงจากตารางสอน
 - ส่งออก/ลบข้อมูลของฉัน (`js/privacy.js`) ครอบคลุม profile ตารางสอน และวิชา **ยังไม่รวม Personal Agreement (`pa_agreements`) และแบบรายงานผล (`pa_reports`)** — ถ้าเพิ่มคอลเลกชันใหม่ ต้องเพิ่มที่ไฟล์นี้ด้วย
 
 ### ตารางสอนและวิดเจ็ตหน้าแรก
 
+- **แยกปีการศึกษา/ภาคเรียน**: ตัวเลือก ปีการศึกษา + ภาคเรียนที่ 1/2 บนสุดของแท็บ · แต่ละภาคมีเวลาคาบและรายการคาบของตัวเอง · ภาคใหม่เริ่มว่าง (ใช้เวลาคาบของภาคล่าสุด) หรือกด "คัดลอกจากภาคเรียนอื่น" (ผูกวิชารหัสเดียวกันของภาคใหม่ให้เอง) · รายวิชาที่เลือกได้กรองตามปี/ภาคที่ตั้งในรายวิชา · ภาคเรียนปัจจุบันเดาจากเดือน (พ.ค.–ต.ค. = ภาค 1, พ.ย.–เม.ย. = ภาค 2) ที่ `ttCurrentTerm`
 - แท็บ "ตารางสอน" ในหน้าข้อมูลส่วนตัว: แถว = วัน (จ.–ศ.) คอลัมน์ = คาบ · แตะช่องว่างเพื่อเพิ่ม แตะคาบเพื่อแก้/ลบ · คาบวิชาเลือกจากรายวิชาของฉันได้ · คาบติดกันรวมช่องได้ · กันคาบชนกัน · ตั้งเวลาคาบเองได้ (ค่าเริ่มต้น 10 คาบ 07:50–16:00) · ส่งออก CSV
 - บันทึกแบบ optimistic (อัปเดตก่อน เขียน Firestore ทีหลัง พลาดจะคืนค่าเดิม) · ลบ/ล้างมีปุ่ม "เลิกทำ" · กรอกโปรไฟล์ค้างแล้วสลับแท็บจะมีหน้าต่างเตือน (`AppState.profileDirty`)
-- วิดเจ็ตหน้าแรก (`#tt-widget`, `initTimetableWidget()`): แสดงคาบของวันที่เลือก พร้อมป้าย "กำลังสอน" / "ถัดไป" · โหลดแบบ lazy หลังหน้าแรกวาดเสร็จ ใช้แคช `AppState.timetable`
+- วิดเจ็ตหน้าแรก (`#tt-widget`, `initTimetableWidget()`): **อ่านอย่างเดียว ไม่มีปุ่มแก้ไข** — กดคาบที่ผูกกับรายวิชา = ไปหน้าบันทึกคะแนน (กิจกรรม/คาบพิมพ์เอง แสดงอย่างเดียว) · แก้ตารางที่ปุ่ม "ดูทั้งสัปดาห์" · ใช้ตารางของภาคเรียนปัจจุบัน (ยังไม่ตั้ง → ใช้ของภาคก่อนหน้าไปก่อน) · แสดงคาบของวันที่เลือก พร้อมป้าย "กำลังสอน" / "ถัดไป" · โหลดแบบ lazy หลังหน้าแรกวาดเสร็จ ใช้แคช `AppState.timetable`
 - `js/timetable.js` ต้องใช้งานเดี่ยวได้ (หน้าแรกไม่โหลด `profile.js`) — ห้ามเรียกฟังก์ชันของ `profile.js` จากไฟล์นี้
 
 ### ฟอร์ม PA และผู้ช่วย AI

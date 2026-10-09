@@ -1977,6 +1977,8 @@ table.sheet tbody tr:nth-child(n) td.over-max { background: var(--danger-tint); 
 .tt-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 14px; }
 .tt-stats .stat-card { padding: 14px 18px; }
 .tt-stats .stat-card .value { font-size: 26px; }
+.tt-term-bar { margin-bottom: 12px; }
+.tt-term-bar .theme-seg { margin: 0; }
 .tt-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; margin-bottom: 8px; }
 .tt-toolbar .card-title { margin: 0; }
 .tt-toolbar-actions { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -2044,7 +2046,7 @@ table.tt tr.is-today td.tt-cell { background: color-mix(in srgb, var(--hue-orang
 .ttw-item.is-act { cursor: pointer; }
 .ttw-item.is-act:hover { filter: brightness(1.08); }
 .ttw-item.is-act:focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; }
-.ttw-item .tt-edit { position: static; grid-column: 4; }
+.ttw-go { grid-column: 4; width: 18px; height: 18px; color: color-mix(in srgb, var(--on-w) 78%, var(--w)); }
 .ttw-time { display: flex; flex-direction: column; line-height: 1.4; }
 .ttw-time b { font-size: 13.5px; color: var(--on-w); }
 .ttw-time span { font-size: 12px; color: color-mix(in srgb, var(--on-w) 78%, var(--w)); }
@@ -2055,7 +2057,7 @@ table.tt tr.is-today td.tt-cell { background: color-mix(in srgb, var(--hue-orang
 @media (max-width: 480px) {
   .ttw-item { position: relative; grid-template-columns: 84px minmax(0, 1fr); }
   .ttw-item .badge { grid-column: 2; justify-self: start; }
-  .ttw-item .tt-edit { position: absolute; top: 8px; right: 8px; }
+  .ttw-go { position: absolute; top: 12px; right: 10px; }
 }
 
 /* ---------- ข้อตกลง PA · ฟอร์ม PA 1/ส (js/pa.js) และการ์ดรายงาน (js/pa-report.js) ---------- */

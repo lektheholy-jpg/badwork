@@ -206,7 +206,7 @@ async function paPullTimetable() {
     });
     return [...m.values()];
   };
-  return { subjects: agg('class'), activities: agg('activity') };
+  return { subjects: agg('class'), activities: agg('activity'), term: ttTermLabel(tt.term) };
 }
 
 // ------------------------------------------------------------------
@@ -790,7 +790,7 @@ async function renderPAFormView() {
       <div class="card card-pad">
         <h2 class="card-title">ส่วนที่ 1 · 1. ภาระงาน</h2>
         <div class="pa-pf-note u-mb-12">
-          <span>1.1 ดึงจากตารางสอน (นับ 1 คาบ = 1 ชั่วโมง) เก็บเป็นสำเนาในเอกสารนี้ — แก้ไขได้ และไม่เปลี่ยนตามตารางสอนภายหลัง · ตารางสอนมีภาคเรียนเดียว ถ้า PA ครอบสองภาคเรียนให้เพิ่มรายวิชาอีกภาคเอง</span>
+          <span>1.1 ดึงจากตารางสอน (นับ 1 คาบ = 1 ชั่วโมง) เก็บเป็นสำเนาในเอกสารนี้ — แก้ไขได้ และไม่เปลี่ยนตามตารางสอนภายหลัง · ดึงจากตารางสอนของภาคเรียนปัจจุบันเท่านั้น ถ้า PA ครอบสองภาคเรียนให้เพิ่มรายวิชาอีกภาคเอง</span>
           <button type="button" class="btn btn-ghost btn-sm" id="pa-tt-pull">ดึงจากตารางสอนใหม่</button>
         </div>
         ${hasLegacyLoad ? `<div class="pa-legacy"><div class="pa-sub">ข้อความภาระงานแบบเดิม (ยังเก็บไว้ ไม่ถูกลบ)</div><div class="pa-legacy-text">${escapeHtml(d.workload)}</div></div>` : ''}
@@ -879,7 +879,7 @@ async function renderPAFormView() {
       const y = window.scrollY;
       await renderPAFormView();
       window.scrollTo(0, y);
-      showToast('ดึงชั่วโมงสอนจากตารางสอนแล้ว');
+      showToast(`ดึงชั่วโมงสอนจากตารางสอน ${t.term} แล้ว`);
     } catch (err) {
       showToast('ดึงตารางสอนไม่สำเร็จ: ' + (err.message || err));
     }

@@ -1,8 +1,11 @@
 // ==========================================================================
 // ตารางสอน — แท็บ "ตารางสอน" ในหน้าข้อมูลส่วนตัว (js/profile.js เรียก renderTimetableTab)
-// เก็บที่ users/{uid}/timetable/main = { periods: [{ start, end }], entries: [...], updatedAt }
+// เก็บแยกตามปีการศึกษา/ภาคเรียน: users/{uid}/timetable/{ปี}-{ภาค}  เช่น "2569-1" = ปีการศึกษา 2569 ภาคเรียนที่ 1
+//   เอกสาร = { periods: [{ start, end }], entries: [...], updatedAt }  (ปี/ภาคอยู่ที่รหัสเอกสาร ไม่มีฟิลด์เพิ่ม → ไม่ต้องแก้ firestore.rules)
 //   entry = { id, kind: 'class'|'activity', day: 1-5, period: เริ่มที่คาบ (0 = คาบ 1), span: จำนวนคาบติดกัน,
 //             code, title, cls (เช่น ม.2/4), room (ห้องเรียน/สถานที่), hue, courseId }
+//   เอกสาร "main" = ตารางแบบเดิมที่ยังไม่แยกภาคเรียน — อ่านได้อย่างเดียว ใช้เป็นตารางตั้งต้นของภาคเรียนปัจจุบัน
+//   (ถ้าภาคนั้นยังไม่มีเอกสารของตัวเอง) พอบันทึกครั้งแรกจะถูกเขียนเป็นเอกสารของภาคเรียนนั้น ไม่ลบ/ไม่แก้ main
 // ฟิลด์ต้องตรงกับ validTimetable ใน firestore.rules · ไฟล์นี้ต้องใช้งานเดี่ยวได้ (หน้าแรกโหลดไปทำวิดเจ็ตโดยไม่โหลด profile.js)
 // ==========================================================================
 
@@ -16,9 +19,27 @@ const TT_DEFAULT_PERIODS = [
   ['11:50', '12:40'], ['12:40', '13:30'], ['13:30', '14:20'], ['14:20', '15:10'], ['15:10', '16:00'],
 ].map(([start, end]) => ({ start, end }));
 
+// ---------- ปีการศึกษา / ภาคเรียน ----------
+const TT_SEMESTERS = [1, 2];
+
+// ภาคเรียนตามปฏิทินโรงเรียนทั่วไป: พ.ค.–ต.ค. = ภาค 1 · พ.ย.–เม.ย. = ภาค 2 (ม.ค.–เม.ย. ยังเป็นปีการศึกษาของปีก่อนหน้า) — โรงเรียนที่เปิดเทอมต่างไปเลือกภาคเองในแท็บได้
+function ttCurrentTerm(now = new Date()) {
+  const m = now.getMonth() + 1, be = now.getFullYear() + 543;
+  if (m >= 5 && m <= 10) return { year: be, sem: 1 };
+  return { year: m >= 11 ? be : be - 1, sem: 2 };
+}
+function ttTermKey(t) { return t.year + '-' + t.sem; }
+function ttParseTerm(key) {
+  const m = /^(\d{4})-([12])$/.exec(String(key == null ? '' : key));
+  return m && +m[1] >= 2500 && +m[1] <= 2700 ? { year: +m[1], sem: +m[2] } : null;
+}
+function ttTermLabel(t) { return `ภาคเรียนที่ ${t.sem}/${t.year}`; }
+function ttTermNewestFirst(a, b) { return b.year - a.year || b.sem - a.sem; }
+function ttPrevTerm(t) { return t.sem > 1 ? { year: t.year, sem: t.sem - 1 } : { year: t.year - 1, sem: TT_SEMESTERS[TT_SEMESTERS.length - 1] }; }
+
 // ---------- ข้อมูล ----------
-function ttRef() {
-  return db.collection('users').doc(AppState.user.uid).collection('timetable').doc('main');
+function ttCol() {
+  return db.collection('users').doc(AppState.user.uid).collection('timetable');
 }
 function ttPad(n) { return String(n).padStart(2, '0'); }
 function ttCleanTime(v) {
@@ -50,9 +71,9 @@ function ttCleanEntry(raw, periodCount) {
   };
 }
 
-async function loadTimetable() {
-  const snap = await ttRef().get();
-  const raw = snap.exists ? snap.data() : {};
+// เอกสารดิบจาก Firestore → { periods, entries } ที่ผ่านการตรวจแล้ว
+function ttCleanDoc(raw) {
+  raw = raw && typeof raw === 'object' ? raw : {};
   let periods = (Array.isArray(raw.periods) ? raw.periods : [])
     .map(p => ({ start: ttCleanTime(p && p.start), end: ttCleanTime(p && p.end) }))
     .filter(p => p.start && p.end).slice(0, TT_MAX_PERIODS);
@@ -61,22 +82,74 @@ async function loadTimetable() {
   return { periods, entries };
 }
 
+// อ่านตารางทุกภาคเรียนครั้งเดียว (มีไม่กี่เอกสาร) → { terms: Map<'2569-1', {periods, entries}>, legacy: ตารางแบบเดิม (main) หรือ null }
+async function loadAllTimetables() {
+  const snap = await ttCol().get();
+  const terms = new Map();
+  let legacy = null;
+  snap.docs.forEach(d => {
+    if (d.id === 'main') legacy = ttCleanDoc(d.data());
+    else if (ttParseTerm(d.id)) terms.set(d.id, ttCleanDoc(d.data()));
+  });
+  return { terms, legacy };
+}
+
+// ตารางของภาคเรียน key · ภาคที่ยังไม่มีเอกสาร: ถ้าเป็นภาคเรียนปัจจุบันและมีตารางแบบเดิม (main) ให้ใช้ตารางเดิมเป็นตั้งต้น · ไม่มีเลย = null
+function ttPick(all, key) {
+  const hit = all.terms.get(key);
+  if (hit) return hit;
+  if (all.legacy && key === ttTermKey(ttCurrentTerm())) return { periods: all.legacy.periods.map(p => ({ ...p })), entries: all.legacy.entries.map(e => ({ ...e })) };
+  return null;
+}
+
+// ตารางว่างของภาคเรียนใหม่: ใช้เวลาคาบของภาคล่าสุดที่มีอยู่ (เวลาคาบมักเหมือนเดิมทั้งปี) ไม่มีก็ใช้ค่าเริ่มต้น
+function ttBlank(all) {
+  const latest = [...all.terms.keys()].map(ttParseTerm).sort(ttTermNewestFirst)[0];
+  const base = latest ? all.terms.get(ttTermKey(latest)) : all.legacy;
+  return { periods: (base ? base.periods : TT_DEFAULT_PERIODS).map(p => ({ ...p })), entries: [] };
+}
+
+// ตารางที่หน้าแรก/PA ใช้: ภาคเรียนปัจจุบัน → ถ้ายังไม่ได้ตั้งและมีของภาคก่อนหน้า (ช่วงปิดเทอม/ต้นภาค) ใช้ของภาคก่อนหน้าไปก่อน → ไม่มีเลยคือว่าง
+function ttResolveActive(all) {
+  const term = ttCurrentTerm();
+  const hit = ttPick(all, ttTermKey(term));
+  if (hit) return { term, ...hit };
+  const prev = ttPrevTerm(term), prevHit = all.terms.get(ttTermKey(prev));
+  if (prevHit) return { term: prev, ...prevHit };
+  return { term, ...ttBlank(all) };
+}
+
+// { term, periods, entries } ของภาคเรียนที่ใช้งานอยู่ตอนนี้ (หน้าแรกกับ PA เรียกตัวนี้)
+async function loadTimetable() {
+  return ttResolveActive(await loadAllTimetables());
+}
+
 // รายวิชาของครู (ไม่รวมที่เก็บเข้าคลัง) ไว้ให้เลือกตอนเพิ่มคาบ — โหลดไม่ได้ก็ยังพิมพ์เองได้
 async function loadTtCourses() {
   try {
     const snap = await db.collection('users').doc(AppState.user.uid).collection('courses').orderBy('createdAt', 'desc').get();
     return snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(c => !c.archived)
-      .map(c => ({ id: c.id, code: c.code || '', name: c.name || '', level: c.level || '' }));
+      .map(c => ({ id: c.id, code: c.code || '', name: c.name || '', level: c.level || '', year: c.year || '', semester: c.semester || '' }));
   } catch (err) {
     console.error(err);
     return [];
   }
 }
 
-async function saveTimetable(tt) {
+// วิชาอยู่ในภาคเรียนนี้ไหม: ดูจากปีการศึกษา/ภาคเรียนที่ตั้งไว้ในรายวิชา · วิชาที่ไม่ได้ระบุเลยใช้ได้ทุกภาค
+function ttCourseInTerm(c, term) {
+  const y = String(c.year || '').trim(), s = String(c.semester || '').trim();
+  return (!y || y === String(term.year)) && (!s || s === String(term.sem));
+}
+function ttCoursesForTerm(courses, term, keepId = '') {
+  return courses.filter(c => ttCourseInTerm(c, term) || c.id === keepId);
+}
+
+async function saveTimetable(tt, term) {
   islandSave('saving');
   try {
-    await ttRef().set({ periods: tt.periods, entries: tt.entries, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+    await ttCol().doc(ttTermKey(term)).set({ periods: tt.periods, entries: tt.entries, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+    AppState.timetable = null; // แคชของวิดเจ็ตหน้าแรกเก่าแล้ว — ให้โหลดใหม่ตอนกลับหน้าแรก
     islandSave('saved');
     return true;
   } catch (err) {
@@ -228,7 +301,7 @@ function ttLegendHtml(placed) {
     </span>`).join('');
 }
 
-function ttExportCsv(tt) {
+function ttExportCsv(tt, term) {
   const head = ['วัน/คาบ', ...tt.periods.map((p, i) => `คาบ ${i + 1} (${p.start}-${p.end})`)];
   const rows = TT_DAYS.map(([n, name]) => {
     const row = new Array(tt.periods.length).fill('');
@@ -238,7 +311,7 @@ function ttExportCsv(tt) {
     });
     return [name, ...row];
   });
-  downloadCsv('ตารางสอน.csv', [head, ...rows]);
+  downloadCsv(`ตารางสอน ${ttTermKey(term)}.csv`, [head, ...rows]);
 }
 
 // ---------- หน้าต่างเพิ่ม/แก้ไขคาบ ----------
@@ -248,10 +321,12 @@ function ttEntryModal(ctx, { entry = null, day = 1, period = 0 }) {
   const isEdit = !!entry;
   const e = entry || { kind: 'class', day, period, span: 1, code: '', title: '', cls: '', room: '', hue: 'blue', courseId: '' };
   let kind = e.kind, hue = e.hue, hueTouched = isEdit;
-  const courseExists = state.courses.some(c => c.id === e.courseId);
+  // เลือกได้เฉพาะวิชาของภาคเรียนที่กำลังแก้ (วิชาที่ผูกไว้เดิมยังแสดงอยู่เสมอ)
+  const courses = ttCoursesForTerm(state.courses, state.term, e.courseId);
+  const courseExists = courses.some(c => c.id === e.courseId);
 
   const opt = (v, label, sel) => `<option value="${v}"${sel ? ' selected' : ''}>${escapeHtml(label)}</option>`;
-  const courseOpts = opt('', '— พิมพ์เอง —', !courseExists) + state.courses.map(c =>
+  const courseOpts = opt('', '— พิมพ์เอง —', !courseExists) + courses.map(c =>
     opt(c.id, [c.code, c.name].filter(Boolean).join(' ') + (c.level ? ` (${c.level})` : ''), c.id === e.courseId)).join('');
   const dayOpts = TT_DAYS.map(([n, name]) => opt(n, name, n === e.day)).join('');
   const startOpts = periods.map((p, i) => opt(i, `คาบ ${i + 1} (${p.start})`, i === e.period)).join('');
@@ -261,11 +336,12 @@ function ttEntryModal(ctx, { entry = null, day = 1, period = 0 }) {
 
   openModal(`
     <h2>${isEdit ? 'แก้ไขคาบเรียน' : 'เพิ่มคาบเรียน'}</h2>
-    <div class="modal-sub">เลือกวันและคาบ แล้วกรอกรายละเอียด — ถ้าสอนหลายคาบติดกันให้เลือกจำนวนคาบ</div>
+    <div class="modal-sub">${ttTermLabel(state.term)} · เลือกวันและคาบ แล้วกรอกรายละเอียด — ถ้าสอนหลายคาบติดกันให้เลือกจำนวนคาบ</div>
     <div class="theme-seg" id="tt-kind" role="group" aria-label="ประเภท">${kindBtns}</div>
     <div class="field" id="tt-course-field">
       <label for="tt-course">เลือกจากรายวิชาของฉัน</label>
       <select id="tt-course">${courseOpts}</select>
+      <div class="u-note-sm u-mt-4">แสดงเฉพาะรายวิชาของ${ttTermLabel(state.term)} (ดูจากปีการศึกษา/ภาคเรียนที่ตั้งในรายวิชา)</div>
     </div>
     <div class="field-row">
       <div class="field" id="tt-code-field"><label for="tt-code">รหัสวิชา</label><input id="tt-code" maxlength="30" autocomplete="off" placeholder="เช่น ว22103" value="${escapeHtml(e.code)}"></div>
@@ -295,7 +371,7 @@ function ttEntryModal(ctx, { entry = null, day = 1, period = 0 }) {
   const syncKind = () => {
     kindSeg.querySelectorAll('[data-kind]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.kind === kind)));
     const isClass = kind === 'class';
-    $('tt-course-field').classList.toggle('hidden', !isClass || !state.courses.length);
+    $('tt-course-field').classList.toggle('hidden', !isClass || !courses.length);
     $('tt-code-field').classList.toggle('hidden', !isClass);
     $('tt-title-label').textContent = isClass ? 'ชื่อวิชา' : 'ชื่อกิจกรรม';
     $('tt-title').placeholder = isClass ? 'เช่น วิทยาการคำนวณ 2' : 'เช่น กิจกรรมหน้าเสาธง, โฮมรูม';
@@ -337,13 +413,13 @@ function ttEntryModal(ctx, { entry = null, day = 1, period = 0 }) {
     if (!$('tt-cls').value && labels.length === 1) $('tt-cls').value = labels[0];
   };
   $('tt-course').addEventListener('change', () => {
-    const c = state.courses.find(x => x.id === $('tt-course').value);
+    const c = courses.find(x => x.id === $('tt-course').value);
     if (!c) { $('tt-dl-cls').innerHTML = ''; return; }
     $('tt-code').value = c.code; $('tt-title').value = c.name;
     onNameInput();
     fillRooms(c);
   });
-  const preset = state.courses.find(c => c.id === e.courseId);
+  const preset = courses.find(c => c.id === e.courseId);
   if (preset) fillRooms(preset);
   syncKind();
 
@@ -375,7 +451,7 @@ function ttPeriodsModal(ctx) {
 
   openModal(`
     <h2>ตั้งเวลาคาบเรียน</h2>
-    <div class="modal-sub">กำหนดเวลาเริ่ม-เลิกของแต่ละคาบตามโรงเรียน (สูงสุด ${TT_MAX_PERIODS} คาบ) คาบที่มีวิชาอยู่แล้วลบไม่ได้</div>
+    <div class="modal-sub">เวลาคาบของ${ttTermLabel(state.term)} · กำหนดเวลาเริ่ม-เลิกของแต่ละคาบตามโรงเรียน (สูงสุด ${TT_MAX_PERIODS} คาบ) คาบที่มีวิชาอยู่แล้วลบไม่ได้</div>
     <div id="tt-period-rows"></div>
     <div class="u-flex u-gap-8 u-wrap u-mt-12">
       <button type="button" class="btn btn-ghost btn-sm" id="tt-period-add">+ เพิ่มคาบ</button>
@@ -430,31 +506,108 @@ function ttPeriodsModal(ctx) {
   draw();
 }
 
+// ---------- คัดลอกตารางจากภาคเรียนอื่น ----------
+// วิชาที่ผูกกับรายวิชา: ถ้าวิชานั้นใช้ได้ในภาคเรียนปลายทางก็คงไว้ · ไม่งั้นหาวิชารหัสเดียวกันของภาคปลายทาง · ไม่พบ = ยกเลิกการผูก (ยังเป็นคาบปกติ)
+function ttRemapCourseId(e, courses, term) {
+  if (e.kind !== 'class' || !e.courseId) return '';
+  const mine = ttCoursesForTerm(courses, term);
+  if (mine.some(c => c.id === e.courseId)) return e.courseId;
+  const old = courses.find(c => c.id === e.courseId);
+  const code = e.code || (old && old.code) || '';
+  const hit = code && mine.find(c => c.code === code);
+  return hit ? hit.id : '';
+}
+function ttCopyFrom(src, courses, term) {
+  let unlinked = 0;
+  const entries = src.entries.map(e => {
+    const courseId = ttRemapCourseId(e, courses, term);
+    if (e.courseId && !courseId) unlinked++;
+    return { ...e, courseId };
+  });
+  return { tt: { periods: src.periods.map(p => ({ ...p })), entries }, unlinked };
+}
+
+function ttCopyModal(ctx) {
+  const { state, commit } = ctx;
+  const key = ttTermKey(state.term);
+  const sources = [...state.all.terms.keys()].filter(k => k !== key).map(ttParseTerm).filter(Boolean).sort(ttTermNewestFirst);
+  if (!sources.length) { showToast('ยังไม่มีตารางของภาคเรียนอื่นให้คัดลอก'); return; }
+  const opts = sources.map((t, i) => `<option value="${ttTermKey(t)}"${i === 0 ? ' selected' : ''}>${escapeHtml(ttTermLabel(t))}</option>`).join('');
+  const hasOwn = state.tt.entries.length > 0;
+  openModal(`
+    <h2>คัดลอกตารางสอน</h2>
+    <div class="modal-sub">คัดลอกเวลาคาบและคาบเรียนทั้งหมดมาไว้ใน${ttTermLabel(state.term)}${hasOwn ? ' — คาบที่มีอยู่ในภาคเรียนนี้จะถูกแทนที่ (กด "เลิกทำ" ได้ภายใน 5 วินาที)' : ''}</div>
+    <div class="field"><label for="tt-copy-src">คัดลอกจาก</label><select id="tt-copy-src">${opts}</select></div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-ghost" id="tt-copy-cancel">ยกเลิก</button>
+      <button type="button" class="btn btn-primary" id="tt-copy-ok">คัดลอก</button>
+    </div>
+  `);
+  document.getElementById('tt-copy-cancel').addEventListener('click', closeModal);
+  document.getElementById('tt-copy-ok').addEventListener('click', async () => {
+    const src = state.all.terms.get(document.getElementById('tt-copy-src').value);
+    if (!src) return;
+    closeModal();
+    const prev = state.tt, term = state.term;
+    const { tt, unlinked } = ttCopyFrom(src, state.courses, term);
+    if (!(await commit(tt))) return;
+    if (unlinked) showToast(`คัดลอกแล้ว · ${unlinked} คาบยังไม่ผูกกับรายวิชาของภาคเรียนนี้ (แตะคาบแล้วเลือกวิชา)`, 'warn');
+    islandUndo('คัดลอกตารางแล้ว', async () => {
+      if (!(await ctx.commitTerm(term, prev))) throw new Error('กู้คืนไม่สำเร็จ');
+    });
+  });
+}
+
 // ---------- แท็บตารางสอน ----------
 async function renderTimetableTab(body, isActive = () => true) {
-  const [tt, courses] = await Promise.all([loadTimetable(), loadTtCourses()]);
+  const [all, courses] = await Promise.all([loadAllTimetables(), loadTtCourses()]);
   if (!isActive()) return;
-  AppState.timetable = tt; // แคชให้วิดเจ็ตหน้าแรกวาดได้ทันที
-  const state = { tt, courses, sections: {} };
+  const cur = ttCurrentTerm();
+  const state = { all, courses, sections: {}, term: ttParseTerm(AppState.ttTerm) || cur, tt: null };
+  state.tt = ttPick(all, ttTermKey(state.term)) || ttBlank(all);
 
   body.innerHTML = `
+    <div class="toolbar tt-term-bar">
+      <div class="toolbar-left">
+        <label for="tt-year" class="u-fs-13 u-semibold">ปีการศึกษา</label>
+        <select id="tt-year" class="gs-select"></select>
+        <div class="theme-seg" id="tt-sem" role="group" aria-label="ภาคเรียน">
+          ${TT_SEMESTERS.map(n => `<button type="button" class="theme-opt" data-sem="${n}" aria-pressed="false">ภาคเรียนที่ ${n}</button>`).join('')}
+        </div>
+      </div>
+    </div>
     <div class="tt-stats" id="tt-stats"></div>
     <div class="card card-pad">
       <div class="tt-toolbar">
-        <h2 class="card-title">ตารางสอนประจำสัปดาห์</h2>
+        <h2 class="card-title" id="tt-card-title">ตารางสอนประจำสัปดาห์</h2>
         <div class="tt-toolbar-actions">
+          <button type="button" class="btn btn-ghost btn-sm" id="tt-copy-btn">คัดลอกจากภาคเรียนอื่น</button>
           <button type="button" class="btn btn-ghost btn-sm" id="tt-periods-btn">ตั้งเวลาคาบเรียน</button>
           <button type="button" class="btn btn-ghost btn-sm" id="tt-export-btn">ส่งออก CSV</button>
           <button type="button" class="btn btn-danger-ghost btn-sm" id="tt-clear-btn">ล้างตาราง</button>
           <button type="button" class="btn btn-primary btn-sm" id="tt-add-btn">+ เพิ่มคาบ</button>
         </div>
       </div>
-      <div class="u-note u-mb-12">แตะช่องว่างเพื่อเพิ่มคาบ · แตะคาบที่มีอยู่เพื่อแก้ไขหรือลบ · วันและคาบปัจจุบันจะมีสีเน้น</div>
+      <div class="u-note u-mb-12">แตะช่องว่างเพื่อเพิ่มคาบ · แตะคาบที่มีอยู่เพื่อแก้ไขหรือลบ · วันและคาบปัจจุบันจะมีสีเน้น · ตารางแยกเก็บตามปีการศึกษาและภาคเรียน</div>
       <div id="tt-grid"></div>
       <div class="tt-legend" id="tt-legend"></div>
     </div>`;
 
   const gridEl = body.querySelector('#tt-grid');
+  const yearEl = body.querySelector('#tt-year'), semEl = body.querySelector('#tt-sem');
+  initNavPill(semEl, '.theme-opt', 'seg-pill', { activeSel: '[aria-pressed="true"]', watch: true });
+
+  // ปีที่เลือกได้ = ปีที่มีตารางแล้ว + ปีปัจจุบัน ±1 (เตรียมตารางปีหน้าล่วงหน้าได้)
+  const drawTermControls = () => {
+    const years = new Set([cur.year - 1, cur.year, cur.year + 1, state.term.year]);
+    state.all.terms.forEach((_, k) => years.add(ttParseTerm(k).year));
+    yearEl.innerHTML = [...years].sort((a, b) => b - a)
+      .map(y => `<option value="${y}"${y === state.term.year ? ' selected' : ''}>${y}</option>`).join('');
+    semEl.querySelectorAll('[data-sem]').forEach(b => b.setAttribute('aria-pressed', String(Number(b.dataset.sem) === state.term.sem)));
+    body.querySelector('#tt-card-title').textContent = `ตารางสอน ${ttTermLabel(state.term)}`;
+    body.querySelector('#tt-copy-btn').disabled = ![...state.all.terms.keys()].some(k => k !== ttTermKey(state.term));
+  };
+
   const redraw = () => {
     const prev = gridEl.querySelector('.tt-wrap');
     const keep = prev ? { l: prev.scrollLeft, t: prev.scrollTop } : null;
@@ -470,26 +623,48 @@ async function renderTimetableTab(body, isActive = () => true) {
     }
   };
 
-  // บันทึกแบบ optimistic: วาดใหม่ทันที แล้วค่อยเขียน Firestore — พลาดก็คืนค่าเดิม
-  const commit = async next => {
-    const prev = state.tt;
-    state.tt = next;
+  const setTerm = term => {
+    state.term = term;
+    AppState.ttTerm = ttTermKey(term); // จำภาคที่เปิดไว้ (สลับหน้าไปมาแล้วกลับมาเห็นภาคเดิม · หน้าแรกกดมาก็เปิดภาคเดียวกับวิดเจ็ต)
+    state.tt = ttPick(state.all, ttTermKey(term)) || ttBlank(state.all);
+    drawTermControls();
     redraw();
-    const ok = await saveTimetable(next);
-    if (!ok && state.tt === next) { state.tt = prev; redraw(); }
-    if (state.tt === next || ok) AppState.timetable = state.tt;
+  };
+  yearEl.addEventListener('change', () => setTerm({ year: Number(yearEl.value), sem: state.term.sem }));
+  semEl.addEventListener('click', ev => {
+    const b = ev.target.closest('[data-sem]');
+    if (b && Number(b.dataset.sem) !== state.term.sem) setTerm({ year: state.term.year, sem: Number(b.dataset.sem) });
+  });
+
+  // บันทึกแบบ optimistic: วาดใหม่ทันที แล้วค่อยเขียน Firestore — พลาดก็คืนค่าเดิม
+  // รับ term ตรงๆ เพราะ "เลิกทำ" อาจกดหลังสลับไปดูอีกภาคเรียนแล้ว ต้องเขียนกลับที่ภาคเดิม ไม่ใช่ภาคที่เปิดอยู่
+  const commitTerm = async (term, next) => {
+    const key = ttTermKey(term), had = state.all.terms.get(key), prev = state.tt;
+    const showing = () => ttTermKey(state.term) === key;
+    state.all.terms.set(key, next);
+    if (showing()) { state.tt = next; redraw(); }
+    drawTermControls();
+    const ok = await saveTimetable(next, term);
+    if (!ok) {
+      if (had) state.all.terms.set(key, had); else state.all.terms.delete(key);
+      if (showing() && state.tt === next) { state.tt = had || prev; redraw(); }
+      drawTermControls();
+    }
     return ok;
   };
+  const commit = next => commitTerm(state.term, next);
   const removeEntries = async (ids, label) => {
-    const removed = state.tt.entries.filter(e => ids.includes(e.id));
+    const term = state.term, key = ttTermKey(term), cur0 = state.tt;
+    const removed = cur0.entries.filter(e => ids.includes(e.id));
     if (!removed.length) return;
-    const ok = await commit({ ...state.tt, entries: state.tt.entries.filter(e => !ids.includes(e.id)) });
+    const ok = await commit({ ...cur0, entries: cur0.entries.filter(e => !ids.includes(e.id)) });
     if (!ok) return;
     islandUndo(label, async () => {
-      if (!(await commit({ ...state.tt, entries: [...state.tt.entries, ...removed] }))) throw new Error('กู้คืนไม่สำเร็จ');
+      const base = state.all.terms.get(key) || cur0;
+      if (!(await commitTerm(term, { ...base, entries: [...base.entries, ...removed] }))) throw new Error('กู้คืนไม่สำเร็จ');
     });
   };
-  const ctx = { state, commit, removeEntries };
+  const ctx = { state, commit, commitTerm, removeEntries };
 
   gridEl.addEventListener('keydown', ev => {
     const go = ev.target.closest('[data-score-go]');
@@ -518,24 +693,27 @@ async function renderTimetableTab(body, isActive = () => true) {
     const d = new Date().getDay();
     ttEntryModal(ctx, { day: d >= 1 && d <= 5 ? d : 1, period: 0 });
   });
+  body.querySelector('#tt-copy-btn').addEventListener('click', () => ttCopyModal(ctx));
   body.querySelector('#tt-periods-btn').addEventListener('click', () => ttPeriodsModal(ctx));
-  body.querySelector('#tt-export-btn').addEventListener('click', () => ttExportCsv(state.tt));
+  body.querySelector('#tt-export-btn').addEventListener('click', () => ttExportCsv(state.tt, state.term));
   body.querySelector('#tt-clear-btn').addEventListener('click', () => {
     if (!state.tt.entries.length) { showToast('ตารางยังว่างอยู่'); return; }
     openConfirmModal({
-      title: 'ล้างตารางสอนทั้งหมด?',
-      body: 'คาบเรียนทุกคาบในตารางจะถูกลบ (เวลาคาบเรียนยังอยู่) — กด \"เลิกทำ\" ได้ภายใน 5 วินาทีหลังลบ',
+      title: `ล้างตารางสอน ${ttTermLabel(state.term)}?`,
+      body: 'คาบเรียนทุกคาบในตารางของภาคเรียนนี้จะถูกลบ (เวลาคาบเรียนและตารางภาคเรียนอื่นยังอยู่) — กด \"เลิกทำ\" ได้ภายใน 5 วินาทีหลังลบ',
       confirmLabel: 'ล้างตาราง', danger: true,
       onConfirm: async () => { await removeEntries(state.tt.entries.map(e => e.id), 'ล้างตารางแล้ว'); },
     });
   });
 
+  drawTermControls();
   redraw();
 }
 
 // ==========================================================================
 // วิดเจ็ตตารางสอนหน้าแรก (วางใต้การ์ดสภาพอากาศ) — js/dashboard.js ใส่โครง #tt-widget แล้วเรียก initTimetableWidget
 // แสดงคาบของวันที่เลือก (ค่าเริ่มต้น = วันนี้ · เสาร์-อาทิตย์ = วันจันทร์หน้า) พร้อมป้าย "กำลังสอน/ถัดไป" และอัปเดตทุกนาที
+// ใช้ตารางของภาคเรียนปัจจุบัน (ยังไม่ตั้ง → ใช้ของภาคก่อนหน้าไปก่อน) · อ่านอย่างเดียว: กดคาบที่ผูกกับรายวิชา = ไปหน้าบันทึกคะแนน ไม่มีปุ่มแก้ไข
 // ==========================================================================
 const TT_SHORT_DAY = { 1: 'จ.', 2: 'อ.', 3: 'พ.', 4: 'พฤ.', 5: 'ศ.' };
 
@@ -551,20 +729,19 @@ function ttwItemHtml(e, periods, tag, courseIds) {
   const meta = [e.cls, e.room && 'ห้อง ' + e.room].filter(Boolean).map(escapeHtml).join(' · ');
   const badge = tag === 'now' ? '<span class="badge badge-success">กำลังสอน</span>'
     : tag === 'next' ? '<span class="badge badge-neutral">ถัดไป</span>' : '';
-  // คาบที่ผูกกับรายวิชา: กดทั้งกรอบ = ไปหน้าบันทึกคะแนน · แก้ไขคาบใช้ปุ่มดินสอ · คาบอื่น (กิจกรรม/พิมพ์เอง) กดทั้งกรอบ = แก้ไข
+  // วิดเจ็ตหน้าแรกไม่มีการแก้ไข: คาบที่ผูกกับรายวิชากดทั้งกรอบ = ไปหน้าบันทึกคะแนน · คาบอื่น (กิจกรรม/พิมพ์เอง) แสดงอย่างเดียว
+  // แก้ตารางได้ที่ ข้อมูลส่วนตัว → ตารางสอน (ปุ่ม "ดูทั้งสัปดาห์")
   const id = escapeHtml(e.id), link = ttLinkable(e, courseIds);
-  const act = link
-    ? ` role="link" tabindex="0" data-ttw-score="${id}" title="ไปหน้าบันทึกคะแนน"`
-    : ` role="button" tabindex="0" data-ttw-edit="${id}" title="แก้ไขคาบ"`;
-  const pencil = link ? `<button type="button" class="tt-edit" data-ttw-edit="${id}" aria-label="แก้ไข ${escapeHtml(e.title)}" title="แก้ไขคาบ">${icon('edit')}</button>` : '';
+  const act = link ? ` role="link" tabindex="0" data-ttw-score="${id}" aria-label="ไปหน้าบันทึกคะแนน ${escapeHtml(e.title)}" title="ไปหน้าบันทึกคะแนน"` : '';
+  const go = link ? '<svg class="ttw-go" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>' : '';
   return `
-    <div class="ttw-item is-act${tag === 'now' ? ' is-now' : ''}" style="--w:var(--hue-${e.hue})"${act}>
+    <div class="ttw-item${link ? ' is-act' : ''}${tag === 'now' ? ' is-now' : ''}" style="--w:var(--hue-${e.hue})"${act}>
       <div class="ttw-time"><b>${label}</b><span>${start} - ${end}</span></div>
       <div class="ttw-info">
         <span class="ttw-title">${escapeHtml([e.code, e.title].filter(Boolean).join(' '))}</span>
         ${meta ? `<span class="ttw-meta">${meta}</span>` : ''}
       </div>
-      ${badge}${pencil}
+      ${badge}${go}
     </div>`;
 }
 
@@ -572,7 +749,7 @@ async function initTimetableWidget(root) {
   const daysEl = root.querySelector('#ttw-days'), listEl = root.querySelector('#ttw-list'), subEl = root.querySelector('#ttw-sub');
   const first = new Date();
   let day = first.getDay() >= 1 && first.getDay() <= 5 ? first.getDay() : 1;
-  let tt = AppState.timetable || null;
+  let tt = AppState.timetable || null; // { term, periods, entries } ของภาคเรียนที่ใช้งานอยู่ (ttResolveActive)
 
   daysEl.innerHTML = TT_DAYS.map(([n, name]) =>
     `<button type="button" class="theme-opt${n === first.getDay() ? ' is-today' : ''}" data-day="${n}" aria-pressed="${n === day}" aria-label="${name}">${TT_SHORT_DAY[n]}</button>`).join('');
@@ -584,10 +761,10 @@ async function initTimetableWidget(root) {
     const date = ttwWeekStart(now); date.setDate(date.getDate() + day - 1);
     const entries = [...ttLayoutDay(tt.entries, day).values()].sort((a, b) => a.period - b.period);
     const teach = entries.filter(e => e.kind === 'class').reduce((s, e) => s + e.span, 0);
-    subEl.textContent = `วัน${ttDayName(day)}ที่ ${date.getDate()} ${TT_MONTHS[date.getMonth()]}` + (teach ? ` · สอน ${teach} คาบ` : '');
+    subEl.textContent = `${ttTermLabel(tt.term)} · วัน${ttDayName(day)}ที่ ${date.getDate()} ${TT_MONTHS[date.getMonth()]}` + (teach ? ` · สอน ${teach} คาบ` : '');
 
     if (!tt.entries.length) {
-      listEl.innerHTML = `<div class="ttw-empty">ยังไม่ได้ตั้งตารางสอน<br><button type="button" class="btn btn-primary btn-sm u-mt-12" data-ttw-go>ตั้งตารางสอน</button></div>`;
+      listEl.innerHTML = `<div class="ttw-empty">ยังไม่ได้ตั้งตารางสอนของ${ttTermLabel(tt.term)}<br><button type="button" class="btn btn-primary btn-sm u-mt-12" data-ttw-go>ตั้งตารางสอน</button></div>`;
       return;
     }
     if (!entries.length) { listEl.innerHTML = `<div class="ttw-empty">ไม่มีคาบในวัน${ttDayName(day)}</div>`; return; }
@@ -605,36 +782,6 @@ async function initTimetableWidget(root) {
     listEl.innerHTML = entries.map((e, i) => ttwItemHtml(e, tt.periods, i === nowIdx ? 'now' : i === nextIdx ? 'next' : '', courseIds)).join('');
   };
 
-  // แก้ไขคาบจากหน้าแรก: ใช้หน้าต่างเดียวกับหน้าข้อมูลส่วนตัว (ttEntryModal) · โหลดรายวิชาครั้งแรกที่กดแก้
-  let editCtx = null;
-  const makeEditCtx = courses => {
-    const state = { tt, courses, sections: {} };
-    const setTt = next => { state.tt = next; tt = next; AppState.timetable = next; draw(); };
-    const commit = async next => {
-      const prev = state.tt;
-      setTt(next);
-      const ok = await saveTimetable(next);
-      if (!ok && state.tt === next) setTt(prev);
-      return ok;
-    };
-    const removeEntries = async (ids, label) => {
-      const removed = state.tt.entries.filter(e => ids.includes(e.id));
-      if (!removed.length) return;
-      const ok = await commit({ ...state.tt, entries: state.tt.entries.filter(e => !ids.includes(e.id)) });
-      if (!ok) return;
-      islandUndo(label, async () => {
-        if (!(await commit({ ...state.tt, entries: [...state.tt.entries, ...removed] }))) throw new Error('กู้คืนไม่สำเร็จ');
-      });
-    };
-    return { state, commit, removeEntries };
-  };
-  const openEdit = async id => {
-    const entry = tt && tt.entries.find(x => x.id === id);
-    if (!entry) return;
-    if (!editCtx) editCtx = makeEditCtx(await loadTtCourses());
-    editCtx.state.tt = tt;
-    ttEntryModal(editCtx, { entry });
-  };
   const openScores = id => { const entry = tt && tt.entries.find(x => x.id === id); if (entry) ttOpenScores(entry); };
 
   const load = async () => {
@@ -660,17 +807,19 @@ async function initTimetableWidget(root) {
     draw();
   });
   root.addEventListener('click', ev => {
-    const ed = ev.target.closest('[data-ttw-edit]'), sc = ev.target.closest('[data-ttw-score]');
-    if (ed) openEdit(ed.dataset.ttwEdit);
-    else if (sc) openScores(sc.dataset.ttwScore);
-    else if (ev.target.closest('[data-ttw-go]')) { AppState.profileTab = 'timetable'; navigate('profile'); }
-    else if (ev.target.closest('[data-ttw-retry]')) load();
+    const sc = ev.target.closest('[data-ttw-score]');
+    if (sc) openScores(sc.dataset.ttwScore);
+    else if (ev.target.closest('[data-ttw-go]')) {
+      AppState.profileTab = 'timetable';
+      if (tt) AppState.ttTerm = ttTermKey(tt.term); // เปิดแท็บตารางสอนที่ภาคเรียนเดียวกับที่วิดเจ็ตแสดง
+      navigate('profile');
+    } else if (ev.target.closest('[data-ttw-retry]')) load();
   });
   root.addEventListener('keydown', ev => {
-    const el = ev.target.closest('[data-ttw-score], [data-ttw-edit]');
-    if (!el || ev.target !== el || el.tagName === 'BUTTON' || (ev.key !== 'Enter' && ev.key !== ' ')) return; // ปุ่มดินสอเป็น <button> จริง กด Enter ได้เองอยู่แล้ว
+    const el = ev.target.closest('[data-ttw-score]');
+    if (!el || ev.target !== el || (ev.key !== 'Enter' && ev.key !== ' ')) return;
     ev.preventDefault();
-    if (el.dataset.ttwScore) openScores(el.dataset.ttwScore); else openEdit(el.dataset.ttwEdit);
+    openScores(el.dataset.ttwScore);
   });
   const timer = setInterval(() => { if (!root.isConnected) clearInterval(timer); else draw(); }, 60000);
   await load();

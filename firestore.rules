@@ -49,7 +49,7 @@ service cloud.firestore {
         && validTeacherProfile(d.get('profile', null));
     }
 
-    // ตารางสอน (แท็บ "ตารางสอน" ในหน้าข้อมูลส่วนตัว → users/{uid}/timetable/main) · ฟิลด์ต้องตรงกับ js/timetable.js
+    // ตารางสอน (แท็บ "ตารางสอน" ในหน้าข้อมูลส่วนตัว → users/{uid}/timetable/{ปี}-{ภาค} เช่น 2569-1 · main = แบบเดิมก่อนแยกภาคเรียน) · ฟิลด์ต้องตรงกับ js/timetable.js
     // periods = เวลาคาบ (สูงสุด 14) · entries = คาบที่ลงในตาราง (5 วัน x 14 คาบ ไม่เกิน 70 รายการ เผื่อไว้ 100)
     function validTimetable() {
       let d = request.resource.data;

@@ -9,6 +9,7 @@
     "test": "node tests/score-logic.test.js .",
     "prepare": "git config core.hooksPath .githooks || true",
     "test:sw": "node tests/sw.test.js",
+    "test:tt": "node tests/timetable-term.test.js",
     "check:sw": "node tools/check-sw.js"
   },
   "devDependencies": {
