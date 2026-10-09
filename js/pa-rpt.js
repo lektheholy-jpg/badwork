@@ -112,9 +112,106 @@ async function parptPullAgreement(doc) {
 }
 
 // ------------------------------------------------------------------
+// ภาคผนวก — โหลด records ในช่วงปีงบประมาณ แล้วสร้าง HTML
+// ------------------------------------------------------------------
+// แปลงปีงบประมาณ (พ.ศ.) เป็นช่วงวันที่ ISO (CE) ตามที่เก็บใน records.date
+function parptFiscalRange(fiscalYear) {
+  const fy = Number(fiscalYear);
+  if (!fy || fy < 2400) return null;
+  return { start: `${fy - 544}-10-01`, end: `${fy - 543}-09-30` };
+}
+
+// โหลด records ที่ date อยู่ในช่วงปีงบประมาณนั้น (type: training | certificate | award)
+async function parptLoadRecordsForYear(fiscalYear) {
+  const uid = AppState.user?.uid;
+  if (!uid) return [];
+  const range = parptFiscalRange(fiscalYear);
+  if (!range) return [];
+  try {
+    await loadModule('records');
+    const snap = await db.collection('users').doc(uid).collection('records')
+      .where('date', '>=', range.start)
+      .where('date', '<=', range.end)
+      .orderBy('date', 'asc')
+      .get();
+    return snap.docs.map(doc => recClean(doc.data(), doc.id)).filter(Boolean);
+  } catch (err) {
+    console.error('parptLoadRecordsForYear:', err);
+    return [];
+  }
+}
+
+// สร้าง HTML ภาคผนวก จาก records ที่โหลดมาแล้ว
+function parptAppendixHtml(records, fiscalYear) {
+  if (!records || !records.length) return '';
+  const e = escapeHtml;
+  const range = parptFiscalRange(fiscalYear);
+  const periodLabel = range ? `ระหว่างวันที่ 1 ตุลาคม พ.ศ. ${Number(fiscalYear) - 1} ถึงวันที่ 30 กันยายน พ.ศ. ${fiscalYear}` : '';
+
+  const typeOrder = ['training', 'certificate', 'award'];
+  const typeLabels = { training: 'การอบรม', certificate: 'เกียรติบัตร', award: 'รางวัล' };
+
+  let rows = '';
+  let no = 1;
+  typeOrder.forEach(type => {
+    const items = records.filter(r => r.type === type);
+    if (!items.length) return;
+    rows += `<tr class="grp"><td colspan="5"><b>${e(typeLabels[type])}</b></td></tr>`;
+    items.forEach(r => {
+      const dateStr = r.date ? recDateTh(r.date) : '—';
+      const hoursStr = type === 'training' && r.hours ? `${recHoursText(r.hours)} ชม.` : '';
+      const thumbCell = r.thumb
+        ? `<td class="app-thumb"><img src="${e(r.thumb)}" alt="${e(r.title)}" class="app-thumb-img"></td>`
+        : `<td class="app-thumb"></td>`;
+      rows += `<tr>
+        <td class="app-no">${no++}</td>
+        ${thumbCell}
+        <td class="app-title">${e(r.title)}${r.org ? `<div class="app-org">${e(r.org)}</div>` : ''}</td>
+        <td class="app-date">${e(dateStr)}</td>
+        <td class="app-hours">${e(hoursStr)}</td>
+      </tr>`;
+    });
+  });
+
+  return `
+  <div class="p1-break"></div>
+  <div class="p1-c">ภาคผนวก</div>
+  <div class="p1-c app-sub">การอบรม เกียรติบัตร และรางวัลที่ได้รับ</div>
+  ${periodLabel ? `<div class="app-period">${e(periodLabel)}</div>` : ''}
+  <table class="app-tbl">
+    <colgroup>
+      <col class="app-c-no">
+      <col class="app-c-thumb">
+      <col class="app-c-title">
+      <col class="app-c-date">
+      <col class="app-c-hours">
+    </colgroup>
+    <thead><tr>
+      <th>ที่</th><th>รูป</th><th>รายการ / หน่วยงาน</th><th>วันที่</th><th>ชั่วโมง</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table>
+  <style>
+    .app-sub{font-size:13pt;margin-top:-4pt}
+    .app-period{font-size:11pt;text-align:center;margin:4pt 0 8pt}
+    .app-tbl{width:100%;border-collapse:collapse;font-size:11pt;margin-top:6pt}
+    .app-tbl th,.app-tbl td{border:1px solid #555;padding:4pt 5pt;vertical-align:middle}
+    .app-tbl thead th{background:#f0f0f0;font-weight:700;text-align:center}
+    .app-tbl tr.grp td{background:#f8f8f8;font-weight:600;padding:4pt 5pt}
+    .app-c-no{width:24pt}.app-c-thumb{width:60pt}.app-c-date{width:60pt}.app-c-hours{width:44pt}
+    .app-no{text-align:center}
+    .app-thumb{text-align:center;padding:2pt}
+    .app-thumb-img{width:54pt;height:auto;max-height:72pt;object-fit:contain;display:block;margin:auto}
+    .app-org{font-size:9.5pt;color:#555;margin-top:2pt}
+    .app-date{text-align:center;white-space:nowrap}
+    .app-hours{text-align:center}
+  </style>`;
+}
+
+// ------------------------------------------------------------------
 // เอกสารสำหรับพิมพ์ (ใช้ PA1_CSS / paFontCss ร่วมกับแบบข้อตกลง)
 // ------------------------------------------------------------------
-function parptBuildDocHtml(d, o) {
+function parptBuildDocHtml(d, o, appendixHtml = '') {
   d = parptNormalize(d);
   o = o || {};
   const e = escapeHtml;
@@ -185,16 +282,22 @@ function parptBuildDocHtml(d, o) {
       <thead><tr><th><b>ข้อที่</b></th><th><b>รายละเอียด</b></th><th><b>เอกสารอ้างอิง</b></th></tr></thead>
       <tbody>${refRows}</tbody>
     </table>
+    ${appendixHtml}
   </div>`;
 }
 
-function parptPrint(d, o) {
+async function parptPrint(d, o) {
   const w = window.open('', '_blank');
   if (!w) { showToast('เบราว์เซอร์บล็อกหน้าต่างพิมพ์ — อนุญาต pop-up แล้วลองใหม่'); return; }
+  let appendixHtml = '';
+  try {
+    const recs = await parptLoadRecordsForYear(d.fiscalYear);
+    appendixHtml = parptAppendixHtml(recs, d.fiscalYear);
+  } catch (err) { console.error('parptPrint: โหลดภาคผนวกไม่สำเร็จ', err); }
   const title = `PA_Report_${(o && o.name) || ''}_${d.fiscalYear || ''}`.replace(/\s+/g, '_');
   w.document.write(`<!doctype html><html lang="th"><head><meta charset="utf-8"><title>${escapeHtml(title)}</title>
     <style>${paFontCss()}${PA1_CSS}@page{size:A4;margin:16mm 14mm}html,body{margin:0;background:#fff}</style></head>
-    <body>${parptBuildDocHtml(d, o)}</body></html>`);
+    <body>${parptBuildDocHtml(d, o, appendixHtml)}</body></html>`);
   w.document.close();
   w.focus();
   const go = () => { try { w.print(); } catch (err) { /* ผู้ใช้สั่งพิมพ์เองได้ */ } };
@@ -227,7 +330,11 @@ async function renderPARptPreviewView() {
   }
 
   const d0 = list.find(x => x.id === PARptState.previewId) || list[0] || null;
-  const { owner } = await parptOwner(d0);
+  const [{ owner }, previewRecs] = await Promise.all([
+    parptOwner(d0),
+    d0 ? parptLoadRecordsForYear(d0.fiscalYear).catch(() => []) : Promise.resolve([]),
+  ]);
+  const previewAppendix = parptAppendixHtml(previewRecs, d0 && d0.fiscalYear);
 
   if (paStale(view, seq) || PAState.tab !== 'rptprev') return; // สลับแท็บระหว่างรอข้อมูล — ไม่วาดทับ
 
@@ -260,7 +367,7 @@ async function renderPARptPreviewView() {
       </div>
     </div>
     <div class="u-note parp-hint">ตัวอย่างแบบรายงานผลข้อตกลงในการพัฒนางาน (PA) — กดพิมพ์แล้วเลือก "บันทึกเป็น PDF" ในหน้าต่างพิมพ์ได้ · ช่องลงนามและความเห็น ผอ. เว้นไว้ให้เซ็นบนกระดาษ</div>
-    <div class="parp-paper"><style>${paFontCss()}${PA1_CSS}</style>${parptBuildDocHtml(d, owner)}</div>
+    <div class="parp-paper"><style>${paFontCss()}${PA1_CSS}</style>${parptBuildDocHtml(d, owner, previewAppendix)}</div>
     <style>
       .parp-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:8px}
       .parp-bar select{min-width:0;max-width:100%}
