@@ -113,7 +113,7 @@ users/{uid}/courses/{courseId}               วิชา + โครงสร�
     /scores/{studentId}                      คะแนนของนักเรียน
 users/{uid}/timetable/{ปี}-{ภาค}              ตารางสอนแยกภาคเรียน เช่น 2569-1 (main = แบบเดิมก่อนแยกภาค)
 users/{uid}/records/{id}                      อบรม/เกียรติบัตร/รางวัล (แยกปีการศึกษาด้วยฟิลด์ year)
-Storage: users/{uid}/records/{id}/{เวลา}.{นามสกุล}  ไฟล์ต้นฉบับ (รูป/PDF ไม่เกิน 10 MB)
+Storage: users/{uid}/records/{id}/{เวลา}/{วันที่พ.ศ.}_{ชื่อเรื่อง}.{นามสกุล}  ไฟล์ต้นฉบับ (รูป/PDF ไม่เกิน 10 MB)
 users/{uid}/pa_agreements/{docId}            Personal Agreement
 users/{uid}/pa_reports/{docId}               แบบรายงานผล Personal Agreement
 ```

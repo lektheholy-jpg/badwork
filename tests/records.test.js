@@ -58,6 +58,9 @@ const rec = (o) => ({ type: 'training', title: 'อบรม AI', org: 'สพ�
   ok(run(e0, `recClean({title:'ก', type:'award', hours: 5, date:'2026-06-10'}, 'x').hours`) === 0, 'ชั่วโมงเก็บเฉพาะการอบรม');
   ok(run(e0, `recClean({title:'ก', thumb:'javascript:alert(1)', date:'2026-06-10'}, 'x').thumb`) === '', 'รูปย่อต้องเป็น data:image เท่านั้น');
   ok(run(e0, `recDateTh('2026-06-10')`) === '10 มิ.ย. 2569', 'แสดงวันที่เป็น พ.ศ.');
+  ok(run(e0, `recFileName('2026-06-10', 'อบรม AI  สำหรับครู', 'IMG_001.JPG', 'image/jpeg')`) === '2569-06-10_อบรม_AI_สำหรับครู.jpg', 'ชื่อไฟล์ = วันที่ พ.ศ. + ชื่อเรื่อง + นามสกุลเดิม');
+  ok(run(e0, `recFileName('2026-06-10', 'a/b:c?d#e%f', 'x', 'application/pdf')`) === '2569-06-10_abcdef.pdf', 'ตัดอักขระต้องห้ามออก / ไม่มีนามสกุล → ดูจากชนิดไฟล์');
+  ok(run(e0, `recFileName('2026-06-10', 'ก'.repeat(200), 'x.png', 'image/png')`).length < 110, 'จำกัดความยาวชื่อไฟล์');
 
   console.log('แท็บ: แสดงตามปี + สถิติ');
   const e1 = makeEnv({
@@ -103,7 +106,7 @@ const rec = (o) => ({ type: 'training', title: 'อบรม AI', org: 'สพ�
   await tick(); await tick(); await tick();
   const last = e1.log.sets[e1.log.sets.length - 1];
   ok(last.d.file && last.d.file.path.startsWith('users/u1/records/') && last.d.thumb.startsWith('data:image/webp'), 'แนบไฟล์: เก็บ path ต้นฉบับ + รูปย่อ', last.d.file);
-  ok(e1.log.files.some(f => f.startsWith('up:')), 'อัปโหลดต้นฉบับ 1 ครั้ง');
+  ok(e1.log.files.some(f => f.startsWith('up:') && f.endsWith('2569-09-01_เกียรติบัตร.jpg')), 'อัปโหลดต้นฉบับโดยตั้งชื่อเป็นวันที่+ชื่อเรื่อง', e1.log.files);
 
   // แก้ไข: เปลี่ยนไฟล์ → ลบไฟล์เก่า
   const card = [...body.querySelectorAll('.rec-card')].find(c => c.querySelector('.rec-title').textContent === 'เกียรติบัตร');

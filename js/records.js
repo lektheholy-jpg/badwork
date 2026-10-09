@@ -4,7 +4,7 @@
 //   { type: 'training'|'certificate'|'award', title, org, date (YYYY-MM-DD), year (ปีการศึกษา พ.ศ. คำนวณจากวันที่),
 //     hours (เฉพาะการอบรม), note, thumb (รูปย่อ ~320px เป็น data URL เก็บในเอกสาร ดูออฟไลน์ได้),
 //     file: { path, name, size, type } | null (ต้นฉบับใน Firebase Storage), createdAt, updatedAt }
-// ต้นฉบับ: users/{uid}/records/{id}/{เวลา}.{นามสกุล} ใน Storage · โหลด SDK ของ Storage แบบ lazy ตอนอัปโหลด/ดูต้นฉบับครั้งแรก
+// ต้นฉบับ: users/{uid}/records/{id}/{เวลา}/{วันที่พ.ศ.}_{ชื่อเรื่อง}.{นามสกุล} ใน Storage · โหลด SDK ของ Storage แบบ lazy ตอนอัปโหลด/ดูต้นฉบับครั้งแรก
 // ฟิลด์ต้องตรงกับ validRecord ใน firestore.rules และ storage.rules · ไฟล์นี้ต้องใช้งานเดี่ยวได้ (privacy.js เรียก recDeleteAllFiles)
 // ==========================================================================
 
@@ -155,10 +155,19 @@ async function recPrepareOriginal(file) {
   if (blob.size > REC_MAX_ORIGINAL) throw new Error('ไฟล์ใหญ่เกิน 10 MB');
   return blob;
 }
+// ชื่อไฟล์ที่เก็บ: วันที่ (พ.ศ.-เดือน-วัน) + ชื่อโครงการ/รางวัล เช่น 2569-06-10_อบรม_AI_สำหรับครู.pdf (เรียงตามวันที่ได้ในที่เก็บไฟล์)
+// ตัดอักขระที่ใช้ในชื่อไฟล์/URL ไม่ได้ออก · เว้นวรรค → _ · จำกัดความยาวชื่อเรื่อง 80 ตัวอักษร
+function recFileName(date, title, origName, type) {
+  const ext = ((/\.([a-z0-9]{1,5})$/i.exec(origName || '') || [])[1] || (type === 'application/pdf' ? 'pdf' : 'jpg')).toLowerCase();
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(date || ''));
+  const d = m ? `${+m[1] + 543}-${m[2]}-${m[3]}` : 'ไม่ระบุวันที่';
+  const t = recText(title, 200).replace(/[\\/:*?"<>|#%\[\]\u0000-\u001f]/g, '').trim().replace(/\s+/g, '_').replace(/^\.+/, '').slice(0, 80);
+  return `${d}_${t || 'ไฟล์'}.${ext}`;
+}
+// name = ชื่อไฟล์ที่เก็บ (recFileName) · อยู่ในโฟลเดอร์เวลาของแต่ละครั้งที่อัปโหลด กันชื่อซ้ำทับไฟล์เดิมตอนเปลี่ยนไฟล์
 async function recUpload(id, blob, name, onProgress) {
   const st = await recStorage();
-  const ext = ((/\.([a-z0-9]{1,5})$/i.exec(name || '') || [])[1] || (blob.type === 'application/pdf' ? 'pdf' : 'jpg')).toLowerCase();
-  const path = `users/${AppState.user.uid}/records/${id}/${Date.now()}.${ext}`;
+  const path = `users/${AppState.user.uid}/records/${id}/${Date.now()}/${name}`;
   const task = st.ref(path).put(blob, { contentType: blob.type });
   await new Promise((resolve, reject) => task.on('state_changed',
     s => { if (onProgress && s.totalBytes) onProgress(s.bytesTransferred / s.totalBytes); }, reject, resolve));
@@ -298,7 +307,7 @@ function recEditModal(ctx, { item = null, year }) {
       const thumb = await recMakeThumb(picked);
       try {
         const blob = await recPrepareOriginal(picked);
-        const meta = await recUpload(id, blob, picked.name, p => showToast(`กำลังอัปโหลดต้นฉบับ ${Math.round(p * 100)}%...`));
+        const meta = await recUpload(id, blob, recFileName(date, title, picked.name, blob.type), p => showToast(`กำลังอัปโหลดต้นฉบับ ${Math.round(p * 100)}%...`));
         oldPath = e.file ? e.file.path : '';
         next.file = meta; next.thumb = thumb;
       } catch (err) {
