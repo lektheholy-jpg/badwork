@@ -40,6 +40,7 @@ export async function verifyFirebaseToken(token, projectId, now = Date.now()) {
   const sec = Math.floor(now / 1000);
   if (payload.aud !== projectId || payload.iss !== `https://securetoken.google.com/${projectId}`) throw new Error('claims');
   if (!payload.sub || typeof payload.exp !== 'number' || payload.exp <= sec || payload.iat > sec + 60) throw new Error('expired');
+  if (payload.email_verified !== true) throw new Error('unverified');   // ตรงกับ firestore.rules (signedIn)
   return payload;
 }
 
@@ -65,8 +66,15 @@ export default {
 
     const auth = req.headers.get('Authorization') || '';
     if (!auth.startsWith('Bearer ')) return reply(401, { error: { message: 'missing token' } }, h);
-    try { await verifyFirebaseToken(auth.slice(7), env.FIREBASE_PROJECT_ID); }
+    let user;
+    try { user = await verifyFirebaseToken(auth.slice(7), env.FIREBASE_PROJECT_ID); }
     catch (e) { return reply(401, { error: { message: 'invalid token' } }, h); }
+
+    // จำกัดจำนวนคำขอต่อผู้ใช้ (binding ชื่อ RATE_LIMITER ใน wrangler.toml) · ไม่มี binding = ข้าม (เช่นตอนเทสต์ในเครื่อง)
+    if (env.RATE_LIMITER) {
+      const { success } = await env.RATE_LIMITER.limit({ key: user.sub });
+      if (!success) return reply(429, { error: { message: 'too many requests' } }, { 'Retry-After': '60', ...h });
+    }
 
     const raw = await req.text();
     if (raw.length > MAX_BODY) return reply(413, { error: { message: 'request too large' } }, h);
@@ -76,12 +84,11 @@ export default {
 
     const out = {};
     ALLOWED_KEYS.forEach(k => { if (body[k] !== undefined) out[k] = body[k] });
-    // แก้เป็น
-const up = await fetch(`${GEMINI}/models/${body.model}:generateContent?key=${env.GEMINI_API_KEY}`, {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify(out),
-});
+    const up = await fetch(`${GEMINI}/models/${body.model}:generateContent`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY },
+      body: JSON.stringify(out),
+    });
     return new Response(up.body, { status: up.status, headers: { 'Content-Type': 'application/json', ...h } });
   },
 };

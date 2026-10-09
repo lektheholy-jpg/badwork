@@ -12,6 +12,7 @@
     "test:tt": "node tests/timetable-term.test.js",
     "test:rec": "node tests/records.test.js",
     "test:pa": "node tests/pa-config.test.js",
+    "test:worker": "node tests/worker.test.js",
     "check:sw": "node tools/check-sw.js"
   },
   "devDependencies": {

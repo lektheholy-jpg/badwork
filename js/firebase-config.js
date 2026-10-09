@@ -9,6 +9,7 @@ const firebaseConfig = {
   storageBucket: "mywork-lektheholy.firebasestorage.app",
   messagingSenderId: "556231214049",
   appId: "1:556231214049:web:90a10308d23f022dcdc8a0",
+  measurementId: "G-45DZX5VS76"
 };
 
 firebase.initializeApp(firebaseConfig);
