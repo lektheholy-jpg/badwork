@@ -11,19 +11,10 @@
 //   aiCtx = บริบทงานจริงสั้นๆ ที่ผู้ช่วย AI ใช้ (ระดับชั้น/ห้อง/นักเรียน/ปัญหา/ผลปีก่อน/จุดเน้น) — 1 ฟิลด์ระดับบน ไม่เกิน validDoc(30)
 // ==========================================================================
 
-const PAState = {
-  tab: 'agreement', // แท็บที่เปิดอยู่: 'agreement' (แบบฟอร์มข้อตกลง) | 'rpt' (แบบฟอร์มรายงานผล) | 'report' (ตัวอย่าง/พิมพ์ PA 1)
-  nextTab: null,    // navigate('pa-report-page') ตั้งค่านี้ให้ renderPAPage เปิดแท็บรายงานเลย
-  view: 'list',     // มุมมองในแท็บข้อตกลง: 'list' | 'form'
-  docId: null,      // null = สร้างใหม่ | string = แก้ไขที่มีอยู่
-  doc: null,        // ข้อมูล PA ที่กำลังแก้
-  list: null,       // แคชรายการ
-  previewId: null,  // เอกสารที่เลือกดู/พิมพ์ในแท็บรายงาน
-  seq: 0,           // เลขรอบการสลับแท็บ — เรนเดอร์ที่ค้างจากรอบก่อน (A→B→A เร็วๆ) เทียบเลขแล้วไม่วาดทับ
-};
-
 // ------------------------------------------------------------------
 // ค่าคงที่ของระบบ PA (โครงแบบ PA 1/ส · แท็บ · ชื่อ collection · ค่าของผู้ช่วย AI) อยู่ที่ PA_CONFIG ใน js/pa-config.js
+// และ state ของหน้า (tab/view/docId/doc/list/…) อยู่ที่ระบบเอกสารใน js/doc-system.js — โค้ดในไฟล์นี้อ่านผ่าน const sys = docSystem() เท่านั้น
+// (sys.config = config · sys.state = state ของหน้า/แท็บข้อตกลง · sys.rptState = state ของแท็บรายงานผล · sys.col(kind, uid) = collection)
 // ------------------------------------------------------------------
 
 // ภาคเรียนของปีงบประมาณ: ปีงบ 2569 (1 ต.ค. 68 – 30 ก.ย. 69) = ภาค 2/2568 และ 1/2569
@@ -36,7 +27,8 @@ function paTermLabels(fy) {
 // Firestore ref
 // ------------------------------------------------------------------
 function paCol(uid) {
-  return db.collection('users').doc(uid).collection(PA_CONFIG.collections.agreements);
+  const sys = docSystem();
+  return sys.col('agreements', uid);
 }
 
 function paRef(uid, docId) {
@@ -57,18 +49,19 @@ async function paLoadList() {
 // บันทึก PA
 // ------------------------------------------------------------------
 async function paSave(data) {
+  const sys = docSystem();
   const uid = AppState.user?.uid;
   if (!uid) throw new Error('ยังไม่ได้เข้าสู่ระบบ');
   const now = firebase.firestore.FieldValue.serverTimestamp();
   const { id: _id, createdAt: _c, updatedAt: _u, ...clean } = data; // ฟิลด์ระบบไม่ถูกเขียนกลับ
   Object.keys(clean).forEach(k => { if (k[0] === '_') delete clean[k]; }); // ตัวแปรชั่วคราวในหน้าฟอร์ม
   data = clean;
-  if (PAState.docId) {
-    await paRef(uid, PAState.docId).update({ ...data, updatedAt: now });
-    return PAState.docId;
+  if (sys.state.docId) {
+    await paRef(uid, sys.state.docId).update({ ...data, updatedAt: now });
+    return sys.state.docId;
   } else {
     const ref = await paCol(uid).add({ ...data, createdAt: now, updatedAt: now });
-    PAState.docId = ref.id;
+    sys.state.docId = ref.id;
     return ref.id;
   }
 }
@@ -77,10 +70,11 @@ async function paSave(data) {
 // ลบ PA
 // ------------------------------------------------------------------
 async function paDelete(docId) {
+  const sys = docSystem();
   const uid = AppState.user?.uid;
   if (!uid) return;
   await paRef(uid, docId).delete();
-  PAState.list = null;
+  sys.state.list = null;
 }
 
 // ------------------------------------------------------------------
@@ -110,6 +104,7 @@ const paNl = s => escapeHtml(s || '').replace(/\n/g, '<br>');
 
 // เติมค่าเริ่มต้นให้ครบทุกฟิลด์ (รองรับเอกสารรุ่นเก่าที่มีแค่ classroomBasic / workload / outcome)
 function paNormalize(d) {
+  const sys = docSystem();
   d = d || {};
   const ct = d.classroomTypes || {};
   d.classroomTypes = {
@@ -118,14 +113,14 @@ function paNormalize(d) {
   };
   const L = d.load && typeof d.load === 'object' ? d.load : {};
   d.load = { group: String(L.group || '') };
-  PA_CONFIG.loadLists.forEach(k => {
+  sys.config.loadLists.forEach(k => {
     d.load[k] = (Array.isArray(L[k]) ? L[k] : []).map(r => ({ name: String((r && r.name) || ''), hours: Number(r && r.hours) || 0 }));
   });
   d.workItems = d.workItems && typeof d.workItems === 'object' ? d.workItems : {};
   ['challengeTitle', 'problem', 'method', 'outcomeQuant', 'outcomeQual', 'signDate'].forEach(k => { d[k] = String(d[k] || ''); });
   const c = d.aiCtx && typeof d.aiCtx === 'object' ? d.aiCtx : {};
   d.aiCtx = {};
-  Object.entries(PA_CONFIG.aiCtx.maxLen).forEach(([k, n]) => { d.aiCtx[k] = String(c[k] || '').slice(0, n); });
+  Object.entries(sys.config.aiCtx.maxLen).forEach(([k, n]) => { d.aiCtx[k] = String(c[k] || '').slice(0, n); });
   return d;
 }
 
@@ -261,6 +256,7 @@ const PA1_CSS = `
 `;
 
 function paBuildDocHtml(d, o) {
+  const sys = docSystem();
   d = paNormalize(JSON.parse(JSON.stringify(d || {})));
   o = o || {};
   const L = d.load;
@@ -279,7 +275,7 @@ function paBuildDocHtml(d, o) {
     return `<div class="p1-row p1-ind2"><span class="n">${no} ${title}</span><span class="h">${h}</span></div>${rows(list, 'p1-ind3')}`;
   };
 
-  const hasLoad = PA_CONFIG.loadLists.some(k => L[k].length);
+  const hasLoad = sys.config.loadLists.some(k => L[k].length);
   const total = paSum(L.subjects) + paSum(L.activities);
   const loadHtml = hasLoad ? `
     <div class="p1-ind2">1.1 ชั่วโมงสอนตามตารางสอน รวมจำนวน ${total ? paFmtH(total) : dots} ชั่วโมง/สัปดาห์ ดังนี้</div>
@@ -293,7 +289,7 @@ function paBuildDocHtml(d, o) {
 
   // ภาคเรียนต่อท้ายบรรทัดเดียวกับข้อความ (ตามแบบที่ใช้กันจริง)
   const term = (label, text) => `${label} ${paNl(text)}`;
-  const tableRows = PA_CONFIG.workItems.map(([, gt, items]) =>
+  const tableRows = sys.config.workItems.map(([, gt, items]) =>
     `<tr class="grp"><td colspan="4">${gt}</td></tr>` + items.map(([id, label]) => {
       const w = d.workItems[id] || {};
       const tasks = [w.s1 && term(t1, w.s1), w.s2 && term(t2, w.s2)].filter(Boolean).join('<div class="gap"></div>');
@@ -325,7 +321,7 @@ function paBuildDocHtml(d, o) {
     <div>สถานศึกษา ${e(o.school || dots)} สังกัด ${e(o.affiliation || dots)}</div>
     <div>รับเงินเดือนในตำแหน่ง ${e(o.pay || dots)}</div>
     <div class="p1-p mt2"><b>ประเภทห้องเรียนที่จัดการเรียนรู้</b> (สามารถระบุได้มากกว่า 1 ประเภทห้องเรียน ตามสภาพการจัดการเรียนรู้จริง)</div>
-    <div class="p1-list">${PA_CONFIG.classroomTypes.map(([k, l]) => `<div>${box(d.classroomTypes[k])}<span>${l}</span></div>`).join('')}</div>
+    <div class="p1-list">${sys.config.classroomTypes.map(([k, l]) => `<div>${box(d.classroomTypes[k])}<span>${l}</span></div>`).join('')}</div>
     <div class="p1-p mt5">ข้าพเจ้าขอแสดงเจตจำนงในการจัดทำข้อตกลงในการพัฒนางานตำแหน่ง ${e(o.position || 'ครู')} วิทยฐานะ${e(o.standing || dots)} ซึ่งเป็นตำแหน่งและวิทยฐานะที่ดำรงอยู่ในปัจจุบันกับผู้อำนวยการสถานศึกษา ไว้ดังต่อไปนี้</div>
 
     <div class="p1-h mt10">ส่วนที่ 1 ข้อตกลงในการพัฒนางานตามมาตรฐานตำแหน่ง</div>
@@ -410,11 +406,12 @@ function paPrint(d, o) {
 // ------------------------------------------------------------------
 
 function paBuildShell() {
+  const sys = docSystem();
   const view = document.getElementById('view');
   view.innerHTML = `
-    ${pageHeaderHtml(PA_CONFIG.title)}
+    ${pageHeaderHtml(sys.config.title)}
     <div class="tabs" id="pa-tabs" role="tablist">
-      ${PA_CONFIG.tabs.map(([id, label]) => `<div class="tab ${PAState.tab === id ? 'active' : ''}" data-tab="${id}" role="tab" aria-selected="${PAState.tab === id}" tabindex="0">${label}</div>`).join('')}
+      ${sys.config.tabs.map(([id, label]) => `<div class="tab ${sys.state.tab === id ? 'active' : ''}" data-tab="${id}" role="tab" aria-selected="${sys.state.tab === id}" tabindex="0">${label}</div>`).join('')}
     </div>
     <div id="pa-tab-body"></div>`;
   const tabs = view.querySelector('#pa-tabs');
@@ -466,22 +463,25 @@ function paShowLoading(view) {
 }
 
 // เรนเดอร์นี้ล้าสมัยแล้วหรือยัง: ออกจากหน้าไปแล้ว หรือมีการกดสลับแท็บรอบใหม่ระหว่างรอข้อมูล
-function paStale(view, seq) { return !view.isConnected || PAState.seq !== seq; }
+// sys = ระบบที่เรนเดอร์รอบนั้นถืออยู่ (ส่งต่อจากตัวแปร sys ของฟังก์ชันเรนเดอร์ ไม่ใช้ระบบที่กำลังแสดงตอนนี้ — กันผลค้างของอีกระบบมาเทียบเลขรอบผิดตัว)
+function paStale(view, seq, sys = docSystem()) { return !view.isConnected || sys.state.seq !== seq; }
 
 function paRenderTab() {
-  PAState.seq++; // รอบใหม่ — เรนเดอร์ที่ยังค้างจากรอบก่อนจะถูกมองว่าล้าสมัย
-  if (PAState.tab === 'report') return renderPAReportView();
-  if (PAState.tab === 'rpt') return renderPARptView(); // แบบฟอร์มรายงานผล (js/pa-rpt.js)
-  if (PAState.tab === 'rptprev') return renderPARptPreviewView(); // ตัวอย่าง/พิมพ์ รายงานผล (js/pa-rpt.js)
-  return PAState.view === 'form' ? renderPAFormView() : renderPAListView();
+  const sys = docSystem();
+  sys.state.seq++; // รอบใหม่ — เรนเดอร์ที่ยังค้างจากรอบก่อนจะถูกมองว่าล้าสมัย
+  if (sys.state.tab === 'report') return renderPAReportView();
+  if (sys.state.tab === 'rpt') return renderPARptView(); // แบบฟอร์มรายงานผล (js/pa-rpt.js)
+  if (sys.state.tab === 'rptprev') return renderPARptPreviewView(); // ตัวอย่าง/พิมพ์ รายงานผล (js/pa-rpt.js)
+  return sys.state.view === 'form' ? renderPAFormView() : renderPAListView();
 }
 
 async function paSwitchTab(tab) {
-  if (tab === PAState.tab || !PA_CONFIG.tabs.some(t => t[0] === tab)) return;
-  // กำลังกรอกฟอร์มอยู่: เก็บค่าที่พิมพ์ค้างไว้ใน PAState.doc กลับมาที่แท็บข้อตกลงแล้วยังอยู่ครบ
-  if (PAState.tab === 'agreement' && PAState.view === 'form') paCollectFormData();
-  if (PAState.tab === 'rpt' && PARptState.view === 'form') parptCollect();
-  PAState.tab = tab;
+  const sys = docSystem();
+  if (tab === sys.state.tab || !sys.config.tabs.some(t => t[0] === tab)) return;
+  // กำลังกรอกฟอร์มอยู่: เก็บค่าที่พิมพ์ค้างไว้ใน sys.state.doc กลับมาที่แท็บข้อตกลงแล้วยังอยู่ครบ
+  if (sys.state.tab === 'agreement' && sys.state.view === 'form') paCollectFormData();
+  if (sys.state.tab === 'rpt' && sys.rptState.view === 'form') parptCollect();
+  sys.state.tab = tab;
   const tabs = document.getElementById('pa-tabs');
   tabs?.querySelectorAll('.tab').forEach(x => {
     const on = x.dataset.tab === tab;
@@ -505,14 +505,15 @@ async function paSwitchTab(tab) {
 // คัดลอกข้อตกลงเป็นฉบับร่างใหม่ (ยังไม่บันทึกจนกว่าจะกดบันทึก) เพื่อเอาไปปรับแก้
 // ------------------------------------------------------------------
 function paDuplicate(src) {
+  const sys = docSystem();
   const d = paNormalize(JSON.parse(JSON.stringify(src)));
   ['id', 'createdAt', 'updatedAt', 'owner'].forEach(k => { delete d[k]; }); // owner ดึงจากโปรไฟล์ปัจจุบันตอนบันทึก
   d.status = 'draft';
   d.signDate = '';
   d._ttTried = true; // มีชั่วโมงสอนจากฉบับเดิมแล้ว ไม่ดึงตารางสอนทับ
-  PAState.docId = null;
-  PAState.doc = d;
-  PAState.view = 'form';
+  sys.state.docId = null;
+  sys.state.doc = d;
+  sys.state.view = 'form';
   renderPAFormView();
   showToast('คัดลอกแล้ว — แก้ไขตามต้องการ แล้วกด “บันทึกPersonal Agreement” จะได้เป็นฉบับใหม่');
 }
@@ -521,23 +522,24 @@ function paDuplicate(src) {
 // หน้ารายการ PA (แท็บแบบฟอร์มข้อตกลง)
 // ------------------------------------------------------------------
 async function renderPAListView() {
+  const sys = docSystem();
   const view = paMount(); // = พื้นที่เนื้อหาของแท็บ
-  const seq = PAState.seq;
+  const seq = sys.state.seq;
   paShowLoading(view);
 
   let list = [];
   try {
     list = await paLoadList();
-    PAState.list = list;
+    sys.state.list = list;
   } catch (err) {
-    if (paStale(view, seq) || PAState.tab !== 'agreement') return; // ผู้ใช้สลับแท็บ/ออกจากหน้าไปแล้ว
+    if (paStale(view, seq, sys) || sys.state.tab !== 'agreement') return; // ผู้ใช้สลับแท็บ/ออกจากหน้าไปแล้ว
     clearLoading(view);
     view.classList.remove('is-switching');
     view.innerHTML = `<div class="card card-pad"><div class="empty-state">โหลดข้อมูลไม่สำเร็จ: ${escapeHtml(err.message)}</div></div>`;
     return;
   }
 
-  if (paStale(view, seq) || PAState.tab !== 'agreement' || PAState.view !== 'list') return;
+  if (paStale(view, seq, sys) || sys.state.tab !== 'agreement' || sys.state.view !== 'list') return;
 
   const rows = list.map(d => `
     <div class="pa-row card" data-id="${escapeHtml(d.id)}">
@@ -592,17 +594,17 @@ async function renderPAListView() {
     </style>`;
 
   view.querySelectorAll('.pa-new-btn').forEach(b => b.addEventListener('click', () => {
-    PAState.docId = null;
-    PAState.doc = paBlankDoc();
-    PAState.view = 'form';
+    sys.state.docId = null;
+    sys.state.doc = paBlankDoc();
+    sys.state.view = 'form';
     renderPAFormView();
   }));
   const openEdit = id => {
-    const d = PAState.list?.find(x => x.id === id);
+    const d = sys.state.list?.find(x => x.id === id);
     if (!d) return;
-    PAState.docId = id;
-    PAState.doc = paNormalize(JSON.parse(JSON.stringify(d))); // deep copy
-    PAState.view = 'form';
+    sys.state.docId = id;
+    sys.state.doc = paNormalize(JSON.parse(JSON.stringify(d))); // deep copy
+    sys.state.view = 'form';
     renderPAFormView();
   };
   view.querySelectorAll('.pa-edit-btn').forEach(b => b.addEventListener('click', (e) => {
@@ -611,13 +613,13 @@ async function renderPAListView() {
   }));
   view.querySelectorAll('.pa-dup-btn').forEach(b => b.addEventListener('click', (e) => {
     e.stopPropagation();
-    const d = PAState.list?.find(x => x.id === b.dataset.id);
+    const d = sys.state.list?.find(x => x.id === b.dataset.id);
     if (d) paDuplicate(d);
   }));
   view.querySelectorAll('.pa-row').forEach(r => r.addEventListener('click', () => openEdit(r.dataset.id)));
   view.querySelectorAll('.pa-print-btn').forEach(b => b.addEventListener('click', (e) => {
     e.stopPropagation();
-    PAState.previewId = b.dataset.id;
+    sys.state.previewId = b.dataset.id;
     paSwitchTab('report');
   }));
   view.querySelectorAll('.pa-del-btn').forEach(b => b.addEventListener('click', async (e) => {
@@ -666,14 +668,15 @@ function paLoadBlock(key, title, rows, ph) {
 }
 
 async function renderPAFormView() {
+  const sys = docSystem();
   const view = paMount(); // = พื้นที่เนื้อหาของแท็บ
-  const seq = PAState.seq;
-  const d = PAState.doc = paNormalize(PAState.doc);
-  const isNew = !PAState.docId;
+  const seq = sys.state.seq;
+  const d = sys.state.doc = paNormalize(sys.state.doc);
+  const isNew = !sys.state.docId;
   paShowLoading(view);
   let p;
   try { await loadModule('profile'); p = await loadTeacherProfile(); } catch (err) { p = AppState.teacherProfile || {}; }
-  if (paStale(view, seq) || PAState.tab !== 'agreement' || PAState.view !== 'form') return; // ผู้ใช้สลับแท็บ/ออกไปแล้ว
+  if (paStale(view, seq, sys) || sys.state.tab !== 'agreement' || sys.state.view !== 'form') return; // ผู้ใช้สลับแท็บ/ออกไปแล้ว
 
   // เอกสารที่ "ส่งแล้ว" ใช้สำเนาข้อมูลผู้จัดทำที่เก็บไว้ (ไม่เปลี่ยนตามโปรไฟล์) · นอกนั้นใช้ข้อมูลปัจจุบัน
   let liveOwner;
@@ -687,9 +690,9 @@ async function renderPAFormView() {
     d._ttTried = true;
     try {
       const t = await paPullTimetable();
-      if (!PA_CONFIG.loadLists.some(k => d.load[k].length)) { d.load.subjects = t.subjects; d.load.activities = t.activities; }
+      if (!sys.config.loadLists.some(k => d.load[k].length)) { d.load.subjects = t.subjects; d.load.activities = t.activities; }
     } catch (err) { /* ไม่มีตารางสอน/ออฟไลน์ — ข้าม */ }
-    if (paStale(view, seq) || PAState.tab !== 'agreement' || PAState.view !== 'form') return;
+    if (paStale(view, seq, sys) || sys.state.tab !== 'agreement' || sys.state.view !== 'form') return;
   }
 
   const item = (label, val, wide) => `<div class="pa-pf-item${wide ? ' pa-pf-wide' : ''}"><dt>${label}</dt><dd>${val ? escapeHtml(val) : '—'}</dd></div>`;
@@ -700,7 +703,7 @@ async function renderPAFormView() {
     const eid = `pa-wi-${id.replace('.', '_')}-${f}`;
     return `<div class="field"><label for="${eid}">${label}</label><textarea id="${eid}" rows="${rows}" data-wi="${id}" data-f="${f}">${escapeHtml(val || '')}</textarea></div>`;
   };
-  const hasLegacyLoad = d.workload && !PA_CONFIG.loadLists.some(k => d.load[k].length);
+  const hasLegacyLoad = d.workload && !sys.config.loadLists.some(k => d.load[k].length);
 
   view.innerHTML = `
     <div class="pa-form-head">
@@ -740,7 +743,7 @@ async function renderPAFormView() {
         </div>
         <div class="pa-sub">ประเภทห้องเรียนที่จัดการเรียนรู้ (เลือกได้มากกว่า 1)</div>
         <div class="pa-checks">
-          ${PA_CONFIG.classroomTypes.map(([k, l]) => `<label class="pa-check"><input type="checkbox" data-ct="${k}"${d.classroomTypes[k] ? ' checked' : ''}> ${l}</label>`).join('')}
+          ${sys.config.classroomTypes.map(([k, l]) => `<label class="pa-check"><input type="checkbox" data-ct="${k}"${d.classroomTypes[k] ? ' checked' : ''}> ${l}</label>`).join('')}
         </div>
         <div class="field pa-field-date">
           <label for="pa-signDate">วันที่ลงนามของผู้จัดทำ</label>
@@ -767,7 +770,7 @@ async function renderPAFormView() {
       <div class="card card-pad">
         <h2 class="card-title">ส่วนที่ 1 · 2. งานที่จะปฏิบัติตามมาตรฐานตำแหน่งครู</h2>
         <div class="u-note u-mb-12">กรอกแต่ละข้อ: งานที่จะทำในแต่ละภาคเรียน · ผลลัพธ์ที่คาดหวังกับผู้เรียน · ตัวชี้วัด — ข้อที่เว้นว่างจะแสดงเป็นช่องว่างในเอกสาร</div>
-        ${PA_CONFIG.workItems.map(([gid, gt, items]) => `
+        ${sys.config.workItems.map(([gid, gt, items]) => `
           <details class="pa-wgroup"${gid === '1' ? ' open' : ''}>
             <summary>${gt}</summary>
             ${items.map(([id, label]) => {
@@ -801,9 +804,9 @@ async function renderPAFormView() {
 
   const form = view.querySelector('#pa-form');
   view.querySelectorAll('.pa-back-btn, .pa-cancel-btn').forEach(b => b.addEventListener('click', () => {
-    PAState.view = 'list'; renderPAListView();
+    sys.state.view = 'list'; renderPAListView();
   }));
-  view.querySelector('.pa-dup-btn')?.addEventListener('click', () => { paCollectFormData(); paDuplicate(PAState.doc); }); // รวมสิ่งที่พิมพ์ค้างไว้ด้วย
+  view.querySelector('.pa-dup-btn')?.addEventListener('click', () => { paCollectFormData(); paDuplicate(sys.state.doc); }); // รวมสิ่งที่พิมพ์ค้างไว้ด้วย
   view.querySelector('.pa-goto-profile').addEventListener('click', () => { paCollectFormData(); navigate('profile'); });
   view.querySelector('#pa-fiscalYear').addEventListener('input', e => {
     view.querySelector('#pa-period').textContent = paPeriodText(e.target.value);
@@ -830,13 +833,13 @@ async function renderPAFormView() {
 
   view.querySelector('#pa-tt-pull').addEventListener('click', async () => {
     paCollectFormData();
-    const has = ['subjects', 'activities'].some(k => PAState.doc.load[k].length);
+    const has = ['subjects', 'activities'].some(k => sys.state.doc.load[k].length);
     if (has && !confirm('แทนที่รายวิชาและกิจกรรมที่กรอกไว้ด้วยข้อมูลจากตารางสอน?')) return;
     try {
       const t = await paPullTimetable();
       if (!t.subjects.length && !t.activities.length) { showToast('ตารางสอนยังไม่มีคาบ'); return; }
-      PAState.doc.load.subjects = t.subjects;
-      PAState.doc.load.activities = t.activities;
+      sys.state.doc.load.subjects = t.subjects;
+      sys.state.doc.load.activities = t.activities;
       const y = window.scrollY;
       await renderPAFormView();
       window.scrollTo(0, y);
@@ -849,17 +852,17 @@ async function renderPAFormView() {
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     paCollectFormData();
-    if (!/^\d{4}$/.test(PAState.doc.fiscalYear)) { showToast('ปีงบประมาณต้องเป็นตัวเลข 4 หลัก เช่น ' + paFiscalYear()); view.querySelector('#pa-fiscalYear').focus(); return; }
+    if (!/^\d{4}$/.test(sys.state.doc.fiscalYear)) { showToast('ปีงบประมาณต้องเป็นตัวเลข 4 หลัก เช่น ' + paFiscalYear()); view.querySelector('#pa-fiscalYear').focus(); return; }
     // เก็บสำเนาข้อมูลผู้จัดทำ: เอกสารที่ส่งแล้วและมีสำเนาเดิม = คงไว้ · นอกนั้นใช้ข้อมูลปัจจุบัน
-    if (!(PAState.doc.status === 'submitted' && PAState.doc.owner)) PAState.doc.owner = liveOwner;
+    if (!(sys.state.doc.status === 'submitted' && sys.state.doc.owner)) sys.state.doc.owner = liveOwner;
     const btn = view.querySelector('#pa-save-btn');
     btn.disabled = true;
     btn.textContent = 'กำลังบันทึก…';
     try {
-      await paSave(PAState.doc);
-      PAState.list = null; // clear cache
+      await paSave(sys.state.doc);
+      sys.state.list = null; // clear cache
       if (typeof islandToast === 'function') islandToast('บันทึกPersonal Agreement แล้ว', 'save');
-      PAState.view = 'list';
+      sys.state.view = 'list';
       await renderPAListView();
     } catch (err) {
       btn.disabled = false;
@@ -874,9 +877,10 @@ async function renderPAFormView() {
 }
 
 // ------------------------------------------------------------------
-// เก็บค่าจากฟอร์มกลับเข้า PAState.doc
+// เก็บค่าจากฟอร์มกลับเข้า sys.state.doc
 // ------------------------------------------------------------------
 function paCollectFormData() {
+  const sys = docSystem();
   const el = id => document.getElementById(id);
   if (!el('pa-form')) return; // ไม่ได้อยู่ในหน้าฟอร์ม
   const get = id => (el(id)?.value || '').trim();
@@ -885,11 +889,11 @@ function paCollectFormData() {
   document.querySelectorAll('[data-ct]').forEach(c => { classroomTypes[c.dataset.ct] = c.checked; });
 
   const load = { group: get('pa-load-group') };
-  PA_CONFIG.loadLists.forEach(k => {
+  sys.config.loadLists.forEach(k => {
     const box = document.querySelector(`.pa-lrows[data-list="${k}"]`);
     load[k] = box ? [...box.querySelectorAll('.pa-lrow')]
       .map(r => ({ name: r.querySelector('.pa-l-name').value.trim(), hours: paNum(r.querySelector('.pa-l-hours').value) }))
-      .filter(r => r.name || r.hours) : (PAState.doc.load?.[k] || []);
+      .filter(r => r.name || r.hours) : (sys.state.doc.load?.[k] || []);
   });
 
   const workItems = {};
@@ -902,9 +906,9 @@ function paCollectFormData() {
 
   // ช่องบริบท AI อยู่ในการ์ดที่ pa-ai.js ติดให้ — ถ้าไม่มีช่อง (ไม่โหลดไฟล์นั้น) คงค่าเดิมไว้
   const aiCtx = {};
-  Object.entries(PA_CONFIG.aiCtx.maxLen).forEach(([k, n]) => { aiCtx[k] = el('pa-ctx-' + k) ? get('pa-ctx-' + k).slice(0, n) : (PAState.doc.aiCtx?.[k] || ''); });
+  Object.entries(sys.config.aiCtx.maxLen).forEach(([k, n]) => { aiCtx[k] = el('pa-ctx-' + k) ? get('pa-ctx-' + k).slice(0, n) : (sys.state.doc.aiCtx?.[k] || ''); });
 
-  Object.assign(PAState.doc, {
+  Object.assign(sys.state.doc, {
     fiscalYear: get('pa-fiscalYear'),
     status: get('pa-status') || 'draft',
     classroomTypes,
@@ -924,9 +928,10 @@ function paCollectFormData() {
 // renderPAPage — entry point เรียกจาก app.js
 // ------------------------------------------------------------------
 async function renderPAPage() {
-  PAState.tab = PAState.nextTab || 'agreement'; // กดจากเมนูข้าง = เริ่มที่แท็บข้อตกลง (ยกเว้นมีคนขอแท็บรายงานมา)
-  PAState.nextTab = null;
-  PAState.view = 'list';
+  const sys = docActivate('pa'); // จุดเข้าของระบบ PA — ตั้งให้ระบบนี้เป็นระบบที่กำลังแสดง
+  sys.state.tab = sys.state.nextTab || sys.config.tabs[0][0]; // กดจากเมนูข้าง = เริ่มที่แท็บข้อตกลง (ยกเว้นมีคนขอแท็บรายงานมา)
+  sys.state.nextTab = null;
+  sys.state.view = 'list';
   paBuildShell();
   // ห้าม await ข้อมูลตรงนี้: drawRoute (app.js) เล่นเฟดเข้าทั้งหน้าเมื่อฟังก์ชันนี้ resolve
   // ถ้ารอข้อมูลก่อน หัวเรื่อง+แท็บจะโผล่ แล้วดับเป็นโปร่งใส แล้วเฟดเข้าใหม่ (วาบ) และซ้อนกับเฟดของพื้นที่แท็บอีกชั้น

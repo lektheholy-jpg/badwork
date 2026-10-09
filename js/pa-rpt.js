@@ -5,19 +5,12 @@
 //            → 4. ประเด็นท้าทาย → 5. งานที่ได้รับมอบหมาย → ลงนาม → ตารางเอกสารอ้างอิง
 // ฟิลด์ระดับบน (≤ 30 ตาม firestore.rules validDoc): fiscalYear, status, selfScore, teachHours, leave{}, items{},
 //   challengeTitle, problem, method, outcomeQuant, outcomeQual, assigned, signDate, owner{}, agreementId
-// พึ่งพา pa.js (PAState, paMount, paSwapIn, PA_CONFIG.workItems, PA1_CSS, paFontCss, ไอคอน/ตัวช่วย) — โหลดหลัง pa.js
+// พึ่งพา pa.js (paMount, paSwapIn, PA1_CSS, paFontCss, ไอคอน/ตัวช่วย) และ js/doc-system.js (sys.state · sys.rptState · sys.config · sys.col) — โหลดหลัง pa.js
 // ==========================================================================
 
-const PARptState = {
-  view: 'list',  // 'list' | 'form'
-  docId: null,   // null = สร้างใหม่
-  doc: null,
-  list: null,
-  previewId: null, // เอกสารที่เลือกดู/พิมพ์ในแท็บ 'rptprev'
-};
-
 function parptCol(uid) {
-  return db.collection('users').doc(uid).collection(PA_CONFIG.collections.reports);
+  const sys = docSystem();
+  return sys.col('reports', uid);
 }
 
 // เติมค่าเริ่มต้นให้ครบทุกฟิลด์
@@ -45,13 +38,14 @@ function parptNormalize(d) {
 
 // คัดลอกแบบรายงานผลเป็นฉบับร่างใหม่ (ยังไม่บันทึกจนกว่าจะกดบันทึก) — เหมือน paDuplicate ของฝั่งข้อตกลง
 function parptDuplicate(src) {
+  const sys = docSystem();
   const d = parptNormalize(JSON.parse(JSON.stringify(src)));
   ['id', 'createdAt', 'updatedAt', 'owner'].forEach(k => { delete d[k]; }); // owner ดึงจากโปรไฟล์ปัจจุบันตอนบันทึก
   d.status = 'draft';
   d.signDate = '';
-  PARptState.docId = null;
-  PARptState.doc = d;
-  PARptState.view = 'form';
+  sys.rptState.docId = null;
+  sys.rptState.doc = d;
+  sys.rptState.view = 'form';
   parptRenderForm();
   showToast('คัดลอกแล้ว — แก้ไขตามต้องการ แล้วกด “บันทึกแบบรายงานผล” จะได้เป็นฉบับใหม่');
 }
@@ -68,25 +62,27 @@ async function parptLoadList() {
 }
 
 async function parptSave(data) {
+  const sys = docSystem();
   const uid = AppState.user?.uid;
   if (!uid) throw new Error('ยังไม่ได้เข้าสู่ระบบ');
   const now = firebase.firestore.FieldValue.serverTimestamp();
   const { id: _id, createdAt: _c, updatedAt: _u, ...clean } = data;
   Object.keys(clean).forEach(k => { if (k[0] === '_') delete clean[k]; });
-  if (PARptState.docId) {
-    await parptCol(uid).doc(PARptState.docId).update({ ...clean, updatedAt: now });
-    return PARptState.docId;
+  if (sys.rptState.docId) {
+    await parptCol(uid).doc(sys.rptState.docId).update({ ...clean, updatedAt: now });
+    return sys.rptState.docId;
   }
   const ref = await parptCol(uid).add({ ...clean, createdAt: now, updatedAt: now });
-  PARptState.docId = ref.id;
+  sys.rptState.docId = ref.id;
   return ref.id;
 }
 
 async function parptDelete(id) {
+  const sys = docSystem();
   const uid = AppState.user?.uid;
   if (!uid) return;
   await parptCol(uid).doc(id).delete();
-  PARptState.list = null;
+  sys.rptState.list = null;
 }
 
 // เติมช่องที่ยังว่างจาก Personal Agreement (ปีงบประมาณเดียวกัน ไม่มีก็ใช้ฉบับล่าสุด) — ไม่ทับสิ่งที่พิมพ์ไว้แล้ว
@@ -212,6 +208,7 @@ function parptAppendixHtml(records, fiscalYear) {
 // เอกสารสำหรับพิมพ์ (ใช้ PA1_CSS / paFontCss ร่วมกับแบบข้อตกลง)
 // ------------------------------------------------------------------
 function parptBuildDocHtml(d, o, appendixHtml = '') {
+  const sys = docSystem();
   d = parptNormalize(d);
   o = o || {};
   const e = escapeHtml;
@@ -227,13 +224,13 @@ function parptBuildDocHtml(d, o, appendixHtml = '') {
   const leaveTotal = (sd || bd) ? paFmtH(sd + bd) : dots;
   const group = (o.subjectGroup || '');
 
-  const sections = PA_CONFIG.workItems.map(([, gt, items]) =>
+  const sections = sys.config.workItems.map(([, gt, items]) =>
     `<div class="p1-h mt5">${e(gt)}</div>` + items.map(([id, label]) => {
       const w = d.items[id] || {};
       return `<div class="p1-ind1 keep-next mt3"><b>${id} ${e(label)}</b></div>${paras(w.text, 'p1-p')}`;
     }).join('')).join('');
 
-  const refRows = PA_CONFIG.workItems.map(([, gt, items]) =>
+  const refRows = sys.config.workItems.map(([, gt, items]) =>
     `<tr class="grp"><td colspan="3">${e(gt)}</td></tr>` + items.map(([id, label]) => {
       const w = d.items[id] || {};
       return `<tr><td>${id}</td><td>${e(label)}</td><td>${paNl(w.ref)}</td></tr>`;
@@ -313,30 +310,31 @@ async function parptPrint(d, o) {
 // แสดงแบบรายงานผลเป็นหน้า A4 + ปุ่มพิมพ์/บันทึกเป็น PDF (ใช้ parptBuildDocHtml / parptPrint ข้างบน)
 // ------------------------------------------------------------------
 async function renderPARptPreviewView() {
+  const sys = docSystem();
   const view = paMount();
-  const seq = PAState.seq;
+  const seq = sys.state.seq;
   paShowLoading(view);
 
   let list = [];
   try {
     list = await parptLoadList();
-    PARptState.list = list;
+    sys.rptState.list = list;
   } catch (err) {
-    if (paStale(view, seq) || PAState.tab !== 'rptprev') return;
+    if (paStale(view, seq, sys) || sys.state.tab !== 'rptprev') return;
     clearLoading(view);
     view.classList.remove('is-switching');
     view.innerHTML = `<div class="card card-pad"><div class="empty-state">โหลดข้อมูลไม่สำเร็จ: ${escapeHtml(err.message)}</div></div>`;
     return;
   }
 
-  const d0 = list.find(x => x.id === PARptState.previewId) || list[0] || null;
+  const d0 = list.find(x => x.id === sys.rptState.previewId) || list[0] || null;
   const [{ owner }, previewRecs] = await Promise.all([
     parptOwner(d0),
     d0 ? parptLoadRecordsForYear(d0.fiscalYear).catch(() => []) : Promise.resolve([]),
   ]);
   const previewAppendix = parptAppendixHtml(previewRecs, d0 && d0.fiscalYear);
 
-  if (paStale(view, seq) || PAState.tab !== 'rptprev') return; // สลับแท็บระหว่างรอข้อมูล — ไม่วาดทับ
+  if (paStale(view, seq, sys) || sys.state.tab !== 'rptprev') return; // สลับแท็บระหว่างรอข้อมูล — ไม่วาดทับ
 
   if (!d0) {
     view.innerHTML = `
@@ -354,7 +352,7 @@ async function renderPARptPreviewView() {
   }
 
   const d = d0;
-  PARptState.previewId = d.id;
+  sys.rptState.previewId = d.id;
 
   view.innerHTML = `
     <div class="parp-bar">
@@ -387,19 +385,19 @@ async function renderPARptPreviewView() {
     pg.style.zoom = Math.min(1, paper.clientWidth / pg.offsetWidth);
   };
   requestAnimationFrame(fit);
-  const onResize = () => { if (!view.isConnected || PAState.tab !== 'rptprev') window.removeEventListener('resize', onResize); else fit(); };
+  const onResize = () => { if (!view.isConnected || sys.state.tab !== 'rptprev') window.removeEventListener('resize', onResize); else fit(); };
   window.addEventListener('resize', onResize);
 
   view.querySelector('#parp-select').addEventListener('change', e => {
-    PARptState.previewId = e.target.value;
+    sys.rptState.previewId = e.target.value;
     renderPARptPreviewView();
   });
   view.querySelector('.parp-print').addEventListener('click', () => parptPrint(d, owner));
   view.querySelector('.parp-edit').addEventListener('click', () => {
-    PARptState.docId = d.id;
-    PARptState.doc = parptNormalize(JSON.parse(JSON.stringify(d)));
-    PARptState.view = 'form';
-    paSwitchTab('rpt'); // paSwitchTab วาดฟอร์มให้เอง (PARptState.view = 'form')
+    sys.rptState.docId = d.id;
+    sys.rptState.doc = parptNormalize(JSON.parse(JSON.stringify(d)));
+    sys.rptState.view = 'form';
+    paSwitchTab('rpt'); // paSwitchTab วาดฟอร์มให้เอง (sys.rptState.view = 'form')
   });
 
   paSwapIn(view);
@@ -409,7 +407,8 @@ async function renderPARptPreviewView() {
 // เข้าแท็บ: รายการ | ฟอร์ม
 // ------------------------------------------------------------------
 function renderPARptView() {
-  return PARptState.view === 'form' ? parptRenderForm() : parptRenderList();
+  const sys = docSystem();
+  return sys.rptState.view === 'form' ? parptRenderForm() : parptRenderList();
 }
 
 // ข้อมูลผู้รายงานจากโปรไฟล์ (สำหรับพิมพ์) — เอกสารที่ส่งแล้วใช้สำเนาที่เก็บไว้
@@ -437,21 +436,22 @@ const PARPT_LIST_CSS = `
 `;
 
 async function parptRenderList() {
+  const sys = docSystem();
   const view = paMount();
-  const seq = PAState.seq;
+  const seq = sys.state.seq;
   paShowLoading(view);
   let list = [];
   try {
     list = await parptLoadList();
-    PARptState.list = list;
+    sys.rptState.list = list;
   } catch (err) {
-    if (paStale(view, seq) || PAState.tab !== 'rpt') return;
+    if (paStale(view, seq, sys) || sys.state.tab !== 'rpt') return;
     clearLoading(view);
     view.classList.remove('is-switching');
     view.innerHTML = `<div class="card card-pad"><div class="empty-state">โหลดข้อมูลไม่สำเร็จ: ${escapeHtml(err.message)}</div></div>`;
     return;
   }
-  if (paStale(view, seq) || PAState.tab !== 'rpt' || PARptState.view !== 'list') return;
+  if (paStale(view, seq, sys) || sys.state.tab !== 'rpt' || sys.rptState.view !== 'list') return;
 
   const rows = list.map(d => `
     <div class="pa-row card" data-id="${escapeHtml(d.id)}">
@@ -489,10 +489,10 @@ async function parptRenderList() {
     <style>${PARPT_LIST_CSS}</style>`;
 
   const open = (id) => {
-    const d = id && PARptState.list?.find(x => x.id === id);
-    PARptState.docId = d ? id : null;
-    PARptState.doc = d ? parptNormalize(JSON.parse(JSON.stringify(d))) : parptBlank();
-    PARptState.view = 'form';
+    const d = id && sys.rptState.list?.find(x => x.id === id);
+    sys.rptState.docId = d ? id : null;
+    sys.rptState.doc = d ? parptNormalize(JSON.parse(JSON.stringify(d))) : parptBlank();
+    sys.rptState.view = 'form';
     parptRenderForm();
   };
   view.querySelectorAll('.rpt-new-btn').forEach(b => b.addEventListener('click', () => open(null)));
@@ -500,12 +500,12 @@ async function parptRenderList() {
   view.querySelectorAll('.rpt-edit-btn').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); open(b.dataset.id); }));
   view.querySelectorAll('.rpt-dup-btn').forEach(b => b.addEventListener('click', e => {
     e.stopPropagation();
-    const d = PARptState.list?.find(x => x.id === b.dataset.id);
+    const d = sys.rptState.list?.find(x => x.id === b.dataset.id);
     if (d) parptDuplicate(d);
   }));
   view.querySelectorAll('.rpt-print-btn').forEach(b => b.addEventListener('click', async e => {
     e.stopPropagation();
-    PARptState.previewId = b.dataset.id;
+    sys.rptState.previewId = b.dataset.id;
     paSwitchTab('rptprev'); // เปิดแท็บตัวอย่าง/พิมพ์ รายงานผล (เหมือนปุ่มพิมพ์ของแท็บข้อตกลง)
   }));
   view.querySelectorAll('.rpt-del-btn').forEach(b => b.addEventListener('click', async e => {
@@ -530,13 +530,14 @@ async function parptRenderList() {
 // ฟอร์มรายงานผล
 // ------------------------------------------------------------------
 async function parptRenderForm() {
+  const sys = docSystem();
   const view = paMount();
-  const seq = PAState.seq;
-  const d = PARptState.doc = parptNormalize(PARptState.doc);
-  const isNew = !PARptState.docId;
+  const seq = sys.state.seq;
+  const d = sys.rptState.doc = parptNormalize(sys.rptState.doc);
+  const isNew = !sys.rptState.docId;
   paShowLoading(view);
   const { live, owner: o } = await parptOwner(d);
-  if (paStale(view, seq) || PAState.tab !== 'rpt' || PARptState.view !== 'form') return;
+  if (paStale(view, seq, sys) || sys.state.tab !== 'rpt' || sys.rptState.view !== 'form') return;
   const frozen = d.status === 'submitted' && d.owner;
 
   const e = escapeHtml;
@@ -606,7 +607,7 @@ async function parptRenderForm() {
       <div class="card card-pad">
         <h2 class="card-title">ผลการปฏิบัติงานตามมาตรฐานตำแหน่ง</h2>
         <div class="u-note u-mb-12">แต่ละข้อ: เล่าสิ่งที่ปฏิบัติจริง และระบุเอกสารอ้างอิงที่ใช้เป็นหลักฐาน (ไปอยู่ในตารางท้ายเอกสาร) — ข้อที่เว้นว่างจะแสดงเป็นช่องว่างในเอกสาร</div>
-        ${PA_CONFIG.workItems.map(([gid, gt, items]) => `
+        ${sys.config.workItems.map(([gid, gt, items]) => `
           <details class="pa-wgroup"${gid === '1' ? ' open' : ''}>
             <summary>${gt}</summary>
             ${items.map(([id, label]) => {
@@ -641,8 +642,8 @@ async function parptRenderForm() {
     </form>`;
 
   const form = view.querySelector('#rpt-form');
-  view.querySelectorAll('.rpt-back-btn, .rpt-cancel-btn').forEach(b => b.addEventListener('click', () => { PARptState.view = 'list'; parptRenderList(); }));
-  view.querySelector('.rpt-dup-btn')?.addEventListener('click', () => { parptCollect(); parptDuplicate(PARptState.doc); }); // คัดลอกค่าที่กรอกค้างอยู่
+  view.querySelectorAll('.rpt-back-btn, .rpt-cancel-btn').forEach(b => b.addEventListener('click', () => { sys.rptState.view = 'list'; parptRenderList(); }));
+  view.querySelector('.rpt-dup-btn')?.addEventListener('click', () => { parptCollect(); parptDuplicate(sys.rptState.doc); }); // คัดลอกค่าที่กรอกค้างอยู่
   view.querySelector('.rpt-goto-profile').addEventListener('click', () => { parptCollect(); navigate('profile'); });
   view.querySelector('#rpt-fiscalYear').addEventListener('input', ev => { view.querySelector('#rpt-period').textContent = paPeriodText(ev.target.value); });
   form.addEventListener('input', ev => {
@@ -655,7 +656,7 @@ async function parptRenderForm() {
   view.querySelector('#rpt-pull').addEventListener('click', async () => {
     parptCollect();
     try {
-      const n = await parptPullAgreement(PARptState.doc);
+      const n = await parptPullAgreement(sys.rptState.doc);
       if (!n) { showToast('ไม่พบข้อมูลใหม่ให้ดึง — สร้าง Personal Agreement ก่อน หรือช่องถูกกรอกไว้แล้ว'); return; }
       const y = window.scrollY;
       await parptRenderForm();
@@ -669,16 +670,16 @@ async function parptRenderForm() {
   form.addEventListener('submit', async ev => {
     ev.preventDefault();
     parptCollect();
-    if (!/^\d{4}$/.test(PARptState.doc.fiscalYear)) { showToast('ปีงบประมาณต้องเป็นตัวเลข 4 หลัก เช่น ' + paFiscalYear()); view.querySelector('#rpt-fiscalYear').focus(); return; }
-    if (!(PARptState.doc.status === 'submitted' && PARptState.doc.owner)) PARptState.doc.owner = live;
+    if (!/^\d{4}$/.test(sys.rptState.doc.fiscalYear)) { showToast('ปีงบประมาณต้องเป็นตัวเลข 4 หลัก เช่น ' + paFiscalYear()); view.querySelector('#rpt-fiscalYear').focus(); return; }
+    if (!(sys.rptState.doc.status === 'submitted' && sys.rptState.doc.owner)) sys.rptState.doc.owner = live;
     const btn = view.querySelector('#rpt-save-btn');
     btn.disabled = true;
     btn.textContent = 'กำลังบันทึก…';
     try {
-      await parptSave(PARptState.doc);
-      PARptState.list = null;
+      await parptSave(sys.rptState.doc);
+      sys.rptState.list = null;
       if (typeof islandToast === 'function') islandToast('บันทึกแบบรายงานผลแล้ว', 'save');
-      PARptState.view = 'list';
+      sys.rptState.view = 'list';
       await parptRenderList();
     } catch (err) {
       btn.disabled = false;
@@ -690,10 +691,11 @@ async function parptRenderForm() {
   paSwapIn(view);
 }
 
-// เก็บค่าจากฟอร์มกลับเข้า PARptState.doc (เรียกก่อนสลับแท็บ/ไปหน้าอื่นด้วย เพื่อไม่ให้ที่พิมพ์ค้างหาย)
+// เก็บค่าจากฟอร์มกลับเข้า sys.rptState.doc (เรียกก่อนสลับแท็บ/ไปหน้าอื่นด้วย เพื่อไม่ให้ที่พิมพ์ค้างหาย)
 function parptCollect() {
+  const sys = docSystem();
   const form = document.getElementById('rpt-form');
-  if (!form || !PARptState.doc) return;
+  if (!form || !sys.rptState.doc) return;
   const g = id => (document.getElementById(id)?.value || '').trim();
   const items = {};
   form.querySelectorAll('[data-ri]').forEach(t => {
@@ -702,7 +704,7 @@ function parptCollect() {
     items[id][t.dataset.f] = t.value.trim();
   });
   Object.keys(items).forEach(k => { if (!items[k].text && !items[k].ref) delete items[k]; });
-  Object.assign(PARptState.doc, {
+  Object.assign(sys.rptState.doc, {
     fiscalYear: g('rpt-fiscalYear'),
     status: g('rpt-status') || 'draft',
     selfScore: g('rpt-selfScore'),

@@ -28,15 +28,16 @@ function paReportLegacyHtml(d) {
 // render แท็บ "ตัวอย่าง / พิมพ์ PA 1" — วาดลงพื้นที่เนื้อหาของหน้า PA (โครงหน้า+แท็บอยู่ใน pa.js)
 // ------------------------------------------------------------------
 async function renderPAReportView() {
+  const sys = docSystem();
   const view = paMount();
-  const seq = PAState.seq;
+  const seq = sys.state.seq;
   paShowLoading(view);
 
   let list = [];
   try {
     list = await paReportLoadList();
   } catch (err) {
-    if (paStale(view, seq) || PAState.tab !== 'report') return; // ผู้ใช้สลับแท็บ/ออกจากหน้าไปแล้ว
+    if (paStale(view, seq, sys) || sys.state.tab !== 'report') return; // ผู้ใช้สลับแท็บ/ออกจากหน้าไปแล้ว
     clearLoading(view);
     view.classList.remove('is-switching');
     view.innerHTML = `<div class="card card-pad"><div class="empty-state">โหลดข้อมูลไม่สำเร็จ: ${escapeHtml(err.message)}</div></div>`;
@@ -47,7 +48,7 @@ async function renderPAReportView() {
   let live = {};
   try { await loadModule('profile'); live = paOwnerFromProfile(await loadTeacherProfile()); } catch (err) { /* ใช้ค่าว่าง */ }
 
-  if (paStale(view, seq) || PAState.tab !== 'report') return; // สลับไปแท็บอื่นระหว่างรอข้อมูล — ไม่วาดทับ
+  if (paStale(view, seq, sys) || sys.state.tab !== 'report') return; // สลับไปแท็บอื่นระหว่างรอข้อมูล — ไม่วาดทับ
 
   if (list.length === 0) {
     view.innerHTML = `
@@ -64,8 +65,8 @@ async function renderPAReportView() {
     return;
   }
 
-  const d = list.find(x => x.id === PAState.previewId) || list[0];
-  PAState.previewId = d.id;
+  const d = list.find(x => x.id === sys.state.previewId) || list[0];
+  sys.state.previewId = d.id;
   const owner = d.owner || live;
 
   view.innerHTML = `
@@ -103,19 +104,19 @@ async function renderPAReportView() {
     pg.style.zoom = Math.min(1, paper.clientWidth / pg.offsetWidth);
   };
   requestAnimationFrame(fit);
-  const onResize = () => { if (!view.isConnected || PAState.tab !== 'report') window.removeEventListener('resize', onResize); else fit(); };
+  const onResize = () => { if (!view.isConnected || sys.state.tab !== 'report') window.removeEventListener('resize', onResize); else fit(); };
   window.addEventListener('resize', onResize);
 
   view.querySelector('#parp-select').addEventListener('change', e => {
-    PAState.previewId = e.target.value;
+    sys.state.previewId = e.target.value;
     renderPAReportView();
   });
   view.querySelector('.parp-print').addEventListener('click', () => paPrint(d, owner));
   view.querySelector('.parp-edit').addEventListener('click', () => {
-    PAState.docId = d.id;
-    PAState.doc = paNormalize(JSON.parse(JSON.stringify(d)));
-    PAState.view = 'form';
-    paSwitchTab('agreement'); // paSwitchTab วาดฟอร์มให้เอง (PAState.view = 'form')
+    sys.state.docId = d.id;
+    sys.state.doc = paNormalize(JSON.parse(JSON.stringify(d)));
+    sys.state.view = 'form';
+    paSwitchTab('agreement'); // paSwitchTab วาดฟอร์มให้เอง (sys.state.view = 'form')
   });
 
   paSwapIn(view);

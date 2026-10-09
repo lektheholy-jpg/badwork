@@ -35,7 +35,7 @@ npm test                 # tests/score-logic.test.js
 npm run test:sw          # จำลอง Service Worker + เน็ตเปิด/ปิด
 npm run test:tt          # ตารางสอนแยกภาคเรียน + วิดเจ็ตหน้าแรก
 npm run test:rec         # แท็บอบรม/เกียรติบัตร/รางวัล
-npm run test:pa          # กลุ่มหน้า Personal Agreement: โครง PA_CONFIG + เทียบผลเรนเดอร์/พร้อต์ AI/path Firestore กับ tests/pa-golden.json
+npm run test:pa          # กลุ่มหน้า Personal Agreement: โครง PA_CONFIG + เทียบผลเรนเดอร์/พร้อต์ AI/path Firestore กับ tests/pa-golden.json + ระบบเอกสารหลายระบบไม่ปนกัน (state/collection)
 ```
 
 - หน้าเว็บโหลด `css/style.min.css` · commit `.min` และ `package-lock.json` ด้วย
@@ -63,7 +63,8 @@ js/structure.js       โครงสร้างคะแนนระดับ�
 js/scores.js          บันทึกคะแนนแบบสเปรดชีต + autosave
 js/picker-pages.js    หน้าเลือกวิชา/ห้อง
 js/report-page.js     หน้ารายงาน
-js/pa-config.js       PA_CONFIG: ค่าคงที่ของระบบ PA ที่เดียว (ชื่อ collection · แท็บ · โครงฟอร์ม PA 1/ส · ช่องบริบท AI · พร้อต์/รุ่น/คีย์ของผู้ช่วย AI) — โหลดก่อน pa.js
+js/doc-system.js      ระบบเอกสาร (context ต่อระบบ): config + state (sys.state · sys.rptState) + sys.col(kind, uid) · แทน global PAState/PARptState — โหลดก่อน pa-config.js
+js/pa-config.js       PA_CONFIG: ค่าคงที่ของระบบ PA ที่เดียว (ชื่อ collection · แท็บ · โครงฟอร์ม PA 1/ส · ช่องบริบท AI · พร้อต์/รุ่น/คีย์ของผู้ช่วย AI) — โหลดหลัง doc-system.js ก่อน pa.js (ท้ายไฟล์ลงทะเบียนเป็นระบบ 'pa')
 js/pa.js              ฟอร์มข้อตกลง PA 1/ส (lazy — โหลดตอนเข้าหน้า PA พร้อม pa-config/pa-ai/pa-report/pa-rpt ผ่าน LAZY_BUNDLES.pa)
 js/pa-ai.js           ผู้ช่วย AI ในฟอร์ม PA
 js/pa-report.js       ตัวอย่าง/พิมพ์ PA
@@ -146,6 +147,11 @@ users/{uid}/pa_reports/{docId}               แบบรายงานผล P
 
 ### ฟอร์ม PA และผู้ช่วย AI
 
+- **ระบบเอกสาร (`js/doc-system.js`)**: state ของหน้า (`tab/view/docId/doc/list/seq…`) และชื่อ collection ไม่ได้เป็น global เดี่ยวอีกต่อไป — แต่ละระบบ (ตอนนี้มีแค่ `pa`) ลงทะเบียน config ของตัวเองด้วย `registerDocSystem(config)` แล้วได้ `sys = { config, state, rptState, col(kind, uid) }` ของตัวเอง
+  - โค้ดในไฟล์ PA เขียน `const sys = docSystem();` **ครั้งเดียวที่บรรทัดแรกของฟังก์ชัน** แล้วใช้ `sys.state.xxx` · `sys.config.xxx` · `sys.col('agreements', uid)` — ห้ามเรียก `docSystem()` ซ้ำหลัง `await` (ให้ถือ `sys` ตัวเดิม ไม่งั้นงานที่ค้างอยู่จะไปเขียน state ของอีกระบบถ้าผู้ใช้สลับหน้ากลางคัน) · ส่ง `sys` ต่อให้ `paStale(view, seq, sys)`
+  - จุดเข้าของหน้าเรียก `docActivate('pa')` · โค้ดนอกกลุ่มไฟล์ (เช่น `app.js`) อ้างด้วย id: `docSystem('pa')`
+  - ชื่อ collection อยู่ที่ `PA_CONFIG.collections` ที่เดียว (ต้องตรง `firestore.rules`) · `tests/pa-config.test.js` ตรวจว่าไม่มี `PAState`/`PARptState`/`PA_CONFIG`/ชื่อ `pa_*` ตรงๆ หลุดออกนอก `pa-config.js`
+  - ยังเป็นของ PA เฉพาะ (รอขั้นตอนถัดไป): รหัสแท็บ `'agreement'/'report'/'rpt'/'rptprev'` ใน `paRenderTab` · id ช่องฟอร์มและ HTML ของฟอร์ม · การอ่าน `records` ใน `parptLoadRecordsForYear`
 - `js/pa.js` ฟอร์มตามแบบ PA 1/ส ของ สพฐ. (ส่วนที่ 1: ภาระงาน + งานตามมาตรฐานตำแหน่ง 15 ข้อ · ส่วนที่ 2: ประเด็นท้าทาย) · `js/pa-report.js` ตัวอย่างและพิมพ์/บันทึก PDF
 - `js/pa-ai.js` เรียก Gemini ผ่าน Firebase AI Logic (ไม่มี API key ในโค้ด ป้องกันด้วย App Check + reCAPTCHA) · SDK โหลดตอนกดปุ่ม AI ครั้งแรก · ชื่อรุ่นแก้ที่ `PA_CONFIG.ai.model` (รายชื่อรุ่นที่เลือกได้อยู่ที่ `PA_CONFIG.ai.models`) ใน `js/pa-config.js`
 - ปุ่มบนสุดร่างเฉพาะส่วนที่ 2 ที่ว่าง (1 คำขอ) · งานข้อ 1.1–3.3 ใช้ปุ่มใต้แต่ละข้อ (ข้อละ 4 ช่อง) · ไม่เขียนทับช่องที่กรอกแล้ว · ข้อความที่ AI เสนอแสดงในหน้าต่างให้ตรวจก่อนใช้ ไม่บันทึกอัตโนมัติ
@@ -206,7 +212,7 @@ users/{uid}/pa_reports/{docId}               แบบรายงานผล P
 ## บันทึกการลดขนาด (2026-10-08)
 
 - ลบรูป `assets/banner*.webp` (ซ้ำกับ `head-cat*.webp` ทุกไฟล์ และโค้ดไม่ได้เรียกใช้) และ `js/score-logic.test.js` (ฉบับเก่า — ใช้ `tests/score-logic.test.js`)
-- กลุ่มหน้า PA (`pa-config.js`, `pa.js`, `pa-ai.js`, `pa-report.js`, `pa-rpt.js`) ย้ายเป็น lazy: `LAZY_MODULES` + `LAZY_BUNDLES.pa` ใน `js/utils.js` โหลดตามลำดับด้วย `loadModules()` — ลด JS ตอนเปิดแอป ~174 KB (ยังอยู่ใน `PRECACHE` ออฟไลน์ได้เหมือนเดิม)
+- กลุ่มหน้า PA (`doc-system.js`, `pa-config.js`, `pa.js`, `pa-ai.js`, `pa-report.js`, `pa-rpt.js`) ย้ายเป็น lazy: `LAZY_MODULES` + `LAZY_BUNDLES.pa` ใน `js/utils.js` โหลดตามลำดับด้วย `loadModules()` — ลด JS ตอนเปิดแอป ~174 KB (ยังอยู่ใน `PRECACHE` ออฟไลน์ได้เหมือนเดิม)
 - ลบ CSS variable ที่ไม่มีใครใช้ 32 ตัว, คลาสที่ไม่มีใครใช้ 9 คลาส, ยุบ `--font-modern` เป็น `--font-head`
   (อย่าลบ `--bgp-*` — `theme.js` ประกอบชื่อตอนรัน: `'var(--bgp-' + id + ')'`)
 - โลโก้ในหน้าแอปใช้ `assets/icons/logo-128.webp` (PNG 192/512 ยังอยู่สำหรับ manifest / iOS)

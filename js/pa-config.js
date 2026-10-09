@@ -1,7 +1,8 @@
 // ==========================================================================
 // PA_CONFIG — ค่าคงที่/คอนฟิกเฉพาะของระบบ Personal Agreement (PA) รวมไว้ที่เดียว
 //   ย้ายมาจาก js/pa.js · js/pa-ai.js · js/pa-rpt.js (ไม่เปลี่ยนค่าและไม่เปลี่ยนพฤติกรรมใดๆ)
-//   โหลดก่อน pa.js เสมอ (LAZY_BUNDLES.pa ใน js/utils.js) · เป็น <script> ธรรมดา จึงเป็นตัวแปร global เหมือนไฟล์อื่น
+//   โหลดหลัง js/doc-system.js และก่อน pa.js เสมอ (LAZY_BUNDLES.pa ใน js/utils.js) · เป็น <script> ธรรมดา จึงเป็นตัวแปร global เหมือนไฟล์อื่น
+//   โค้ด PA ไม่อ้าง PA_CONFIG ตรงๆ — อ่านผ่านระบบเอกสาร: const sys = docSystem(); sys.config.xxx (ไฟล์นี้ลงทะเบียน PA_CONFIG ไว้ท้ายไฟล์)
 //   โค้ดฝั่ง PA อ่านค่าผ่าน PA_CONFIG.xxx เท่านั้น — ถ้าจะเพิ่มระบบเอกสารอื่น (เช่น ID-Plan) ให้ทำ config รูปเดียวกันนี้
 //
 //   id           รหัสระบบ
@@ -150,3 +151,6 @@ const PA_CONFIG = {
     },
   },
 };
+
+// ลงทะเบียนเป็นระบบเอกสาร — ได้ state ของตัวเอง (sys.state / sys.rptState) และ sys.col() ที่อ่านชื่อ collection จาก config นี้ (ดู js/doc-system.js)
+registerDocSystem(PA_CONFIG);

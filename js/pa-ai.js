@@ -12,25 +12,27 @@
 
 // รวมบริบทที่ชุดช่องนี้ต้องใช้ (ช่องงาน key = "1.1.s1" → ข้อ "1.1" · ช่องส่วนที่ 2 = "part2")
 function paAiScope(fields) {
+  const sys = docSystem();
   const set = new Set();
   fields.forEach(f => {
     const id = f.group ? f.key.slice(0, f.key.lastIndexOf('.')) : 'part2';
-    (PA_CONFIG.ai.prompts.scope[id] || PA_CONFIG.ai.prompts.scope.part2).forEach(k => set.add(k));
+    (sys.config.ai.prompts.scope[id] || sys.config.ai.prompts.scope.part2).forEach(k => set.add(k));
   });
   return set;
 }
 
 // ช่องงานตามมาตรฐานตำแหน่ง 15 ข้อ × 4 ช่อง (ids = ระบุเฉพาะบางข้อ หรือ null = ทั้งหมด)
 function paAiWorkSpecs(ids) {
-  const [t1, t2] = paTermLabels(PAState.doc?.fiscalYear);
+  const sys = docSystem();
+  const [t1, t2] = paTermLabels(sys.state.doc?.fiscalYear);
   const defs = [
-    ['s1', `งานที่จะดำเนินการ · ${t1}`, PA_CONFIG.ai.prompts.workHints.s1],
-    ['s2', `งานที่จะดำเนินการ · ${t2}`, PA_CONFIG.ai.prompts.workHints.s2],
-    ['outcome', 'ผลลัพธ์ (Outcomes) ที่คาดหวังกับผู้เรียน', PA_CONFIG.ai.prompts.workHints.outcome],
-    ['indicator', 'ตัวชี้วัด (Indicators)', PA_CONFIG.ai.prompts.workHints.indicator],
+    ['s1', `งานที่จะดำเนินการ · ${t1}`, sys.config.ai.prompts.workHints.s1],
+    ['s2', `งานที่จะดำเนินการ · ${t2}`, sys.config.ai.prompts.workHints.s2],
+    ['outcome', 'ผลลัพธ์ (Outcomes) ที่คาดหวังกับผู้เรียน', sys.config.ai.prompts.workHints.outcome],
+    ['indicator', 'ตัวชี้วัด (Indicators)', sys.config.ai.prompts.workHints.indicator],
   ];
   const out = [];
-  PA_CONFIG.workItems.forEach(([, , items]) => items.forEach(([id, label]) => {
+  sys.config.workItems.forEach(([, , items]) => items.forEach(([id, label]) => {
     if (ids && !ids.includes(id)) return;
     defs.forEach(([f, fl, hint]) => out.push({
       key: `${id}.${f}`, el: `pa-wi-${id.replace('.', '_')}-${f}`, group: id[0],
@@ -48,34 +50,36 @@ let paAiModelP = null;
 
 // รุ่นที่เลือกอยู่ (ไม่ตรงรายการ/อ่านไม่ได้ → ใช้ค่าเริ่มต้น PA_CONFIG.ai.model) · อ่านตอนเรียกทุกครั้ง เปลี่ยนรุ่นแล้วมีผลทันทีโดยไม่ต้องโหลด SDK ใหม่
 function paAiModelId() {
+  const sys = docSystem();
   let v = null;
-  try { v = localStorage.getItem(PA_CONFIG.ai.storageKeys.model); } catch (err) { /* ใช้ storage ไม่ได้ — ใช้ค่าเริ่มต้น */ }
-  return PA_CONFIG.ai.models.some(m => m.id === v) ? v : PA_CONFIG.ai.model;
+  try { v = localStorage.getItem(sys.config.ai.storageKeys.model); } catch (err) { /* ใช้ storage ไม่ได้ — ใช้ค่าเริ่มต้น */ }
+  return sys.config.ai.models.some(m => m.id === v) ? v : sys.config.ai.model;
 }
 // Gemini 3 ใช้ thinkingLevel · Gemini 2.5 ใช้ thinkingBudget (ส่ง thinkingLevel ให้ 2.5 จะถูกปฏิเสธ)
 function paAiThinking(aiMod, id) {
   return /^gemini-3/.test(id) ? { thinkingLevel: aiMod.ThinkingLevel.LOW } : { thinkingBudget: 512 };
 }
 function paAiLoadModel() {
+  const sys = docSystem();
   if (!paAiModelP) {
     paAiModelP = (async () => {
       const [appMod, checkMod, aiMod] = await Promise.all([
-        import(`${PA_CONFIG.ai.sdk}/firebase-app.js`),
-        import(`${PA_CONFIG.ai.sdk}/firebase-app-check.js`),
-        import(`${PA_CONFIG.ai.sdk}/firebase-ai.js`),
+        import(`${sys.config.ai.sdk}/firebase-app.js`),
+        import(`${sys.config.ai.sdk}/firebase-app-check.js`),
+        import(`${sys.config.ai.sdk}/firebase-ai.js`),
       ]);
       const app = appMod.initializeApp(firebase.app().options, 'pa-ai'); // แอปแยกจาก compat — ใช้ config เดียวกัน
       // ทดสอบบนเครื่อง: ให้ App Check พิมพ์ debug token ใน Console ของเบราว์เซอร์ แล้วนำไปลงทะเบียนใน Firebase Console
       if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
-      checkMod.initializeAppCheck(app, { provider: new checkMod.ReCaptchaEnterpriseProvider(PA_CONFIG.ai.siteKey), isTokenAutoRefreshEnabled: true });
+      checkMod.initializeAppCheck(app, { provider: new checkMod.ReCaptchaEnterpriseProvider(sys.config.ai.siteKey), isTokenAutoRefreshEnabled: true });
       const ai = aiMod.getAI(app, { backend: new aiMod.GoogleAIBackend() });
       return () => {
         const id = paAiModelId();
         return aiMod.getGenerativeModel(ai, {
           model: id,
-          systemInstruction: PA_CONFIG.ai.prompts.system,
+          systemInstruction: sys.config.ai.prompts.system,
           generationConfig: { responseMimeType: 'application/json', temperature: 0.6, thinkingConfig: paAiThinking(aiMod, id) },
-        }, { timeout: PA_CONFIG.ai.timeout });
+        }, { timeout: sys.config.ai.timeout });
       };
     })().catch(err => { paAiModelP = null; throw err; });
   }
@@ -90,9 +94,10 @@ function paAiParseJson(text) {
 }
 
 async function paAiGenerate(prompt) {
+  const sys = docSystem();
   const makeModel = await paAiLoadModel();
   let timer;
-  const timeout = new Promise((_, rej) => { timer = setTimeout(() => rej(new Error('timeout')), PA_CONFIG.ai.timeout + 5000); });
+  const timeout = new Promise((_, rej) => { timer = setTimeout(() => rej(new Error('timeout')), sys.config.ai.timeout + 5000); });
   try {
     const res = await Promise.race([makeModel().generateContent(prompt), timeout]);
     return paAiParseJson(res.response.text());
@@ -121,12 +126,13 @@ function paAiError(err) {
 // ------------------------------------------------------------------
 // บรรทัดบริบทเรียงลำดับคงที่เสมอ (ส่วนที่ซ้ำกันอยู่ต้นข้อความ → ช่วย implicit caching) · scope = Set ของส่วนที่ต้องส่ง (null = ทุกส่วน)
 function paAiContext(known = {}, scope = null) {
-  paCollectFormData(); // ดึงค่าที่พิมพ์ค้างในฟอร์มเข้า PAState.doc
-  const d = PAState.doc, L = d.load || {}, c = d.aiCtx || {};
+  const sys = docSystem();
+  paCollectFormData(); // ดึงค่าที่พิมพ์ค้างในฟอร์มเข้า sys.state.doc
+  const d = sys.state.doc, L = d.load || {}, c = d.aiCtx || {};
   let p = {};
   try { p = AppState.teacherProfile || {}; } catch (err) { /* ไม่มีโปรไฟล์ — ข้าม */ }
   const rows = a => (a || []).map(r => `${r.name}${r.hours ? ` (${paFmtH(r.hours)} ชม./สัปดาห์)` : ''}`).join('; ') || '-';
-  const types = PA_CONFIG.classroomTypes.filter(([k]) => d.classroomTypes[k]).map(([, l]) => l).join(', ') || '-';
+  const types = sys.config.classroomTypes.filter(([k]) => d.classroomTypes[k]).map(([, l]) => l).join(', ') || '-';
   const [t1, t2] = paTermLabels(d.fiscalYear);
   const cls = [c.level && `ระดับชั้น ${c.level}`, c.rooms && `${c.rooms} ห้อง`, c.students && `นักเรียนรวม ${c.students} คน`].filter(Boolean).join(' · ');
   const names = { challengeTitle: 'ประเด็นท้าทาย', problem: 'สภาพปัญหา', method: 'วิธีดำเนินการ', outcomeQuant: 'ผลลัพธ์เชิงปริมาณ', outcomeQual: 'ผลลัพธ์เชิงคุณภาพ' };
@@ -156,6 +162,7 @@ function paAiContext(known = {}, scope = null) {
 
 // ขอข้อความสำหรับกลุ่มช่องหนึ่งชุด → [{...spec, el, current, proposed}]
 async function paAiBatch(specs, mode, known) {
+  const sys = docSystem();
   const fields = specs.map(s => {
     const el = document.getElementById(s.el);
     return { ...s, el, current: (el?.value || '').trim() };
@@ -163,7 +170,7 @@ async function paAiBatch(specs, mode, known) {
   if (!fields.length) return [];
   // ลำดับพร้อต์: ส่วนที่ซ้ำกันทุกคำขอ (ข้อมูลประกอบ → แนวทางช่องงาน) ก่อน · ส่วนที่เปลี่ยนตามคำขอ (โหมด/รายชื่อช่อง) ท้ายสุด
   // งานหลักบอกครั้งเดียว · ช่องที่มี "ข้อความเดิม" บอกซ้ำเฉพาะเมื่อคำสั่งต่างจากค่าตั้งต้น (เช่น โหมดต่อเติม)
-  const base = PA_CONFIG.ai.prompts.modes[mode]('');
+  const base = sys.config.ai.prompts.modes[mode]('');
   const lines = [];
   let lastItem = '';
   fields.forEach(f => {
@@ -175,12 +182,12 @@ async function paAiBatch(specs, mode, known) {
       lines.push(`- "${f.key}" ชื่อช่อง: ${f.label}\n  แนวทาง: ${f.hint}`);
     }
     if (f.current) {
-      const t = PA_CONFIG.ai.prompts.modes[mode](f.current);
+      const t = sys.config.ai.prompts.modes[mode](f.current);
       lines.push((t !== base ? `  งาน: ${t}\n` : '') + `  ข้อความเดิม: """${f.current.slice(0, 2000)}"""`);
     }
   });
   const guide = fields.some(f => f.group)
-    ? `\n\nแนวทางช่องงาน (ใช้กับทุกข้อ ตามส่วนท้ายของคีย์):\n${Object.entries(PA_CONFIG.ai.prompts.workHints).map(([k, v]) => `- .${k}: ${v}`).join('\n')}`
+    ? `\n\nแนวทางช่องงาน (ใช้กับทุกข้อ ตามส่วนท้ายของคีย์):\n${Object.entries(sys.config.ai.prompts.workHints).map(([k, v]) => `- .${k}: ${v}`).join('\n')}`
     : '';
   const prompt = `ข้อมูลประกอบ:\n${paAiContext(known, paAiScope(fields))}${guide}\n\nงาน (ทุกช่อง): ${base}\n\nช่องที่ต้องการ:\n${lines.join('\n')}\n\nตอบเป็น JSON object ที่มีคีย์เหล่านี้เท่านั้น: ${JSON.stringify(fields.map(f => f.key))}`;
   const out = await paAiGenerate(prompt);
@@ -191,10 +198,11 @@ async function paAiBatch(specs, mode, known) {
 // ความยินยอม + ตัวกันกดซ้ำ
 // ------------------------------------------------------------------
 function paAiConsent() {
-  try { if (localStorage.getItem(PA_CONFIG.ai.storageKeys.consent) === '1') return true; } catch (err) { /* ใช้ storage ไม่ได้ — ถามทุกครั้ง */ }
+  const sys = docSystem();
+  try { if (localStorage.getItem(sys.config.ai.storageKeys.consent) === '1') return true; } catch (err) { /* ใช้ storage ไม่ได้ — ถามทุกครั้ง */ }
   const ok = confirm('ข้อความในฟอร์ม PA นี้ (รายวิชา ชั่วโมงสอน ข้อความที่กรอกไว้ และ "บริบทงานของฉัน" เช่น ระดับชั้น จำนวนห้อง/นักเรียนรวม ปัญหาหลัก ผลปีก่อน จุดเน้น ไม่รวมชื่อ-นามสกุล) จะถูกส่งไปประมวลผลที่ Google Gemini เฉพาะส่วนที่เกี่ยวกับช่องที่กด\n\n'
     + 'โปรดอย่าพิมพ์ชื่อหรือข้อมูลที่ระบุตัวนักเรียนลงในช่อง (ใช้เป็นตัวเลขรวมเท่านั้น) และตรวจทานข้อความที่ AI เสนอทุกครั้งก่อนใช้\n\nต้องการดำเนินการต่อหรือไม่?');
-  if (ok) { try { localStorage.setItem(PA_CONFIG.ai.storageKeys.consent, '1'); } catch (err) { /* ข้าม */ } }
+  if (ok) { try { localStorage.setItem(sys.config.ai.storageKeys.consent, '1'); } catch (err) { /* ข้าม */ } }
   return ok;
 }
 
@@ -310,8 +318,9 @@ async function paAiRunFields(btn, specs, mode) {
 // ปุ่มบนสุด: ร่างเฉพาะช่องส่วนที่ 2 ที่ยังว่าง (5 ช่อง = 1 คำขอ)
 // ช่องงาน 1.1–3.3 ใช้ปุ่มใต้แต่ละข้อ (ข้อละ 4 ช่อง) ไม่ยิงทั้ง 60 ช่องในครั้งเดียวอีกต่อไป
 async function paAiDraftAll(btn) {
+  const sys = docSystem();
   const empty = s => !((document.getElementById(s.el)?.value || '').trim());
-  const pick = PA_CONFIG.ai.prompts.part2.filter(empty);
+  const pick = sys.config.ai.prompts.part2.filter(empty);
   if (!pick.length) { showToast('ช่องส่วนที่ 2 มีข้อความครบแล้ว — ใช้ปุ่มปรับสำนวนใต้แต่ละช่อง หรือปุ่มของแต่ละข้อในส่วนงานตามมาตรฐานตำแหน่งได้'); return; }
   await paAiRunFields(btn, pick, 'write');
 }
@@ -326,37 +335,41 @@ const PA_AI_ICON = `<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="cur
 //   ยังเป็นเอกสารใหม่ → สำรองในเครื่อง แล้วเก็บเข้าเอกสารเมื่อกดบันทึก · เอกสารใหม่ถัดไปจะหยิบบริบทล่าสุดมาให้แก้ต่อ
 // ------------------------------------------------------------------
 function paAiCtxValues() {
+  const sys = docSystem();
   const v = {};
-  Object.keys(PA_CONFIG.aiCtx.fields).forEach(k => { v[k] = (document.getElementById('pa-ctx-' + k)?.value || '').trim().slice(0, PA_CONFIG.aiCtx.maxLen[k]); });
+  Object.keys(sys.config.aiCtx.fields).forEach(k => { v[k] = (document.getElementById('pa-ctx-' + k)?.value || '').trim().slice(0, sys.config.aiCtx.maxLen[k]); });
   return v;
 }
 
 function paAiCtxLoadLocal() {
+  const sys = docSystem();
   try {
-    const o = JSON.parse(localStorage.getItem(PA_CONFIG.ai.storageKeys.ctx) || 'null');
+    const o = JSON.parse(localStorage.getItem(sys.config.ai.storageKeys.ctx) || 'null');
     return o && typeof o === 'object' ? o : null;
   } catch (err) { return null; }
 }
 
 // เอกสารใหม่ที่ยังไม่มีบริบท → หยิบจากเอกสารล่าสุดที่มี (รายการเรียงใหม่→เก่า) หรือที่สำรองในเครื่อง · ทำครั้งเดียวต่อเอกสาร
 function paAiSeedCtx(d) {
-  if (PAState.docId || d._ctxSeeded || paAiCtxCount(d.aiCtx || {})) return;
+  const sys = docSystem();
+  if (sys.state.docId || d._ctxSeeded || paAiCtxCount(d.aiCtx || {})) return;
   d._ctxSeeded = true; // ขึ้นต้น _ → paSave ตัดทิ้ง
-  const last = (PAState.list || []).find(x => x.aiCtx && paAiCtxCount(x.aiCtx));
+  const last = (sys.state.list || []).find(x => x.aiCtx && paAiCtxCount(x.aiCtx));
   const src = last ? last.aiCtx : paAiCtxLoadLocal();
   if (!src) return;
   d.aiCtx = {};
-  Object.entries(PA_CONFIG.aiCtx.maxLen).forEach(([k, n]) => { d.aiCtx[k] = String(src[k] || '').slice(0, n); });
+  Object.entries(sys.config.aiCtx.maxLen).forEach(([k, n]) => { d.aiCtx[k] = String(src[k] || '').slice(0, n); });
 }
 
 let paAiCtxTimer = null;
 async function paAiCtxSave(statusEl) {
+  const sys = docSystem();
   clearTimeout(paAiCtxTimer);
   paAiCtxTimer = null;
   const v = paAiCtxValues();
-  PAState.doc.aiCtx = v;
-  try { localStorage.setItem(PA_CONFIG.ai.storageKeys.ctx, JSON.stringify(v)); } catch (err) { /* ใช้ storage ไม่ได้ — ข้าม */ }
-  const uid = AppState.user?.uid, id = PAState.docId;
+  sys.state.doc.aiCtx = v;
+  try { localStorage.setItem(sys.config.ai.storageKeys.ctx, JSON.stringify(v)); } catch (err) { /* ใช้ storage ไม่ได้ — ข้าม */ }
+  const uid = AppState.user?.uid, id = sys.state.docId;
   if (!id || !uid) { if (statusEl) statusEl.textContent = 'จะเก็บกับเอกสารเมื่อกดบันทึก'; return; }
   try {
     await paRef(uid, id).update({ aiCtx: v });
@@ -368,11 +381,12 @@ async function paAiCtxSave(statusEl) {
 }
 
 // การ์ดพับได้ "บริบทงานของฉัน" — เปิดไว้เมื่อยังว่าง · พับเมื่อกรอกแล้ว
-function paAiCtxCount(c) { return Object.keys(PA_CONFIG.aiCtx.fields).filter(k => String(c[k] || '').trim()).length; }
+function paAiCtxCount(c) { const sys = docSystem(); return Object.keys(sys.config.aiCtx.fields).filter(k => String(c[k] || '').trim()).length; }
 
 function paAiCtxHtml(c) {
-  const n = paAiCtxCount(c), total = Object.keys(PA_CONFIG.aiCtx.fields).length;
-  const L = PA_CONFIG.aiCtx.fields, mx = PA_CONFIG.aiCtx.maxLen;
+  const sys = docSystem();
+  const n = paAiCtxCount(c), total = Object.keys(sys.config.aiCtx.fields).length;
+  const L = sys.config.aiCtx.fields, mx = sys.config.aiCtx.maxLen;
   const one = (k, ph) => `<div class="field"><label for="pa-ctx-${k}">${L[k]}</label><input id="pa-ctx-${k}" type="text" maxlength="${mx[k]}"${k === 'rooms' || k === 'students' ? ' inputmode="numeric"' : ''} value="${escapeHtml(c[k] || '')}" placeholder="${ph}"></div>`;
   const many = (k, ph) => `<div class="field"><label for="pa-ctx-${k}">${L[k]}</label><textarea id="pa-ctx-${k}" rows="2" maxlength="${mx[k]}" placeholder="${ph}">${escapeHtml(c[k] || '')}</textarea></div>`;
   return `<details class="pa-ai-ctx"${n ? '' : ' open'}>
@@ -386,9 +400,10 @@ function paAiCtxHtml(c) {
 }
 
 function paAiMount(view, form) {
+  const sys = docSystem();
   if (!form || form.dataset.paAi) return;
   form.dataset.paAi = '1';
-  paAiSeedCtx(PAState.doc);
+  paAiSeedCtx(sys.state.doc);
 
   // 1) การ์ดบนสุด: อธิบายสั้นๆ + ร่างส่วนที่ 2
   const top = document.createElement('div');
@@ -405,19 +420,19 @@ function paAiMount(view, form) {
       <li>เสนอให้ตรวจก่อนใช้เสมอ ไม่เขียนทับช่องที่กรอกแล้ว และไม่บันทึกให้เอง</li>
       <li>ปุ่มนี้ร่างส่วนที่ 2 ที่ว่าง · งานข้อ 1.1–3.3 กดปุ่มใต้แต่ละข้อ</li>
     </ul>
-    ${paAiCtxHtml(PAState.doc.aiCtx || {})}
+    ${paAiCtxHtml(sys.state.doc.aiCtx || {})}
     <div class="field pa-ai-model">
       <label for="pa-ai-model">โมเดล AI</label>
-      <select id="pa-ai-model">${PA_CONFIG.ai.models.map(m => `<option value="${m.id}"${m.id === paAiModelId() ? ' selected' : ''}>${m.label}</option>`).join('')}</select>
-      <div class="field-hint" data-model-hint>${escapeHtml((PA_CONFIG.ai.models.find(m => m.id === paAiModelId()) || {}).hint || '')}</div>
+      <select id="pa-ai-model">${sys.config.ai.models.map(m => `<option value="${m.id}"${m.id === paAiModelId() ? ' selected' : ''}>${m.label}</option>`).join('')}</select>
+      <div class="field-hint" data-model-hint>${escapeHtml((sys.config.ai.models.find(m => m.id === paAiModelId()) || {}).hint || '')}</div>
     </div>
     <div class="pa-ai-warn">อย่าพิมพ์ชื่อหรือข้อมูลที่ระบุตัวนักเรียนลงในช่อง</div>
     <button type="button" class="btn btn-primary" data-pa-ai="all">${PA_AI_ICON} ร่างส่วนที่ 2 ที่ว่าง</button>`;
   form.insertBefore(top, form.firstChild);
   top.querySelector('#pa-ai-model').addEventListener('change', e => {
-    const m = PA_CONFIG.ai.models.find(x => x.id === e.target.value);
+    const m = sys.config.ai.models.find(x => x.id === e.target.value);
     if (!m) return;
-    try { localStorage.setItem(PA_CONFIG.ai.storageKeys.model, m.id); } catch (err) { /* ใช้ storage ไม่ได้ — มีผลเฉพาะครั้งนี้ */ }
+    try { localStorage.setItem(sys.config.ai.storageKeys.model, m.id); } catch (err) { /* ใช้ storage ไม่ได้ — มีผลเฉพาะครั้งนี้ */ }
     top.querySelector('[data-model-hint]').textContent = m.hint;
     showToast('ใช้ ' + m.label + ' แล้ว');
   });
@@ -426,7 +441,7 @@ function paAiMount(view, form) {
   const saveEl = ctxBox?.querySelector('[data-ctx-save]');
   ctxBox?.addEventListener('input', () => {
     const cnt = ctxBox.querySelector('[data-ctx-count]');
-    if (cnt) cnt.textContent = `กรอกแล้ว ${paAiCtxCount(paAiCtxValues())}/${Object.keys(PA_CONFIG.aiCtx.fields).length}`;
+    if (cnt) cnt.textContent = `กรอกแล้ว ${paAiCtxCount(paAiCtxValues())}/${Object.keys(sys.config.aiCtx.fields).length}`;
     if (saveEl) saveEl.textContent = 'กำลังบันทึก…';
     clearTimeout(paAiCtxTimer);
     paAiCtxTimer = setTimeout(() => paAiCtxSave(saveEl), 700);
@@ -434,7 +449,7 @@ function paAiMount(view, form) {
   ctxBox?.addEventListener('focusout', () => { if (paAiCtxTimer) paAiCtxSave(saveEl); }); // ออกจากช่อง = บันทึกทันที ไม่รอ
 
   // 2) ใต้ช่องส่วนที่ 2
-  PA_CONFIG.ai.prompts.part2.forEach(f => {
+  sys.config.ai.prompts.part2.forEach(f => {
     const ta = form.querySelector('#' + f.el);
     if (!ta) return;
     ta.closest('.field').insertAdjacentHTML('beforeend', `<div class="pa-ai-row">
@@ -463,7 +478,7 @@ function paAiMount(view, form) {
     const has = s => !!(document.getElementById(s.el)?.value || '').trim();
     if (a === 'all') { paAiDraftAll(b); return; }
     if (a.startsWith('f-')) {
-      const mode = a.slice(2), spec = PA_CONFIG.ai.prompts.part2.find(s => s.key === b.dataset.key);
+      const mode = a.slice(2), spec = sys.config.ai.prompts.part2.find(s => s.key === b.dataset.key);
       if (!spec) return;
       if (mode !== 'write' && !has(spec)) { showToast('ช่องนี้ยังว่าง — กด “ช่วยเขียน/เติม” ก่อน'); return; }
       paAiRunFields(b, [spec], mode);

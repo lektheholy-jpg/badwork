@@ -510,14 +510,15 @@ const LAZY_MODULES = {
   profile: 'js/profile.js', // หน้าข้อมูลส่วนตัวของครู (ตำแหน่ง/สังกัด/ผู้ลงนามในเอกสาร)
   timetable: 'js/timetable.js', // แท็บตารางสอนในหน้าข้อมูลส่วนตัว
   records: 'js/records.js', // แท็บอบรม/เกียรติบัตร/รางวัล (รูปย่อใน Firestore + ต้นฉบับใน Storage)
-  // กลุ่ม Personal Agreement — ต้องโหลดตามลำดับนี้ (pa-config.js แล้วจึง pa.js) ใช้ loadModules(LAZY_BUNDLES.pa)
+  // กลุ่ม Personal Agreement — ต้องโหลดตามลำดับนี้ (doc-system.js → pa-config.js → pa.js …) ใช้ loadModules(LAZY_BUNDLES.pa)
+  'doc-system': 'js/doc-system.js', // บริบทของระบบเอกสาร: config + state + collection ต่อระบบ (ใช้ร่วมกับระบบเอกสารอื่นในอนาคต)
   'pa-config': 'js/pa-config.js',
   pa: 'js/pa.js',
   'pa-ai': 'js/pa-ai.js',
   'pa-report': 'js/pa-report.js',
   'pa-rpt': 'js/pa-rpt.js',
 };
-const LAZY_BUNDLES = { pa: ['pa-config', 'pa', 'pa-ai', 'pa-report', 'pa-rpt'] };
+const LAZY_BUNDLES = { pa: ['doc-system', 'pa-config', 'pa', 'pa-ai', 'pa-report', 'pa-rpt'] };
 // โหลดหลายโมดูลทีละไฟล์ตามลำดับ (สคริปต์ที่แทรกด้วย JS ไม่รับประกันลำดับถ้าโหลดพร้อมกัน)
 async function loadModules(names) { for (const n of [].concat(names)) await loadModule(n); }
 const _modulePromises = {};

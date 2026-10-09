@@ -1,10 +1,12 @@
-// ทดสอบกลุ่มหน้า Personal Agreement (js/pa-config.js + pa.js + pa-ai.js + pa-report.js + pa-rpt.js) ด้วย jsdom
+// ทดสอบกลุ่มหน้า Personal Agreement (js/doc-system.js + pa-config.js + pa.js + pa-ai.js + pa-report.js + pa-rpt.js) ด้วย jsdom
 // วิธีรัน: node tests/pa-config.test.js   (หรือ npm run test:pa)
 //
 // ทำอะไร
 //   1) ตรวจโครง PA_CONFIG: ชื่อ collection ตรงกับ firestore.rules · แท็บไม่ซ้ำ · ตาราง scope ของ AI ครบทุกข้อ · ฯลฯ
 //   2) โหลดกลุ่ม PA ตามลำดับ LAZY_BUNDLES.pa จริง แล้วรันจุดตรวจ (probe) ~20 จุด: เรนเดอร์ฟอร์ม/รายการ/ตัวอย่างพิมพ์/แท็บ ·
 //      พร้อต์ที่ส่งให้ AI · path ที่ยิง Firestore · key ที่เขียน localStorage — แล้วเทียบ SHA-1 ของผลลัพธ์กับ tests/pa-golden.json
+//   3) ระบบเอกสารหลายระบบ (js/doc-system.js): ลงทะเบียนระบบที่สองที่ชื่อ collection ต่างกัน แล้วตรวจว่า state ไม่ปนกัน ·
+//      collection อ่านจาก config ของระบบที่ถืออยู่ · งานที่ค้างระหว่างสลับระบบเขียนลง state ของระบบที่เริ่มงานเท่านั้น
 //   golden สร้างจากโค้ดก่อนรีแฟกเตอร์ (ก่อนมี PA_CONFIG) → ผ่าน = พฤติกรรมของ PA เหมือนเดิมทุกตัวอักษร
 //   ใช้เป็นตาข่ายนิรภัยตอนรีแฟกเตอร์ขั้นต่อไป (แยก state / ย้ายไฟล์ core) — ถ้าเปลี่ยนพฤติกรรมตั้งใจ ให้รันใหม่ด้วย PA_UPDATE=1
 //
@@ -108,6 +110,60 @@ function makeEnv() {
 }
 
 // ------------------------------------------------------------------
+// จุดตรวจระบบเอกสารหลายระบบ (ไม่เข้า golden — เป็นการยืนยันตรงๆ ในฝั่ง node)
+//   ฟังก์ชันนี้ถูกส่งเข้าไปรันในสภาพแวดล้อมจำลอง (ใช้ได้เฉพาะตัวแปร global ของแอป ห้ามอ้างตัวแปรของไฟล์นี้)
+// ------------------------------------------------------------------
+// <SYS_PROBE>
+async function sysProbe() {
+  const out = {};
+  const thrown = f => { try { f(); return null; } catch (e) { return String(e.message); } };
+  const pa = docSystem('pa');
+  const initial = JSON.stringify([pa.state, pa.rptState]);
+  // ระบบที่สอง: โครงเดียวกับ PA แต่ id · ชื่อหัวเรื่อง · ชื่อ collection ต่างกัน
+  const cfg2 = Object.assign({}, PA_CONFIG, { id: 'idp', title: 'ระบบที่สอง (ทดสอบ)', collections: { agreements: 'idp_plans', reports: 'idp_reports' } });
+  const idp = registerDocSystem(cfg2);
+  out.registered = Object.keys(DOC_SYSTEMS).sort();
+  out.firstIsActive = docSystem().id;
+
+  // state แยกกัน และเริ่มจากค่าเริ่มต้นเสมอ
+  out.distinct = pa.state !== idp.state && pa.rptState !== idp.rptState;
+  out.freshDefaults = JSON.stringify([idp.state, idp.rptState]) === initial;
+  pa.state.docId = 'x'; pa.state.tab = 'rpt'; pa.rptState.view = 'form';
+  out.noLeak = [idp.state.docId, idp.state.tab, idp.rptState.view];
+  pa.state.docId = null; pa.state.tab = 'agreement'; pa.rptState.view = 'list';
+
+  // collection อ่านจาก config ของระบบที่กำลังแสดง
+  dblog.length = 0; docActivate('idp'); await paLoadList(); await parptLoadList(); const idpLog = dblog.slice();
+  dblog.length = 0; docActivate('pa'); await paLoadList(); await parptLoadList(); const paLog = dblog.slice();
+  out.routing = { idp: idpLog, pa: paLog };
+
+  // งานที่ค้าง: เริ่มบันทึกตอน PA แสดงอยู่ แล้วสลับไประบบอื่นก่อนบันทึกเสร็จ
+  dblog.length = 0; docActivate('pa');
+  const pending = paSave({ fiscalYear: '2569' });
+  docActivate('idp');
+  const newId = await pending;
+  out.inflight = { newId, paDocId: pa.state.docId, idpDocId: idp.state.docId, db: dblog.filter(x => /:add:/.test(x)) };
+  pa.state.docId = null;
+
+  // หัวเรื่องหน้าอ่านจาก config ของระบบที่กำลังแสดง
+  docActivate('idp'); paBuildShell(); const idpShell = document.getElementById('view').innerHTML;
+  docActivate('pa'); paBuildShell(); const paShell = document.getElementById('view').innerHTML;
+  out.titles = [idpShell.includes(cfg2.title), idpShell.includes(PA_CONFIG.title), paShell.includes(PA_CONFIG.title), paShell.includes(cfg2.title)];
+
+  out.errors = [
+    thrown(() => docSystem('nope')),
+    thrown(() => docActivate('nope')),
+    thrown(() => idp.col('nope', 'u1')),
+    thrown(() => registerDocSystem(cfg2)),
+    thrown(() => createDocSystem({})),
+    thrown(() => createDocSystem({ id: 'x', collections: {}, tabs: [] })),
+  ];
+  out.activeAfter = docSystem().id;
+  return JSON.stringify(out);
+}
+// </SYS_PROBE>
+
+// ------------------------------------------------------------------
 // จุดตรวจ — แต่ละจุดคืนข้อความ (ถูกแฮชเทียบกับ golden)
 //   cfg() รองรับโค้ดก่อนรีแฟกเตอร์ (PA_TABS, PA_AI_* ...) ไว้ใช้สร้าง golden ครั้งแรก · โค้ดปัจจุบันอ่านจาก PA_CONFIG
 // ------------------------------------------------------------------
@@ -149,30 +205,30 @@ globalThis.__probes = {
   'fn.aiCtxHtml': () => paAiCtxHtml({}) + '\\n----\\n' + paAiCtxHtml(clone(PA_FIXTURE).aiCtx) + '\\n----\\n' + J([paAiCtxCount({}), paAiCtxCount(PA_FIXTURE.aiCtx)]),
 
   // --- หน้าจอ ---
-  'ui.shell': () => { PAState.tab = 'rpt'; paBuildShell(); return view(); },
-  'ui.list': async () => { PAState.tab = 'agreement'; PAState.view = 'list'; PAState.list = null; await renderPAListView(); await settle(); return document.getElementById('pa-tab-body')?.innerHTML ?? view(); },
-  'ui.formEdit': async () => { PAState.tab = 'agreement'; PAState.view = 'form'; PAState.docId = 'a1'; PAState.doc = clone(PA_FIXTURE); PAState.doc.owner = OWNER_FIXTURE; await renderPAFormView(); await settle(); return document.getElementById('pa-tab-body').innerHTML; },
-  'ui.formEditSubmitted': async () => { PAState.tab = 'agreement'; PAState.view = 'form'; PAState.docId = 'a1'; PAState.doc = { ...clone(PA_FIXTURE), status: 'submitted', owner: OWNER_FIXTURE }; await renderPAFormView(); await settle(); return document.getElementById('pa-tab-body').innerHTML; },
-  'ui.formNew': async () => { PAState.tab = 'agreement'; PAState.view = 'form'; PAState.docId = null; PAState.doc = paNormalize({ fiscalYear: '2569', classroomTypes: { basic: true }, status: 'draft' }); await renderPAFormView(); await settle(); return document.getElementById('pa-tab-body').innerHTML + '\\n----\\n' + J(PAState.doc.load); },
-  'ui.formLegacy': async () => { PAState.tab = 'agreement'; PAState.view = 'form'; PAState.docId = 'a0'; PAState.doc = clone(PA_LEGACY_FIXTURE); await renderPAFormView(); await settle(); return document.getElementById('pa-tab-body').innerHTML; },
-  'ui.collect': async () => { PAState.tab = 'agreement'; PAState.view = 'form'; PAState.docId = 'a1'; PAState.doc = clone(PA_FIXTURE); await renderPAFormView(); await settle(); paCollectFormData(); return J(PAState.doc); },
-  'ui.reportTab': async () => { PAState.tab = 'report'; PAState.previewId = 'a1'; await renderPAReportView(); await settle(); return document.getElementById('pa-tab-body')?.innerHTML ?? view(); },
-  'ui.rptList': async () => { PAState.tab = 'rpt'; PARptState.view = 'list'; PARptState.list = null; await renderPARptView(); await settle(); return document.getElementById('pa-tab-body')?.innerHTML ?? view(); },
-  'ui.rptForm': async () => { PAState.tab = 'rpt'; PARptState.view = 'form'; PARptState.docId = 'r1'; PARptState.doc = parptNormalize(clone(RPT_FIXTURE)); await renderPARptView(); await settle(); const h = document.getElementById('pa-tab-body')?.innerHTML ?? view(); parptCollect(); return h + '\\n----\\n' + J(PARptState.doc); },
-  'ui.rptPreview': async () => { PAState.tab = 'rptprev'; PARptState.previewId = 'r1'; await renderPARptPreviewView(); await settle(); return document.getElementById('pa-tab-body')?.innerHTML ?? view(); },
+  'ui.shell': () => { docSystem('pa').state.tab = 'rpt'; paBuildShell(); return view(); },
+  'ui.list': async () => { docSystem('pa').state.tab = 'agreement'; docSystem('pa').state.view = 'list'; docSystem('pa').state.list = null; await renderPAListView(); await settle(); return document.getElementById('pa-tab-body')?.innerHTML ?? view(); },
+  'ui.formEdit': async () => { docSystem('pa').state.tab = 'agreement'; docSystem('pa').state.view = 'form'; docSystem('pa').state.docId = 'a1'; docSystem('pa').state.doc = clone(PA_FIXTURE); docSystem('pa').state.doc.owner = OWNER_FIXTURE; await renderPAFormView(); await settle(); return document.getElementById('pa-tab-body').innerHTML; },
+  'ui.formEditSubmitted': async () => { docSystem('pa').state.tab = 'agreement'; docSystem('pa').state.view = 'form'; docSystem('pa').state.docId = 'a1'; docSystem('pa').state.doc = { ...clone(PA_FIXTURE), status: 'submitted', owner: OWNER_FIXTURE }; await renderPAFormView(); await settle(); return document.getElementById('pa-tab-body').innerHTML; },
+  'ui.formNew': async () => { docSystem('pa').state.tab = 'agreement'; docSystem('pa').state.view = 'form'; docSystem('pa').state.docId = null; docSystem('pa').state.doc = paNormalize({ fiscalYear: '2569', classroomTypes: { basic: true }, status: 'draft' }); await renderPAFormView(); await settle(); return document.getElementById('pa-tab-body').innerHTML + '\\n----\\n' + J(docSystem('pa').state.doc.load); },
+  'ui.formLegacy': async () => { docSystem('pa').state.tab = 'agreement'; docSystem('pa').state.view = 'form'; docSystem('pa').state.docId = 'a0'; docSystem('pa').state.doc = clone(PA_LEGACY_FIXTURE); await renderPAFormView(); await settle(); return document.getElementById('pa-tab-body').innerHTML; },
+  'ui.collect': async () => { docSystem('pa').state.tab = 'agreement'; docSystem('pa').state.view = 'form'; docSystem('pa').state.docId = 'a1'; docSystem('pa').state.doc = clone(PA_FIXTURE); await renderPAFormView(); await settle(); paCollectFormData(); return J(docSystem('pa').state.doc); },
+  'ui.reportTab': async () => { docSystem('pa').state.tab = 'report'; docSystem('pa').state.previewId = 'a1'; await renderPAReportView(); await settle(); return document.getElementById('pa-tab-body')?.innerHTML ?? view(); },
+  'ui.rptList': async () => { docSystem('pa').state.tab = 'rpt'; docSystem('pa').rptState.view = 'list'; docSystem('pa').rptState.list = null; await renderPARptView(); await settle(); return document.getElementById('pa-tab-body')?.innerHTML ?? view(); },
+  'ui.rptForm': async () => { docSystem('pa').state.tab = 'rpt'; docSystem('pa').rptState.view = 'form'; docSystem('pa').rptState.docId = 'r1'; docSystem('pa').rptState.doc = parptNormalize(clone(RPT_FIXTURE)); await renderPARptView(); await settle(); const h = document.getElementById('pa-tab-body')?.innerHTML ?? view(); parptCollect(); return h + '\\n----\\n' + J(docSystem('pa').rptState.doc); },
+  'ui.rptPreview': async () => { docSystem('pa').state.tab = 'rptprev'; docSystem('pa').rptState.previewId = 'r1'; await renderPARptPreviewView(); await settle(); return document.getElementById('pa-tab-body')?.innerHTML ?? view(); },
   'ui.tabs': async () => {
     const seen = [];
-    PAState.nextTab = null; await renderPAPage(); await settle();
+    docSystem('pa').state.nextTab = null; await renderPAPage(); await settle();
     for (const t of [...cfg().tabs.map(x => x[0]), 'nope', 'agreement']) {
       await paSwitchTab(t); await settle();
-      seen.push([t, PAState.tab, [...document.querySelectorAll('#pa-tabs .tab.active')].map(x => x.dataset.tab).join(), (document.getElementById('pa-tab-body')?.innerHTML || '').length]);
+      seen.push([t, docSystem('pa').state.tab, [...document.querySelectorAll('#pa-tabs .tab.active')].map(x => x.dataset.tab).join(), (document.getElementById('pa-tab-body')?.innerHTML || '').length]);
     }
     return J(seen);
   },
 
   // --- AI: พร้อต์ที่ส่งออก (จับที่ paAiGenerate ก่อนถึงเครือข่าย) ---
   'ai.prompts': async () => {
-    PAState.tab = 'agreement'; PAState.view = 'form'; PAState.docId = 'a1'; PAState.doc = clone(PA_FIXTURE); await renderPAFormView(); await settle();
+    docSystem('pa').state.tab = 'agreement'; docSystem('pa').state.view = 'form'; docSystem('pa').state.docId = 'a1'; docSystem('pa').state.doc = clone(PA_FIXTURE); await renderPAFormView(); await settle();
     const got = []; const real = paAiGenerate; paAiGenerate = async p => { got.push(p); return {}; };
     const sets = { part2: cfg().part2.map(f => ({ key: f.key, el: f.el, label: f.label, hint: f.hint })), work: paAiWorkSpecs(['1.1', '2.3', '3.3']), all: paAiWorkSpecs(null) };
     document.getElementById('pa-method').value = '1. ข้อความที่พิมพ์ค้าง';
@@ -181,22 +237,22 @@ globalThis.__probes = {
     return got.join('\\n=====\\n');
   },
   'ai.ctxStorage': async () => {
-    PAState.tab = 'agreement'; PAState.view = 'form'; PAState.docId = 'a1'; PAState.doc = clone(PA_FIXTURE); await renderPAFormView(); await settle();
+    docSystem('pa').state.tab = 'agreement'; docSystem('pa').state.view = 'form'; docSystem('pa').state.docId = 'a1'; docSystem('pa').state.doc = clone(PA_FIXTURE); await renderPAFormView(); await settle();
     resetDb();
     const sel = document.getElementById('pa-ai-model'); const out = [paAiModelId()];
     sel.value = sel.options[sel.options.length - 1].value; sel.dispatchEvent(new Event('change')); out.push(paAiModelId(), document.querySelector('[data-model-hint]').textContent);
     document.getElementById('pa-ctx-level').value = 'ม.3'; await paAiCtxSave(null); out.push(J(paAiCtxLoadLocal()));
-    PAState.docId = null; await paAiCtxSave(null);
+    docSystem('pa').state.docId = null; await paAiCtxSave(null);
     return J([out, lslog.slice(), dblog.slice(), toasts.slice()]);
   },
 
   // --- Firestore: path และฟิลด์ที่เขียน ---
   'db.paths': async () => {
     resetDb();
-    PAState.docId = null; await paLoadList(); await paSave({ ...clone(PA_FIXTURE), id: 'x', createdAt: 1, _tmp: 1 });
-    PAState.docId = 'a1'; await paSave(clone(PA_FIXTURE)); await paDelete('a1');
-    PARptState.docId = null; await parptLoadList(); await parptSave({ ...clone(RPT_FIXTURE), id: 'y', _tmp: 1 });
-    PARptState.docId = 'r1'; await parptSave(clone(RPT_FIXTURE)); await parptDelete('r1');
+    docSystem('pa').state.docId = null; await paLoadList(); await paSave({ ...clone(PA_FIXTURE), id: 'x', createdAt: 1, _tmp: 1 });
+    docSystem('pa').state.docId = 'a1'; await paSave(clone(PA_FIXTURE)); await paDelete('a1');
+    docSystem('pa').rptState.docId = null; await parptLoadList(); await parptSave({ ...clone(RPT_FIXTURE), id: 'y', _tmp: 1 });
+    docSystem('pa').rptState.docId = 'r1'; await parptSave(clone(RPT_FIXTURE)); await parptDelete('r1');
     await paReportLoadList(); await parptPullAgreement(parptNormalize({ fiscalYear: '2569' }));
     return dblog.join('\\n');
   },
@@ -223,7 +279,20 @@ globalThis.__probes = {
     const stray = ['js/pa.js', 'js/pa-ai.js', 'js/pa-rpt.js', 'js/pa-report.js'].flatMap(f => legacy.filter(n => new RegExp('\\b' + n + '\\b').test(read(f))).map(n => f + ':' + n))
       .concat(['js/pa.js', 'js/pa-ai.js', 'js/pa-rpt.js'].filter(f => /PA_AI\./.test(read(f)) || /'pa_(agreements|reports)'/.test(read(f))).map(f => f + ':literal'));
     ok(stray.length === 0, 'ไม่มีค่าคงที่ PA เดิมหรือชื่อ collection ค้างอยู่นอก PA_CONFIG', stray.join(', '));
-    ok(bundleFiles()[0] === 'js/pa-config.js', 'pa-config.js ถูกโหลดก่อน pa.js ใน LAZY_BUNDLES.pa');
+    ok(bundleFiles()[0] === 'js/doc-system.js' && bundleFiles()[1] === 'js/pa-config.js' && bundleFiles()[2] === 'js/pa.js', 'ลำดับโหลด LAZY_BUNDLES.pa: doc-system.js → pa-config.js → pa.js');
+    // ตัดคอมเมนต์ก่อนตรวจ — คอมเมนต์อ้างชื่อเดิมเพื่ออธิบายได้ แต่โค้ดห้ามใช้
+    // ข้อความแจ้ง error ที่บอกผู้ใช้ว่าให้แก้รุ่นที่ไหน (pa-ai.js) เป็นข้อความ ไม่ใช่การอ้างค่า — ยกเว้นประโยคนี้ประโยคเดียว
+    const code = f => read(f).replace('js/pa-config.js (PA_CONFIG.ai.models)', '').replace(/^\s*\/\/.*$/gm, '').replace(/\s\/\/ .*$/gm, '');
+    const jsFiles = fs.readdirSync(path.join(ROOT, 'js')).filter(f => f.endsWith('.js')).map(f => 'js/' + f);
+    const oldState = jsFiles.filter(f => /\b(PAState|PARptState)\b/.test(code(f)));
+    ok(oldState.length === 0, 'ไม่มี PAState / PARptState (global เดี่ยว) เหลือในโค้ด — state อยู่ที่ระบบเอกสาร (sys.state / sys.rptState)', oldState.join(', '));
+    const cfgUse = jsFiles.filter(f => f !== 'js/pa-config.js' && /\bPA_CONFIG\b/.test(code(f)));
+    ok(cfgUse.length === 0, 'PA_CONFIG ถูกอ้างโดยตรงเฉพาะใน js/pa-config.js — ไฟล์อื่นอ่านผ่าน sys.config', cfgUse.join(', '));
+    const colLit = jsFiles.filter(f => f !== 'js/pa-config.js' && /pa_(agreements|reports)/.test(code(f)));
+    ok(colLit.length === 0, 'ชื่อ collection ไม่ถูกเขียนตรงในโค้ดนอก pa-config.js — อ่านผ่าน sys.col(kind, uid)', colLit.join(', '));
+    // ไฟล์ PA ไม่ต่อ db.collection('users')... เอง ยกเว้นอ่าน 'records' (อบรม/เกียรติบัตร ของแอปหลัก ไม่ใช่ collection ของระบบเอกสาร) ที่ pa-rpt.js จุดเดียว
+    const direct = ['js/pa.js', 'js/pa-ai.js', 'js/pa-report.js', 'js/pa-rpt.js'].flatMap(f => (code(f).match(/collection\(\s*['"`]users['"`]\s*\)[^;]*/g) || []).map(m => f + ': ' + m.replace(/\s+/g, ' ').slice(0, 60)));
+    ok(direct.length === 1 && /^js\/pa-rpt\.js: .*\.collection\('records'\)/.test(direct[0]), 'ไฟล์ PA ไม่ต่อ db.collection(\'users\')... เอง — collection ของระบบเอกสารผ่าน sys.col เท่านั้น (ยกเว้นอ่าน records จุดเดียว)', direct.join(' | '));
   } else console.log('  (ไม่มี js/pa-config.js — โค้ดก่อนรีแฟกเตอร์ ข้ามส่วนนี้)');
 
   console.log('จุดตรวจพฤติกรรม (เทียบ golden)');
@@ -250,6 +319,24 @@ globalThis.__probes = {
     const gold = JSON.parse(fs.readFileSync(GOLDEN, 'utf8'));
     for (const k of Object.keys(gold)) ok(hashes[k] === gold[k], `${k} เหมือนเดิม`);
     ok(Object.keys(hashes).every(k => k in gold), 'ไม่มีจุดตรวจใหม่ที่ยังไม่อยู่ใน golden', Object.keys(hashes).filter(k => !(k in gold)).join(', '));
+  }
+
+  // ---- ระบบเอกสารหลายระบบ (สภาพแวดล้อมใหม่ ไม่ปนกับจุดตรวจด้านบน) ----
+  console.log('ระบบเอกสารหลายระบบ (js/doc-system.js)');
+  const env3 = makeEnv();
+  let R;
+  try { R = JSON.parse(await vm.runInContext('(' + sysProbe.toString() + ')()', env3)); } catch (e) { ok(false, 'รันจุดตรวจระบบเอกสารไม่ผ่าน', e && e.stack || e); }
+  if (R) {
+    ok(JSON.stringify(R.registered) === '["idp","pa"]' && R.firstIsActive === 'pa', 'ลงทะเบียนได้หลายระบบ · ระบบแรก (pa) เป็นระบบที่กำลังแสดงจนกว่าจะ activate ระบบอื่น');
+    ok(R.distinct && R.freshDefaults, 'ทุกระบบได้ state คนละออบเจ็กต์ และเริ่มจากค่าเริ่มต้นเดียวกับ PAState/PARptState เดิม');
+    ok(JSON.stringify(R.noLeak) === '[null,"agreement","list"]', 'แก้ state ของ pa ไม่กระทบ state ของระบบอื่น', JSON.stringify(R.noLeak));
+    const has = (log, n) => log.includes('collection:' + n);
+    ok(has(R.routing.idp, 'idp_plans') && has(R.routing.idp, 'idp_reports') && !R.routing.idp.some(x => /pa_/.test(x)), 'ระบบ idp อ่าน/เขียน idp_plans · idp_reports ตาม config ของตัวเอง (ไม่แตะ pa_*)', R.routing.idp.join(' '));
+    ok(has(R.routing.pa, 'pa_agreements') && has(R.routing.pa, 'pa_reports') && !R.routing.pa.some(x => /idp_/.test(x)), 'ระบบ pa ใช้ pa_agreements · pa_reports ตาม config ของตัวเอง (ไม่แตะ idp_*)', R.routing.pa.join(' '));
+    ok(R.inflight.newId === 'new1' && R.inflight.paDocId === 'new1' && R.inflight.idpDocId === null && R.inflight.db.join() === 'pa_agreements:add:createdAt,fiscalYear,updatedAt', 'บันทึกที่ค้างระหว่างสลับระบบ เขียนลง state/collection ของระบบที่เริ่มงาน', JSON.stringify(R.inflight));
+    ok(JSON.stringify(R.titles) === '[true,false,true,false]', 'หัวเรื่องหน้าอ่านจาก config ของระบบที่กำลังแสดง', JSON.stringify(R.titles));
+    ok(R.errors.every(m => typeof m === 'string' && m.length) && /nope/.test(R.errors[0]) && /nope/.test(R.errors[2]), 'id/kind ที่ไม่รู้จัก · ลงทะเบียนซ้ำ · config ไม่ครบ → error ที่อ่านรู้เรื่อง', JSON.stringify(R.errors));
+    ok(R.activeAfter === 'pa', 'activate กลับ pa แล้ว docSystem() คืน pa');
   }
 
   console.log(`\nผลรวม: ผ่าน ${pass}, ไม่ผ่าน ${fail}`);

@@ -97,7 +97,7 @@ const ROUTE_MODULES = { 'report-page': 'report', tools: 'tools', profile: 'profi
 
 function navigate(route) {
   // รายงาน PA ไม่มีปุ่มเมนูแยกแล้ว — เป็นแท็บในหน้า PA (ใช้ได้กับลิงก์/โค้ดเดิมที่ยังเรียก 'pa-report-page')
-  let paTab = null; // PAState อยู่ใน js/pa.js (lazy) — ตั้งค่าหลังโหลดเสร็จ
+  let paTab = null; // state ของหน้า PA อยู่ในระบบเอกสาร 'pa' (js/doc-system.js · lazy) — ตั้งค่าหลังโหลดเสร็จ
   if (route === 'pa-report-page') { paTab = 'report'; route = 'pa-page'; }
   AppState.enterNext = false; // ยกเลิกเฟดที่ค้างจากการเปิดรายวิชา (เช่น วิชาถูกลบแล้วเด้งกลับ)
   AppState.flushScoreSaves?.(); // กันคะแนนหายถ้าเพิ่งพิมพ์คะแนนแล้วรีบกดออกจากหน้าวิชา
@@ -115,7 +115,7 @@ function navigate(route) {
   if (view) showLoading('cat');
   loadModules(mod).then(() => {
     if (AppState.currentRoute !== route) return;
-    if (paTab) PAState.nextTab = paTab;
+    if (paTab) docSystem('pa').state.nextTab = paTab;
     drawRoute(route);
   }).catch(err => {
     console.error(err);
