@@ -13,6 +13,7 @@
     "test:rec": "node tests/records.test.js",
     "test:pa": "node tests/pa-config.test.js",
     "test:worker": "node tests/worker.test.js",
+    "test:priv": "node tests/privacy.test.js",
     "check:sw": "node tools/check-sw.js"
   },
   "devDependencies": {

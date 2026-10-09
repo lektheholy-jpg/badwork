@@ -77,6 +77,9 @@ function docSystem(id) {
   return sys;
 }
 
+// รหัสของทุกระบบที่ลงทะเบียนแล้ว (ใช้ตอนส่งออก/ลบข้อมูลของฉัน — js/privacy.js — ให้ครอบคลุมทุกระบบโดยไม่ต้องรู้ชื่อ collection)
+function docSystemIds() { return Object.keys(DOC_SYSTEMS); }
+
 // ตั้งว่าตอนนี้ระบบไหนกำลังแสดง (เรียกที่จุดเข้าของหน้า) · คืน sys ตัวนั้น
 function docActivate(id) {
   const sys = docSystem(id);

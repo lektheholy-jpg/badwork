@@ -518,7 +518,11 @@ const LAZY_MODULES = {
   'pa-report': 'js/pa-report.js',
   'pa-rpt': 'js/pa-rpt.js',
 };
-const LAZY_BUNDLES = { pa: ['doc-system', 'pa-config', 'pa', 'pa-ai', 'pa-report', 'pa-rpt'] };
+const LAZY_BUNDLES = {
+  pa: ['doc-system', 'pa-config', 'pa', 'pa-ai', 'pa-report', 'pa-rpt'],
+  // เฉพาะ config ของทุกระบบเอกสาร (เบา · ไม่มี UI) — privacy.js ใช้รู้ชื่อ collection · ระบบเอกสารใหม่ต้องเพิ่มไฟล์ config ของตัวเองที่นี่
+  docConfigs: ['doc-system', 'pa-config'],
+};
 // โหลดหลายโมดูลทีละไฟล์ตามลำดับ (สคริปต์ที่แทรกด้วย JS ไม่รับประกันลำดับถ้าโหลดพร้อมกัน)
 async function loadModules(names) { for (const n of [].concat(names)) await loadModule(n); }
 const _modulePromises = {};

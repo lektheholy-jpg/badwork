@@ -4,16 +4,30 @@
 //            users/{uid}/timetable/{ปี}-{ภาค} (ตารางสอนแยกภาคเรียน เช่น 2569-1 · main = แบบเดิม)
 //            users/{uid}/courses/{id}/{assessments,settings,sections}
 //            และ sections/{id}/{students,scores}
+//            users/{uid}/{ชื่อ collection ของทุกระบบเอกสาร} เช่น pa_agreements · pa_reports — ชื่ออ่านจาก config.collections ผ่าน docSystem() ไม่เขียนตรงในไฟล์นี้
 // ==========================================================================
+
+// collection ของทุกระบบเอกสารใต้ users/{uid}/ → [{ name, ref }] · โหลดเฉพาะ config (LAZY_BUNDLES.docConfigs) · โหลดไม่ได้ = throw (ผู้เรียกต้องหยุดก่อนแตะข้อมูล)
+async function _docCollections(uid) {
+  await loadModules(LAZY_BUNDLES.docConfigs);
+  const list = [];
+  docSystemIds().forEach(id => {
+    const sys = docSystem(id);
+    Object.keys(sys.config.collections).forEach(kind => list.push({ name: sys.config.collections[kind], ref: sys.col(kind, uid) }));
+  });
+  return list;
+}
 
 async function _collectAll(uid, onProgress) {
   const userRef = db.collection('users').doc(uid);
   const plain = async (ref) => (await ref.get()).docs.map(d => ({ id: d.id, ...d.data() }));
 
   // อ่านอย่างเดียว จึงขนานได้ปลอดภัย — วิชา/ห้องโหลดพร้อมกันแบบจำกัดจำนวน (mapLimit ใน dashboard.js) ผลเรียงตามลำดับเดิม
-  const [profileSnap, courseSnap, timetable, records] = await Promise.all([userRef.get(), userRef.collection('courses').get(), plain(userRef.collection('timetable')), plain(userRef.collection('records'))]);
+  const docCols = await _docCollections(uid);
+  const [profileSnap, courseSnap, timetable, records, docData] = await Promise.all([userRef.get(), userRef.collection('courses').get(), plain(userRef.collection('timetable')), plain(userRef.collection('records')), Promise.all(docCols.map(c => plain(c.ref)))]);
   // records มีรูปย่อ + ข้อมูลไฟล์ (path/ชื่อ) — ไฟล์ต้นฉบับใน Storage ไม่ได้รวมในไฟล์ส่งออก (เปิดดู/ดาวน์โหลดได้จากแท็บอบรม/เกียรติบัตร)
   const out = { exportedAt: new Date().toISOString(), profile: profileSnap.exists ? profileSnap.data() : null, timetable, records, courses: [] };
+  docCols.forEach((c, i) => { out[c.name] = docData[i]; }); // เอกสารของทุกระบบ (PA ฯลฯ) ใต้ชื่อ collection เดิม
 
   let coursesDone = 0;
   out.courses = await mapLimit(courseSnap.docs, COURSE_LOAD_CONCURRENCY, async (c) => {
@@ -56,13 +70,14 @@ async function exportMyData() {
 function deleteMyAccount() {
   openConfirmModal({
     title: 'ลบบัญชีและข้อมูลทั้งหมด?',
-    body: 'รายวิชา ห้อง นักเรียน และคะแนนทั้งหมดของคุณจะถูกลบถาวร และกู้คืนไม่ได้ แนะนำให้กด "ส่งออกข้อมูลของฉัน" เก็บไว้ก่อน',
+    body: 'รายวิชา ห้อง นักเรียน คะแนน ตารางสอน อบรม/เกียรติบัตร และเอกสารทั้งหมด (เช่น PA) ของคุณจะถูกลบถาวร และกู้คืนไม่ได้ แนะนำให้กด "ส่งออกข้อมูลของฉัน" เก็บไว้ก่อน',
     confirmLabel: 'ลบทั้งหมด',
     danger: true,
     onConfirm: async () => {
       const user = auth.currentUser;
       const userRef = db.collection('users').doc(user.uid);
       try {
+        const docCols = await _docCollections(user.uid); // โหลดก่อนลบอะไรทั้งนั้น — โหลดไม่ได้ = หยุด ไม่ลบบางส่วน
         showToast('กำลังลบข้อมูล...');
         const courseSnap = await userRef.collection('courses').get();
         for (const c of courseSnap.docs) {
@@ -77,6 +92,7 @@ function deleteMyAccount() {
         }
         await deleteCollectionDocs(userRef.collection('courses'));
         await deleteCollectionDocs(userRef.collection('timetable'));
+        for (const c of docCols) await deleteCollectionDocs(c.ref);
         await loadModule('records');
         await recDeleteAllFiles(user.uid); // ไฟล์ต้นฉบับใน Storage — พลาดแล้วหยุดทั้งหมด (ไม่ลบบัญชีทิ้งไฟล์ค้าง)
         await deleteCollectionDocs(userRef.collection('records'));

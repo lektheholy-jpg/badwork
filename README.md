@@ -36,6 +36,8 @@ npm run test:sw          # จำลอง Service Worker + เน็ตเป�
 npm run test:tt          # ตารางสอนแยกภาคเรียน + วิดเจ็ตหน้าแรก
 npm run test:rec         # แท็บอบรม/เกียรติบัตร/รางวัล
 npm run test:pa          # กลุ่มหน้า Personal Agreement: โครง PA_CONFIG + เทียบผลเรนเดอร์/พร้อต์ AI/path Firestore กับ tests/pa-golden.json + ระบบเอกสารหลายระบบไม่ปนกัน (state/collection)
+npm run test:worker      # พร็อกซี Gemini (js/worker.js): ตรวจ token/email_verified · rate limit ต่อ uid · คีย์อยู่ใน header
+npm run test:priv        # ส่งออก/ลบบัญชีครอบคลุมเอกสารทุกระบบ (pa_*) และหยุดก่อนลบถ้าโหลด config ไม่ได้
 ```
 
 - หน้าเว็บโหลด `css/style.min.css` · commit `.min` และ `package-lock.json` ด้วย
@@ -126,7 +128,7 @@ users/{uid}/pa_reports/{docId}               แบบรายงานผล P
 - **profile**: ฟิลด์ตาม `PROFILE_FIELDS` ใน `js/profile.js` (เพิ่ม/ลบต้องแก้ rules `validTeacherProfile` ด้วย) · ดึงไปใช้ `await loadModule('profile')` แล้ว `loadTeacherProfile()` / `profileSummary(p)`
 - **timetable**: เอกสารละภาคเรียน รหัส `{ปีการศึกษา}-{1|2}` (ปี/ภาคอยู่ที่รหัส ไม่มีฟิลด์เพิ่ม จึงไม่ต้องแก้ rules) · เนื้อหา `{ periods: [{start, end}] (≤14 คาบ), entries: [{ id, kind: "class"|"activity", day: 1-5, period, span, code, title, cls, room, hue, courseId }], updatedAt }` · แก้ฟิลด์ใน entry ที่ `ttCleanEntry` + rules `validTimetable` · ดึงไปใช้ `await loadModule('timetable')` แล้ว `loadTimetable()` (ได้ `{ term, periods, entries }` ของภาคเรียนปัจจุบัน) · ตารางแบบเดิม `main` ใช้เป็นตั้งต้นของภาคเรียนปัจจุบันจนกว่าจะบันทึกครั้งแรก (ไม่ลบ/ไม่แก้ main)
 - **PA**: ฟิลด์ระดับบนต้องไม่เกิน 30 ตาม `validDoc` ใน rules · ข้อมูลผู้จัดทำดึงจากโปรไฟล์ ชั่วโมงสอนดึงจากตารางสอน
-- ส่งออก/ลบข้อมูลของฉัน (`js/privacy.js`) ครอบคลุม profile ตารางสอน และวิชา **ยังไม่รวม Personal Agreement (`pa_agreements`) และแบบรายงานผล (`pa_reports`)** — ถ้าเพิ่มคอลเลกชันใหม่ ต้องเพิ่มที่ไฟล์นี้ด้วย
+- ส่งออก/ลบข้อมูลของฉัน (`js/privacy.js`) ครอบคลุม profile ตารางสอน อบรม/เกียรติบัตร วิชา **และเอกสารของทุกระบบเอกสาร (PA ฯลฯ)** — ชื่อ collection อ่านจาก `config.collections` ผ่าน `docSystem()` (โหลดเฉพาะ `LAZY_BUNDLES.docConfigs`) ไม่เขียนชื่อตรงในไฟล์นี้ · **ระบบเอกสารใหม่ = เพิ่มไฟล์ config ของตัวเองใน `LAZY_BUNDLES.docConfigs`** ไม่งั้นข้อมูลของระบบนั้นจะไม่ถูกส่งออก/ลบ · โหลด config ไม่ได้ = หยุดก่อนลบ ไม่ลบบางส่วน · ถ้าเพิ่ม collection ใหม่ที่ไม่ใช่ระบบเอกสาร ต้องเพิ่มที่ไฟล์นี้ + `tests/privacy.test.js`
 
 ### ตารางสอนและวิดเจ็ตหน้าแรก
 
