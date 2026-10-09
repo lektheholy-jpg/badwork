@@ -1,0 +1,6 @@
+ลบไฟล์/โฟลเดอร์เหล่านี้ในโปรเจกต์ของคุณ (ย้ายหรือเลิกใช้แล้ว):
+  js/worker.js            → ย้ายไป worker/worker.js
+  js/wrangler.toml        → ย้ายไป worker/wrangler.toml
+  js/gemini-direct.patch  → patch ถูกใช้ไปแล้ว (pa-ai.js เป็นแบบ REST/พร็อกซีอยู่แล้ว)
+  js/.wrangler/           → โฟลเดอร์แคชของ wrangler (ตอนนี้อยู่ใน .gitignore)
+ถ้าเคย commit ไปแล้ว:  git rm -r --cached js/.wrangler 2>/dev/null; git rm js/worker.js js/wrangler.toml js/gemini-direct.patch

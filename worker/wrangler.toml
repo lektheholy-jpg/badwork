@@ -1,0 +1,16 @@
+name = "badwork-gemini-proxy"
+main = "worker.js"
+compatibility_date = "2025-01-01"
+
+[vars]
+FIREBASE_PROJECT_ID = "mywork-lektheholy"
+# แก้เป็นโดเมนจริงของเว็บ (คั่นด้วย ,) — ตัด localhost ออกตอนใช้งานจริงได้
+ALLOWED_ORIGINS = "https://lektheholy-jpg.github.io"
+# GEMINI_API_KEY ตั้งด้วยคำสั่ง: npx wrangler secret put GEMINI_API_KEY
+
+# จำกัดคำขอต่อผู้ใช้: 20 ครั้ง / 60 วินาที (period รับเฉพาะ 10 หรือ 60) · ปรับ limit ตามการใช้จริง
+[[unsafe.bindings]]
+name = "RATE_LIMITER"
+type = "ratelimit"
+namespace_id = "1001"
+simple = { limit = 20, period = 60 }

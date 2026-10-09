@@ -36,7 +36,7 @@ npm run test:sw          # จำลอง Service Worker + เน็ตเป�
 npm run test:tt          # ตารางสอนแยกภาคเรียน + วิดเจ็ตหน้าแรก
 npm run test:rec         # แท็บอบรม/เกียรติบัตร/รางวัล
 npm run test:pa          # กลุ่มหน้า Personal Agreement: โครง PA_CONFIG + เทียบผลเรนเดอร์/พร้อต์ AI/path Firestore กับ tests/pa-golden.json + ระบบเอกสารหลายระบบไม่ปนกัน (state/collection)
-npm run test:worker      # พร็อกซี Gemini (js/worker.js): ตรวจ token/email_verified · rate limit ต่อ uid · คีย์อยู่ใน header
+npm run test:worker      # พร็อกซี Gemini (worker/worker.js): ตรวจ token/email_verified · rate limit ต่อ uid · คีย์อยู่ใน header
 npm run test:priv        # ส่งออก/ลบบัญชีครอบคลุมเอกสารทุกระบบ (pa_*) และหยุดก่อนลบถ้าโหลด config ไม่ได้
 ```
 
@@ -80,9 +80,23 @@ js/records.js         [lazy] แท็บอบรม/เกียรติบ�
 js/vendor/            xlsx.mini.min.js (โหลดเมื่อนำเข้า/ส่งออกไฟล์)
 tools/                check-inline.js · check-css.js · check-sw.js
 tests/                score-logic.test.js · sw.test.js
+worker/worker.js      Cloudflare Worker: พร็อกซี Gemini (ตรวจ Firebase token · email_verified · rate limit ต่อ uid) — ไม่ใช่ส่วนของแอปหน้าเว็บ ไม่อยู่ใน PRECACHE
+worker/wrangler.toml  ค่า deploy ของ Worker (ALLOWED_ORIGINS · RATE_LIMITER)
 firestore.rules       กฎความปลอดภัย (Firestore)
 storage.rules         กฎความปลอดภัย (Firebase Storage) — วางใน Console → Storage → Rules
 ```
+
+## Deploy พร็อกซี AI (Cloudflare Worker)
+
+```sh
+cd worker
+npx wrangler secret put GEMINI_API_KEY   # คีย์จาก aistudio.google.com/apikey — เก็บเป็น secret ไม่ใส่ในไฟล์
+npx wrangler deploy                      # แล้วนำ URL ที่ได้ไปใส่ PA_CONFIG.ai.proxyUrl (js/pa-config.js)
+```
+
+- แก้ `ALLOWED_ORIGINS` ใน `worker/wrangler.toml` เป็นโดเมนจริงของเว็บ (คั่นด้วย `,`)
+- `RATE_LIMITER` = 20 คำขอ/60 วินาที ต่อผู้ใช้ — ไม่ผูก binding = ไม่จำกัด · หลัง deploy ควรยิงทดสอบจริงว่าเกินโควตาแล้วได้ 429
+- ถ้า GitHub Pages เผยแพร่ทั้ง repo โฟลเดอร์ `worker/` จะถูกเผยแพร่ไปด้วย (ไม่มีความลับในไฟล์ — คีย์เป็น secret ของ Cloudflare) หากไม่ต้องการ ให้เผยแพร่เฉพาะไฟล์แอปด้วย GitHub Actions
 
 ## ธีมและการตั้งค่าหน้าตา
 
@@ -155,7 +169,7 @@ users/{uid}/pa_reports/{docId}               แบบรายงานผล P
   - ชื่อ collection อยู่ที่ `PA_CONFIG.collections` ที่เดียว (ต้องตรง `firestore.rules`) · `tests/pa-config.test.js` ตรวจว่าไม่มี `PAState`/`PARptState`/`PA_CONFIG`/ชื่อ `pa_*` ตรงๆ หลุดออกนอก `pa-config.js`
   - ยังเป็นของ PA เฉพาะ (รอขั้นตอนถัดไป): รหัสแท็บ `'agreement'/'report'/'rpt'/'rptprev'` ใน `paRenderTab` · id ช่องฟอร์มและ HTML ของฟอร์ม · การอ่าน `records` ใน `parptLoadRecordsForYear`
 - `js/pa.js` ฟอร์มตามแบบ PA 1/ส ของ สพฐ. (ส่วนที่ 1: ภาระงาน + งานตามมาตรฐานตำแหน่ง 15 ข้อ · ส่วนที่ 2: ประเด็นท้าทาย) · `js/pa-report.js` ตัวอย่างและพิมพ์/บันทึก PDF
-- `js/pa-ai.js` เรียก Gemini ผ่าน Firebase AI Logic (ไม่มี API key ในโค้ด ป้องกันด้วย App Check + reCAPTCHA) · SDK โหลดตอนกดปุ่ม AI ครั้งแรก · ชื่อรุ่นแก้ที่ `PA_CONFIG.ai.model` (รายชื่อรุ่นที่เลือกได้อยู่ที่ `PA_CONFIG.ai.models`) ใน `js/pa-config.js`
+- `js/pa-ai.js` เรียก Gemini REST ผ่านพร็อกซีของเรา (`PA_CONFIG.ai.proxyUrl` → `worker/worker.js` บน Cloudflare) · แนบ Firebase ID token ให้พร็อกซีตรวจ · **คีย์ Gemini อยู่เป็น secret ที่เซิร์ฟเวอร์ ไม่อยู่ในโค้ดหน้าเว็บ** (`PA_CONFIG.ai.apiKey` ต้องว่างเสมอ — `tests/pa-config.test.js` ตรวจ) · ไม่โหลด SDK เพิ่ม ใช้ `fetch` · ชื่อรุ่นแก้ที่ `PA_CONFIG.ai.model` (รายชื่อที่เลือกได้อยู่ที่ `PA_CONFIG.ai.models`) ใน `js/pa-config.js` · โหมดตรง (ใส่ `apiKey` ในหน้าเว็บ) ยังมีในโค้ดแต่ไม่แนะนำ
 - ปุ่มบนสุดร่างเฉพาะส่วนที่ 2 ที่ว่าง (1 คำขอ) · งานข้อ 1.1–3.3 ใช้ปุ่มใต้แต่ละข้อ (ข้อละ 4 ช่อง) · ไม่เขียนทับช่องที่กรอกแล้ว · ข้อความที่ AI เสนอแสดงในหน้าต่างให้ตรวจก่อนใช้ ไม่บันทึกอัตโนมัติ
 - ประหยัดโควต้า: คำแนะนำช่องงานอยู่ที่ `PA_CONFIG.ai.prompts.workHints` (ส่งครั้งเดียวต่อคำขอ) · จำกัดความยาวเป็นตัวอักษรใน `workHints` / `PA_CONFIG.ai.prompts.part2` · อย่าเพิ่มปุ่มที่ยิงหลายสิบช่องในคำขอเดียว
 - ข้อความผู้ใช้ส่งไปประมวลผลที่ Google · ต้องมีหน้าต่างขอความยินยอมก่อนใช้ครั้งแรก (คีย์ `PA_CONFIG.ai.storageKeys.consent`) · ห้ามกรอกชื่อ/ข้อมูลที่ระบุตัวนักเรียนลงในช่อง
@@ -219,4 +233,4 @@ users/{uid}/pa_reports/{docId}               แบบรายงานผล P
   (อย่าลบ `--bgp-*` — `theme.js` ประกอบชื่อตอนรัน: `'var(--bgp-' + id + ')'`)
 - โลโก้ในหน้าแอปใช้ `assets/icons/logo-128.webp` (PNG 192/512 ยังอยู่สำหรับ manifest / iOS)
 - `css/style.min.css` ถูกสร้างใหม่ด้วยสคริปต์ชั่วคราว (ผลเทียบกับ `style.css` ทีละ declaration ตรงกันทุกค่า) แต่ไม่ได้ผ่าน csso — **รัน `./build-css.sh` หนึ่งครั้งเพื่อให้ `--check` ผ่านและ commit ไฟล์ .min ที่ได้**
-- `pa-ai.js` โหลด Firebase modular SDK 12.17.0 ด้วย `import()` เฉพาะตอนกดปุ่ม AI ครั้งแรก (ไม่กระทบตอนเปิดแอป) — คงไว้เพราะ Firebase AI Logic ไม่มีใน compat SDK
+- (เดิม `pa-ai.js` โหลด Firebase AI Logic SDK ด้วย `import()` — เลิกใช้แล้ว ตอนนี้เรียกผ่านพร็อกซีด้วย `fetch`)

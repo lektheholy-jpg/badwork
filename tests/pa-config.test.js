@@ -173,13 +173,13 @@ const cfg = () => typeof PA_CONFIG !== 'undefined' ? {
   tabs: PA_CONFIG.tabs, classroomTypes: PA_CONFIG.classroomTypes, workItems: PA_CONFIG.workItems, loadLists: PA_CONFIG.loadLists,
   ctxMax: PA_CONFIG.aiCtx.maxLen, ctxFields: PA_CONFIG.aiCtx.fields, system: PA_CONFIG.ai.prompts.system, modes: PA_CONFIG.ai.prompts.modes,
   part2: PA_CONFIG.ai.prompts.part2, workHints: PA_CONFIG.ai.prompts.workHints, scope: PA_CONFIG.ai.prompts.scope, models: PA_CONFIG.ai.models,
-  siteKey: PA_CONFIG.ai.siteKey, sdk: PA_CONFIG.ai.sdk, model: PA_CONFIG.ai.model, timeout: PA_CONFIG.ai.timeout,
+  endpoint: PA_CONFIG.ai.endpoint, model: PA_CONFIG.ai.model, timeout: PA_CONFIG.ai.timeout,
   keys: [PA_CONFIG.ai.storageKeys.model, PA_CONFIG.ai.storageKeys.ctx, PA_CONFIG.ai.storageKeys.consent],
 } : {
   tabs: PA_TABS, classroomTypes: PA_CLASSROOM_TYPES, workItems: PA_WORK_ITEMS, loadLists: PA_LOAD_LISTS,
   ctxMax: PA_CTX_MAX, ctxFields: PA_AI_CTX_FIELDS, system: PA_AI_SYSTEM, modes: PA_AI_MODE_TXT,
   part2: PA_AI_PART2, workHints: PA_AI_WORK_HINTS, scope: PA_AI_SCOPE, models: PA_AI.MODELS,
-  siteKey: PA_AI.SITE_KEY, sdk: PA_AI.SDK, model: PA_AI.MODEL, timeout: PA_AI.TIMEOUT,
+  endpoint: undefined, model: PA_AI.MODEL, timeout: PA_AI.TIMEOUT, // โค้ดก่อนรีแฟกเตอร์ใช้ Firebase AI Logic (ไม่มี endpoint) — สร้าง golden ของ const.aiService จากโค้ดนั้นไม่ได้อีก
   keys: [PA_AI.MODEL_KEY, PA_AI.CTX_KEY, PA_AI.CONSENT_KEY],
 };
 const clone = o => JSON.parse(JSON.stringify(o));
@@ -193,7 +193,8 @@ globalThis.__probes = {
   'const.form': () => J([cfg().classroomTypes, cfg().workItems, cfg().loadLists]),
   'const.aiCtx': () => J([cfg().ctxMax, cfg().ctxFields]),
   'const.aiPrompts': () => J([cfg().system, ['', 'ข้อความเดิม'].map(c => Object.keys(cfg().modes).map(m => cfg().modes[m](c))), cfg().part2, cfg().workHints, cfg().scope]),
-  'const.aiService': () => J([cfg().models, cfg().siteKey, cfg().sdk, cfg().model, cfg().timeout, cfg().keys]),
+  // บริการ AI = Gemini REST ผ่านพร็อกซี (เดิมคือ Firebase AI Logic: siteKey/sdk) · ไม่ใส่ proxyUrl/apiKey ในแฮช — proxyUrl เปลี่ยนตามการ deploy (ตรวจรูปแบบแยกด้านล่าง) และ apiKey ต้องว่างเสมอ
+  'const.aiService': () => J([cfg().models, cfg().endpoint, cfg().model, cfg().timeout, cfg().keys]),
 
   // --- ฟังก์ชันล้วน ---
   'fn.normalize': () => J([paNormalize(clone(PA_FIXTURE)), paNormalize(clone(PA_LEGACY_FIXTURE)), paNormalize({}), paNormalize(null)]),
@@ -319,6 +320,15 @@ globalThis.__probes = {
     const gold = JSON.parse(fs.readFileSync(GOLDEN, 'utf8'));
     for (const k of Object.keys(gold)) ok(hashes[k] === gold[k], `${k} เหมือนเดิม`);
     ok(Object.keys(hashes).every(k => k in gold), 'ไม่มีจุดตรวจใหม่ที่ยังไม่อยู่ใน golden', Object.keys(hashes).filter(k => !(k in gold)).join(', '));
+  }
+
+  // ---- ตั้งค่าบริการ AI: ไม่มีความลับหลุดในโค้ดหน้าเว็บ ----
+  if (/PA_CONFIG/.test(read('js/pa-config.js'))) {
+    const aiCfg = JSON.parse(vm.runInContext('JSON.stringify({ apiKey: PA_CONFIG.ai.apiKey, proxyUrl: PA_CONFIG.ai.proxyUrl, endpoint: PA_CONFIG.ai.endpoint, model: PA_CONFIG.ai.model, ids: PA_CONFIG.ai.models.map(m => m.id) })', env));
+    ok(aiCfg.apiKey === '', 'ai.apiKey ว่าง — ไม่ commit คีย์ลงหน้าเว็บ (ใช้พร็อกซี)', aiCfg.apiKey ? '(มีค่า!)' : '');
+    ok(/^https:\/\/[^\s/]+(\/\S*)?$/.test(aiCfg.proxyUrl || ''), 'ai.proxyUrl เป็น https URL', aiCfg.proxyUrl);
+    ok(!/[?&]key=/i.test(aiCfg.proxyUrl || '') && aiCfg.endpoint === 'https://generativelanguage.googleapis.com/v1beta', 'ไม่มีคีย์ใน URL · endpoint ตรงกับ Gemini API');
+    ok(aiCfg.ids.includes(aiCfg.model) && new Set(aiCfg.ids).size === aiCfg.ids.length, 'รุ่นเริ่มต้นอยู่ในรายการรุ่น และรายการไม่ซ้ำ');
   }
 
   // ---- ระบบเอกสารหลายระบบ (สภาพแวดล้อมใหม่ ไม่ปนกับจุดตรวจด้านบน) ----
