@@ -1105,6 +1105,13 @@ table.sheet tbody tr:nth-child(even) td.grp-sub-total { background: var(--col-co
 @keyframes view-enter-dim { from { opacity: .5; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 #doc-tab-body.tab-swap-dim { animation: view-enter-dim .22s ease-out; }
 #view.view-enter, #rc-body.rc-swap, #course-tab-body.tab-swap, #profile-tab-body.tab-swap, #doc-tab-body.tab-swap { animation: view-enter .22s ease-out; }
+/* เปลี่ยนหน้าตามทิศทาง: เดินหน้าเลื่อนเข้าจากขวา · ย้อนกลับเข้าจากซ้าย (24px + จางเข้า · ใช้แค่ opacity/transform) · iOS มีอนิเมชันย้อนกลับของระบบอยู่แล้ว จึงจางเข้าอย่างเดียว */
+@keyframes view-in-fwd { from { opacity: 0; transform: translateX(24px); } to { opacity: 1; transform: none; } }
+@keyframes view-in-back { from { opacity: 0; transform: translateX(-24px); } to { opacity: 1; transform: none; } }
+@keyframes view-in-fade { from { opacity: 0; } to { opacity: 1; } }
+#view.view-enter-fwd { animation: view-in-fwd .18s ease-out; }
+#view.view-enter-back { animation: view-in-back .18s ease-out; }
+.is-ios #view.view-enter-back { animation: view-in-fade .18s ease-out; }
 #course-tab-body.is-switching, #profile-tab-body.is-switching, #doc-tab-body.is-switching { opacity: .5; pointer-events: none; transition: opacity .15s ease; }
 /* กดเปิดรายวิชาแล้วรอข้อมูล: หน้าเดิมจางลงทันทีให้รู้ว่ารับคำสั่งแล้ว (playViewEnter ถอดออกเมื่อหน้าใหม่มา) */
 #view.view-pending { opacity: .55; pointer-events: none; transition: opacity .15s ease; }
@@ -1141,7 +1148,7 @@ table.sheet tbody tr:nth-child(even) td.grp-sub-total { background: var(--col-co
 .rc-pill { --seg-pill-bg: var(--w, var(--primary)); --seg-pill-shadow: none; }
 .seg-pill { position: absolute; left: 0; top: 0; z-index: 0; border-radius: var(--radius-pill); pointer-events: none; opacity: 0; background: var(--seg-pill-bg, var(--card)); box-shadow: var(--seg-pill-shadow, 0 1px 6px var(--shadow-ink-md)); transition: transform .28s cubic-bezier(.3, .9, .3, 1), width .28s cubic-bezier(.3, .9, .3, 1), height .28s cubic-bezier(.3, .9, .3, 1), background-color .28s ease, opacity .2s ease; }
 .seg-pill.no-anim { transition: none; }
-@media (prefers-reduced-motion: reduce) { .bg-opt { transition: none; } #view.view-enter, #rc-body.rc-swap, #course-tab-body.tab-swap, #profile-tab-body.tab-swap, #doc-tab-body.tab-swap, #doc-tab-body.tab-swap-dim { animation: none; } #view.view-pending { transition: none; } .loader, .loader-cat, .loader-dots i, .sk, .sk-list, .sk-dash { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .bg-opt { transition: none; } #view.view-enter, #rc-body.rc-swap, #course-tab-body.tab-swap, #profile-tab-body.tab-swap, #doc-tab-body.tab-swap, #doc-tab-body.tab-swap-dim { animation: none; } #view.view-pending { transition: none; } .loader, .loader-cat, .loader-dots i, .sk, .sk-list, .sk-dash { animation: none; } #view.view-enter-fwd, #view.view-enter-back, .is-ios #view.view-enter-back { animation: none; } }
 
 /* ----- หน้าแรกแบบ One UI: หัวใหญ่ + การ์ดตัวเลขเล็กสีขาว (แทนปกหนังสือ) ----- */
 

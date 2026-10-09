@@ -15,6 +15,7 @@
 //     const l = NavHistory.layer(onBack)                 เปิดชั้น: onBack ถูกเรียกเมื่อผู้ใช้กดย้อนกลับ
 //     l.release()                                        ปิดชั้นจากโค้ดเอง (ปุ่มปิด/ยกเลิก) — ถอด entry ของชั้นออกให้
 //     NavHistory.backTo('courses')                       ปุ่ม "กลับ" ในหน้า: ถ้า entry ก่อนหน้าคือหน้านั้นพอดีจะถอยจริง (ไม่ซ้อน entry)
+//     NavHistory.direction()                             ทิศทางของการเปลี่ยนหน้าล่าสุด: 'fwd' (หน้าใหม่/เดินหน้า) หรือ 'back' (ย้อนกลับ) — playViewEnter ใช้เลือกท่าเลื่อนเข้า
 //     NavHistory.applyScroll()                           เรียกเมื่อหน้าวาดเสร็จ (drawRoute / renderCourseShell): ย้อนกลับ/เดินหน้า = เลื่อนกลับตำแหน่งเดิมของ entry นั้น,
 //                                                        เปลี่ยนหน้าใหม่ = เลื่อนขึ้นบนสุด · เรียกซ้ำโดยไม่มีงานค้าง (เช่น สลับแท็บ) ไม่ทำอะไร
 //
@@ -34,6 +35,7 @@ const NavHistory = (() => {
   const layers = [];           // ชั้นที่เปิดค้าง (ใหม่สุดอยู่ท้าย)
   let backPending = false, queued = [], backTimer = null;
   const scrolls = {};          // scrolls[i] = ตำแหน่งเลื่อน (px) ของหน้าใน entry ลำดับ i ตอนที่ผู้ใช้ออกจากมัน
+  let dir = 'fwd';             // ทิศทางล่าสุด: record/push = 'fwd' · popstate ไป idx ที่น้อยลง = 'back'
   let pendingScroll = null;    // ตำแหน่งที่รอเลื่อนไปเมื่อหน้าวาดเสร็จ (ตัวเลข px) · null = ไม่มีงานค้าง
   if (ok && 'scrollRestoration' in history) { try { history.scrollRestoration = 'manual'; } catch (e) { /* ข้าม */ } }
 
@@ -83,6 +85,7 @@ const NavHistory = (() => {
   function record(st) {
     if (!ok || restoring) return;
     defer(() => {
+      dir = 'fwd';
       pendingScroll = 0; // หน้าใหม่ (ไม่ใช่ย้อนกลับ) → เริ่มที่บนสุดเมื่อวาดเสร็จ
       if (!booted) { booted = true; write('replace', st); return; }
       // เปลี่ยนหน้าขณะมีชั้นค้างอยู่ (เช่นกดปุ่มในป๊อปอัปแล้ว navigate): ชั้นนั้นเลิกนับ — entry ของมันที่ค้างอยู่จะถูกข้ามเองตอนกดย้อน
@@ -150,7 +153,7 @@ const NavHistory = (() => {
   if (ok) {
     window.addEventListener('popstate', e => {
       const st = e.state;
-      if (st && st.nh) { saveScroll(idx); idx = st.idx; stack[idx] = st; } // จำตำแหน่งเลื่อนของ entry ที่กำลังออกก่อนสลับ idx
+      if (st && st.nh) { saveScroll(idx); dir = st.idx < idx ? 'back' : 'fwd'; idx = st.idx; stack[idx] = st; } // จำตำแหน่งเลื่อนของ entry ที่กำลังออกก่อนสลับ idx
       if (backPending) { finishBack(); return; }       // ถอยที่เราสั่งเอง (ปิดชั้น) — ไม่ต้องทำอะไรต่อ
       if (layers.length) {                              // ผู้ใช้กดย้อนขณะมีชั้นเปิดอยู่ → ปิดชั้นบนสุด
         const l = layers.pop();
@@ -178,5 +181,5 @@ const NavHistory = (() => {
     }
   }
 
-  return { record, patch, layer, backTo, applyScroll, _debug: () => ({ idx, stack: stack.slice(), layers: layers.length, backPending, scrolls: { ...scrolls }, pendingScroll }) };
+  return { record, patch, layer, backTo, applyScroll, direction: () => dir, _debug: () => ({ idx, stack: stack.slice(), layers: layers.length, backPending, scrolls: { ...scrolls }, pendingScroll }) };
 })();

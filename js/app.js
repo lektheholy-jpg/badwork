@@ -74,14 +74,18 @@ function setActiveNav(routeId) {
   navPills.forEach(place => place(true));
 }
 
+// iOS: Safari มีอนิเมชันเลื่อนหน้าของระบบตอนปัดย้อนจากขอบอยู่แล้ว → ใส่ class ให้ CSS ลดเหลือจางเข้าตอนย้อนกลับ (ไม่ให้เลื่อนซ้อนกัน)
+if (/iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) document.documentElement.classList.add('is-ios');
+const VIEW_ENTER_CLASSES = ['view-enter', 'view-enter-fwd', 'view-enter-back'];
+
 // เปลี่ยนหน้า: เล่นเฟดเข้าครั้งเดียวต่อการกดหนึ่งครั้ง (CSS ปิดเองเมื่อผู้ใช้ตั้ง reduced-motion)
 function playViewEnter() {
   const v = document.getElementById('view');
   if (!v) return;
   clearLoading(v); // เนื้อหาจริงมาแล้ว — ยกเลิกตัวโหลดที่รออยู่
-  v.classList.remove('view-enter', 'view-pending');
+  v.classList.remove(...VIEW_ENTER_CLASSES, 'view-pending');
   void v.offsetWidth; // รีสตาร์ทแอนิเมชันถ้ากดซ้ำ
-  v.classList.add('view-enter');
+  v.classList.add(NavHistory.direction() === 'back' ? 'view-enter-back' : 'view-enter-fwd'); // เดินหน้า = เข้าจากขวา · ย้อนกลับ = เข้าจากซ้าย (บน iOS ย้อนกลับจางเข้าอย่างเดียว — ดู css)
 }
 // กดเปิดหน้าที่ต้องรอข้อมูลก่อนวาด (เช่น เปิดรายวิชา): หน้าเดิมจางลงทันที แล้ว playViewEnter จะถอดออกเมื่อหน้าใหม่มา
 function markViewPending() {
@@ -89,7 +93,7 @@ function markViewPending() {
   showLoading('cat');        // หน้าเดิมจางทันที ถ้ารอเกิน 180ms น้องแมวจะขึ้นแทน
 }
 document.getElementById('view')?.addEventListener('animationend', e => {
-  if (e.target === e.currentTarget) e.currentTarget.classList.remove('view-enter');
+  if (e.target === e.currentTarget) e.currentTarget.classList.remove(...VIEW_ENTER_CLASSES);
 });
 
 // หน้าที่ต้องโหลดสคริปต์เพิ่มก่อนวาด (ดู LAZY_MODULES ใน utils.js)

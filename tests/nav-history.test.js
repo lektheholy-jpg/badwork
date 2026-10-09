@@ -209,6 +209,25 @@ function makeEnv() {
     ok(!e.modalOpen(), 'ผู้ใช้ตั้ง reduced-motion → ลบทันที ไม่หน่วง');
   }
 
+
+  console.log('ทิศทางการเปลี่ยนหน้า');
+  {
+    const e = makeEnv(), w = e.w, d = () => e.nav.direction();
+    w.navigate('dashboard');
+    ok(d() === 'fwd', 'หน้าแรกของเซสชัน = fwd');
+    w.navigate('courses'); w.openCourse('c1');
+    ok(d() === 'fwd', 'เปิดหน้าใหม่/รายวิชา = fwd');
+    w.history.back(); await sleep(TICK);
+    ok(d() === 'back', 'ย้อนกลับ (popstate) = back');
+    w.history.forward(); await sleep(TICK);
+    ok(d() === 'fwd', 'เดินหน้า (forward) = fwd');
+    ok(e.nav.backTo('courses') === true, 'backTo ถอยจริง');
+    await sleep(TICK);
+    ok(d() === 'back', 'ปุ่มกลับในหน้า (backTo) = back');
+    w.navigate('profile');
+    ok(d() === 'fwd', 'กดไปหน้าใหม่หลังย้อนกลับ กลับเป็น fwd');
+  }
+
   console.log('กรณีขอบ');
   {
     const e = makeEnv();

@@ -191,6 +191,7 @@ users/{uid}/pa_reports/{docId}               แบบรายงานผล P
 - `history.back()` เป็นอะซิงก์ → ถ้า `closeModal()` ตามด้วย `navigate()` ทันที การ push หน้าใหม่ต้องรอ จึงมีคิวใน `nav-history.js` อย่าเรียก `history.pushState` ตรงๆ จากที่อื่น
 - ยังไม่ผูก: มุมมองฟอร์ม↔รายการใน PA, เมนูข้าง/แผ่น "เพิ่มเติม" บนมือถือ, หน้าแก้โครงสร้างคะแนน (`structureEditingCourseId`) — ย้อนกลับจากที่เหล่านี้จะถอยทั้งหน้า
 - ตำแหน่งเลื่อน: เก็บตอนออกจากแต่ละ entry (`scrolls[idx]` ในหน่วยความจำของเซสชัน) แล้ว `NavHistory.applyScroll()` เลื่อนกลับเมื่อหน้าวาดเสร็จ (`drawRoute` ใน app.js และ `renderCourseShell` ใน courses.js) · ย้อนกลับ/เดินหน้า = ตำแหน่งเดิม, เปลี่ยนหน้าใหม่ = บนสุด · ตั้ง `history.scrollRestoration = 'manual'` เพื่อไม่ให้เบราว์เซอร์เลื่อนเองชนกัน · หน้าใหม่ที่ทำหน้าวาดเองต้องเรียก `applyScroll()` ตอนวาดเสร็จ
+- เปลี่ยนหน้าตามทิศทาง: `NavHistory.direction()` ('fwd'/'back') → `playViewEnter()` ใส่ `.view-enter-fwd` (เข้าจากขวา) หรือ `.view-enter-back` (เข้าจากซ้าย) 24px/0.18 วินาที · iOS (`html.is-ios`) ย้อนกลับจางเข้าอย่างเดียว เพราะ Safari มีอนิเมชันปัดย้อนของระบบอยู่แล้ว · reduced-motion ปิดทั้งหมด
 - ป๊อปอัปปิดแบบย่อ+จางออก ~0.15 วินาที (`.modal-backdrop.closing` ใน style.css · `MODAL_CLOSE_MS` ใน utils.js ต้องตรงกัน) แล้วค่อยลบ DOM — ปล่อยชั้นในประวัติทันทีตอนสั่งปิด · ผู้ใช้ตั้ง reduced-motion = ลบทันที · `openModal()` ซ้อนระหว่างปิดจะวาดทับทันที (ตัวจับเวลาของอันเก่าไม่ลบของใหม่)
 - เทสต์: `npm run test:nav` (jsdom + history จริง) · เทสต์ในเบราว์เซอร์จริงต้องลองบน Android/iPhone เอง
 
