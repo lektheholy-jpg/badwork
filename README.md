@@ -35,6 +35,7 @@ npm test                 # tests/score-logic.test.js
 npm run test:sw          # จำลอง Service Worker + เน็ตเปิด/ปิด
 npm run test:tt          # ตารางสอนแยกภาคเรียน + วิดเจ็ตหน้าแรก
 npm run test:rec         # แท็บอบรม/เกียรติบัตร/รางวัล
+npm run test:pa          # กลุ่มหน้า Personal Agreement: โครง PA_CONFIG + เทียบผลเรนเดอร์/พร้อต์ AI/path Firestore กับ tests/pa-golden.json
 ```
 
 - หน้าเว็บโหลด `css/style.min.css` · commit `.min` และ `package-lock.json` ด้วย
@@ -62,7 +63,8 @@ js/structure.js       โครงสร้างคะแนนระดับ�
 js/scores.js          บันทึกคะแนนแบบสเปรดชีต + autosave
 js/picker-pages.js    หน้าเลือกวิชา/ห้อง
 js/report-page.js     หน้ารายงาน
-js/pa.js              ฟอร์มข้อตกลง PA 1/ส (lazy — โหลดตอนเข้าหน้า PA พร้อม pa-ai/pa-report/pa-rpt ผ่าน LAZY_BUNDLES.pa)
+js/pa-config.js       PA_CONFIG: ค่าคงที่ของระบบ PA ที่เดียว (ชื่อ collection · แท็บ · โครงฟอร์ม PA 1/ส · ช่องบริบท AI · พร้อต์/รุ่น/คีย์ของผู้ช่วย AI) — โหลดก่อน pa.js
+js/pa.js              ฟอร์มข้อตกลง PA 1/ส (lazy — โหลดตอนเข้าหน้า PA พร้อม pa-config/pa-ai/pa-report/pa-rpt ผ่าน LAZY_BUNDLES.pa)
 js/pa-ai.js           ผู้ช่วย AI ในฟอร์ม PA
 js/pa-report.js       ตัวอย่าง/พิมพ์ PA
 js/pa-rpt.js          แบบฟอร์มรายงานผล Personal Agreement (แท็บที่ 3) + แท็บ ตัวอย่าง/พิมพ์ รายงานผล (แท็บที่ 4)
@@ -145,10 +147,10 @@ users/{uid}/pa_reports/{docId}               แบบรายงานผล P
 ### ฟอร์ม PA และผู้ช่วย AI
 
 - `js/pa.js` ฟอร์มตามแบบ PA 1/ส ของ สพฐ. (ส่วนที่ 1: ภาระงาน + งานตามมาตรฐานตำแหน่ง 15 ข้อ · ส่วนที่ 2: ประเด็นท้าทาย) · `js/pa-report.js` ตัวอย่างและพิมพ์/บันทึก PDF
-- `js/pa-ai.js` เรียก Gemini ผ่าน Firebase AI Logic (ไม่มี API key ในโค้ด ป้องกันด้วย App Check + reCAPTCHA) · SDK โหลดตอนกดปุ่ม AI ครั้งแรก · ชื่อรุ่นแก้ที่ `PA_AI.MODEL`
+- `js/pa-ai.js` เรียก Gemini ผ่าน Firebase AI Logic (ไม่มี API key ในโค้ด ป้องกันด้วย App Check + reCAPTCHA) · SDK โหลดตอนกดปุ่ม AI ครั้งแรก · ชื่อรุ่นแก้ที่ `PA_CONFIG.ai.model` (รายชื่อรุ่นที่เลือกได้อยู่ที่ `PA_CONFIG.ai.models`) ใน `js/pa-config.js`
 - ปุ่มบนสุดร่างเฉพาะส่วนที่ 2 ที่ว่าง (1 คำขอ) · งานข้อ 1.1–3.3 ใช้ปุ่มใต้แต่ละข้อ (ข้อละ 4 ช่อง) · ไม่เขียนทับช่องที่กรอกแล้ว · ข้อความที่ AI เสนอแสดงในหน้าต่างให้ตรวจก่อนใช้ ไม่บันทึกอัตโนมัติ
-- ประหยัดโควต้า: คำแนะนำช่องงานอยู่ที่ `PA_AI_WORK_HINTS` (ส่งครั้งเดียวต่อคำขอ) · จำกัดความยาวเป็นตัวอักษรใน `PA_AI_WORK_HINTS` / `PA_AI_PART2` · อย่าเพิ่มปุ่มที่ยิงหลายสิบช่องในคำขอเดียว
-- ข้อความผู้ใช้ส่งไปประมวลผลที่ Google · ต้องมีหน้าต่างขอความยินยอมก่อนใช้ครั้งแรก (`pa-ai-consent-v1`) · ห้ามกรอกชื่อ/ข้อมูลที่ระบุตัวนักเรียนลงในช่อง
+- ประหยัดโควต้า: คำแนะนำช่องงานอยู่ที่ `PA_CONFIG.ai.prompts.workHints` (ส่งครั้งเดียวต่อคำขอ) · จำกัดความยาวเป็นตัวอักษรใน `workHints` / `PA_CONFIG.ai.prompts.part2` · อย่าเพิ่มปุ่มที่ยิงหลายสิบช่องในคำขอเดียว
+- ข้อความผู้ใช้ส่งไปประมวลผลที่ Google · ต้องมีหน้าต่างขอความยินยอมก่อนใช้ครั้งแรก (คีย์ `PA_CONFIG.ai.storageKeys.consent`) · ห้ามกรอกชื่อ/ข้อมูลที่ระบุตัวนักเรียนลงในช่อง
 
 ## ออฟไลน์ (Service Worker + แคช Firestore)
 
@@ -204,7 +206,7 @@ users/{uid}/pa_reports/{docId}               แบบรายงานผล P
 ## บันทึกการลดขนาด (2026-10-08)
 
 - ลบรูป `assets/banner*.webp` (ซ้ำกับ `head-cat*.webp` ทุกไฟล์ และโค้ดไม่ได้เรียกใช้) และ `js/score-logic.test.js` (ฉบับเก่า — ใช้ `tests/score-logic.test.js`)
-- กลุ่มหน้า PA (`pa.js`, `pa-ai.js`, `pa-report.js`, `pa-rpt.js`) ย้ายเป็น lazy: `LAZY_MODULES` + `LAZY_BUNDLES.pa` ใน `js/utils.js` โหลดตามลำดับด้วย `loadModules()` — ลด JS ตอนเปิดแอป ~174 KB (ยังอยู่ใน `PRECACHE` ออฟไลน์ได้เหมือนเดิม)
+- กลุ่มหน้า PA (`pa-config.js`, `pa.js`, `pa-ai.js`, `pa-report.js`, `pa-rpt.js`) ย้ายเป็น lazy: `LAZY_MODULES` + `LAZY_BUNDLES.pa` ใน `js/utils.js` โหลดตามลำดับด้วย `loadModules()` — ลด JS ตอนเปิดแอป ~174 KB (ยังอยู่ใน `PRECACHE` ออฟไลน์ได้เหมือนเดิม)
 - ลบ CSS variable ที่ไม่มีใครใช้ 32 ตัว, คลาสที่ไม่มีใครใช้ 9 คลาส, ยุบ `--font-modern` เป็น `--font-head`
   (อย่าลบ `--bgp-*` — `theme.js` ประกอบชื่อตอนรัน: `'var(--bgp-' + id + ')'`)
 - โลโก้ในหน้าแอปใช้ `assets/icons/logo-128.webp` (PNG 192/512 ยังอยู่สำหรับ manifest / iOS)

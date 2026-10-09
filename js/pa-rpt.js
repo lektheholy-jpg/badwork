@@ -5,7 +5,7 @@
 //            → 4. ประเด็นท้าทาย → 5. งานที่ได้รับมอบหมาย → ลงนาม → ตารางเอกสารอ้างอิง
 // ฟิลด์ระดับบน (≤ 30 ตาม firestore.rules validDoc): fiscalYear, status, selfScore, teachHours, leave{}, items{},
 //   challengeTitle, problem, method, outcomeQuant, outcomeQual, assigned, signDate, owner{}, agreementId
-// พึ่งพา pa.js (PAState, paMount, paSwapIn, PA_WORK_ITEMS, PA1_CSS, paFontCss, ไอคอน/ตัวช่วย) — โหลดหลัง pa.js
+// พึ่งพา pa.js (PAState, paMount, paSwapIn, PA_CONFIG.workItems, PA1_CSS, paFontCss, ไอคอน/ตัวช่วย) — โหลดหลัง pa.js
 // ==========================================================================
 
 const PARptState = {
@@ -17,7 +17,7 @@ const PARptState = {
 };
 
 function parptCol(uid) {
-  return db.collection('users').doc(uid).collection('pa_reports');
+  return db.collection('users').doc(uid).collection(PA_CONFIG.collections.reports);
 }
 
 // เติมค่าเริ่มต้นให้ครบทุกฟิลด์
@@ -227,13 +227,13 @@ function parptBuildDocHtml(d, o, appendixHtml = '') {
   const leaveTotal = (sd || bd) ? paFmtH(sd + bd) : dots;
   const group = (o.subjectGroup || '');
 
-  const sections = PA_WORK_ITEMS.map(([, gt, items]) =>
+  const sections = PA_CONFIG.workItems.map(([, gt, items]) =>
     `<div class="p1-h mt5">${e(gt)}</div>` + items.map(([id, label]) => {
       const w = d.items[id] || {};
       return `<div class="p1-ind1 keep-next mt3"><b>${id} ${e(label)}</b></div>${paras(w.text, 'p1-p')}`;
     }).join('')).join('');
 
-  const refRows = PA_WORK_ITEMS.map(([, gt, items]) =>
+  const refRows = PA_CONFIG.workItems.map(([, gt, items]) =>
     `<tr class="grp"><td colspan="3">${e(gt)}</td></tr>` + items.map(([id, label]) => {
       const w = d.items[id] || {};
       return `<tr><td>${id}</td><td>${e(label)}</td><td>${paNl(w.ref)}</td></tr>`;
@@ -606,7 +606,7 @@ async function parptRenderForm() {
       <div class="card card-pad">
         <h2 class="card-title">ผลการปฏิบัติงานตามมาตรฐานตำแหน่ง</h2>
         <div class="u-note u-mb-12">แต่ละข้อ: เล่าสิ่งที่ปฏิบัติจริง และระบุเอกสารอ้างอิงที่ใช้เป็นหลักฐาน (ไปอยู่ในตารางท้ายเอกสาร) — ข้อที่เว้นว่างจะแสดงเป็นช่องว่างในเอกสาร</div>
-        ${PA_WORK_ITEMS.map(([gid, gt, items]) => `
+        ${PA_CONFIG.workItems.map(([gid, gt, items]) => `
           <details class="pa-wgroup"${gid === '1' ? ' open' : ''}>
             <summary>${gt}</summary>
             ${items.map(([id, label]) => {

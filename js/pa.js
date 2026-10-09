@@ -23,43 +23,8 @@ const PAState = {
 };
 
 // ------------------------------------------------------------------
-// โครงตามแบบ PA 1/ส
+// ค่าคงที่ของระบบ PA (โครงแบบ PA 1/ส · แท็บ · ชื่อ collection · ค่าของผู้ช่วย AI) อยู่ที่ PA_CONFIG ใน js/pa-config.js
 // ------------------------------------------------------------------
-const PA_CLASSROOM_TYPES = [
-  ['basic', 'ห้องเรียนวิชาสามัญหรือวิชาพื้นฐาน'],
-  ['early', 'ห้องเรียนปฐมวัย'],
-  ['special', 'ห้องเรียนการศึกษาพิเศษ'],
-  ['vocational', 'ห้องเรียนสายวิชาชีพ'],
-  ['nonformal', 'ห้องเรียนการศึกษานอกระบบ / ตามอัธยาศัย'],
-];
-
-// ส่วนที่ 1 ข้อ 2: [รหัสกลุ่ม, หัวกลุ่ม, [[รหัสข้อ, ลักษณะงานที่ปฏิบัติตามมาตรฐานตำแหน่ง], ...]]
-const PA_WORK_ITEMS = [
-  ['1', '1. ด้านการจัดการเรียนรู้', [
-    ['1.1', 'สร้างและหรือพัฒนาหลักสูตร'],
-    ['1.2', 'การออกแบบการจัดการเรียนรู้'],
-    ['1.3', 'การจัดการเรียนรู้'],
-    ['1.4', 'สร้างและหรือพัฒนาสื่อนวัตกรรม เทคโนโลยี และแหล่งเรียนรู้'],
-    ['1.5', 'วัดและประเมินผลการเรียนรู้'],
-    ['1.6', 'ศึกษา วิเคราะห์ และสังเคราะห์เพื่อแก้ไขปัญหาหรือพัฒนาการเรียนรู้'],
-    ['1.7', 'การจัดบรรยากาศที่ส่งเสริมและพัฒนาผู้เรียน'],
-    ['1.8', 'อบรมและพัฒนาคุณลักษณะที่ดีของผู้เรียน'],
-  ]],
-  ['2', '2. ด้านการส่งเสริมและสนับสนุนการจัดการเรียนรู้', [
-    ['2.1', 'การจัดทำข้อมูลสารสนเทศของผู้เรียนและรายวิชา'],
-    ['2.2', 'ดำเนินการตามระบบดูแลช่วยเหลือผู้เรียน'],
-    ['2.3', 'ปฏิบัติงานวิชาการและงานอื่นๆ ของสถานศึกษา'],
-    ['2.4', 'การประสานความร่วมมือกับผู้ปกครอง ภาคีเครือข่าย และหรือสถานประกอบการ'],
-  ]],
-  ['3', '3. ด้านการพัฒนาตนเองและวิชาชีพ', [
-    ['3.1', 'พัฒนาตนเองอย่างเป็นระบบและต่อเนื่อง'],
-    ['3.2', 'การมีส่วนร่วมในการแลกเปลี่ยนเรียนรู้ทางวิชาชีพ เพื่อพัฒนาการจัดการเรียนรู้'],
-    ['3.3', 'การนำความรู้ความสามารถ ทักษะที่ได้จากการพัฒนาตนเอง และวิชาชีพมาใช้ในการพัฒนาการจัดการเรียนรู้ การพัฒนาคุณภาพผู้เรียน และการพัฒนานวัตกรรมการจัดการเรียนรู้'],
-  ]],
-];
-
-// รายการภาระงาน (แถว {name, hours}) — subjects/activities คือ 1.1 · support = 1.2 · quality = 1.3 · policy = 1.4
-const PA_LOAD_LISTS = ['subjects', 'activities', 'support', 'quality', 'policy'];
 
 // ภาคเรียนของปีงบประมาณ: ปีงบ 2569 (1 ต.ค. 68 – 30 ก.ย. 69) = ภาค 2/2568 และ 1/2569
 function paTermLabels(fy) {
@@ -71,7 +36,7 @@ function paTermLabels(fy) {
 // Firestore ref
 // ------------------------------------------------------------------
 function paCol(uid) {
-  return db.collection('users').doc(uid).collection('pa_agreements');
+  return db.collection('users').doc(uid).collection(PA_CONFIG.collections.agreements);
 }
 
 function paRef(uid, docId) {
@@ -143,9 +108,6 @@ const paFmtH = n => String(Math.round((Number(n) || 0) * 100) / 100);
 const paSum = rows => (rows || []).reduce((s, r) => s + (Number(r.hours) || 0), 0);
 const paNl = s => escapeHtml(s || '').replace(/\n/g, '<br>');
 
-// บริบทงานจริงของครู (ให้ผู้ช่วย AI เขียนตรงงาน) — ค่าสูงสุดของแต่ละช่อง (ตัวอักษร) · ป้ายชื่อช่องอยู่ที่ js/pa-ai.js
-const PA_CTX_MAX = { level: 40, rooms: 6, students: 6, problems: 240, prev: 200, focus: 160 };
-
 // เติมค่าเริ่มต้นให้ครบทุกฟิลด์ (รองรับเอกสารรุ่นเก่าที่มีแค่ classroomBasic / workload / outcome)
 function paNormalize(d) {
   d = d || {};
@@ -156,14 +118,14 @@ function paNormalize(d) {
   };
   const L = d.load && typeof d.load === 'object' ? d.load : {};
   d.load = { group: String(L.group || '') };
-  PA_LOAD_LISTS.forEach(k => {
+  PA_CONFIG.loadLists.forEach(k => {
     d.load[k] = (Array.isArray(L[k]) ? L[k] : []).map(r => ({ name: String((r && r.name) || ''), hours: Number(r && r.hours) || 0 }));
   });
   d.workItems = d.workItems && typeof d.workItems === 'object' ? d.workItems : {};
   ['challengeTitle', 'problem', 'method', 'outcomeQuant', 'outcomeQual', 'signDate'].forEach(k => { d[k] = String(d[k] || ''); });
   const c = d.aiCtx && typeof d.aiCtx === 'object' ? d.aiCtx : {};
   d.aiCtx = {};
-  Object.entries(PA_CTX_MAX).forEach(([k, n]) => { d.aiCtx[k] = String(c[k] || '').slice(0, n); });
+  Object.entries(PA_CONFIG.aiCtx.maxLen).forEach(([k, n]) => { d.aiCtx[k] = String(c[k] || '').slice(0, n); });
   return d;
 }
 
@@ -317,7 +279,7 @@ function paBuildDocHtml(d, o) {
     return `<div class="p1-row p1-ind2"><span class="n">${no} ${title}</span><span class="h">${h}</span></div>${rows(list, 'p1-ind3')}`;
   };
 
-  const hasLoad = PA_LOAD_LISTS.some(k => L[k].length);
+  const hasLoad = PA_CONFIG.loadLists.some(k => L[k].length);
   const total = paSum(L.subjects) + paSum(L.activities);
   const loadHtml = hasLoad ? `
     <div class="p1-ind2">1.1 ชั่วโมงสอนตามตารางสอน รวมจำนวน ${total ? paFmtH(total) : dots} ชั่วโมง/สัปดาห์ ดังนี้</div>
@@ -331,7 +293,7 @@ function paBuildDocHtml(d, o) {
 
   // ภาคเรียนต่อท้ายบรรทัดเดียวกับข้อความ (ตามแบบที่ใช้กันจริง)
   const term = (label, text) => `${label} ${paNl(text)}`;
-  const tableRows = PA_WORK_ITEMS.map(([, gt, items]) =>
+  const tableRows = PA_CONFIG.workItems.map(([, gt, items]) =>
     `<tr class="grp"><td colspan="4">${gt}</td></tr>` + items.map(([id, label]) => {
       const w = d.workItems[id] || {};
       const tasks = [w.s1 && term(t1, w.s1), w.s2 && term(t2, w.s2)].filter(Boolean).join('<div class="gap"></div>');
@@ -363,7 +325,7 @@ function paBuildDocHtml(d, o) {
     <div>สถานศึกษา ${e(o.school || dots)} สังกัด ${e(o.affiliation || dots)}</div>
     <div>รับเงินเดือนในตำแหน่ง ${e(o.pay || dots)}</div>
     <div class="p1-p mt2"><b>ประเภทห้องเรียนที่จัดการเรียนรู้</b> (สามารถระบุได้มากกว่า 1 ประเภทห้องเรียน ตามสภาพการจัดการเรียนรู้จริง)</div>
-    <div class="p1-list">${PA_CLASSROOM_TYPES.map(([k, l]) => `<div>${box(d.classroomTypes[k])}<span>${l}</span></div>`).join('')}</div>
+    <div class="p1-list">${PA_CONFIG.classroomTypes.map(([k, l]) => `<div>${box(d.classroomTypes[k])}<span>${l}</span></div>`).join('')}</div>
     <div class="p1-p mt5">ข้าพเจ้าขอแสดงเจตจำนงในการจัดทำข้อตกลงในการพัฒนางานตำแหน่ง ${e(o.position || 'ครู')} วิทยฐานะ${e(o.standing || dots)} ซึ่งเป็นตำแหน่งและวิทยฐานะที่ดำรงอยู่ในปัจจุบันกับผู้อำนวยการสถานศึกษา ไว้ดังต่อไปนี้</div>
 
     <div class="p1-h mt10">ส่วนที่ 1 ข้อตกลงในการพัฒนางานตามมาตรฐานตำแหน่ง</div>
@@ -446,14 +408,13 @@ function paPrint(d, o) {
 // โครงหน้า: หัวเรื่อง + แท็บ (แบบฟอร์มข้อตกลง | ตัวอย่าง/พิมพ์) + พื้นที่เนื้อหา
 // ปุ่มเมนูข้างปุ่มเดียว (pa-page) เปิดหน้านี้ — สลับสองมุมมองด้วยแท็บโดยไม่วาดทั้งหน้าใหม่
 // ------------------------------------------------------------------
-const PA_TABS = [['agreement', 'แบบฟอร์มข้อตกลง'], ['report', 'ตัวอย่าง / พิมพ์ PA 1'], ['rpt', 'แบบฟอร์มรายงานผล'], ['rptprev', 'ตัวอย่าง / พิมพ์ รายงานผล']];
 
 function paBuildShell() {
   const view = document.getElementById('view');
   view.innerHTML = `
-    ${pageHeaderHtml('Personal Agreement')}
+    ${pageHeaderHtml(PA_CONFIG.title)}
     <div class="tabs" id="pa-tabs" role="tablist">
-      ${PA_TABS.map(([id, label]) => `<div class="tab ${PAState.tab === id ? 'active' : ''}" data-tab="${id}" role="tab" aria-selected="${PAState.tab === id}" tabindex="0">${label}</div>`).join('')}
+      ${PA_CONFIG.tabs.map(([id, label]) => `<div class="tab ${PAState.tab === id ? 'active' : ''}" data-tab="${id}" role="tab" aria-selected="${PAState.tab === id}" tabindex="0">${label}</div>`).join('')}
     </div>
     <div id="pa-tab-body"></div>`;
   const tabs = view.querySelector('#pa-tabs');
@@ -516,7 +477,7 @@ function paRenderTab() {
 }
 
 async function paSwitchTab(tab) {
-  if (tab === PAState.tab || !PA_TABS.some(t => t[0] === tab)) return;
+  if (tab === PAState.tab || !PA_CONFIG.tabs.some(t => t[0] === tab)) return;
   // กำลังกรอกฟอร์มอยู่: เก็บค่าที่พิมพ์ค้างไว้ใน PAState.doc กลับมาที่แท็บข้อตกลงแล้วยังอยู่ครบ
   if (PAState.tab === 'agreement' && PAState.view === 'form') paCollectFormData();
   if (PAState.tab === 'rpt' && PARptState.view === 'form') parptCollect();
@@ -726,7 +687,7 @@ async function renderPAFormView() {
     d._ttTried = true;
     try {
       const t = await paPullTimetable();
-      if (!PA_LOAD_LISTS.some(k => d.load[k].length)) { d.load.subjects = t.subjects; d.load.activities = t.activities; }
+      if (!PA_CONFIG.loadLists.some(k => d.load[k].length)) { d.load.subjects = t.subjects; d.load.activities = t.activities; }
     } catch (err) { /* ไม่มีตารางสอน/ออฟไลน์ — ข้าม */ }
     if (paStale(view, seq) || PAState.tab !== 'agreement' || PAState.view !== 'form') return;
   }
@@ -739,7 +700,7 @@ async function renderPAFormView() {
     const eid = `pa-wi-${id.replace('.', '_')}-${f}`;
     return `<div class="field"><label for="${eid}">${label}</label><textarea id="${eid}" rows="${rows}" data-wi="${id}" data-f="${f}">${escapeHtml(val || '')}</textarea></div>`;
   };
-  const hasLegacyLoad = d.workload && !PA_LOAD_LISTS.some(k => d.load[k].length);
+  const hasLegacyLoad = d.workload && !PA_CONFIG.loadLists.some(k => d.load[k].length);
 
   view.innerHTML = `
     <div class="pa-form-head">
@@ -779,7 +740,7 @@ async function renderPAFormView() {
         </div>
         <div class="pa-sub">ประเภทห้องเรียนที่จัดการเรียนรู้ (เลือกได้มากกว่า 1)</div>
         <div class="pa-checks">
-          ${PA_CLASSROOM_TYPES.map(([k, l]) => `<label class="pa-check"><input type="checkbox" data-ct="${k}"${d.classroomTypes[k] ? ' checked' : ''}> ${l}</label>`).join('')}
+          ${PA_CONFIG.classroomTypes.map(([k, l]) => `<label class="pa-check"><input type="checkbox" data-ct="${k}"${d.classroomTypes[k] ? ' checked' : ''}> ${l}</label>`).join('')}
         </div>
         <div class="field pa-field-date">
           <label for="pa-signDate">วันที่ลงนามของผู้จัดทำ</label>
@@ -806,7 +767,7 @@ async function renderPAFormView() {
       <div class="card card-pad">
         <h2 class="card-title">ส่วนที่ 1 · 2. งานที่จะปฏิบัติตามมาตรฐานตำแหน่งครู</h2>
         <div class="u-note u-mb-12">กรอกแต่ละข้อ: งานที่จะทำในแต่ละภาคเรียน · ผลลัพธ์ที่คาดหวังกับผู้เรียน · ตัวชี้วัด — ข้อที่เว้นว่างจะแสดงเป็นช่องว่างในเอกสาร</div>
-        ${PA_WORK_ITEMS.map(([gid, gt, items]) => `
+        ${PA_CONFIG.workItems.map(([gid, gt, items]) => `
           <details class="pa-wgroup"${gid === '1' ? ' open' : ''}>
             <summary>${gt}</summary>
             ${items.map(([id, label]) => {
@@ -924,7 +885,7 @@ function paCollectFormData() {
   document.querySelectorAll('[data-ct]').forEach(c => { classroomTypes[c.dataset.ct] = c.checked; });
 
   const load = { group: get('pa-load-group') };
-  PA_LOAD_LISTS.forEach(k => {
+  PA_CONFIG.loadLists.forEach(k => {
     const box = document.querySelector(`.pa-lrows[data-list="${k}"]`);
     load[k] = box ? [...box.querySelectorAll('.pa-lrow')]
       .map(r => ({ name: r.querySelector('.pa-l-name').value.trim(), hours: paNum(r.querySelector('.pa-l-hours').value) }))
@@ -941,7 +902,7 @@ function paCollectFormData() {
 
   // ช่องบริบท AI อยู่ในการ์ดที่ pa-ai.js ติดให้ — ถ้าไม่มีช่อง (ไม่โหลดไฟล์นั้น) คงค่าเดิมไว้
   const aiCtx = {};
-  Object.entries(PA_CTX_MAX).forEach(([k, n]) => { aiCtx[k] = el('pa-ctx-' + k) ? get('pa-ctx-' + k).slice(0, n) : (PAState.doc.aiCtx?.[k] || ''); });
+  Object.entries(PA_CONFIG.aiCtx.maxLen).forEach(([k, n]) => { aiCtx[k] = el('pa-ctx-' + k) ? get('pa-ctx-' + k).slice(0, n) : (PAState.doc.aiCtx?.[k] || ''); });
 
   Object.assign(PAState.doc, {
     fiscalYear: get('pa-fiscalYear'),
