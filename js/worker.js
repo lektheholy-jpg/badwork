@@ -76,11 +76,12 @@ export default {
 
     const out = {};
     ALLOWED_KEYS.forEach(k => { if (body[k] !== undefined) out[k] = body[k] });
-    const up = await fetch(`${GEMINI}/models/${body.model}:generateContent`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY },
-      body: JSON.stringify(out),
-    });
+    // แก้เป็น
+const up = await fetch(`${GEMINI}/models/${body.model}:generateContent?key=${env.GEMINI_API_KEY}`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(out),
+});
     return new Response(up.body, { status: up.status, headers: { 'Content-Type': 'application/json', ...h } });
   },
 };
