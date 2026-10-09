@@ -1799,14 +1799,55 @@ table.sheet tbody tr:nth-child(n) td.over-max { background: var(--danger-tint); 
 .tools-name { padding: 5px 10px; margin-top: 4px; border-radius: var(--radius-xs); font-size: 13.5px; background: var(--card); }
 .tools-empty { margin-top: 16px; padding: 28px 12px; text-align: center; border-radius: var(--radius-m); color: var(--ink-soft); background: var(--card); }
 
-.tools-timer { text-align: center; max-width: none; margin: 0; flex: 1; align-items: center; justify-content: center; }
-.tools-ring { position: relative; aspect-ratio: 1; width: clamp(240px, min(58vh, 70vw), 620px); container-type: inline-size; margin: 4px auto 22px; }
-.tools-ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
-.tools-ring circle { fill: none; stroke-width: 9; }
-.tools-ring-track { stroke: color-mix(in oklab, var(--w) 20%, var(--card)); }
-.tools-ring-bar { stroke: var(--w); stroke-linecap: round; transition: stroke-dashoffset .3s linear; }
-.tools-ring .tools-big { position: absolute; inset: 0; display: grid; place-items: center; padding: 0; font-size: 22cqw; }
-@media (prefers-reduced-motion: reduce) { .tools-ring-bar { transition: none; } }
+.tools-timer { text-align: center; max-width: none; margin: 0; flex: 1; align-items: center; justify-content: center; gap: 22px; }
+.tools-timer[data-state="done"] { --w: var(--danger); }
+.tools-timer[data-state="run"][data-warn="1"] { --w: var(--warning); }
+
+/* วงแหวนจับเวลา: รางวง + แถบไล่สี + ขีดนาฬิกา 60 ขีด, หน้าปัดกลางเป็นแผ่นการ์ด */
+.tools-ring { position: relative; isolation: isolate; aspect-ratio: 1; width: clamp(240px, min(52vh, 70vw), 560px); container-type: inline-size; margin: 0 auto; }
+.tools-ring::before { content: ''; position: absolute; inset: -6%; z-index: -1; border-radius: 50%; opacity: .55; transition: opacity .3s ease;
+  background: radial-gradient(circle, color-mix(in oklab, var(--w) 30%, transparent), transparent 68%); }
+.tools-timer[data-state="run"] .tools-ring::before { opacity: 1; }
+.tools-timer[data-state="done"] .tools-ring { animation: tools-pulse 1s ease-in-out infinite; }
+.tools-ring svg { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); }
+.tools-ring circle { fill: none; }
+.tools-ring-tick { stroke: color-mix(in oklab, var(--ink-soft) 40%, transparent); stroke-width: 2.4; }
+.tools-ring-track { stroke: color-mix(in oklab, var(--w) 18%, var(--card)); stroke-width: 8; }
+.tools-ring-bar { stroke: url(#timer-grad); stroke-width: 8; stroke-linecap: round; transition: stroke-dashoffset .3s linear, opacity .2s ease; }
+.tools-timer[data-state="done"] .tools-ring-bar { opacity: 0; }
+.tools-stop-a { stop-color: oklch(from var(--w) calc(l + .1) c h); }
+.tools-stop-b { stop-color: var(--w); }
+.tools-ring-face { position: absolute; inset: 14%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2.4cqw;
+  border-radius: 50%; background: var(--card);
+  box-shadow: 0 24px 48px -28px var(--w), inset 0 0 0 1.5px color-mix(in oklab, var(--w) 18%, transparent); }
+.tools-ring .tools-big { padding: 0; font-family: var(--font-head); font-size: 19cqw; line-height: 1; letter-spacing: -.02em; transition: opacity .2s ease; }
+.tools-timer[data-state="pause"] .tools-big { opacity: .6; }
+.tools-state { display: inline-flex; align-items: center; gap: 6px; padding: 3px 12px; border-radius: var(--radius-pill); font-size: max(12px, 3.6cqw); font-weight: 700;
+  background: color-mix(in oklab, var(--w) var(--wmix-head), var(--card)); color: color-mix(in oklab, var(--w) 82%, var(--ink)); }
+.tools-state::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--w); }
+.tools-timer[data-state="run"] .tools-state::before { animation: tools-blink 1.2s ease-in-out infinite; }
+.tools-ring-sub { font-size: max(12px, 3.6cqw); font-weight: 600; color: var(--ink-soft); }
+@keyframes tools-blink { 50% { opacity: .25; } }
+@keyframes tools-pulse { 50% { transform: scale(1.025); } }
+
+/* แผงควบคุม: ตัวเลือกเวลาสำเร็จรูป · ปรับนาที (− ช่องกรอก +) · เริ่ม/หยุด · รีเซ็ต */
+.tools-dock { display: flex; align-items: center; justify-content: center; gap: 14px; flex-wrap: wrap; }
+.tools-stepper { display: inline-flex; align-items: center; gap: 2px; padding: 4px 14px 4px 4px; border-radius: var(--radius-pill); background: var(--surface-sunken); }
+.tools-step { display: grid; place-items: center; width: 40px; height: 40px; padding: 0; border: none; border-radius: 50%; background: var(--card); color: var(--ink); cursor: pointer; transition: transform .12s ease; }
+.tools-step:active { transform: scale(.92); }
+.tools-step:disabled { opacity: .45; cursor: not-allowed; }
+.tools-step:disabled:active { transform: none; }
+.tools-step:focus-visible, .tools-preset:focus-visible { outline: 3px solid var(--w); outline-offset: 2px; }
+.tools-step .ico { width: 18px; height: 18px; }
+.tools-num { width: 3em; padding: 0; border: none; border-radius: var(--radius-xs); background: transparent; color: var(--ink); font: inherit; font-size: 18px; font-weight: 700; text-align: center;
+  font-variant-numeric: tabular-nums; appearance: textfield; }
+.tools-num::-webkit-inner-spin-button, .tools-num::-webkit-outer-spin-button { appearance: none; margin: 0; }
+.tools-num:focus-visible { outline: 2px solid var(--w); }
+.tools-play { min-width: 156px; min-height: 56px; padding: 0 28px; gap: 10px; border-radius: var(--radius-pill); font-size: 17px; font-weight: 700; }
+.tools-play .ico { width: 22px; height: 22px; }
+.tools-reset { display: grid; place-items: center; width: 56px; height: 56px; padding: 0; border-radius: 50%; }
+.tools-reset .ico { width: 22px; height: 22px; }
+@media (prefers-reduced-motion: reduce) { .tools-ring-bar, .tools-ring::before, .tools-ring .tools-big, .tools-step { transition: none; } .tools-timer[data-state="done"] .tools-ring, .tools-timer[data-state="run"] .tools-state::before { animation: none; } }
 .more-tile[data-route="tools"] { --w: var(--hue-blue); }
 
 /* ===== หน้าเครื่องมือ: ขยายให้เต็มพื้นที่หน้าจอ (ความสูง = เต็มจอ, การ์ดยืดตาม) ===== */
@@ -1821,12 +1862,11 @@ table.sheet tbody tr:nth-child(n) td.over-max { background: var(--danger-tint); 
 
 /* จับเวลา: การ์ดเต็มความกว้าง วงแหวนขยายตามความสูงจอ */
 .tools-timer .tools-preset { padding: 9px 18px; font-size: 15px; }
-.tools-timer .tools-input { font-size: 16px; }
 
 @media (max-width: 860px) {
   .tools-grid { grid-template-columns: 1fr; gap: 14px; }
   .tools-names textarea { flex: none; min-height: 160px; }
-  .tools-ring { width: min(260px, 70vw); }
+  .tools-ring { width: min(280px, 78vw); }
 }
 
 .struct-panel-header .is-ok { color: var(--success); }
