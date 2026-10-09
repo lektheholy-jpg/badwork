@@ -198,10 +198,10 @@ function parptAppendixHtml(records, fiscalYear) {
     .app-tbl th,.app-tbl td{border:1px solid #555;padding:4pt 5pt;vertical-align:middle}
     .app-tbl thead th{background:#f0f0f0;font-weight:700;text-align:center}
     .app-tbl tr.grp td{background:#f8f8f8;font-weight:600;padding:4pt 5pt}
-    .app-c-no{width:24pt}.app-c-thumb{width:60pt}.app-c-date{width:60pt}.app-c-hours{width:44pt}
+    .app-c-no{width:24pt}.app-c-thumb{width:90pt}.app-c-date{width:60pt}.app-c-hours{width:44pt}
     .app-no{text-align:center}
-    .app-thumb{text-align:center;padding:2pt}
-    .app-thumb-img{width:54pt;height:auto;max-height:72pt;object-fit:contain;display:block;margin:auto}
+    .app-thumb{text-align:center;padding:3pt}
+    .app-thumb-img{width:84pt;height:auto;max-height:110pt;object-fit:contain;display:block;margin:auto}
     .app-org{font-size:9.5pt;color:#555;margin-top:2pt}
     .app-date{text-align:center;white-space:nowrap}
     .app-hours{text-align:center}
