@@ -79,9 +79,6 @@ async function paDelete(docId) {
 
 // ------------------------------------------------------------------
 // ช่วยเหลือทั่วไป
-// ------------------------------------------------------------------
-// ปีงบประมาณเริ่ม 1 ต.ค. (ต.ค.–ธ.ค. นับเป็นปีงบประมาณถัดไป)
-function paFiscalYear(d = new Date()) { return d.getFullYear() + 543 + (d.getMonth() >= 9 ? 1 : 0); }
 function paPeriodText(y) {
   y = Number(y);
   return y > 2400 ? `ระหว่างวันที่ 1 เดือน ตุลาคม พ.ศ. ${y - 1} ถึงวันที่ 30 เดือน กันยายน พ.ศ. ${y}` : '';
@@ -89,18 +86,6 @@ function paPeriodText(y) {
 function paDocTitle(d) {
   return d.fiscalYear ? `ปีงบประมาณ พ.ศ. ${d.fiscalYear}` : `ปีการศึกษา ${d.year || '—'} ภาคเรียนที่ ${d.semester || '—'}`; // รายการเก่าใช้ปีการศึกษา/ภาคเรียน
 }
-const PA_MONTHS = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
-function paThaiDate(iso) {
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || '');
-  return m ? `${+m[3]} ${PA_MONTHS[+m[2] - 1] || ''} ${+m[1] + 543}` : '';
-}
-function paNum(v) {
-  const n = parseFloat(String(v ?? '').replace(/[๐-๙]/g, c => String(c.charCodeAt(0) - 0x0E50)).replace(',', '.'));
-  return Number.isFinite(n) && n >= 0 ? Math.round(n * 100) / 100 : 0;
-}
-const paFmtH = n => String(Math.round((Number(n) || 0) * 100) / 100);
-const paSum = rows => (rows || []).reduce((s, r) => s + (Number(r.hours) || 0), 0);
-const paNl = s => escapeHtml(s || '').replace(/\n/g, '<br>');
 
 // เติมค่าเริ่มต้นให้ครบทุกฟิลด์ (รองรับเอกสารรุ่นเก่าที่มีแค่ classroomBasic / workload / outcome)
 function paNormalize(d) {
@@ -126,7 +111,7 @@ function paNormalize(d) {
 
 function paBlankDoc() {
   return paNormalize({
-    fiscalYear: String(paFiscalYear()),
+    fiscalYear: String(docFiscalYear()),
     classroomTypes: { basic: true },
     status: 'draft',
   });
@@ -166,40 +151,13 @@ async function paPullTimetable() {
   return { subjects: agg('class'), activities: agg('activity'), term: ttTermLabel(tt.term) };
 }
 
-// ------------------------------------------------------------------
-// ไอคอน SVG
-// ------------------------------------------------------------------
-const PA_ICO_ADD   = `<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>`;
-const PA_ICO_EDIT  = `<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M16.2 3.6a2.4 2.4 0 0 1 3.4 0l.8.8a2.4 2.4 0 0 1 0 3.4L9.5 18.7a2 2 0 0 1-.9.5l-4.3 1.1a.8.8 0 0 1-1-1l1.1-4.3c.1-.3.3-.6.5-.9Z"/></svg>`;
-const PA_ICO_DEL   = `<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>`;
-const PA_ICO_PRINT = `<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V3h12v6"/><path d="M6 18H4a1 1 0 0 1-1-1v-6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v6a1 1 0 0 1-1 1h-2"/><rect x="6" y="14" width="12" height="7" rx="1"/></svg>`;
-const PA_ICO_COPY  = `<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>`;
+// ไอคอนเฉพาะของ PA (ไอคอนทั่วไป DOC_ICO_* อยู่ที่ js/doc-shell.js)
 const PA_ICO_PA    = `<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><g fill="currentColor" stroke="none"><path opacity=".55" d="M7 2.5h7l5.5 5.5v11A2.5 2.5 0 0 1 17 21.5H7A2.5 2.5 0 0 1 4.5 19V5A2.5 2.5 0 0 1 7 2.5Z"/><rect x="8" y="9" width="8" height="1.5" rx=".75"/><rect x="8" y="12" width="8" height="1.5" rx=".75"/><rect x="8" y="15" width="5" height="1.5" rx=".75"/></g></svg>`;
 
-// ------------------------------------------------------------------
-// ป้ายสถานะ
-// ------------------------------------------------------------------
-function paStatusBadge(status) {
-  if (status === 'submitted') return `<span class="badge badge-success">ส่งแล้ว</span>`;
-  return `<span class="badge badge-neutral">ร่าง</span>`;
-}
 
 // ==================================================================
 // เอกสาร PA 1/ส สำหรับดูตัวอย่าง/พิมพ์ (ใช้ร่วมกับแท็บรายงานใน pa-report.js)
 // ==================================================================
-// ฟอนต์สำรองเมื่อเครื่องไม่มี TH Sarabun PSK (ตัวที่แบบราชการใช้): Sarabun (OFL) เก็บไว้ใน assets/fonts
-// size-adjust 65.4% = ความกว้างตัวอักษรเท่า TH Sarabun PSK ที่ขนาดเดียวกัน (วัดจากแบบ PA ตัวจริง) → ตัดบรรทัด/จำนวนหน้าใกล้เคียงฟอร์มราชการ
-function paFontCss() {
-  const base = (typeof document !== 'undefined' && document.baseURI) || '';
-  const u = f => `url(${base ? new URL('assets/fonts/' + f, base).href : 'assets/fonts/' + f}) format('woff2')`;
-  const th = 'U+0E01-0E5B,U+200C-200D,U+25CC';
-  const la = 'U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+20AC,U+2122,U+2212,U+FEFF';
-  const ff = (w, st, f, r) => `@font-face{font-family:'PA Sarabun';font-weight:${w};font-style:${st};size-adjust:65.4%;font-display:swap;src:${u(f)};unicode-range:${r}}`;
-  return [
-    ff(400, 'normal', 'sarabun-thai-400-normal.woff2', th), ff(700, 'normal', 'sarabun-thai-700-normal.woff2', th), ff(400, 'italic', 'sarabun-thai-400-italic.woff2', th),
-    ff(400, 'normal', 'sarabun-latin-400-normal.woff2', la), ff(700, 'normal', 'sarabun-latin-700-normal.woff2', la),
-  ].join('');
-}
 
 const PA1_CSS = `
 .pa1{background:#fff;color:#000;font-family:'TH SarabunPSK','TH Sarabun PSK','THSarabunPSK','TH Sarabun New','THSarabunNew','PA Sarabun','Noto Sans Thai',Tahoma,sans-serif;font-size:16pt;line-height:1.22;text-align:left;font-kerning:normal}
@@ -265,35 +223,35 @@ function paBuildDocHtml(d, o) {
   const e = escapeHtml;
   const CHK = '<svg viewBox="0 0 10 10" aria-hidden="true"><rect x=".5" y=".5" width="9" height="9" fill="none" stroke="#000" stroke-width=".9"/>';
   const box = on => `<span class="bx">${CHK}${on ? '<path d="M2.2 5.3l2 2.1 3.8-4.6" fill="none" stroke="#000" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>' : ''}</svg></span>`;
-  const hrs = h => `จำนวน ${paFmtH(h)} ชั่วโมง/สัปดาห์`;
+  const hrs = h => `จำนวน ${docFmtH(h)} ชั่วโมง/สัปดาห์`;
   // แถวชื่อ + ชั่วโมง (ชั่วโมงเรียงเป็นคอลัมน์เดียวกันทั้งหน้าเหมือนแบบฟอร์ม)
   const row = (cls, text, h) => `<div class="p1-row ${cls}"><span class="n">${text}</span><span class="h">${h ? hrs(h) : ''}</span></div>`;
-  const rows = (list, cls, prefix = '') => list.map(r => row(cls, prefix + paNl(r.name), r.hours)).join('');
+  const rows = (list, cls, prefix = '') => list.map(r => row(cls, prefix + docNl(r.name), r.hours)).join('');
   const sect = (no, title, list, withHours = true) => {
-    const s = paSum(list);
+    const s = docSum(list);
     const h = !withHours ? '' : s ? hrs(s) : `จำนวน ${dots} ชั่วโมง/สัปดาห์`;
     return `<div class="p1-row p1-ind2"><span class="n">${no} ${title}</span><span class="h">${h}</span></div>${rows(list, 'p1-ind3')}`;
   };
 
   const hasLoad = sys.config.loadLists.some(k => L[k].length);
-  const total = paSum(L.subjects) + paSum(L.activities);
+  const total = docSum(L.subjects) + docSum(L.activities);
   const loadHtml = hasLoad ? `
-    <div class="p1-ind2">1.1 ชั่วโมงสอนตามตารางสอน รวมจำนวน ${total ? paFmtH(total) : dots} ชั่วโมง/สัปดาห์ ดังนี้</div>
-    ${L.group ? `<div class="p1-ind3"><b>กลุ่มสาระการเรียนรู้${paNl(L.group)}</b></div>` : ''}
+    <div class="p1-ind2">1.1 ชั่วโมงสอนตามตารางสอน รวมจำนวน ${total ? docFmtH(total) : dots} ชั่วโมง/สัปดาห์ ดังนี้</div>
+    ${L.group ? `<div class="p1-ind3"><b>กลุ่มสาระการเรียนรู้${docNl(L.group)}</b></div>` : ''}
     ${rows(L.subjects, 'p1-ind3', 'รายวิชา ')}
-    ${L.activities.length ? `${row('p1-ind3', 'กิจกรรมพัฒนาผู้เรียน', paSum(L.activities))}${rows(L.activities, 'p1-ind4', '- ')}` : ''}
+    ${L.activities.length ? `${row('p1-ind3', 'กิจกรรมพัฒนาผู้เรียน', docSum(L.activities))}${rows(L.activities, 'p1-ind4', '- ')}` : ''}
     ${sect('1.2', 'งานส่งเสริมและสนับสนุนการจัดการเรียนรู้', L.support)}
     ${sect('1.3', 'งานพัฒนาคุณภาพการจัดการศึกษาของสถานศึกษา', L.quality)}
     ${sect('1.4', 'งานตอบสนองนโยบายและจุดเน้น', L.policy, false)}`
-    : (d.workload ? `<div class="p1-ind2">${paNl(d.workload)}</div>` : `<div class="p1-ind2">1.1 ชั่วโมงสอนตามตารางสอน รวมจำนวน ${dots} ชั่วโมง/สัปดาห์</div>`);
+    : (d.workload ? `<div class="p1-ind2">${docNl(d.workload)}</div>` : `<div class="p1-ind2">1.1 ชั่วโมงสอนตามตารางสอน รวมจำนวน ${dots} ชั่วโมง/สัปดาห์</div>`);
 
   // ภาคเรียนต่อท้ายบรรทัดเดียวกับข้อความ (ตามแบบที่ใช้กันจริง)
-  const term = (label, text) => `${label} ${paNl(text)}`;
+  const term = (label, text) => `${label} ${docNl(text)}`;
   const tableRows = sys.config.workItems.map(([, gt, items]) =>
     `<tr class="grp"><td colspan="4">${gt}</td></tr>` + items.map(([id, label]) => {
       const w = d.workItems[id] || {};
       const tasks = [w.s1 && term(t1, w.s1), w.s2 && term(t2, w.s2)].filter(Boolean).join('<div class="gap"></div>');
-      return `<tr><td class="wl">${id} ${label}</td><td>${tasks}</td><td>${paNl(w.outcome)}</td><td>${paNl(w.indicator)}</td></tr>`;
+      return `<tr><td class="wl">${id} ${label}</td><td>${tasks}</td><td>${docNl(w.outcome)}</td><td>${docNl(w.indicator)}</td></tr>`;
     }).join('')).join('');
 
   // ข้อความหลายบรรทัด → ย่อหน้า (บรรทัดแรกเยื้อง ตามแบบเอกสารราชการ)
@@ -348,7 +306,7 @@ function paBuildDocHtml(d, o) {
     <div class="p1-break"></div>
     <div class="p1-h mt0">ส่วนที่ 2 ข้อตกลงในการพัฒนางานที่เป็นประเด็นท้าทายในการพัฒนาผลลัพธ์การเรียนรู้ของผู้เรียน</div>
     <div class="p1-p mt5">ประเด็นที่ท้าทายในการพัฒนาผลลัพธ์การเรียนรู้ของผู้เรียนของผู้จัดทำข้อตกลง ซึ่งปัจจุบันดำรงตำแหน่ง ครู ต้องแสดงให้เห็นถึงระดับการปฏิบัติที่คาดหวัง คือ <i><u>การปรับประยุกต์</u></i> การจัดการเรียนรู้และการพัฒนาคุณภาพการเรียนรู้ของผู้เรียน ให้เกิดการเปลี่ยนแปลงไปในทางที่ดีขึ้นหรือมีการพัฒนามากขึ้น (ทั้งนี้ ประเด็นท้าทายอาจจะแสดงให้เห็นถึงระดับการปฏิบัติที่คาดหวังที่สูงกว่าได้)</div>
-    <div class="p1-p"><b>ประเด็นท้าทาย</b> เรื่อง ${paNl(d.challengeTitle) || dots}</div>
+    <div class="p1-p"><b>ประเด็นท้าทาย</b> เรื่อง ${docNl(d.challengeTitle) || dots}</div>
     <div class="p1-hd">1. สภาพปัญหาของผู้เรียนและการจัดการเรียนรู้</div>
     ${paras(d.problem, 'p1-p')}
     <div class="p1-hd mt11">2. วิธีการดำเนินการให้บรรลุผล</div>
@@ -363,7 +321,7 @@ function paBuildDocHtml(d, o) {
       <div>(${e(o.name || '………………………………')})</div>
       <div>ตำแหน่ง ${e([o.position, o.standing].filter(Boolean).join(' วิทยฐานะ') || '………………')}</div>
       <div>ผู้จัดทำข้อตกลงในการพัฒนางาน</div>
-      <div>${e(paThaiDate(d.signDate) || '................/.............../...................')}</div>
+      <div>${e(docThaiDate(d.signDate) || '................/.............../...................')}</div>
     </div>
 
     <div class="p1-dir">
@@ -388,7 +346,7 @@ function paPrint(d, o) {
   if (!w) { showToast('เบราว์เซอร์บล็อกหน้าต่างพิมพ์ — อนุญาต pop-up แล้วลองใหม่'); return; }
   const title = `PA1_${(o && o.name) || ''}_${d.fiscalYear || ''}`.replace(/\s+/g, '_');
   w.document.write(`<!doctype html><html lang="th"><head><meta charset="utf-8"><title>${escapeHtml(title)}</title>
-    <style>${paFontCss()}${PA1_CSS}@page{size:A4;margin:16mm 14mm}html,body{margin:0;background:#fff}</style></head>
+    <style>${docFontCss()}${PA1_CSS}@page{size:A4;margin:16mm 14mm}html,body{margin:0;background:#fff}</style></head>
     <body>${paBuildDocHtml(d, o)}</body></html>`);
   w.document.close();
   w.focus();
@@ -400,106 +358,6 @@ function paPrint(d, o) {
   } else setTimeout(go, 600);
 }
 
-// ------------------------------------------------------------------
-// โครงหน้า: หัวเรื่อง + แท็บ (แบบฟอร์มข้อตกลง | ตัวอย่าง/พิมพ์) + พื้นที่เนื้อหา
-// ปุ่มเมนูข้างปุ่มเดียว (pa-page) เปิดหน้านี้ — สลับสองมุมมองด้วยแท็บโดยไม่วาดทั้งหน้าใหม่
-// ------------------------------------------------------------------
-
-function paBuildShell() {
-  const sys = docSystem();
-  const view = document.getElementById('view');
-  view.innerHTML = `
-    ${pageHeaderHtml(sys.config.title)}
-    <div class="tabs" id="pa-tabs" role="tablist">
-      ${sys.config.tabs.map(([id, label]) => `<div class="tab ${sys.state.tab === id ? 'active' : ''}" data-tab="${id}" role="tab" aria-selected="${sys.state.tab === id}" tabindex="0">${label}</div>`).join('')}
-    </div>
-    <div id="pa-tab-body"></div>`;
-  const tabs = view.querySelector('#pa-tabs');
-  initNavPill(tabs, '.tab', 'seg-pill');
-  tabs.querySelectorAll('.tab').forEach(t => {
-    t.addEventListener('mousedown', e => e.preventDefault()); // กดด้วยเมาส์/นิ้วไม่ต้องรับโฟกัสเลย — ไม่มีกรอบ .tab:focus-visible สีน้ำเงินวาบตอนกด (คีย์บอร์ดยัง Tab/Enter ได้ตามเดิม)
-    t.addEventListener('click', () => {
-      t.blur(); // คลิกด้วยเมาส์/นิ้วแล้วไม่ต้องค้างกรอบโฟกัสสีน้ำเงิน (.tab:focus-visible) — ผู้ใช้คีย์บอร์ดกด Enter/Space ทางด้านล่างยังโฟกัสอยู่ตามเดิม
-      paSwitchTab(t.dataset.tab);
-    });
-    t.addEventListener('keydown', e => {
-      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); paSwitchTab(t.dataset.tab); }
-    });
-  });
-}
-
-// พื้นที่เนื้อหาของแท็บ — ถ้ายังไม่มีโครง (เช่นถูกเรียกก่อน renderPAPage) ให้สร้างให้
-function paMount() {
-  const view = document.getElementById('view');
-  if (!view.querySelector('#pa-tab-body')) paBuildShell();
-  return view.querySelector('#pa-tab-body');
-}
-
-// เนื้อหาใหม่มาแล้ว: ยกเลิกตัวโหลด + จางเข้าเฉพาะพื้นที่เนื้อหา (แท็บไม่กะพริบ)
-// มาจากการกดสลับแท็บ (เนื้อหาเดิมถูกหรี่ .is-switching อยู่ที่ 0.5) → จางเข้าต่อจาก 0.5 ไม่ให้วูบไปโปร่งใสแล้วค่อยขึ้น
-// ผู้เรียกห้ามถอด .is-switching เองก่อนเรียกฟังก์ชันนี้ ไม่งั้นแยกไม่ออกว่ามาจากการกดแท็บ
-function paSwapIn(body) {
-  clearLoading(body);
-  const fromDim = body.classList.contains('is-switching');
-  body.classList.remove('is-switching', 'tab-swap', 'tab-swap-dim');
-  void body.offsetWidth; // รีสตาร์ทแอนิเมชันถ้าสลับซ้ำเร็วๆ
-  body.classList.add(fromDim ? 'tab-swap-dim' : 'tab-swap');
-}
-
-// ตัวโหลดของหน้า PA — แก้อาการวาบตอนกดสลับแท็บ/เปิดหน้า
-//   เดิมใช้ showLoading() ซึ่งหลัง 180ms จะเอาเนื้อหาเดิมไปเปลี่ยนเป็นโครง skeleton (มีก้อนทรงปุ่มสีฟ้า)
-//   แล้วเนื้อหาจริงมาทับอีกที = วาบ 2 จังหวะ ทั้งที่รออยู่แค่แป๊บเดียว
-//   • มีเนื้อหาเดิมอยู่ (กดสลับแท็บ): ไม่ต้องทำอะไร — paSwitchTab หรี่เนื้อหาเดิม (.is-switching) ค้างไว้อยู่แล้ว
-//   • พื้นที่ว่าง (เปิดหน้า PA ครั้งแรก): รอ 450ms ก่อนค่อยโชว์ skeleton ถ้าข้อมูลมาเร็วกว่านั้นจะไม่เห็นเลย
-const PA_LOAD_DELAY_MS = 450;
-function paShowLoading(view) {
-  if (!view) return;
-  clearLoading(view);
-  if (view.firstChild) return;
-  _loadTimers.set(view, setTimeout(() => {
-    _loadTimers.delete(view);
-    if (view.isConnected && !view.firstChild) view.innerHTML = loaderHtml('list');
-  }, PA_LOAD_DELAY_MS));
-}
-
-// เรนเดอร์นี้ล้าสมัยแล้วหรือยัง: ออกจากหน้าไปแล้ว หรือมีการกดสลับแท็บรอบใหม่ระหว่างรอข้อมูล
-// sys = ระบบที่เรนเดอร์รอบนั้นถืออยู่ (ส่งต่อจากตัวแปร sys ของฟังก์ชันเรนเดอร์ ไม่ใช้ระบบที่กำลังแสดงตอนนี้ — กันผลค้างของอีกระบบมาเทียบเลขรอบผิดตัว)
-function paStale(view, seq, sys = docSystem()) { return !view.isConnected || sys.state.seq !== seq; }
-
-function paRenderTab() {
-  const sys = docSystem();
-  sys.state.seq++; // รอบใหม่ — เรนเดอร์ที่ยังค้างจากรอบก่อนจะถูกมองว่าล้าสมัย
-  if (sys.state.tab === 'report') return renderPAReportView();
-  if (sys.state.tab === 'rpt') return renderPARptView(); // แบบฟอร์มรายงานผล (js/pa-rpt.js)
-  if (sys.state.tab === 'rptprev') return renderPARptPreviewView(); // ตัวอย่าง/พิมพ์ รายงานผล (js/pa-rpt.js)
-  return sys.state.view === 'form' ? renderPAFormView() : renderPAListView();
-}
-
-async function paSwitchTab(tab) {
-  const sys = docSystem();
-  if (tab === sys.state.tab || !sys.config.tabs.some(t => t[0] === tab)) return;
-  // กำลังกรอกฟอร์มอยู่: เก็บค่าที่พิมพ์ค้างไว้ใน sys.state.doc กลับมาที่แท็บข้อตกลงแล้วยังอยู่ครบ
-  if (sys.state.tab === 'agreement' && sys.state.view === 'form') paCollectFormData();
-  if (sys.state.tab === 'rpt' && sys.rptState.view === 'form') parptCollect();
-  sys.state.tab = tab;
-  const tabs = document.getElementById('pa-tabs');
-  tabs?.querySelectorAll('.tab').forEach(x => {
-    const on = x.dataset.tab === tab;
-    x.classList.toggle('active', on);
-    x.setAttribute('aria-selected', String(on));
-  });
-  tabs?.__pillPlace?.(true);
-  const body = document.getElementById('pa-tab-body');
-  body?.classList.add('is-switching'); // หรี่เนื้อหาเดิมทันที ระหว่างรอข้อมูล
-  try {
-    await paRenderTab();
-  } catch (err) {
-    // เรนเดอร์พัง: ถ้าไม่ถอดตรงนี้เนื้อหาจะค้างหรี่และกดอะไรไม่ได้ (pointer-events: none)
-    console.error('PA tab render failed', err);
-    if (body && body.isConnected) { clearLoading(body); body.classList.remove('is-switching'); }
-    if (typeof showToast === 'function') showToast('เปิดแท็บไม่สำเร็จ ลองกดอีกครั้ง');
-  }
-}
 
 // ------------------------------------------------------------------
 // คัดลอกข้อตกลงเป็นฉบับร่างใหม่ (ยังไม่บันทึกจนกว่าจะกดบันทึก) เพื่อเอาไปปรับแก้
@@ -523,23 +381,23 @@ function paDuplicate(src) {
 // ------------------------------------------------------------------
 async function renderPAListView() {
   const sys = docSystem();
-  const view = paMount(); // = พื้นที่เนื้อหาของแท็บ
+  const view = docMount(); // = พื้นที่เนื้อหาของแท็บ
   const seq = sys.state.seq;
-  paShowLoading(view);
+  docShowLoading(view);
 
   let list = [];
   try {
     list = await paLoadList();
     sys.state.list = list;
   } catch (err) {
-    if (paStale(view, seq, sys) || sys.state.tab !== 'agreement') return; // ผู้ใช้สลับแท็บ/ออกจากหน้าไปแล้ว
+    if (docStale(view, seq, sys) || sys.state.tab !== 'agreement') return; // ผู้ใช้สลับแท็บ/ออกจากหน้าไปแล้ว
     clearLoading(view);
     view.classList.remove('is-switching');
     view.innerHTML = `<div class="card card-pad"><div class="empty-state">โหลดข้อมูลไม่สำเร็จ: ${escapeHtml(err.message)}</div></div>`;
     return;
   }
 
-  if (paStale(view, seq, sys) || sys.state.tab !== 'agreement' || sys.state.view !== 'list') return;
+  if (docStale(view, seq, sys) || sys.state.tab !== 'agreement' || sys.state.view !== 'list') return;
 
   const rows = list.map(d => `
     <div class="pa-row card" data-id="${escapeHtml(d.id)}">
@@ -549,13 +407,13 @@ async function renderPAListView() {
         <div class="pa-row-sub">${escapeHtml(d.challengeTitle || d.department || d.position || '')}</div>
       </div>
       <div class="pa-row-meta">
-        ${paStatusBadge(d.status)}
+        ${docStatusBadge(d.status)}
       </div>
       <div class="pa-row-actions">
-        <button type="button" class="btn btn-ghost btn-sm pa-print-btn" data-id="${escapeHtml(d.id)}" title="ดูตัวอย่าง / พิมพ์">${PA_ICO_PRINT} พิมพ์</button>
-        <button type="button" class="btn btn-ghost btn-sm pa-dup-btn" data-id="${escapeHtml(d.id)}" title="คัดลอกเป็นฉบับใหม่เพื่อนำไปปรับแก้">${PA_ICO_COPY} คัดลอก</button>
-        <button type="button" class="btn btn-ghost btn-sm pa-edit-btn" data-id="${escapeHtml(d.id)}" title="แก้ไข">${PA_ICO_EDIT} แก้ไข</button>
-        <button type="button" class="btn btn-danger-ghost btn-sm pa-del-btn" data-id="${escapeHtml(d.id)}" title="ลบ">${PA_ICO_DEL}</button>
+        <button type="button" class="btn btn-ghost btn-sm pa-print-btn" data-id="${escapeHtml(d.id)}" title="ดูตัวอย่าง / พิมพ์">${DOC_ICO_PRINT} พิมพ์</button>
+        <button type="button" class="btn btn-ghost btn-sm pa-dup-btn" data-id="${escapeHtml(d.id)}" title="คัดลอกเป็นฉบับใหม่เพื่อนำไปปรับแก้">${DOC_ICO_COPY} คัดลอก</button>
+        <button type="button" class="btn btn-ghost btn-sm pa-edit-btn" data-id="${escapeHtml(d.id)}" title="แก้ไข">${DOC_ICO_EDIT} แก้ไข</button>
+        <button type="button" class="btn btn-danger-ghost btn-sm pa-del-btn" data-id="${escapeHtml(d.id)}" title="ลบ">${DOC_ICO_DEL}</button>
       </div>
     </div>`).join('');
 
@@ -565,14 +423,14 @@ async function renderPAListView() {
         <div class="icon">${PA_ICO_PA}</div>
         <div class="empty-title">ยังไม่มีPersonal Agreement</div>
         <div class="empty-sub">กดปุ่มด้านล่างเพื่อสร้างPersonal Agreement ประจำปีงบประมาณ</div>
-        <button type="button" class="btn btn-primary pa-new-btn">${PA_ICO_ADD} สร้างPersonal Agreement ใหม่</button>
+        <button type="button" class="btn btn-primary pa-new-btn">${DOC_ICO_ADD} สร้างPersonal Agreement ใหม่</button>
       </div>
     </div>` : '';
 
   view.innerHTML = `
     <div class="pa-toolbar">
       <span class="u-note">${list.length > 0 ? `${list.length} รายการ` : ''}</span>
-      ${list.length > 0 ? `<button type="button" class="btn btn-primary btn-sm pa-new-btn">${PA_ICO_ADD} สร้างใหม่</button>` : ''}
+      ${list.length > 0 ? `<button type="button" class="btn btn-primary btn-sm pa-new-btn">${DOC_ICO_ADD} สร้างใหม่</button>` : ''}
     </div>
     ${empty}
     <div class="pa-list">${rows}</div>
@@ -620,7 +478,7 @@ async function renderPAListView() {
   view.querySelectorAll('.pa-print-btn').forEach(b => b.addEventListener('click', (e) => {
     e.stopPropagation();
     sys.state.previewId = b.dataset.id;
-    paSwitchTab('report');
+    docSwitchTab('report');
   }));
   view.querySelectorAll('.pa-del-btn').forEach(b => b.addEventListener('click', async (e) => {
     e.stopPropagation();
@@ -631,7 +489,7 @@ async function renderPAListView() {
       b.textContent = 'ยืนยันลบ?';
       b.classList.add('btn-danger');
       b.classList.remove('btn-danger-ghost');
-      setTimeout(() => { delete row.dataset.confirmDel; b.innerHTML = PA_ICO_DEL; b.classList.remove('btn-danger'); b.classList.add('btn-danger-ghost'); }, 3000);
+      setTimeout(() => { delete row.dataset.confirmDel; b.innerHTML = DOC_ICO_DEL; b.classList.remove('btn-danger'); b.classList.add('btn-danger-ghost'); }, 3000);
       return;
     }
     b.disabled = true;
@@ -644,7 +502,7 @@ async function renderPAListView() {
     }
   }));
 
-  paSwapIn(view);
+  docSwapIn(view);
 }
 
 // ------------------------------------------------------------------
@@ -653,8 +511,8 @@ async function renderPAListView() {
 function paRowHtml(r = {}, ph = '') {
   return `<div class="pa-lrow">
     <input class="pa-l-name" type="text" maxlength="150" placeholder="${escapeHtml(ph)}" value="${escapeHtml(r.name || '')}" aria-label="ชื่อรายการ">
-    <input class="pa-l-hours" type="text" inputmode="decimal" maxlength="5" placeholder="ชม." value="${r.hours ? escapeHtml(paFmtH(r.hours)) : ''}" aria-label="ชั่วโมงต่อสัปดาห์">
-    <button type="button" class="btn btn-danger-ghost btn-sm pa-l-del" title="ลบแถว" aria-label="ลบแถว">${PA_ICO_DEL}</button>
+    <input class="pa-l-hours" type="text" inputmode="decimal" maxlength="5" placeholder="ชม." value="${r.hours ? escapeHtml(docFmtH(r.hours)) : ''}" aria-label="ชั่วโมงต่อสัปดาห์">
+    <button type="button" class="btn btn-danger-ghost btn-sm pa-l-del" title="ลบแถว" aria-label="ลบแถว">${DOC_ICO_DEL}</button>
   </div>`;
 }
 
@@ -663,20 +521,20 @@ function paLoadBlock(key, title, rows, ph) {
     <div class="pa-sub">${title}</div>
     <div class="pa-lhead" aria-hidden="true"><span>รายการ</span><span>ชม./สัปดาห์</span></div>
     <div class="pa-lrows" data-list="${key}">${rows.map(r => paRowHtml(r, ph)).join('')}</div>
-    <button type="button" class="btn btn-ghost btn-sm pa-l-add" data-list="${key}" data-ph="${escapeHtml(ph)}">${PA_ICO_ADD} เพิ่มแถว</button>
+    <button type="button" class="btn btn-ghost btn-sm pa-l-add" data-list="${key}" data-ph="${escapeHtml(ph)}">${DOC_ICO_ADD} เพิ่มแถว</button>
   </div>`;
 }
 
 async function renderPAFormView() {
   const sys = docSystem();
-  const view = paMount(); // = พื้นที่เนื้อหาของแท็บ
+  const view = docMount(); // = พื้นที่เนื้อหาของแท็บ
   const seq = sys.state.seq;
   const d = sys.state.doc = paNormalize(sys.state.doc);
   const isNew = !sys.state.docId;
-  paShowLoading(view);
+  docShowLoading(view);
   let p;
   try { await loadModule('profile'); p = await loadTeacherProfile(); } catch (err) { p = AppState.teacherProfile || {}; }
-  if (paStale(view, seq, sys) || sys.state.tab !== 'agreement' || sys.state.view !== 'form') return; // ผู้ใช้สลับแท็บ/ออกไปแล้ว
+  if (docStale(view, seq, sys) || sys.state.tab !== 'agreement' || sys.state.view !== 'form') return; // ผู้ใช้สลับแท็บ/ออกไปแล้ว
 
   // เอกสารที่ "ส่งแล้ว" ใช้สำเนาข้อมูลผู้จัดทำที่เก็บไว้ (ไม่เปลี่ยนตามโปรไฟล์) · นอกนั้นใช้ข้อมูลปัจจุบัน
   let liveOwner;
@@ -692,7 +550,7 @@ async function renderPAFormView() {
       const t = await paPullTimetable();
       if (!sys.config.loadLists.some(k => d.load[k].length)) { d.load.subjects = t.subjects; d.load.activities = t.activities; }
     } catch (err) { /* ไม่มีตารางสอน/ออฟไลน์ — ข้าม */ }
-    if (paStale(view, seq, sys) || sys.state.tab !== 'agreement' || sys.state.view !== 'form') return;
+    if (docStale(view, seq, sys) || sys.state.tab !== 'agreement' || sys.state.view !== 'form') return;
   }
 
   const item = (label, val, wide) => `<div class="pa-pf-item${wide ? ' pa-pf-wide' : ''}"><dt>${label}</dt><dd>${val ? escapeHtml(val) : '—'}</dd></div>`;
@@ -712,7 +570,7 @@ async function renderPAFormView() {
         <h2 class="pa-form-title">PA 1/ส · ${isNew ? 'สร้างข้อตกลงใหม่' : 'แก้ไขข้อตกลง'}</h2>
         <div class="u-note">แบบตกลงในการพัฒนางาน (PA) สำหรับข้าราชการครูและบุคลากรทางการศึกษา ตำแหน่ง ครู (สังกัด สพฐ.)</div>
       </div>
-      ${isNew ? '' : `<button type="button" class="btn btn-ghost btn-sm pa-dup-btn" title="คัดลอกข้อมูลในฟอร์มนี้เป็นฉบับร่างใหม่">${PA_ICO_COPY} คัดลอกเป็นฉบับใหม่</button>`}
+      ${isNew ? '' : `<button type="button" class="btn btn-ghost btn-sm pa-dup-btn" title="คัดลอกข้อมูลในฟอร์มนี้เป็นฉบับร่างใหม่">${DOC_ICO_COPY} คัดลอกเป็นฉบับใหม่</button>`}
     </div>
 
     <form id="pa-form" class="pa-form" novalidate>
@@ -730,7 +588,7 @@ async function renderPAFormView() {
         <div class="field-row">
           <div class="field">
             <label for="pa-fiscalYear">ปีงบประมาณ พ.ศ.</label>
-            <input id="pa-fiscalYear" type="text" inputmode="numeric" maxlength="4" value="${escapeHtml(d.fiscalYear || '')}" placeholder="${paFiscalYear()}">
+            <input id="pa-fiscalYear" type="text" inputmode="numeric" maxlength="4" value="${escapeHtml(d.fiscalYear || '')}" placeholder="${docFiscalYear()}">
             <div class="field-hint" id="pa-period">${escapeHtml(paPeriodText(d.fiscalYear))}</div>
           </div>
           <div class="field">
@@ -761,7 +619,7 @@ async function renderPAFormView() {
         <div class="field"><label for="pa-load-group">กลุ่มสาระการเรียนรู้</label><input id="pa-load-group" type="text" maxlength="100" value="${escapeHtml(d.load.group)}" placeholder="เช่น วิทยาศาสตร์และเทคโนโลยี"></div>
         ${paLoadBlock('subjects', '1.1 รายวิชาที่สอน', d.load.subjects, 'เช่น ว32105 วิทยาการคำนวณ')}
         ${paLoadBlock('activities', '1.1 กิจกรรมพัฒนาผู้เรียน', d.load.activities, 'เช่น กิจกรรมชุมนุม')}
-        <div class="pa-total">รวมชั่วโมงสอน (1.1): <b id="pa-load-total">${paFmtH(paSum(d.load.subjects) + paSum(d.load.activities))}</b> ชั่วโมง/สัปดาห์</div>
+        <div class="pa-total">รวมชั่วโมงสอน (1.1): <b id="pa-load-total">${docFmtH(docSum(d.load.subjects) + docSum(d.load.activities))}</b> ชั่วโมง/สัปดาห์</div>
         ${paLoadBlock('support', '1.2 งานส่งเสริมและสนับสนุนการจัดการเรียนรู้', d.load.support, 'เช่น การมีส่วนร่วมชุมชนการเรียนรู้ทางวิชาชีพ')}
         ${paLoadBlock('quality', '1.3 งานพัฒนาคุณภาพการจัดการศึกษาของสถานศึกษา', d.load.quality, 'เช่น เจ้าหน้าที่ตามโครงสร้างฝ่าย')}
         ${paLoadBlock('policy', '1.4 งานตอบสนองนโยบายและจุดเน้น', d.load.policy, 'ระบุงาน (ถ้ามี)')}
@@ -815,8 +673,8 @@ async function renderPAFormView() {
   // เพิ่ม/ลบแถวภาระงาน + รวมชั่วโมง 1.1 แบบสด
   const updTotal = () => {
     let t = 0;
-    ['subjects', 'activities'].forEach(k => form.querySelectorAll(`.pa-lrows[data-list="${k}"] .pa-l-hours`).forEach(i => { t += paNum(i.value); }));
-    form.querySelector('#pa-load-total').textContent = paFmtH(t);
+    ['subjects', 'activities'].forEach(k => form.querySelectorAll(`.pa-lrows[data-list="${k}"] .pa-l-hours`).forEach(i => { t += docNum(i.value); }));
+    form.querySelector('#pa-load-total').textContent = docFmtH(t);
   };
   form.addEventListener('click', e => {
     const add = e.target.closest('.pa-l-add');
@@ -852,7 +710,7 @@ async function renderPAFormView() {
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     paCollectFormData();
-    if (!/^\d{4}$/.test(sys.state.doc.fiscalYear)) { showToast('ปีงบประมาณต้องเป็นตัวเลข 4 หลัก เช่น ' + paFiscalYear()); view.querySelector('#pa-fiscalYear').focus(); return; }
+    if (!/^\d{4}$/.test(sys.state.doc.fiscalYear)) { showToast('ปีงบประมาณต้องเป็นตัวเลข 4 หลัก เช่น ' + docFiscalYear()); view.querySelector('#pa-fiscalYear').focus(); return; }
     // เก็บสำเนาข้อมูลผู้จัดทำ: เอกสารที่ส่งแล้วและมีสำเนาเดิม = คงไว้ · นอกนั้นใช้ข้อมูลปัจจุบัน
     if (!(sys.state.doc.status === 'submitted' && sys.state.doc.owner)) sys.state.doc.owner = liveOwner;
     const btn = view.querySelector('#pa-save-btn');
@@ -873,7 +731,7 @@ async function renderPAFormView() {
 
   if (typeof badworkAiMount === 'function') badworkAiMount(view, form); // ปุ่มผู้ช่วย AI (js/badwork-ai.js) — ไม่มีไฟล์นี้ฟอร์มก็ทำงานตามเดิม
 
-  paSwapIn(view);
+  docSwapIn(view);
 }
 
 // ------------------------------------------------------------------
@@ -892,7 +750,7 @@ function paCollectFormData() {
   sys.config.loadLists.forEach(k => {
     const box = document.querySelector(`.pa-lrows[data-list="${k}"]`);
     load[k] = box ? [...box.querySelectorAll('.pa-lrow')]
-      .map(r => ({ name: r.querySelector('.pa-l-name').value.trim(), hours: paNum(r.querySelector('.pa-l-hours').value) }))
+      .map(r => ({ name: r.querySelector('.pa-l-name').value.trim(), hours: docNum(r.querySelector('.pa-l-hours').value) }))
       .filter(r => r.name || r.hours) : (sys.state.doc.load?.[k] || []);
   });
 
@@ -925,21 +783,17 @@ function paCollectFormData() {
 }
 
 // ------------------------------------------------------------------
-// renderPAPage — entry point เรียกจาก app.js
+// ลงทะเบียน UI ของระบบ PA เข้าโครงหน้ากลาง (js/doc-shell.js) — ตัวเรนเดอร์อ้างตอนเรียกจริง (กลุ่มไฟล์ PA โหลดครบก่อนเปิดหน้า)
 // ------------------------------------------------------------------
-async function renderPAPage() {
-  const sys = docActivate('pa'); // จุดเข้าของระบบ PA — ตั้งให้ระบบนี้เป็นระบบที่กำลังแสดง
-  sys.state.tab = sys.state.nextTab || sys.config.tabs[0][0]; // กดจากเมนูข้าง = เริ่มที่แท็บข้อตกลง (ยกเว้นมีคนขอแท็บรายงานมา)
-  sys.state.nextTab = null;
-  sys.state.view = 'list';
-  paBuildShell();
-  // ห้าม await ข้อมูลตรงนี้: drawRoute (app.js) เล่นเฟดเข้าทั้งหน้าเมื่อฟังก์ชันนี้ resolve
-  // ถ้ารอข้อมูลก่อน หัวเรื่อง+แท็บจะโผล่ แล้วดับเป็นโปร่งใส แล้วเฟดเข้าใหม่ (วาบ) และซ้อนกับเฟดของพื้นที่แท็บอีกชั้น
-  // → ปล่อยให้โครงหน้าเฟดเข้าทันที ส่วนเนื้อหาในแท็บโหลดต่อและเฟดเข้าเองด้วย paSwapIn
-  paRenderTab().catch(err => {
-    console.error('PA render failed', err);
-    const body = document.getElementById('pa-tab-body');
-    if (body && body.isConnected) { clearLoading(body); body.classList.remove('is-switching'); }
-    if (typeof showToast === 'function') showToast('เปิดหน้าไม่สำเร็จ ลองกดอีกครั้ง');
-  });
-}
+registerDocUi('pa', {
+  tabs: {
+    report: () => renderPAReportView(),         // ตัวอย่าง/พิมพ์ PA 1 (js/pa-report.js)
+    rpt: () => renderPARptView(),               // แบบฟอร์มรายงานผล (js/pa-rpt.js)
+    rptprev: () => renderPARptPreviewView(),    // ตัวอย่าง/พิมพ์ รายงานผล (js/pa-rpt.js)
+    default: sys => sys.state.view === 'form' ? renderPAFormView() : renderPAListView(), // แท็บข้อตกลง
+  },
+  beforeLeave(sys) { // กำลังกรอกฟอร์มอยู่: เก็บค่าที่พิมพ์ค้างไว้ใน state.doc กลับมาแล้วยังอยู่
+    if (sys.state.tab === 'agreement' && sys.state.view === 'form') paCollectFormData();
+    if (sys.state.tab === 'rpt' && sys.rptState.view === 'form') parptCollect();
+  },
+});

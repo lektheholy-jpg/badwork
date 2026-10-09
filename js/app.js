@@ -142,7 +142,7 @@ function renderRoute(route) {
   else if (route === 'tools') return renderToolsPage();
   else if (route === 'settings') return renderSettings();
   else if (route === 'profile') return renderProfilePage();
-  else if (route === 'pa-page') return renderPAPage();
+  else if (route === 'pa-page') return renderDocPage('pa');
 }
 
 // ช่องเลือกพื้นหลังในหน้าตั้งค่า: แต่ละช่องส่งสีผ่านตัวแปร --sw (ค่าสีจริงอยู่ที่ --bgp-* ใน css/style.css)

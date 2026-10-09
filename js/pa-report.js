@@ -29,15 +29,15 @@ function paReportLegacyHtml(d) {
 // ------------------------------------------------------------------
 async function renderPAReportView() {
   const sys = docSystem();
-  const view = paMount();
+  const view = docMount();
   const seq = sys.state.seq;
-  paShowLoading(view);
+  docShowLoading(view);
 
   let list = [];
   try {
     list = await paReportLoadList();
   } catch (err) {
-    if (paStale(view, seq, sys) || sys.state.tab !== 'report') return; // ผู้ใช้สลับแท็บ/ออกจากหน้าไปแล้ว
+    if (docStale(view, seq, sys) || sys.state.tab !== 'report') return; // ผู้ใช้สลับแท็บ/ออกจากหน้าไปแล้ว
     clearLoading(view);
     view.classList.remove('is-switching');
     view.innerHTML = `<div class="card card-pad"><div class="empty-state">โหลดข้อมูลไม่สำเร็จ: ${escapeHtml(err.message)}</div></div>`;
@@ -48,7 +48,7 @@ async function renderPAReportView() {
   let live = {};
   try { await loadModule('profile'); live = paOwnerFromProfile(await loadTeacherProfile()); } catch (err) { /* ใช้ค่าว่าง */ }
 
-  if (paStale(view, seq, sys) || sys.state.tab !== 'report') return; // สลับไปแท็บอื่นระหว่างรอข้อมูล — ไม่วาดทับ
+  if (docStale(view, seq, sys) || sys.state.tab !== 'report') return; // สลับไปแท็บอื่นระหว่างรอข้อมูล — ไม่วาดทับ
 
   if (list.length === 0) {
     view.innerHTML = `
@@ -60,8 +60,8 @@ async function renderPAReportView() {
           <button type="button" class="btn btn-primary par-goto-pa">ไปที่Personal Agreement</button>
         </div>
       </div>`;
-    view.querySelector('.par-goto-pa').addEventListener('click', () => paSwitchTab('agreement'));
-    paSwapIn(view);
+    view.querySelector('.par-goto-pa').addEventListener('click', () => docSwitchTab('agreement'));
+    docSwapIn(view);
     return;
   }
 
@@ -75,12 +75,12 @@ async function renderPAReportView() {
         ${list.map(x => `<option value="${escapeHtml(x.id)}"${x.id === d.id ? ' selected' : ''}>${escapeHtml(paDocTitle(x))}${x.status === 'submitted' ? ' · ส่งแล้ว' : ' · ร่าง'}</option>`).join('')}
       </select>
       <div class="parp-actions">
-        <button type="button" class="btn btn-ghost btn-sm parp-edit">${PA_ICO_EDIT} แก้ไข</button>
-        <button type="button" class="btn btn-primary btn-sm parp-print">${PA_ICO_PRINT} พิมพ์ / บันทึกเป็น PDF</button>
+        <button type="button" class="btn btn-ghost btn-sm parp-edit">${DOC_ICO_EDIT} แก้ไข</button>
+        <button type="button" class="btn btn-primary btn-sm parp-print">${DOC_ICO_PRINT} พิมพ์ / บันทึกเป็น PDF</button>
       </div>
     </div>
     <div class="u-note parp-hint">ตัวอย่างตามแบบ PA 1/ส — กดพิมพ์แล้วเลือก "บันทึกเป็น PDF" ในหน้าต่างพิมพ์ได้ · ช่องลงนามและความเห็น ผอ. เว้นไว้ให้เซ็นบนกระดาษ${d.owner ? '' : ' · เอกสารนี้ยังไม่มีสำเนาข้อมูลผู้จัดทำ จึงใช้ข้อมูลปัจจุบันจากข้อมูลส่วนตัว (จะเก็บสำเนาเมื่อบันทึกใหม่)'}</div>
-    <div class="parp-paper"><style>${paFontCss()}${PA1_CSS}</style>${paBuildDocHtml(d, owner)}</div>
+    <div class="parp-paper"><style>${docFontCss()}${PA1_CSS}</style>${paBuildDocHtml(d, owner)}</div>
     ${paReportLegacyHtml(d)}
     <style>
       .parp-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:8px}
@@ -116,8 +116,8 @@ async function renderPAReportView() {
     sys.state.docId = d.id;
     sys.state.doc = paNormalize(JSON.parse(JSON.stringify(d)));
     sys.state.view = 'form';
-    paSwitchTab('agreement'); // paSwitchTab วาดฟอร์มให้เอง (sys.state.view = 'form')
+    docSwitchTab('agreement'); // docSwitchTab วาดฟอร์มให้เอง (sys.state.view = 'form')
   });
 
-  paSwapIn(view);
+  docSwapIn(view);
 }

@@ -512,6 +512,7 @@ const LAZY_MODULES = {
   records: 'js/records.js', // แท็บอบรม/เกียรติบัตร/รางวัล (รูปย่อใน Firestore + ต้นฉบับใน Storage)
   // กลุ่ม Personal Agreement — ต้องโหลดตามลำดับนี้ (doc-system.js → pa-config.js → pa.js …) ใช้ loadModules(LAZY_BUNDLES.pa)
   'doc-system': 'js/doc-system.js', // บริบทของระบบเอกสาร: config + state + collection ต่อระบบ (ใช้ร่วมกับระบบเอกสารอื่นในอนาคต)
+  'doc-shell': 'js/doc-shell.js', // โครงหน้า/แท็บ/ตัวช่วยร่วมของทุกระบบเอกสาร — โหลดหลัง doc-system ก่อนไฟล์ของแต่ละระบบ
   'pa-config': 'js/pa-config.js',
   pa: 'js/pa.js',
   'badwork-ai': 'js/badwork-ai.js',
@@ -519,7 +520,7 @@ const LAZY_MODULES = {
   'pa-rpt': 'js/pa-rpt.js',
 };
 const LAZY_BUNDLES = {
-  pa: ['doc-system', 'pa-config', 'pa', 'badwork-ai', 'pa-report', 'pa-rpt'],
+  pa: ['doc-system', 'doc-shell', 'pa-config', 'pa', 'badwork-ai', 'pa-report', 'pa-rpt'],
   // เฉพาะ config ของทุกระบบเอกสาร (เบา · ไม่มี UI) — privacy.js ใช้รู้ชื่อ collection · ระบบเอกสารใหม่ต้องเพิ่มไฟล์ config ของตัวเองที่นี่
   docConfigs: ['doc-system', 'pa-config'],
 };

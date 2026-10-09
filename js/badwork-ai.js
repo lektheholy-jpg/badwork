@@ -130,7 +130,7 @@ function badworkAiContext(known = {}, scope = null) {
   const d = sys.state.doc, L = d.load || {}, c = d.aiCtx || {};
   let p = {};
   try { p = AppState.teacherProfile || {}; } catch (err) { /* ไม่มีโปรไฟล์ — ข้าม */ }
-  const rows = a => (a || []).map(r => `${r.name}${r.hours ? ` (${paFmtH(r.hours)} ชม./สัปดาห์)` : ''}`).join('; ') || '-';
+  const rows = a => (a || []).map(r => `${r.name}${r.hours ? ` (${docFmtH(r.hours)} ชม./สัปดาห์)` : ''}`).join('; ') || '-';
   const types = sys.config.classroomTypes.filter(([k]) => d.classroomTypes[k]).map(([, l]) => l).join(', ') || '-';
   const [t1, t2] = paTermLabels(d.fiscalYear);
   const cls = [c.level && `ระดับชั้น ${c.level}`, c.rooms && `${c.rooms} ห้อง`, c.students && `นักเรียนรวม ${c.students} คน`].filter(Boolean).join(' · ');

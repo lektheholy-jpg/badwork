@@ -146,8 +146,8 @@ async function sysProbe() {
   pa.state.docId = null;
 
   // หัวเรื่องหน้าอ่านจาก config ของระบบที่กำลังแสดง
-  docActivate('idp'); paBuildShell(); const idpShell = document.getElementById('view').innerHTML;
-  docActivate('pa'); paBuildShell(); const paShell = document.getElementById('view').innerHTML;
+  docActivate('idp'); docBuildShell(); const idpShell = document.getElementById('view').innerHTML;
+  docActivate('pa'); docBuildShell(); const paShell = document.getElementById('view').innerHTML;
   out.titles = [idpShell.includes(cfg2.title), idpShell.includes(PA_CONFIG.title), paShell.includes(PA_CONFIG.title), paShell.includes(cfg2.title)];
 
   out.errors = [
@@ -200,29 +200,29 @@ globalThis.__probes = {
   'fn.normalize': () => J([paNormalize(clone(PA_FIXTURE)), paNormalize(clone(PA_LEGACY_FIXTURE)), paNormalize({}), paNormalize(null)]),
   'fn.docHtml': () => paBuildDocHtml(paNormalize(clone(PA_FIXTURE)), OWNER_FIXTURE) + '\\n----\\n' + paBuildDocHtml(paNormalize({ fiscalYear: '2569' }), {}) + '\\n----\\n' + paBuildDocHtml(paNormalize(clone(PA_LEGACY_FIXTURE)), OWNER_FIXTURE),
   'fn.rptHtml': () => parptBuildDocHtml(parptNormalize(clone(RPT_FIXTURE)), OWNER_FIXTURE, '') + '\\n----\\n' + parptBuildDocHtml(parptNormalize({ fiscalYear: '2569' }), {}, '<p>ภาคผนวก</p>'),
-  'fn.css': () => PA1_CSS + '\\n----\\n' + PARPT_LIST_CSS + '\\n----\\n' + paFontCss(),
+  'fn.css': () => PA1_CSS + '\\n----\\n' + PARPT_LIST_CSS + '\\n----\\n' + docFontCss(),
   'fn.aiScopes': () => J(['part2', ...cfg().workItems.flatMap(([, , items]) => items.map(([id]) => id))].map(id => [id, [...badworkAiScope(id === 'part2' ? [{ key: 'problem' }] : [{ group: id[0], key: id + '.s1' }])].sort()])),
   'fn.aiWorkSpecs': () => J([badworkAiWorkSpecs(null), badworkAiWorkSpecs(['1.1', '2.3']), badworkAiWorkSpecs(['9.9'])]),
   'fn.aiCtxHtml': () => badworkAiCtxHtml({}) + '\\n----\\n' + badworkAiCtxHtml(clone(PA_FIXTURE).aiCtx) + '\\n----\\n' + J([badworkAiCtxCount({}), badworkAiCtxCount(PA_FIXTURE.aiCtx)]),
 
   // --- หน้าจอ ---
-  'ui.shell': () => { docSystem('pa').state.tab = 'rpt'; paBuildShell(); return view(); },
-  'ui.list': async () => { docSystem('pa').state.tab = 'agreement'; docSystem('pa').state.view = 'list'; docSystem('pa').state.list = null; await renderPAListView(); await settle(); return document.getElementById('pa-tab-body')?.innerHTML ?? view(); },
-  'ui.formEdit': async () => { docSystem('pa').state.tab = 'agreement'; docSystem('pa').state.view = 'form'; docSystem('pa').state.docId = 'a1'; docSystem('pa').state.doc = clone(PA_FIXTURE); docSystem('pa').state.doc.owner = OWNER_FIXTURE; await renderPAFormView(); await settle(); return document.getElementById('pa-tab-body').innerHTML; },
-  'ui.formEditSubmitted': async () => { docSystem('pa').state.tab = 'agreement'; docSystem('pa').state.view = 'form'; docSystem('pa').state.docId = 'a1'; docSystem('pa').state.doc = { ...clone(PA_FIXTURE), status: 'submitted', owner: OWNER_FIXTURE }; await renderPAFormView(); await settle(); return document.getElementById('pa-tab-body').innerHTML; },
-  'ui.formNew': async () => { docSystem('pa').state.tab = 'agreement'; docSystem('pa').state.view = 'form'; docSystem('pa').state.docId = null; docSystem('pa').state.doc = paNormalize({ fiscalYear: '2569', classroomTypes: { basic: true }, status: 'draft' }); await renderPAFormView(); await settle(); return document.getElementById('pa-tab-body').innerHTML + '\\n----\\n' + J(docSystem('pa').state.doc.load); },
-  'ui.formLegacy': async () => { docSystem('pa').state.tab = 'agreement'; docSystem('pa').state.view = 'form'; docSystem('pa').state.docId = 'a0'; docSystem('pa').state.doc = clone(PA_LEGACY_FIXTURE); await renderPAFormView(); await settle(); return document.getElementById('pa-tab-body').innerHTML; },
+  'ui.shell': () => { docSystem('pa').state.tab = 'rpt'; docBuildShell(); return view(); },
+  'ui.list': async () => { docSystem('pa').state.tab = 'agreement'; docSystem('pa').state.view = 'list'; docSystem('pa').state.list = null; await renderPAListView(); await settle(); return document.getElementById('doc-tab-body')?.innerHTML ?? view(); },
+  'ui.formEdit': async () => { docSystem('pa').state.tab = 'agreement'; docSystem('pa').state.view = 'form'; docSystem('pa').state.docId = 'a1'; docSystem('pa').state.doc = clone(PA_FIXTURE); docSystem('pa').state.doc.owner = OWNER_FIXTURE; await renderPAFormView(); await settle(); return document.getElementById('doc-tab-body').innerHTML; },
+  'ui.formEditSubmitted': async () => { docSystem('pa').state.tab = 'agreement'; docSystem('pa').state.view = 'form'; docSystem('pa').state.docId = 'a1'; docSystem('pa').state.doc = { ...clone(PA_FIXTURE), status: 'submitted', owner: OWNER_FIXTURE }; await renderPAFormView(); await settle(); return document.getElementById('doc-tab-body').innerHTML; },
+  'ui.formNew': async () => { docSystem('pa').state.tab = 'agreement'; docSystem('pa').state.view = 'form'; docSystem('pa').state.docId = null; docSystem('pa').state.doc = paNormalize({ fiscalYear: '2569', classroomTypes: { basic: true }, status: 'draft' }); await renderPAFormView(); await settle(); return document.getElementById('doc-tab-body').innerHTML + '\\n----\\n' + J(docSystem('pa').state.doc.load); },
+  'ui.formLegacy': async () => { docSystem('pa').state.tab = 'agreement'; docSystem('pa').state.view = 'form'; docSystem('pa').state.docId = 'a0'; docSystem('pa').state.doc = clone(PA_LEGACY_FIXTURE); await renderPAFormView(); await settle(); return document.getElementById('doc-tab-body').innerHTML; },
   'ui.collect': async () => { docSystem('pa').state.tab = 'agreement'; docSystem('pa').state.view = 'form'; docSystem('pa').state.docId = 'a1'; docSystem('pa').state.doc = clone(PA_FIXTURE); await renderPAFormView(); await settle(); paCollectFormData(); return J(docSystem('pa').state.doc); },
-  'ui.reportTab': async () => { docSystem('pa').state.tab = 'report'; docSystem('pa').state.previewId = 'a1'; await renderPAReportView(); await settle(); return document.getElementById('pa-tab-body')?.innerHTML ?? view(); },
-  'ui.rptList': async () => { docSystem('pa').state.tab = 'rpt'; docSystem('pa').rptState.view = 'list'; docSystem('pa').rptState.list = null; await renderPARptView(); await settle(); return document.getElementById('pa-tab-body')?.innerHTML ?? view(); },
-  'ui.rptForm': async () => { docSystem('pa').state.tab = 'rpt'; docSystem('pa').rptState.view = 'form'; docSystem('pa').rptState.docId = 'r1'; docSystem('pa').rptState.doc = parptNormalize(clone(RPT_FIXTURE)); await renderPARptView(); await settle(); const h = document.getElementById('pa-tab-body')?.innerHTML ?? view(); parptCollect(); return h + '\\n----\\n' + J(docSystem('pa').rptState.doc); },
-  'ui.rptPreview': async () => { docSystem('pa').state.tab = 'rptprev'; docSystem('pa').rptState.previewId = 'r1'; await renderPARptPreviewView(); await settle(); return document.getElementById('pa-tab-body')?.innerHTML ?? view(); },
+  'ui.reportTab': async () => { docSystem('pa').state.tab = 'report'; docSystem('pa').state.previewId = 'a1'; await renderPAReportView(); await settle(); return document.getElementById('doc-tab-body')?.innerHTML ?? view(); },
+  'ui.rptList': async () => { docSystem('pa').state.tab = 'rpt'; docSystem('pa').rptState.view = 'list'; docSystem('pa').rptState.list = null; await renderPARptView(); await settle(); return document.getElementById('doc-tab-body')?.innerHTML ?? view(); },
+  'ui.rptForm': async () => { docSystem('pa').state.tab = 'rpt'; docSystem('pa').rptState.view = 'form'; docSystem('pa').rptState.docId = 'r1'; docSystem('pa').rptState.doc = parptNormalize(clone(RPT_FIXTURE)); await renderPARptView(); await settle(); const h = document.getElementById('doc-tab-body')?.innerHTML ?? view(); parptCollect(); return h + '\\n----\\n' + J(docSystem('pa').rptState.doc); },
+  'ui.rptPreview': async () => { docSystem('pa').state.tab = 'rptprev'; docSystem('pa').rptState.previewId = 'r1'; await renderPARptPreviewView(); await settle(); return document.getElementById('doc-tab-body')?.innerHTML ?? view(); },
   'ui.tabs': async () => {
     const seen = [];
-    docSystem('pa').state.nextTab = null; await renderPAPage(); await settle();
+    docSystem('pa').state.nextTab = null; await renderDocPage('pa'); await settle();
     for (const t of [...cfg().tabs.map(x => x[0]), 'nope', 'agreement']) {
-      await paSwitchTab(t); await settle();
-      seen.push([t, docSystem('pa').state.tab, [...document.querySelectorAll('#pa-tabs .tab.active')].map(x => x.dataset.tab).join(), (document.getElementById('pa-tab-body')?.innerHTML || '').length]);
+      await docSwitchTab(t); await settle();
+      seen.push([t, docSystem('pa').state.tab, [...document.querySelectorAll('#doc-tabs .tab.active')].map(x => x.dataset.tab).join(), (document.getElementById('doc-tab-body')?.innerHTML || '').length]);
     }
     return J(seen);
   },
@@ -280,7 +280,7 @@ globalThis.__probes = {
     const stray = ['js/pa.js', 'js/badwork-ai.js', 'js/pa-rpt.js', 'js/pa-report.js'].flatMap(f => legacy.filter(n => new RegExp('\\b' + n + '\\b').test(read(f))).map(n => f + ':' + n))
       .concat(['js/pa.js', 'js/badwork-ai.js', 'js/pa-rpt.js'].filter(f => /PA_AI\./.test(read(f)) || /'pa_(agreements|reports)'/.test(read(f))).map(f => f + ':literal'));
     ok(stray.length === 0, 'ไม่มีค่าคงที่ PA เดิมหรือชื่อ collection ค้างอยู่นอก PA_CONFIG', stray.join(', '));
-    ok(bundleFiles()[0] === 'js/doc-system.js' && bundleFiles()[1] === 'js/pa-config.js' && bundleFiles()[2] === 'js/pa.js', 'ลำดับโหลด LAZY_BUNDLES.pa: doc-system.js → pa-config.js → pa.js');
+    ok(bundleFiles()[0] === 'js/doc-system.js' && bundleFiles()[1] === 'js/doc-shell.js' && bundleFiles()[2] === 'js/pa-config.js' && bundleFiles()[3] === 'js/pa.js', 'ลำดับโหลด LAZY_BUNDLES.pa: doc-system.js → doc-shell.js → pa-config.js → pa.js');
     // ตัดคอมเมนต์ก่อนตรวจ — คอมเมนต์อ้างชื่อเดิมเพื่ออธิบายได้ แต่โค้ดห้ามใช้
     // ข้อความแจ้ง error ที่บอกผู้ใช้ว่าให้แก้รุ่นที่ไหน (badwork-ai.js) เป็นข้อความ ไม่ใช่การอ้างค่า — ยกเว้นประโยคนี้ประโยคเดียว
     const code = f => read(f).replace('js/pa-config.js (PA_CONFIG.ai.models)', '').replace(/^\s*\/\/.*$/gm, '').replace(/\s\/\/ .*$/gm, '');
