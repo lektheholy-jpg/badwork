@@ -1,12 +1,12 @@
 // ==========================================================================
 // ผู้ช่วย AI (Gemini) สำหรับหน้าสร้างPersonal Agreement — ร่าง/เติม/ปรับสำนวนได้ทุกช่อง
-//   เรียก Gemini ผ่าน Firebase AI Logic (ไม่มี API key ในโค้ด · ป้องกันด้วย App Check + reCAPTCHA v3)
+//   เรียก Gemini API ตรงผ่าน REST ด้วย Google AI Studio key (PA_CONFIG.ai.apiKey) หรือผ่านพร็อกซีของเราเอง (PA_CONFIG.ai.proxyUrl · แนะนำ เพราะไม่ต้องใส่คีย์ในหน้าเว็บ)
 //   - ปุ่มใต้ช่องส่วนที่ 2 (ประเด็นท้าทาย) : ช่วยเขียน/เติม · ปรับสำนวน · ทำให้กระชับ
 //   - ปุ่มใต้งานมาตรฐานตำแหน่งแต่ละข้อ (1.1–3.3) : ช่วยเขียนช่องที่ว่าง · ปรับสำนวนทั้งข้อ
 //   - ปุ่มบนสุดของฟอร์ม : ร่างช่องส่วนที่ 2 ที่ยังว่างในครั้งเดียว (1 คำขอ) โดยอ่านจากข้อมูลที่มีอยู่ในเอกสาร
 //   ข้อความจาก AI แสดงในหน้าต่าง (.modal) ให้ตรวจ/แก้ก่อน "ใช้" เสมอ · สไตล์อยู่ที่ css/style.css (ส่วน .pa-ai-*) · ไม่บันทึกอัตโนมัติ · ตัวเลขที่ไม่มีข้อมูลให้เป็น "…"
 //   การ์ดบนสุดมี "บริบทงานของฉัน" (ระดับชั้น/ห้อง/นักเรียน/ปัญหา/ผลปีก่อน/จุดเน้น) เก็บใน doc.aiCtx · ส่งเข้าพร้อต์เฉพาะส่วนที่เกี่ยวกับช่องนั้น (PA_CONFIG.ai.prompts.scope)
-//   โหลดแบบ lazy: SDK ของ Firebase AI จะถูกดึงเมื่อกดปุ่ม AI ครั้งแรกเท่านั้น
+//   ไม่ต้องโหลด SDK เพิ่ม — ใช้ fetch ธรรมดา
 //   ต้องโหลดหลัง pa.js · pa.js เรียก paAiMount(view, form) ท้าย renderPAFormView
 // ==========================================================================
 
@@ -46,9 +46,6 @@ function paAiWorkSpecs(ids) {
 // ------------------------------------------------------------------
 // เรียก Gemini (โหลด SDK ตอนใช้ครั้งแรก)
 // ------------------------------------------------------------------
-let paAiModelP = null;
-
-// รุ่นที่เลือกอยู่ (ไม่ตรงรายการ/อ่านไม่ได้ → ใช้ค่าเริ่มต้น PA_CONFIG.ai.model) · อ่านตอนเรียกทุกครั้ง เปลี่ยนรุ่นแล้วมีผลทันทีโดยไม่ต้องโหลด SDK ใหม่
 function paAiModelId() {
   const sys = docSystem();
   let v = null;
@@ -56,34 +53,8 @@ function paAiModelId() {
   return sys.config.ai.models.some(m => m.id === v) ? v : sys.config.ai.model;
 }
 // Gemini 3 ใช้ thinkingLevel · Gemini 2.5 ใช้ thinkingBudget (ส่ง thinkingLevel ให้ 2.5 จะถูกปฏิเสธ)
-function paAiThinking(aiMod, id) {
-  return /^gemini-3/.test(id) ? { thinkingLevel: aiMod.ThinkingLevel.LOW } : { thinkingBudget: 512 };
-}
-function paAiLoadModel() {
-  const sys = docSystem();
-  if (!paAiModelP) {
-    paAiModelP = (async () => {
-      const [appMod, checkMod, aiMod] = await Promise.all([
-        import(`${sys.config.ai.sdk}/firebase-app.js`),
-        import(`${sys.config.ai.sdk}/firebase-app-check.js`),
-        import(`${sys.config.ai.sdk}/firebase-ai.js`),
-      ]);
-      const app = appMod.initializeApp(firebase.app().options, 'pa-ai'); // แอปแยกจาก compat — ใช้ config เดียวกัน
-      // ทดสอบบนเครื่อง: ให้ App Check พิมพ์ debug token ใน Console ของเบราว์เซอร์ แล้วนำไปลงทะเบียนใน Firebase Console
-      if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
-      checkMod.initializeAppCheck(app, { provider: new checkMod.ReCaptchaEnterpriseProvider(sys.config.ai.siteKey), isTokenAutoRefreshEnabled: true });
-      const ai = aiMod.getAI(app, { backend: new aiMod.GoogleAIBackend() });
-      return () => {
-        const id = paAiModelId();
-        return aiMod.getGenerativeModel(ai, {
-          model: id,
-          systemInstruction: sys.config.ai.prompts.system,
-          generationConfig: { responseMimeType: 'application/json', temperature: 0.6, thinkingConfig: paAiThinking(aiMod, id) },
-        }, { timeout: sys.config.ai.timeout });
-      };
-    })().catch(err => { paAiModelP = null; throw err; });
-  }
-  return paAiModelP;
+function paAiThinking(id) {
+  return /^gemini-3/.test(id) ? { thinkingLevel: 'low' } : { thinkingBudget: 512 };
 }
 
 function paAiParseJson(text) {
@@ -94,13 +65,41 @@ function paAiParseJson(text) {
 }
 
 async function paAiGenerate(prompt) {
-  const sys = docSystem();
-  const makeModel = await paAiLoadModel();
-  let timer;
-  const timeout = new Promise((_, rej) => { timer = setTimeout(() => rej(new Error('timeout')), sys.config.ai.timeout + 5000); });
+  const ai = docSystem().config.ai;
+  const id = paAiModelId();
+  const body = {
+    systemInstruction: { parts: [{ text: ai.prompts.system }] },
+    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+    generationConfig: { responseMimeType: 'application/json', temperature: 0.6, thinkingConfig: paAiThinking(id) },
+  };
+  const headers = { 'Content-Type': 'application/json' };
+  let url;
+  if (ai.proxyUrl) {
+    // โหมดพร็อกซี: คีย์อยู่ที่เซิร์ฟเวอร์ · แนบ Firebase ID token เพื่อให้พร็อกซีตรวจว่าเป็นผู้ใช้ที่ล็อกอินจริง
+    url = ai.proxyUrl;
+    body.model = id;
+    let user = null;
+    try { user = firebase.auth().currentUser; } catch (err) { /* ไม่มี auth — ส่งโดยไม่แนบ token */ }
+    if (user) headers.Authorization = 'Bearer ' + await user.getIdToken();
+  } else {
+    // โหมดตรง: คีย์อยู่ในหน้าเว็บ (ใครเปิด DevTools ก็เห็น) — ต้องจำกัด HTTP referrer ที่ Google Cloud Console
+    if (!ai.apiKey) throw new Error('ยังไม่ได้ตั้ง API key (js/pa-config.js > ai.apiKey)');
+    url = `${ai.endpoint}/models/${encodeURIComponent(id)}:generateContent`;
+    headers['x-goog-api-key'] = ai.apiKey;
+  }
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), ai.timeout);
   try {
-    const res = await Promise.race([makeModel().generateContent(prompt), timeout]);
-    return paAiParseJson(res.response.text());
+    const res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body), signal: ctl.signal });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(`[${res.status}] ${(data.error && data.error.message) || res.statusText}`);
+    const parts = (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) || [];
+    const text = parts.map(x => x.text || '').join('');
+    if (!text) throw new Error('รูปแบบคำตอบไม่ถูกต้อง'); // ถูกบล็อก/ไม่มีข้อความ
+    return paAiParseJson(text);
+  } catch (err) {
+    if (err && err.name === 'AbortError') throw new Error('timeout');
+    throw err;
   } finally { clearTimeout(timer); }
 }
 
@@ -111,10 +110,10 @@ function paAiError(err) {
   const tag = code ? ` (รหัส ${code})` : '';
   let msg;
   if (!navigator.onLine || /Failed to fetch|dynamically imported module|NetworkError/i.test(m)) msg = 'ใช้ AI ไม่ได้ — ไม่มีอินเทอร์เน็ตหรือโหลดชุดคำสั่งไม่สำเร็จ';
-  else if (/app-?check|recaptcha/i.test(m)) msg = 'AI ไม่ผ่านการตรวจ App Check/reCAPTCHA — ตรวจ Site key โดเมน และ debug token (ดูรายละเอียดใน Console)';
+  else if (/API key not valid|API_KEY_INVALID|ยังไม่ได้ตั้ง/i.test(m)) msg = `API key ไม่ถูกต้องหรือยังไม่ได้ตั้ง${tag} — ตรวจ ai.apiKey ใน js/pa-config.js (สร้างคีย์ที่ aistudio.google.com/apikey)`;
   else if (code === '404' || /not found|is not supported|no longer available/i.test(m)) msg = `ไม่พบโมเดล ${paAiModelId()}${tag} — ลองเลือกรุ่นอื่นในการ์ดผู้ช่วย AI หรือตรวจชื่อรุ่นใน js/pa-config.js (PA_CONFIG.ai.models)`;
-  else if (code === '403' || /PERMISSION_DENIED|API has not been used|API_KEY_SERVICE_BLOCKED|not enabled/i.test(m)) msg = `AI ถูกปฏิเสธสิทธิ์${tag} — ตรวจว่าเปิด AI Logic แล้ว และ API key ของโปรเจกต์อนุญาต Firebase AI Logic API`;
-  else if (code === '429' || /RESOURCE_EXHAUSTED|quota exceeded|too many requests|rate limit/i.test(m)) msg = `โควตา AI เต็มหรือเรียกถี่เกิน${tag} — รอ 1 นาทีแล้วลองใหม่ (ดูโควตาใน Firebase Console > AI Logic)`;
+  else if (code === '403' || /PERMISSION_DENIED|API has not been used|API_KEY_SERVICE_BLOCKED|not enabled/i.test(m)) msg = `AI ถูกปฏิเสธสิทธิ์${tag} — ตรวจว่า API key อนุญาต Generative Language API และโดเมนของเว็บอยู่ในรายการ HTTP referrer ที่อนุญาต`;
+  else if (code === '429' || /RESOURCE_EXHAUSTED|quota exceeded|too many requests|rate limit/i.test(m)) msg = `โควตา AI เต็มหรือเรียกถี่เกิน${tag} — รอ 1 นาทีแล้วลองใหม่ (ดูโควตาใน Google AI Studio > Usage)`;
   else if (/timeout/i.test(m)) msg = 'AI ตอบช้าเกินไป ลองใหม่อีกครั้ง';
   else if (/JSON|รูปแบบคำตอบ/i.test(m)) msg = 'AI ตอบในรูปแบบที่อ่านไม่ได้ ลองใหม่อีกครั้ง';
   else msg = `เรียก AI ไม่สำเร็จ${tag}: ` + m.slice(0, 120);

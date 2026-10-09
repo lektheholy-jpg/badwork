@@ -69,11 +69,15 @@ const PA_CONFIG = {
   },
 
   ai: {
-    siteKey: '6LeHa-MtAAAAAAqvvQSRvBUl0RVFa7-KoFthxWxm', // reCAPTCHA v3 Site key (ค่าสาธารณะ) — ต้องตรงกับที่ลงทะเบียนใน Firebase App Check
-    sdk: 'https://www.gstatic.com/firebasejs/12.17.0',    // Firebase JS SDK แบบ modular (แยกจากชุด compat 10.13.0 ที่แอปใช้)
+    endpoint: 'https://generativelanguage.googleapis.com/v1beta', // Gemini Developer API (REST)
+    // โหมดตรง: ใส่ Google AI Studio key (สร้างที่ aistudio.google.com/apikey) — คีย์จะอยู่ในหน้าเว็บ ใครก็เห็นได้
+    //   → ต้องจำกัด "HTTP referrers" ให้เฉพาะโดเมนของเว็บนี้ และจำกัด API เป็น Generative Language API เท่านั้น
+    apiKey: 'AQ.Ab8RN6KxfsE_H4tq9UH8mDwwWQtL8T1k65f4Jl82RfK7Tt2zjA',
+    // โหมดพร็อกซี (แนะนำ): ใส่ URL ของพร็อกซีที่เก็บคีย์ไว้ฝั่งเซิร์ฟเวอร์ — ถ้าตั้งค่านี้ จะไม่ใช้ apiKey ด้านบน
+    proxyUrl: '',
     model: 'gemini-3.8-flash',                            // รุ่นเริ่มต้น (ต้องอยู่ใน models ด้านล่าง) · ชื่อรุ่น/รุ่นที่ใช้ฟรีได้ ดู ai.google.dev/gemini-api/docs/models และ /pricing
     timeout: 90000,
-    // รายชื่อรุ่นที่ให้เลือก — ชื่อต้องตรงกับที่ Firebase AI Logic รองรับ (ดู Firebase Console > AI Logic) · เพิ่ม/ลบรุ่นที่นี่ที่เดียว
+    // รายชื่อรุ่นที่ให้เลือก — ชื่อต้องตรงกับที่ Gemini API รองรับ (ดูรายชื่อรุ่นที่ ai.google.dev) · เพิ่ม/ลบรุ่นที่นี่ที่เดียว
     models: [
       { id: 'gemini-3.8-flash', label: 'Gemini 3.8 Flash', hint: 'ค่าเริ่มต้น · รุ่น Flash ใหม่สุด ใช้ฟรีได้ · เหมาะกับร่างข้อความยาว' },
       { id: 'gemini-3.7-flash', label: 'Gemini 3.7 Flash', hint: 'ใช้ฟรีได้ · ถ้ารุ่นเริ่มต้นโควตาเต็ม ลองสลับมารุ่นนี้ (โควตานับแยกรุ่น)' },
