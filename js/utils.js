@@ -538,11 +538,15 @@ const LAZY_MODULES = {
   'pa-ai': 'js/pa-ai.js', // ตัวต่อผู้ช่วย AI ของ PA (registerDocAi)
   'pa-report': 'js/pa-report.js',
   'pa-rpt': 'js/pa-rpt.js',
+  // กลุ่ม ID-Plan (แผนพัฒนาตนเอง) — ใช้ doc-system/doc-shell ร่วมกับ PA · ใช้ loadModules(LAZY_BUNDLES.idp)
+  'idp-config': 'js/idp-config.js',
+  idp: 'js/idp.js',
 };
 const LAZY_BUNDLES = {
   pa: ['doc-system', 'doc-shell', 'pa-config', 'pa', 'badwork-ai-config', 'badwork-ai', 'pa-ai', 'pa-report', 'pa-rpt'],
+  idp: ['doc-system', 'doc-shell', 'idp-config', 'idp'],
   // เฉพาะ config ของทุกระบบเอกสาร (เบา · ไม่มี UI) — privacy.js ใช้รู้ชื่อ collection · ระบบเอกสารใหม่ต้องเพิ่มไฟล์ config ของตัวเองที่นี่
-  docConfigs: ['doc-system', 'pa-config'],
+  docConfigs: ['doc-system', 'pa-config', 'idp-config'],
 };
 // โหลดหลายโมดูลทีละไฟล์ตามลำดับ (สคริปต์ที่แทรกด้วย JS ไม่รับประกันลำดับถ้าโหลดพร้อมกัน)
 async function loadModules(names) { for (const n of [].concat(names)) await loadModule(n); }

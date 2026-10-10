@@ -97,7 +97,7 @@ document.getElementById('view')?.addEventListener('animationend', e => {
 });
 
 // หน้าที่ต้องโหลดสคริปต์เพิ่มก่อนวาด (ดู LAZY_MODULES ใน utils.js)
-const ROUTE_MODULES = { 'report-page': 'report', tools: 'tools', profile: 'profile', 'pa-page': LAZY_BUNDLES.pa };
+const ROUTE_MODULES = { 'report-page': 'report', tools: 'tools', profile: 'profile', 'pa-page': LAZY_BUNDLES.pa, 'idp-page': LAZY_BUNDLES.idp };
 
 function navigate(route) {
   // รายงาน PA ไม่มีปุ่มเมนูแยกแล้ว — เป็นแท็บในหน้า PA (ใช้ได้กับลิงก์/โค้ดเดิมที่ยังเรียก 'pa-report-page')
@@ -150,6 +150,7 @@ function renderRoute(route) {
   else if (route === 'settings') return renderSettings();
   else if (route === 'profile') return renderProfilePage();
   else if (route === 'pa-page') return renderDocPage('pa');
+  else if (route === 'idp-page') return renderDocPage('idp');
 }
 
 // ช่องเลือกพื้นหลังในหน้าตั้งค่า: แต่ละช่องส่งสีผ่านตัวแปร --sw (ค่าสีจริงอยู่ที่ --bgp-* ใน css/style.css)
@@ -481,7 +482,7 @@ document.getElementById('sidebar-toggle')?.addEventListener('click', () => {
   };
 
   // กลุ่ม 1: เมนูเนื้อหา
-  ['pa-page', 'structure-page', 'archive-page', 'tools'].forEach(addTile);
+  ['pa-page', 'idp-page', 'structure-page', 'archive-page', 'tools'].forEach(addTile);
   addDivider();
   // กลุ่ม 2: บัญชีและตั้งค่า
   ['profile', 'settings'].forEach(addTile);

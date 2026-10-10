@@ -9,6 +9,17 @@
 // ==========================================================================
 
 // ------------------------------------------------------------------
+// ตัวช่วยเฉพาะ ID-Plan (ไอคอน + วันที่แก้ไขล่าสุด) — ไอคอนส่วนกลางอยู่ใน js/doc-shell.js
+// ------------------------------------------------------------------
+const IDP_ICO_BACK = `<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>`;
+const IDP_ICO_SAVE = `<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>`;
+function idpUpdatedAt(d) {
+  const t = d.updatedAt || d.createdAt;
+  const dt = t && typeof t.toDate === 'function' ? t.toDate() : null;
+  return dt ? 'แก้ไขล่าสุด ' + dt.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+}
+
+// ------------------------------------------------------------------
 // Firestore helpers
 // ------------------------------------------------------------------
 function idpCol(uid) {
@@ -149,16 +160,17 @@ function idpCollect() {
 // ------------------------------------------------------------------
 async function idpRenderListView() {
   const sys = docSystem();
-  const root = document.getElementById('doc-page-content');
-  if (!root) return;
-  root.innerHTML = '<div class="doc-loading">กำลังโหลด<span class="loader-dots" aria-hidden="true"><i></i><i></i><i></i></span></div>';
+  const root = docMount();
+  const seq = sys.state.seq;
+  docShowLoading(root);
 
   try {
     if (!sys.state.list) sys.state.list = await idpLoadList();
+    if (docStale(root, seq, sys) || sys.state.tab !== 'form' || sys.state.view !== 'list') return;
     const list = sys.state.list;
     const canNew = true;
     let html = `<div class="doc-list-wrap">`;
-    if (canNew) html += `<button class="btn btn-primary doc-new-btn" id="idp-new-btn">${DOC_ICO_NEW} สร้าง ID-Plan ใหม่</button>`;
+    if (canNew) html += `<button class="btn btn-primary doc-new-btn" id="idp-new-btn">${DOC_ICO_ADD} สร้าง ID-Plan ใหม่</button>`;
     if (!list.length) {
       html += `<div class="doc-empty"><p>ยังไม่มี ID-Plan<br><span class="u-muted">กด "สร้าง ID-Plan ใหม่" เพื่อเริ่มต้น</span></p></div>`;
     } else {
@@ -170,19 +182,20 @@ async function idpRenderListView() {
             <span class="doc-list-title">${escapeHtml(idpDocTitle(d))}</span>
             ${badge}
           </div>
-          <div class="doc-list-sub u-muted">${docUpdatedAt(d)}</div>
+          <div class="doc-list-sub u-muted">${escapeHtml(idpUpdatedAt(d))}</div>
         </li>`;
       });
       html += `</ul>`;
     }
     html += `</div>`;
     root.innerHTML = html;
+    docSwapIn(root);
 
     document.getElementById('idp-new-btn')?.addEventListener('click', () => {
       sys.state.doc = idpBlankDoc();
       sys.state.docId = null;
       sys.state.view = 'form';
-      renderDocPage('idp');
+      idpRenderFormView();
     });
     root.querySelectorAll('.doc-list-item').forEach(li => {
       li.addEventListener('click', async () => {
@@ -192,10 +205,12 @@ async function idpRenderListView() {
         sys.state.docId = id;
         sys.state.doc = idpNormalize({ ...found });
         sys.state.view = 'form';
-        renderDocPage('idp');
+        idpRenderFormView();
       });
     });
   } catch (e) {
+    if (!root.isConnected) return;
+    docSwapIn(root);
     root.innerHTML = `<div class="doc-error">โหลดรายการไม่สำเร็จ: ${escapeHtml(e.message)}</div>`;
   }
 }
@@ -239,8 +254,8 @@ function idpAddRowHandler(container, buildFn) {
 // ------------------------------------------------------------------
 async function idpRenderFormView() {
   const sys = docSystem();
-  const root = document.getElementById('doc-page-content');
-  if (!root) return;
+  const root = docMount();
+  const seq = sys.state.seq;
 
   const doc = sys.state.doc || idpBlankDoc();
   sys.state.doc = doc;
@@ -311,8 +326,8 @@ async function idpRenderFormView() {
         </label>
       </div>
       <div class="doc-form-actions">
-        <button type="button" class="btn btn-ghost" id="idp-back-btn">${DOC_ICO_BACK} รายการ</button>
-        <button type="button" class="btn btn-primary" id="idp-save-btn">${DOC_ICO_SAVE} บันทึก</button>
+        <button type="button" class="btn btn-ghost" id="idp-back-btn">${IDP_ICO_BACK} รายการ</button>
+        <button type="button" class="btn btn-primary" id="idp-save-btn">${IDP_ICO_SAVE} บันทึก</button>
         ${sys.state.docId ? `<button type="button" class="btn btn-danger-ghost" id="idp-del-btn">${DOC_ICO_DEL} ลบ</button>` : ''}
       </div>
     </div>
@@ -363,13 +378,13 @@ async function idpRenderFormView() {
         <table class="idp-comp-table">
           <thead>
             <tr>
-              <th style="width:18%">สมรรถนะที่จะพัฒนา</th>
-              <th style="width:6%">อันดับ<br>ความสำคัญ</th>
-              <th style="width:20%">วิธีการ / รูปแบบ<br>การพัฒนา</th>
-              <th style="width:9%">ระยะเวลา<br>เริ่มต้น</th>
-              <th style="width:9%">ระยะเวลา<br>สิ้นสุด</th>
-              <th style="width:19%">เป้าหมาย</th>
-              <th style="width:19%">ประโยชน์ที่<br>คาดว่าจะได้รับ</th>
+              <th class="idp-w18">สมรรถนะที่จะพัฒนา</th>
+              <th class="idp-w6">อันดับ<br>ความสำคัญ</th>
+              <th class="idp-w20">วิธีการ / รูปแบบ<br>การพัฒนา</th>
+              <th class="idp-w9">ระยะเวลา<br>เริ่มต้น</th>
+              <th class="idp-w9">ระยะเวลา<br>สิ้นสุด</th>
+              <th class="idp-w19">เป้าหมาย</th>
+              <th class="idp-w19">ประโยชน์ที่<br>คาดว่าจะได้รับ</th>
             </tr>
           </thead>
           <tbody id="idp-comps-body">
@@ -386,11 +401,11 @@ async function idpRenderFormView() {
         <table class="idp-sum-table">
           <thead>
             <tr>
-              <th style="width:6%">อันดับที่</th>
-              <th style="width:20%">สมรรถนะที่จะพัฒนา</th>
-              <th style="width:28%">วิธีการ / รูปแบบการพัฒนา</th>
-              <th style="width:22%">ระยะเวลา (เริ่ม–สิ้นสุด)</th>
-              <th style="width:24%">ประโยชน์ที่คาดว่าจะได้รับ</th>
+              <th class="idp-w6">อันดับที่</th>
+              <th class="idp-w20">สมรรถนะที่จะพัฒนา</th>
+              <th class="idp-w28">วิธีการ / รูปแบบการพัฒนา</th>
+              <th class="idp-w22">ระยะเวลา (เริ่ม–สิ้นสุด)</th>
+              <th class="idp-w24">ประโยชน์ที่คาดว่าจะได้รับ</th>
             </tr>
           </thead>
           <tbody>${summaryHtml}</tbody>
@@ -399,6 +414,7 @@ async function idpRenderFormView() {
     </section>
 
   </form>`;
+  docSwapIn(root);
 
   // Wire events
   const subBox = document.getElementById('idp-subjects-box');
@@ -421,7 +437,7 @@ async function idpRenderFormView() {
   document.getElementById('idp-back-btn')?.addEventListener('click', () => {
     idpCollect();
     sys.state.view = 'list';
-    renderDocPage('idp');
+    idpRenderListView();
   });
 
   document.getElementById('idp-save-btn')?.addEventListener('click', async () => {
@@ -435,11 +451,11 @@ async function idpRenderFormView() {
       sys.state.list = null; // force reload list
       showToast('บันทึกแล้ว');
       btn.disabled = false;
-      btn.innerHTML = `${DOC_ICO_SAVE} บันทึก`;
+      btn.innerHTML = `${IDP_ICO_SAVE} บันทึก`;
     } catch (e) {
       showToast('บันทึกไม่สำเร็จ: ' + e.message, 'error');
       btn.disabled = false;
-      btn.innerHTML = `${DOC_ICO_SAVE} บันทึก`;
+      btn.innerHTML = `${IDP_ICO_SAVE} บันทึก`;
     }
   });
 
@@ -450,7 +466,7 @@ async function idpRenderFormView() {
       sys.state.docId = null;
       sys.state.doc = null;
       sys.state.view = 'list';
-      renderDocPage('idp');
+      idpRenderListView();
     } catch (e) {
       showToast('ลบไม่สำเร็จ: ' + e.message, 'error');
     }
@@ -461,7 +477,7 @@ async function idpRenderFormView() {
 // PRINT CSS
 // ------------------------------------------------------------------
 const IDP1_CSS = `
-.idp1{background:#fff;color:#000;font-family:'TH SarabunPSK','TH Sarabun PSK','THSarabunPSK','TH Sarabun New','THSarabunNew','Noto Sans Thai',Tahoma,sans-serif;font-size:16pt;line-height:1.22;text-align:left}
+.idp1{background:#fff;color:#000;font-family:'TH SarabunPSK','TH Sarabun PSK','THSarabunPSK','TH Sarabun New','THSarabunNew','PA Sarabun','Noto Sans Thai',Tahoma,sans-serif;font-size:16pt;line-height:1.22;text-align:left}
 .idp1 *{box-sizing:border-box}
 .idp1 b{font-weight:700}
 .idp1 .i1-c{text-align:center;font-weight:700}
@@ -480,6 +496,17 @@ const IDP1_CSS = `
 .idp1 .i1-approve{display:grid;grid-template-columns:1fr 1fr;gap:1em;margin-top:1em;border:1px solid #000}
 .idp1 .i1-approve>div{padding:.5em .7em;border-right:1px solid #000}
 .idp1 .i1-approve>div:last-child{border-right:none}
+.idp1 .i1-mid{text-align:center}
+.idp1 .i1-big{font-size:1.1em}
+.idp1 .i1-mt3{margin-top:.3em}
+.idp1 .i1-mt5{margin-top:.5em}
+.idp1 .i1-mb3{margin-bottom:.3em}
+.idp1 .i1-mb5{margin-bottom:.5em}
+.idp1 .i1-flex{display:flex;gap:2em}
+.idp1 .i1-gap{height:2.5em}
+.idp1 .i1-t13 th,.idp1 .i1-t13 td{font-size:13pt}
+.idp1 .idp-w6{width:6%}.idp1 .idp-w8{width:8%}.idp1 .idp-w18{width:18%}.idp1 .idp-w19{width:19%}
+.idp1 .idp-w20{width:20%}.idp1 .idp-w22{width:22%}.idp1 .idp-w24{width:24%}.idp1 .idp-w28{width:28%}
 `;
 
 // ------------------------------------------------------------------
@@ -498,9 +525,9 @@ function idpBuildPreviewHtml(d, profile) {
 
   // ส่วนที่ 1
   const subjectRows = (d.subjects.length ? d.subjects : [{name:'', hours:''}]).map(r =>
-    `<tr><td>${escapeHtml(r.name)}</td><td style="text-align:center">${r.hours || ''}</td></tr>`).join('');
+    `<tr><td>${escapeHtml(r.name)}</td><td class="i1-mid">${r.hours || ''}</td></tr>`).join('');
   const activityRows = (d.activities.length ? d.activities : [{name:'', hours:''}]).map(r =>
-    `<tr><td>${escapeHtml(r.name)}</td><td style="text-align:center">${r.hours || ''}</td></tr>`).join('');
+    `<tr><td>${escapeHtml(r.name)}</td><td class="i1-mid">${r.hours || ''}</td></tr>`).join('');
   const specialItems = d.specials.length
     ? d.specials.map(s => `<div class="i1-ind">- ${escapeHtml(s)}</div>`).join('')
     : '<div class="i1-ind">-</div>';
@@ -510,10 +537,10 @@ function idpBuildPreviewHtml(d, profile) {
     const c = d.comps?.[cid] || {};
     return `<tr>
       <td>${escapeHtml(fullName)}</td>
-      <td style="text-align:center">${escapeHtml(c.priority || '')}</td>
+      <td class="i1-mid">${escapeHtml(c.priority || '')}</td>
       <td>${escapeHtml(c.method || '').replace(/\n/g, '<br>')}</td>
-      <td style="text-align:center">${escapeHtml(c.startDate || '')}</td>
-      <td style="text-align:center">${escapeHtml(c.endDate || '')}</td>
+      <td class="i1-mid">${escapeHtml(c.startDate || '')}</td>
+      <td class="i1-mid">${escapeHtml(c.endDate || '')}</td>
       <td>${escapeHtml(c.goal || '').replace(/\n/g, '<br>')}</td>
       <td>${escapeHtml(c.benefit || '').replace(/\n/g, '<br>')}</td>
     </tr>`;
@@ -523,10 +550,10 @@ function idpBuildPreviewHtml(d, profile) {
   const sumRows = d.summary.map((s, i) => {
     const compName = comps.find(([cid]) => cid === s.compId)?.[2] || '';
     return `<tr>
-      <td style="text-align:center">${i + 1}</td>
+      <td class="i1-mid">${i + 1}</td>
       <td>${escapeHtml(compName)}</td>
       <td>${escapeHtml(s.method || '').replace(/\n/g, '<br>')}</td>
-      <td style="text-align:center">${escapeHtml(s.startDate || '')}${s.startDate && s.endDate ? ' – ' : ''}${escapeHtml(s.endDate || '')}</td>
+      <td class="i1-mid">${escapeHtml(s.startDate || '')}${s.startDate && s.endDate ? ' – ' : ''}${escapeHtml(s.endDate || '')}</td>
       <td>${escapeHtml(s.benefit || '').replace(/\n/g, '<br>')}</td>
     </tr>`;
   }).join('');
@@ -536,36 +563,36 @@ function idpBuildPreviewHtml(d, profile) {
 <head><meta charset="UTF-8"><style>
 @page{size:A4;margin:1.5cm 1.5cm 2cm}
 body{margin:0;padding:0}
-${IDP1_CSS}
+${docFontCss()}${IDP1_CSS}
 </style></head>
 <body><div class="idp1">
 
 <div class="i1-memo-header">
-  <div class="i1-c" style="font-size:1.1em">บันทึกข้อความ</div>
-  <div style="margin-top:.5em"><b>ส่วนราชการ</b>  ${escapeHtml(school)}</div>
-  <div style="display:flex;gap:2em;margin-top:.3em">
+  <div class="i1-c i1-big">บันทึกข้อความ</div>
+  <div class="i1-mt5"><b>ส่วนราชการ</b>  ${escapeHtml(school)}</div>
+  <div class="i1-flex i1-mt3">
     <div><b>เรื่อง</b>  ส่งแผนพัฒนาตนเอง (ID-PLAN)  ภาคเรียนที่ ${escapeHtml(d.semester)}  ปีการศึกษา  ${escapeHtml(d.year)}</div>
   </div>
-  <div style="margin-top:.3em"><b>เรียน</b>  ผู้อำนวยการ${escapeHtml(school)}</div>
-  <div class="i1-p" style="margin-top:.5em">ด้วยข้าพเจ้า${escapeHtml(name)}  ตำแหน่ง  ${escapeHtml(position)}  กลุ่มสาระการเรียนรู้${escapeHtml(subjectGroup)} ได้จัดทำแผนพัฒนาตนเอง (ID-PLAN) ภาคเรียนที่ ${escapeHtml(d.semester)} ปีการศึกษา ${escapeHtml(d.year)} ซึ่งเป็นการพัฒนาที่สนองตอบความต้องการแต่ละบุคคล เพื่อให้การปฏิบัติงานในหน้าที่ที่ได้รับมอบหมายมีความสมบูรณ์ มีประสิทธิภาพและประสิทธิผล จึงเสนอรายงานแผนพัฒนาตนเอง ตามรายละเอียดแนบท้ายนี้</div>
-  <div class="i1-p" style="margin-top:.3em">จึงเรียนมาเพื่อโปรดทราบ</div>
+  <div class="i1-mt3"><b>เรียน</b>  ผู้อำนวยการ${escapeHtml(school)}</div>
+  <div class="i1-p i1-mt5">ด้วยข้าพเจ้า${escapeHtml(name)}  ตำแหน่ง  ${escapeHtml(position)}  กลุ่มสาระการเรียนรู้${escapeHtml(subjectGroup)} ได้จัดทำแผนพัฒนาตนเอง (ID-PLAN) ภาคเรียนที่ ${escapeHtml(d.semester)} ปีการศึกษา ${escapeHtml(d.year)} ซึ่งเป็นการพัฒนาที่สนองตอบความต้องการแต่ละบุคคล เพื่อให้การปฏิบัติงานในหน้าที่ที่ได้รับมอบหมายมีความสมบูรณ์ มีประสิทธิภาพและประสิทธิผล จึงเสนอรายงานแผนพัฒนาตนเอง ตามรายละเอียดแนบท้ายนี้</div>
+  <div class="i1-p i1-mt3">จึงเรียนมาเพื่อโปรดทราบ</div>
   <div class="i1-sign">
     <div class="i1-line"></div>
     <div>ผู้รายงาน</div>
     <div>(${escapeHtml(name)})</div>
     <div>ตำแหน่ง ${escapeHtml(position)}</div>
-    <div style="margin-top:.3em">วันที่ ${escapeHtml(d.signDate) || '……………………………………………'}</div>
+    <div class="i1-mt3">วันที่ ${escapeHtml(d.signDate) || '……………………………………………'}</div>
   </div>
   <div class="i1-approve">
     <div>
       <div><b>ความเห็นหัวหน้ากลุ่มสาระการเรียนรู้</b></div>
-      <div style="height:2.5em"></div>
+      <div class="i1-gap"></div>
       <div class="i1-line"></div>
       <div>หัวหน้ากลุ่มสาระฯ</div>
     </div>
     <div>
       <div><b>ความเห็นผู้ช่วยผู้อำนวยการกลุ่มบริหารงานบุคคล</b></div>
-      <div style="height:2.5em"></div>
+      <div class="i1-gap"></div>
       <div class="i1-line"></div>
       <div>ผู้ช่วยผู้อำนวยการ</div>
     </div>
@@ -575,20 +602,20 @@ ${IDP1_CSS}
 <div class="i1-break"></div>
 
 <!-- แผนพัฒนาตนเอง (ID-PLAN) -->
-<div class="i1-c" style="font-size:1.1em;margin-bottom:.5em">แผนพัฒนาตนเอง (ID-PLAN)<br>ภาคเรียนที่ ${escapeHtml(d.semester)}  ปีการศึกษา ${escapeHtml(d.year)}</div>
-<div style="margin-bottom:.3em">${escapeHtml(name)}  ตำแหน่ง ${escapeHtml(position)}  กลุ่มสาระ${escapeHtml(subjectGroup)}</div>
+<div class="i1-c i1-big i1-mb5">แผนพัฒนาตนเอง (ID-PLAN)<br>ภาคเรียนที่ ${escapeHtml(d.semester)}  ปีการศึกษา ${escapeHtml(d.year)}</div>
+<div class="i1-mb3">${escapeHtml(name)}  ตำแหน่ง ${escapeHtml(position)}  กลุ่มสาระ${escapeHtml(subjectGroup)}</div>
 
 <div class="i1-h">ส่วนที่ 1  ภาระงาน</div>
 
 <div class="i1-h">1.1 รายวิชาที่รับผิดชอบ</div>
 <table>
-  <thead><tr><th>รายวิชา / ระดับชั้น</th><th style="width:20%">จำนวนชั่วโมง/สัปดาห์</th></tr></thead>
+  <thead><tr><th>รายวิชา / ระดับชั้น</th><th class="idp-w20">จำนวนชั่วโมง/สัปดาห์</th></tr></thead>
   <tbody>${subjectRows}</tbody>
 </table>
 
 <div class="i1-h">1.2 กิจกรรมพัฒนาผู้เรียน</div>
 <table>
-  <thead><tr><th>กิจกรรม / ระดับชั้น</th><th style="width:20%">จำนวนชั่วโมง/สัปดาห์</th></tr></thead>
+  <thead><tr><th>กิจกรรม / ระดับชั้น</th><th class="idp-w20">จำนวนชั่วโมง/สัปดาห์</th></tr></thead>
   <tbody>${activityRows}</tbody>
 </table>
 
@@ -598,16 +625,16 @@ ${specialItems}
 <div class="i1-break"></div>
 
 <div class="i1-h">ส่วนที่ 2  รายละเอียดการพัฒนาตนเอง</div>
-<table style="font-size:13pt">
+<table class="i1-t13">
   <thead>
     <tr>
-      <th style="width:18%">สมรรถนะที่จะพัฒนา</th>
-      <th style="width:8%">อันดับ<br>ความสำคัญ</th>
-      <th style="width:20%">วิธีการ / รูปแบบ<br>การพัฒนา</th>
-      <th style="width:8%">ระยะเวลา<br>เริ่มต้น</th>
-      <th style="width:8%">ระยะเวลา<br>สิ้นสุด</th>
-      <th style="width:19%">เป้าหมาย</th>
-      <th style="width:19%">ประโยชน์ที่<br>คาดว่าจะได้รับ</th>
+      <th class="idp-w18">สมรรถนะที่จะพัฒนา</th>
+      <th class="idp-w8">อันดับ<br>ความสำคัญ</th>
+      <th class="idp-w20">วิธีการ / รูปแบบ<br>การพัฒนา</th>
+      <th class="idp-w8">ระยะเวลา<br>เริ่มต้น</th>
+      <th class="idp-w8">ระยะเวลา<br>สิ้นสุด</th>
+      <th class="idp-w19">เป้าหมาย</th>
+      <th class="idp-w19">ประโยชน์ที่<br>คาดว่าจะได้รับ</th>
     </tr>
   </thead>
   <tbody>${compRows}</tbody>
@@ -616,25 +643,25 @@ ${specialItems}
 <div class="i1-break"></div>
 
 <div class="i1-h">ส่วนที่ 3  ตารางสรุปแผนพัฒนาตนเอง</div>
-<div class="i1-ind" style="margin-bottom:.3em">(สรุปวิธีการ/รูปแบบการพัฒนา ที่มีความจำเป็นมากที่สุดในสมรรถนะ 3 อันดับแรก)</div>
+<div class="i1-ind i1-mb3">(สรุปวิธีการ/รูปแบบการพัฒนา ที่มีความจำเป็นมากที่สุดในสมรรถนะ 3 อันดับแรก)</div>
 <table>
   <thead>
     <tr>
-      <th style="width:6%">อันดับที่</th>
-      <th style="width:22%">สมรรถนะที่จะพัฒนา</th>
-      <th style="width:28%">วิธีการ / รูปแบบการพัฒนา</th>
-      <th style="width:20%">ระยะเวลา</th>
-      <th style="width:24%">ประโยชน์ที่คาดว่าจะได้รับ</th>
+      <th class="idp-w6">อันดับที่</th>
+      <th class="idp-w22">สมรรถนะที่จะพัฒนา</th>
+      <th class="idp-w28">วิธีการ / รูปแบบการพัฒนา</th>
+      <th class="idp-w20">ระยะเวลา</th>
+      <th class="idp-w24">ประโยชน์ที่คาดว่าจะได้รับ</th>
     </tr>
   </thead>
   <tbody>${sumRows}</tbody>
 </table>
 
-<div class="i1-sign" style="margin-top:2em">
+<div class="i1-sign">
   <div class="i1-line"></div>
   <div>(${escapeHtml(name)})</div>
   <div>ตำแหน่ง ${escapeHtml(position)}</div>
-  <div style="margin-top:.3em">วันที่ ${escapeHtml(d.signDate) || '……………………………………………'}</div>
+  <div class="i1-mt3">วันที่ ${escapeHtml(d.signDate) || '……………………………………………'}</div>
 </div>
 
 </div></body></html>`;
@@ -645,12 +672,12 @@ ${specialItems}
 // ------------------------------------------------------------------
 async function idpRenderPreviewView() {
   const sys = docSystem();
-  const root = document.getElementById('doc-page-content');
-  if (!root) return;
+  const root = docMount();
+  const seq = sys.state.seq;
 
   // โหลด doc ถ้ายังไม่มี
   if (!sys.state.doc && sys.state.docId) {
-    root.innerHTML = '<div class="doc-loading">กำลังโหลด<span class="loader-dots" aria-hidden="true"><i></i><i></i><i></i></span></div>';
+    docShowLoading(root);
     try {
       const uid = AppState.user?.uid;
       if (uid) {
@@ -660,20 +687,27 @@ async function idpRenderPreviewView() {
     } catch (e) { /* ignore */ }
   }
 
-  const doc = sys.state.doc || idpBlankDoc();
+  if (!sys.state.doc || sys.state.view !== 'form') {
+    root.innerHTML = `<div class="card"><div class="empty-state"><div class="empty-title">ยังไม่ได้เปิด ID-Plan</div><div class="empty-sub">เปิดหรือสร้างแผนจากแท็บ "แบบฟอร์ม" ก่อน แล้วจึงดูตัวอย่าง / พิมพ์</div></div></div>`;
+    docSwapIn(root);
+    return;
+  }
+  const doc = sys.state.doc;
 
   // โหลด profile
   let profile = null;
   try {
     await loadModule('profile');
-    profile = await loadProfile();
+    profile = await loadTeacherProfile();
   } catch (e) { /* ignore */ }
 
+  if (!profile) profile = AppState.teacherProfile || null;
+  if (docStale(root, seq, sys) || sys.state.tab !== 'preview') return;
   const html = idpBuildPreviewHtml(doc, profile);
 
   root.innerHTML = `
     <div class="doc-preview-bar">
-      <button type="button" class="btn btn-ghost" id="idp-prev-back">${DOC_ICO_BACK} กลับ</button>
+      <button type="button" class="btn btn-ghost" id="idp-prev-back">${IDP_ICO_BACK} กลับ</button>
       <button type="button" class="btn btn-primary" id="idp-print-btn">
         <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><g fill="currentColor" stroke="none"><path opacity=".55" d="M6 2.5h12a2 2 0 0 1 2 2v5H4v-5a2 2 0 0 1 2-2Z"/><rect opacity=".55" x="4" y="9.5" width="16" height="9" rx="2"/><rect x="7" y="14" width="10" height="6.5" rx="1"/></g></svg>
         พิมพ์
@@ -683,12 +717,12 @@ async function idpRenderPreviewView() {
       <iframe id="idp-preview-frame" class="doc-preview-frame" title="ตัวอย่าง ID-Plan"></iframe>
     </div>`;
 
+  docSwapIn(root);
   const frame = document.getElementById('idp-preview-frame');
   frame.srcdoc = html;
 
   document.getElementById('idp-prev-back')?.addEventListener('click', () => {
-    sys.state.tab = 'form';
-    renderDocPage('idp');
+    docSwitchTab('form');
   });
   document.getElementById('idp-print-btn')?.addEventListener('click', () => {
     frame.contentWindow?.print();

@@ -102,6 +102,12 @@ service cloud.firestore {
         allow create, update: if isOwner(uid) && validDoc(30);
       }
 
+      // แผนพัฒนาตนเอง ID-Plan → users/{uid}/idp_plans/{docId} · ฟิลด์ดูที่ js/idp.js
+      match /idp_plans/{docId} {
+        allow read, delete: if isOwner(uid);
+        allow create, update: if isOwner(uid) && validDoc(30);
+      }
+
       match /courses/{courseId} {
         allow read, delete: if isOwner(uid);
         allow create, update: if isOwner(uid) && validDoc(40);
