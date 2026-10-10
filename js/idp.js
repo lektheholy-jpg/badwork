@@ -854,9 +854,11 @@ async function idpRenderPreviewView(pickId) {
 registerDocUi('idp', {
   tabs: {
     preview: () => idpRenderPreviewView(),
+    sar: () => sarRenderView(), // แท็บ Self-Assessment Report — js/sar.js (อยู่ใน LAZY_BUNDLES.idp)
     default: sys => sys.state.view === 'form' ? idpRenderFormView() : idpRenderListView(),
   },
   beforeLeave(sys) {
     if (sys.state.tab === 'form' && sys.state.view === 'form') idpCollect();
+    if (sys.state.tab === 'sar') sarBeforeLeave();
   },
 });

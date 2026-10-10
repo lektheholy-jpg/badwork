@@ -111,6 +111,12 @@ service cloud.firestore {
         allow create, update: if isOwner(uid) && validDoc(30);
       }
 
+      // รายงานผลการปฏิบัติงานและการประเมินตนเอง SAR (แท็บ SAR ในหน้า ID-Plan) → users/{uid}/idp_sar/{docId} · ฟิลด์ดูที่ js/sar.js
+      match /idp_sar/{docId} {
+        allow read, delete: if isOwner(uid);
+        allow create, update: if isOwner(uid) && validDoc(30);
+      }
+
       // แผนการอบรม → users/{uid}/tra_docs/{docId} · ฟิลด์ดูที่ js/tra.js (สร้างโดย tools/new-doc-system.js)
       match /tra_docs/{docId} {
         allow read, delete: if isOwner(uid);

@@ -541,6 +541,7 @@ const LAZY_MODULES = {
   // กลุ่ม ID-Plan (แผนพัฒนาตนเอง) — ใช้ doc-system/doc-shell ร่วมกับ PA · ใช้ loadModules(LAZY_BUNDLES.idp)
   'idp-config': 'js/idp-config.js',
   idp: 'js/idp.js',
+  sar: 'js/sar.js', // แท็บ Self-Assessment Report ในหน้า ID-Plan (ใช้ฟังก์ชันจาก idp.js)
   'idp-ai': 'js/idp-ai.js', // ตัวต่อผู้ช่วย AI ของ ID-Plan (registerDocAi) — แกน AI ใช้ร่วมกับ PA
   // กลุ่ม แผนการอบรม (tra) — สร้างโดย tools/new-doc-system.js · ใช้ doc-system/doc-shell ร่วมกับ PA · ใช้ loadModules(LAZY_BUNDLES.tra)
   'tra-config': 'js/tra-config.js',
@@ -549,7 +550,7 @@ const LAZY_MODULES = {
 };
 const LAZY_BUNDLES = {
   pa: ['doc-system', 'doc-shell', 'pa-config', 'pa', 'badwork-ai-config', 'badwork-ai', 'pa-ai', 'pa-report', 'pa-rpt'],
-  idp: ['doc-system', 'doc-shell', 'idp-config', 'idp', 'badwork-ai-config', 'badwork-ai', 'idp-ai'],
+  idp: ['doc-system', 'doc-shell', 'idp-config', 'idp', 'sar', 'badwork-ai-config', 'badwork-ai', 'idp-ai'],
   tra: ['doc-system', 'doc-shell', 'tra-config', 'tra', 'badwork-ai-config', 'badwork-ai', 'tra-ai'],
   // เฉพาะ config ของทุกระบบเอกสาร (เบา · ไม่มี UI) — privacy.js ใช้รู้ชื่อ collection · ระบบเอกสารใหม่ต้องเพิ่มไฟล์ config ของตัวเองที่นี่
   docConfigs: ['doc-system', 'pa-config', 'idp-config', 'tra-config'],
