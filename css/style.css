@@ -2197,6 +2197,9 @@ table.tt tr.is-today td.tt-cell { background: color-mix(in srgb, var(--hue-orang
 .pa-witem-h { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; margin-bottom: 10px; font-weight: 700; color: var(--ink); }
 .pa-witem-h .doc-ai-row { margin-top: 0; }
 .pa-witem .field:last-child { margin-bottom: 0; }
+.pa-aifield { padding-left: 12px; border-left: 3px solid var(--primary-tint); }
+.pa-field-h { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 12px; margin-bottom: 6px; }
+.pa-field-h .doc-ai-row { margin-top: 0; }
 .pa-form-footer { display: flex; justify-content: flex-end; gap: 10px; padding-bottom: 32px; }
 @media (max-width: 540px) {
   .pa-pf { grid-template-columns: 1fr; }

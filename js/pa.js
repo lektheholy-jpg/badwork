@@ -555,7 +555,7 @@ async function renderPAFormView() {
 
   const item = (label, val, wide) => `<div class="pa-pf-item${wide ? ' pa-pf-wide' : ''}"><dt>${label}</dt><dd>${val ? escapeHtml(val) : '—'}</dd></div>`;
   const area = (id, label, val, rows, ph = '') =>
-    `<div class="field"><label for="${id}">${label}</label><textarea id="${id}" rows="${rows}" placeholder="${escapeHtml(ph)}">${escapeHtml(val || '')}</textarea></div>`;
+    `<div class="field pa-aifield"><div class="pa-field-h"><label for="${id}">${label}</label></div><textarea id="${id}" rows="${rows}" placeholder="${escapeHtml(ph)}">${escapeHtml(val || '')}</textarea></div>`; // ส่วนที่ 2: หัวช่องเป็นที่วางแถวปุ่ม AI (ทางขวาของชื่อช่อง — js/pa-ai.js) เหมือนหัวกล่องของงานแต่ละข้อ
   const [t1, t2] = paTermLabels(d.fiscalYear);
   const wiArea = (id, f, label, val, rows) => {
     const eid = `pa-wi-${id.replace('.', '_')}-${f}`;

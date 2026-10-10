@@ -87,11 +87,12 @@ function paAiGuide(sys, fields) {
 // ------------------------------------------------------------------
 function paAiSlots(sys, form) {
   const out = [];
-  // ใต้ช่องส่วนที่ 2
+  // ส่วนที่ 2: แถวปุ่มอยู่ที่หัวช่อง (ขวามือของชื่อช่อง) · ปุ่มแตะเฉพาะช่องนั้น
   sys.config.ai.prompts.part2.forEach(f => {
     const ta = form.querySelector('#' + f.el);
     if (!ta) return;
-    out.push({ host: ta.closest('.field'), buttons: [
+    const fld = ta.closest('.field');
+    out.push({ host: fld.querySelector('.pa-field-h') || fld, buttons: [
       { act: 'f-write', label: 'เขียน/เติมให้', icon: 'write', data: { key: f.key } },
       { act: 'f-polish', label: 'ปรับสำนวน', icon: 'polish', quiet: true, data: { key: f.key } },
       { act: 'f-shorten', label: 'ย่อให้กระชับ', icon: 'shorten', quiet: true, data: { key: f.key } },
