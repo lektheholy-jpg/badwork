@@ -63,7 +63,8 @@ async function sarSave(data) {
   const uid = AppState.user?.uid;
   if (!uid) throw new Error('ยังไม่ได้เข้าสู่ระบบ');
   const now = firebase.firestore.FieldValue.serverTimestamp();
-  const { id: _i, createdAt: _c, updatedAt: _u, ...clean } = data;
+  const { id: _i, createdAt: _c, updatedAt: _u, ...rest } = data;
+  const clean = Object.fromEntries(Object.entries(rest).filter(([k]) => !k.startsWith('_'))); // คีย์ชั่วคราวของหน้าจอ (เช่น _ctxSeeded ของผู้ช่วย AI) ไม่เก็บลง Firestore
   if (SAR.docId) { await sarCol(uid).doc(SAR.docId).update({ ...clean, updatedAt: now }); return SAR.docId; }
   const ref = await sarCol(uid).add({ ...clean, createdAt: now, updatedAt: now });
   SAR.docId = ref.id;
@@ -77,6 +78,13 @@ function sarNormalize(d) {
   d.f = d.f && typeof d.f === 'object' ? d.f : {};
   d.rows = d.rows && typeof d.rows === 'object' ? d.rows : {};
   d.lv = d.lv && typeof d.lv === 'object' ? d.lv : {};
+  // บริบทงานของผู้ช่วย AI (js/sar-ai.js) — ตัดความยาวตาม IDP_CONFIG.sarAi.aiCtx.maxLen · 1 ฟิลด์ระดับบน (ไม่เกิน validDoc(30)) · ไม่มี config (ไม่ได้โหลดระบบ ID-Plan) = คงค่าเดิม
+  const mx = typeof IDP_CONFIG !== 'undefined' && IDP_CONFIG.sarAi ? IDP_CONFIG.sarAi.aiCtx.maxLen : null;
+  if (mx) {
+    const ac = d.aiCtx && typeof d.aiCtx === 'object' ? d.aiCtx : {};
+    d.aiCtx = {};
+    Object.entries(mx).forEach(([k, n]) => { d.aiCtx[k] = String(ac[k] || '').slice(0, n); });
+  }
   return d;
 }
 // ข้อมูลส่วนตัวใน SAR (ส่วนที่ 1.1) — ดึงจากหน้า "ข้อมูลส่วนตัว" : อายุ ← วันเกิด · อายุราชการ ← วันที่บรรจุ · คุณวุฒิ/วิชาเอก/สถาบัน ← วุฒิการศึกษาที่สูงสุด ·
@@ -314,7 +322,7 @@ async function sarRenderFormView() {
         ${[['late', 'มาสาย'], ['sick', 'ลาป่วย'], ['biz', 'ลากิจ'], ['ord', 'ลาอุปสมบท'], ['mat', 'ลาคลอด']].map(([k, l]) => `${num(l + ' (ครั้ง)', 'at.' + k + 'T')}${num(l + ' (วัน)', 'at.' + k + 'D')}`).join('')}</div></div>`)}
 
     ${sec('ส่วนที่ 2  ผลงานที่เกิดจากการปฏิบัติหน้าที่', `
-      ${SAR_NARR.slice(0, 7).map(([k, l]) => `<div class="field u-mt-4"><label for="sar-${k}">${sarEsc(l)}</label><textarea class="idp-ta" id="sar-${k}" data-f="${k}" rows="3">${sarEsc(f[k])}</textarea></div>`).join('')}
+      ${SAR_NARR.slice(0, 7).map(([k, l]) => `<div class="field u-mt-4"><div class="doc-item-h"><label for="sar-${k}">${sarEsc(l)}</label></div><textarea class="idp-ta" id="sar-${k}" data-f="${k}" rows="3">${sarEsc(f[k])}</textarea></div>`).join('')}
       ${sarTable('grades', '1.2.4.1 ผลสัมฤทธิ์ทางวิชาการของผู้เรียน (จำนวนนักเรียนตามระดับผลการเรียน)', 'เพิ่มรายวิชา', '<th>เฉลี่ย / ตรวจสอบ</th>')}<div class="u-note" id="sar-g-res"></div>
       ${sarTable('traits', '1.2.4.2 คุณลักษณะอันพึงประสงค์ของผู้เรียน (จำนวนคนตามผลการประเมิน)', 'เพิ่มห้อง')}<div class="u-note" id="sar-tr-n"></div>
       <div class="doc-subsec"><div class="doc-subsec-hd">1.2.5 รูปแบบ/วิธีการจัดกิจกรรมการเรียนการสอนที่ใช้</div>
@@ -329,7 +337,7 @@ async function sarRenderFormView() {
       <div class="doc-subsec"><div class="doc-subsec-hd">5. งานอื่น ๆ ที่ได้รับมอบหมาย</div>
         ${SAR_DUTY.map((t, i) => `${sarTable('duty' + i, t, 'เพิ่มงาน')}<div class="field"><label>ระดับคุณภาพการปฏิบัติงาน
           <select data-f="dq${i}">${['', 'ดี', 'พอใช้', 'ปรับปรุง'].map(o => `<option value="${o}"${f['dq' + i] === o ? ' selected' : ''}>${o || '— เลือก —'}</option>`).join('')}</select></label></div>`).join('')}</div>
-      ${SAR_NARR.slice(7).map(([k, l]) => `<div class="field u-mt-4"><label for="sar-${k}">${sarEsc(l)}</label><textarea class="idp-ta" id="sar-${k}" data-f="${k}" rows="4">${sarEsc(f[k])}</textarea></div>`).join('')}`)}
+      ${SAR_NARR.slice(7).map(([k, l]) => `<div class="field u-mt-4"><div class="doc-item-h"><label for="sar-${k}">${sarEsc(l)}</label></div><textarea class="idp-ta" id="sar-${k}" data-f="${k}" rows="4">${sarEsc(f[k])}</textarea></div>`).join('')}`)}
 
     ${sec('ส่วนที่ 3  ผลการดำเนินงานตามมาตรฐานการศึกษาขั้นพื้นฐาน', `
       <div class="u-note">ระดับคุณภาพ 5 = ยอดเยี่ยม · 4 = ดีเลิศ · 3 = ดี · 2 = ปานกลาง · 1 = กำลังพัฒนา — ค่าเฉลี่ยและระดับคุณภาพคำนวณให้</div>
@@ -344,6 +352,7 @@ async function sarRenderFormView() {
   </form>`;
   docSwapIn(root);
   const form = document.getElementById('sar-form');
+  if (typeof badworkAiMount === 'function' && typeof sarAiSys === 'function') badworkAiMount(root, form, sarAiSys()); // ปุ่มผู้ช่วย AI ส่วนที่ 2 (js/badwork-ai.js + ตัวต่อ js/sar-ai.js) — ไม่มีไฟล์นี้ฟอร์มก็ทำงานตามเดิม
   const update = () => { sarCollect(); sarCalc(); };
   form.addEventListener('input', update);
   form.addEventListener('change', update);

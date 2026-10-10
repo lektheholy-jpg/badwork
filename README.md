@@ -42,6 +42,7 @@ npm run test:docprint    # ตัวช่วยพิมพ์กลาง (doc
 npm run test:ttscope     # ตารางสอน: ขอบเขตรายวิชาตามปี/ภาคเรียน
 npm run test:idp         # ID-Plan: รายการ/แผน และไม่ปนกับ PA
 npm run test:idpai       # ตัวต่อ AI ของ ID-Plan (js/idp-ai.js)
+npm run test:sarai       # ตัวต่อ AI ของ SAR ส่วนที่ 2 (js/sar-ai.js)
 npm run test:nav         # ปุ่ม/ท่าย้อนกลับ (NavHistory)
 npm run test:cache       # แคชวาดทันทีของหน้ารายวิชา
 npm run check:sw         # PRECACHE ใน sw.js ตรงกับไฟล์จริง
@@ -84,6 +85,7 @@ js/badwork-ai-config.js  BADWORK_AI_CONFIG: ตั้งค่า AI ที่�
 js/badwork-ai.js      แกนผู้ช่วย AI (ไม่รู้จักชื่อระบบ): เรียก Gemini · โครงพร้อต์ · ยินยอม · ตัวกันกดซ้ำ · หน้าต่างตรวจทาน · เก็บบริบท · ฝังปุ่ม — เรียกผ่าน sys + ตัวต่อ (registerDocAi)
 js/pa-ai.js           ตัวต่อ AI ของ PA: ช่องที่ให้ AI เขียน · ข้อมูลประกอบพร้อต์ · ข้อความของ PA · ตำแหน่งปุ่ม · ที่เก็บบริบท
 js/idp-ai.js          ตัวต่อ AI ของ ID-Plan: ช่องส่วนที่ 2 (วิธีการ · เป้าหมาย · ประโยชน์ ของ 11 สมรรถนะ) · พร้อต์/บริบทอยู่ที่ IDP_CONFIG.ai · ปุ่มใต้ชื่อสมรรถนะแต่ละแถว
+js/sar-ai.js          ตัวต่อ AI ของแท็บ SAR: 8 ช่องของส่วนที่ 2 (1.1–1.5 · 2.1–2.2 · 6) · พร้อต์/บริบทอยู่ที่ IDP_CONFIG.sarAi · ลงทะเบียนเป็นระบบจำลอง 'sar' (SAR เป็นแท็บในระบบ idp แต่มีเอกสารของตัวเอง) · ปุ่มที่หัวช่อง + การ์ดบนสุดเหมือน PA/ID-Plan
 js/pa-report.js       ตัวอย่าง/พิมพ์ PA
 js/pa-rpt.js          แบบฟอร์มรายงานผล Personal Agreement (แท็บที่ 3) + แท็บ ตัวอย่าง/พิมพ์ รายงานผล (แท็บที่ 4)
 js/report.js          [lazy] สรุปผลรายห้อง ส่งออก CSV/ปพ.5/SGS เกณฑ์เกรด แปลงคะแนน NextSchool

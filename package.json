@@ -25,7 +25,8 @@
     "test:docprint": "node tests/doc-print.test.js",
     "test:docprev": "node tests/doc-preview.test.js",
     "test:tra": "node tests/tra.test.js",
-    "test:sar": "node tests/sar-merge.test.js"
+    "test:sar": "node tests/sar-merge.test.js",
+    "test:sarai": "node tests/sar-ai.test.js"
   },
   "devDependencies": {
     "csso-cli": "4.0.2",
