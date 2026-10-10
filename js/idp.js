@@ -40,6 +40,12 @@ async function idpPullTimetable(scope) {
   const tt = await loadTimetable();
   return { ...ttAggregateTerms([{ tt }], true), sem: tt.term?.sem, year: tt.term?.year, missing: [], label: ttTermLabel(tt.term) };
 }
+// รายคาบที่วางในตารางสอนของช่วงที่เลือก (แยกราย ห้อง/คาบ — ต่างจาก idpPullTimetable ที่รวมชั่วโมงทั้งวิชาไว้แล้ว) · ใช้จับคู่ชั่วโมงรายห้องกับรายวิชา/บันทึกคะแนน (SAR)
+async function idpPullTimetableEntries(scope) {
+  await loadModule('timetable');
+  const { items } = ttCollectScope(await loadAllTimetables(), scope);
+  return items.flatMap(({ tt }) => ttStats(tt).placed); // { kind, code, title, cls (ห้อง), span (จำนวนคาบ), courseId, … }
+}
 function idpApplyTimetable(doc, t, keepTerm) {
   doc.subjects = t.subjects;
   doc.activities = t.activities;

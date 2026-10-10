@@ -1,7 +1,7 @@
 // ==========================================================================
 // SAR — แท็บ "Self-Assessment Report" ในหน้า ID-Plan (รายงานผลการปฏิบัติงานและการประเมินตนเองรายบุคคล)
 //   อยู่ในระบบเอกสาร 'idp' (แท็บ 'sar' ใน IDP_CONFIG.tabs) · เก็บที่ users/{uid}/idp_sar (IDP_CONFIG.collections.sar)
-//   โหลดหลัง idp.js (LAZY_BUNDLES.idp) — ใช้ idpGetProfile / idpProfileInfo / idpPullTimetable จาก idp.js
+//   โหลดหลัง idp.js (LAZY_BUNDLES.idp) — ใช้ idpGetProfile / idpProfileInfo / idpPullTimetableEntries จาก idp.js
 //   โครงเอกสาร: { semester, year, status, f:{ช่องเดี่ยว}, rows:{ตารางแถวซ้ำ}, lv:{ระดับคุณภาพรายข้อ} }
 //   ค่าที่คำนวณ (เกรดเฉลี่ย · ร้อยละ · คะแนนมาตรฐาน · ระดับคุณภาพ) ไม่เก็บ — คำนวณสดจาก sarStats(d) ทั้งหน้าจอและตอนพิมพ์
 // ==========================================================================
@@ -190,38 +190,75 @@ function sarCalc() {
 
 // วิชาที่เป็นกิจกรรมพัฒนาผู้เรียน (ไม่ใช่รายวิชา): รหัสขึ้นต้น ก หรือชื่อเข้าข่าย — ผิดก็แก้ย้ายเองในฟอร์มได้
 const sarIsActivity = c => /^ก/.test(String(c.code || '').trim()) || /ชุมนุม|กิจกรรม|ลูกเสือ|เนตรนารี|แนะแนว|โฮมรูม|ผู้บำเพ็ญ|สวดมนต์/.test(c.name || '');
-// ดึงจากรายวิชา/ห้อง/คะแนน/เกรดของภาคเรียน+ปีนั้น (loadCoursesWithGrades ใน dashboard.js ใช้แคชเดียวกับหน้าแรก)
+// รวมรายวิชา/กิจกรรมจาก "บันทึกคะแนน" (ห้อง · จำนวนนักเรียน) เข้ากับ "ตารางสอน" (จำนวนคาบ = ชม./สัปดาห์) เป็นแถวเดียวต่อวิชา+ห้อง
+//   list    = [{ id, code, name, credit, act, title, rooms: [{ room, n }] }] (รายวิชาของภาคเรียนนั้น)
+//   entries = คาบที่วางในตารางสอน (idpPullTimetableEntries) — จับคู่กับวิชาด้วย courseId (ถ้าผูกไว้) หรือรหัส/ชื่อ · จับคู่ห้องด้วย cls
+//   ชั่วโมงรายห้อง = ผลรวมคาบของห้องนั้น · ตารางไม่ระบุห้อง = หารเฉลี่ยตามจำนวนห้อง · วิชาไม่อยู่ในตารางเลย = หน่วยกิต × 2 (0.5 หน่วยกิต = 1 ชม./สัปดาห์)
+//   คาบในตารางที่ไม่มีวิชา/ห้องตรงกัน (เช่น กิจกรรมที่ไม่มีรายวิชา) ยังเข้าตาราง โดยเว้นจำนวนนักเรียนให้กรอกเอง
+const sarRoomKey = s => String(s ?? '').replace(/\s+/g, '').replace(/^ม\.?/, '').toLowerCase();
+const sarNameKey = s => String(s ?? '').replace(/\s+/g, '').toLowerCase();
+function sarMergeCourseRows(list, entries) {
+  entries = entries || [];
+  const used = new Set(), out = { teaching: [], activities: [], noHours: 0, noN: 0 };
+  const same = (c, e) => e.courseId ? e.courseId === c.id
+    : (c.code && e.code && sarNameKey(e.code) === sarNameKey(c.code)) || (!!e.title && sarNameKey(e.title) === sarNameKey(c.name));
+  const span = es => es.reduce((t, e) => t + (Number(e.span) || 1), 0);
+  (list || []).forEach(c => {
+    const es = entries.filter(e => same(c, e));
+    c.rooms.forEach(rm => {
+      const rk = sarRoomKey(rm.room);
+      const mine = es.filter(e => e.cls && sarRoomKey(e.cls) === rk);
+      let hours = null;
+      if (mine.length) { mine.forEach(e => used.add(e)); hours = span(mine); }
+      else {
+        const gen = es.filter(e => !e.cls);
+        if (gen.length) { gen.forEach(e => used.add(e)); hours = Math.round((span(gen) / c.rooms.length) * 2) / 2; }
+        else if (!es.length && Number(c.credit) > 0) hours = Number(c.credit) * 2;
+      }
+      if (hours == null) out.noHours++;
+      if (!rm.n) out.noN++;
+      (c.act ? out.activities : out.teaching).push({ name: c.title, room: rm.room || '', n: String(rm.n ?? ''), hours: hours == null ? '' : String(hours) });
+    });
+  });
+  const grp = new Map();
+  entries.filter(e => !used.has(e)).forEach(e => {
+    const act = e.kind === 'activity' || !e.code;
+    const key = [act, e.code || '', e.title || '', sarRoomKey(e.cls)].join('|');
+    const g = grp.get(key) || { act, name: [e.code, e.title].filter(Boolean).join(' '), room: e.cls || '', hours: 0 };
+    g.hours += Number(e.span) || 1;
+    grp.set(key, g);
+  });
+  grp.forEach(g => { (g.act ? out.activities : out.teaching).push({ name: g.name, room: g.room, n: '', hours: String(g.hours) }); out.noN++; });
+  return out;
+}
+
+// ดึงจากรายวิชา/ห้อง/คะแนน/เกรดของภาคเรียน+ปีนั้น (loadCoursesWithGrades ใน dashboard.js ใช้แคชเดียวกับหน้าแรก) ร่วมกับตารางสอนของภาคเดียวกัน
 async function sarPullCourses(d) {
   const { courses } = await loadCoursesWithGrades();
   const yr = String(d.year).trim(), sm = String(d.semester).trim();
   const mine = courses.filter(c => String(c.year || '').trim() === yr && String(c.semester || '').trim() === sm);
-  if (!mine.length) return { found: 0 };
-  let tt = { subjects: [], activities: [] };
-  try { tt = await idpPullTimetable({ type: 'term', year: d.year, sem: d.semester }); } catch (e) { /* ไม่มีตารางสอน → เว้นชั่วโมงให้กรอกเอง */ }
-  // หาชั่วโมงจากตารางสอน · ถ้าไม่พบ → คำนวณจากหน่วยกิต (0.5 หน่วยกิต = 1 ชม./สัปดาห์)
-  const hoursOf = (c, list) => {
-    const h = (list || []).find(x => (c.code && x.name.includes(c.code)) || x.name.includes(c.name));
-    if (h) return String(h.hours);
-    const cr = Number(c.credit);
-    return cr > 0 ? String(cr * 2) : '';
-  };
-  const rows = { teaching: [], activities: [], grades: [] };
+  let entries = [];
+  try { entries = await idpPullTimetableEntries({ type: 'term', year: d.year, sem: d.semester }); } catch (e) { /* ไม่มีตารางสอน → ชั่วโมงคิดจากหน่วยกิต/เว้นให้กรอกเอง */ }
+  if (!mine.length && !entries.length) return { found: 0 };
+  const list = mine.map(c => ({
+    id: c.id, code: c.code || '', name: c.name || '', credit: c.credit, act: sarIsActivity(c), title: [c.code, c.name].filter(Boolean).join(' '),
+    rooms: (c.roomsData || []).map(rm => ({ room: rm.room || '', n: gradeSummaryCounts(rm.students).N })),
+  }));
+  const m = sarMergeCourseRows(list, entries);
+  const rows = { teaching: m.teaching, activities: m.activities, grades: [] };
   let noScore = 0;
   mine.forEach(c => {
-    const act = sarIsActivity(c), title = [c.code, c.name].filter(Boolean).join(' ');
+    if (sarIsActivity(c)) return;
     (c.roomsData || []).forEach(rm => {
       const g = gradeSummaryCounts(rm.students); // N + จำนวนตามเกรด (นับเฉพาะคนที่มีคะแนนแล้ว)
-      const base = { name: title, room: rm.room || '', n: String(g.N) };
-      if (act) { rows.activities.push({ ...base, hours: hoursOf(c, tt.activities) }); return; }
-      rows.teaching.push({ ...base, hours: hoursOf(c, tt.subjects) });
-      if (!g.n) noScore++;
-      const gr = { ...base };
+      const gr = { name: [c.code, c.name].filter(Boolean).join(' '), room: rm.room || '', n: String(g.N) };
       ['g4', 'g35', 'g3', 'g25', 'g2', 'g15', 'g1', 'g0'].forEach((k, i) => { gr[k] = g.counts[i] ? String(g.counts[i]) : ''; });
       rows.grades.push(gr);
+      if (!g.n) noScore++;
     });
   });
   Object.assign(d.rows, rows);
-  return { found: mine.length, teach: rows.teaching.length, act: rows.activities.length, noScore };
+  return { found: mine.length, teach: rows.teaching.length, act: rows.activities.length, noScore, noHours: m.noHours, noN: m.noN, noTimetable: !entries.length };
 }
 
 async function sarRenderFormView() {
@@ -259,8 +296,8 @@ async function sarRenderFormView() {
           .map(([l, v]) => `<span class="u-muted">${l}</span> <span class="u-semibold">${sarEsc(v || '—')}</span>`).join(' ')}</div>
         ${miss.length ? `<div class="u-note u-mt-4">ยังไม่มีในข้อมูลส่วนตัว: ${miss.join(' · ')} — <button type="button" class="btn btn-ghost btn-sm" id="sar-goto-profile">ไปเพิ่มในข้อมูลส่วนตัว</button></div>` : ''}
         </div>
-      <div class="u-mt-4"><button type="button" class="btn btn-primary btn-sm" id="sar-cs-pull">ดึงจากรายวิชา · คะแนน · เกรด (ภาคเรียนนี้)</button> <button type="button" class="btn btn-ghost btn-sm" id="sar-tt-pull">ดึงจากตารางสอนอย่างเดียว</button></div>
-      <div class="u-note">ปุ่มแรกเติมภาระสอน กิจกรรม และตารางผลการเรียน (1.2.4.1) จากรายวิชาที่ภาคเรียน/ปีการศึกษาตรงกับด้านบน — ชั่วโมง/สัปดาห์มาจากตารางสอน แก้ไขต่อในช่องได้</div>
+            <div class="u-mt-4"><button type="button" class="btn btn-primary btn-sm" id="sar-cs-pull">ดึงจากรายวิชา · คะแนน · ตารางสอน (ภาคเรียนนี้)</button></div>
+      <div class="u-note">รวมสองแหล่งในปุ่มเดียว: ห้องและจำนวนนักเรียนมาจากบันทึกคะแนน · ชั่วโมง/สัปดาห์นับจากคาบของห้องนั้นในตารางสอน (ทั้งรายวิชาและกิจกรรมพัฒนาผู้เรียน) · ตารางผลการเรียน (1.2.4.1) มาจากเกรดของแต่ละห้อง · ช่องไหนไม่พบข้อมูลจะเว้นว่างให้กรอกเอง แก้ไขต่อในช่องได้</div>
       ${sarTable('teaching', '1.2.1 ปฏิบัติการสอน', 'เพิ่มรายวิชา')}<div class="u-note" id="sar-t-sum"></div>
       ${sarTable('activities', '1.2.2 กิจกรรมพัฒนาผู้เรียน', 'เพิ่มกิจกรรม')}
       <div class="doc-subsec"><div class="doc-subsec-hd">1.2.3 ครูที่ปรึกษา</div><div class="doc-form-meta">
@@ -312,26 +349,18 @@ async function sarRenderFormView() {
   document.getElementById('sar-cs-pull')?.addEventListener('click', async () => {
     sarCollect();
     const has = ['teaching', 'activities', 'grades'].some(k => (d.rows[k] || []).some(r => Object.values(r).some(Boolean)));
-    if (has && !confirm('แทนที่ภาระสอน กิจกรรม และตารางผลการเรียนที่กรอกไว้ ด้วยข้อมูลจากรายวิชา?')) return;
+    if (has && !confirm('แทนที่ภาระสอน กิจกรรม และตารางผลการเรียนที่กรอกไว้ ด้วยข้อมูลจากรายวิชา + ตารางสอน?')) return;
     const btn = document.getElementById('sar-cs-pull');
     btn.disabled = true;
     try {
       const r = await sarPullCourses(d);
-      if (!r.found) { showToast(`ไม่พบรายวิชาภาคเรียนที่ ${d.semester} ปี ${d.year} — ตรวจภาคเรียน/ปีของรายวิชา`); return; }
-      if (stillHere()) { await sarRenderFormView(); showToast(`ดึงแล้ว: สอน ${r.teach} ห้อง · กิจกรรม ${r.act} ห้อง${r.noScore ? ` · ${r.noScore} ห้องยังไม่มีคะแนน` : ''}`); }
+      if (!r.found) { showToast(`ไม่พบรายวิชาหรือตารางสอนภาคเรียนที่ ${d.semester} ปี ${d.year} — ตรวจภาคเรียน/ปีของรายวิชา`); return; }
+      if (stillHere()) {
+        await sarRenderFormView();
+        showToast(`ดึงแล้ว: สอน ${r.teach} แถว · กิจกรรม ${r.act} แถว${r.noTimetable ? ' · ยังไม่มีตารางสอนภาคนี้ (ชั่วโมงคิดจากหน่วยกิต)' : ''}${r.noHours ? ` · ${r.noHours} แถวยังไม่มีชั่วโมง` : ''}${r.noN ? ` · ${r.noN} แถวยังไม่มีจำนวนนักเรียน` : ''}${r.noScore ? ` · ${r.noScore} ห้องยังไม่มีคะแนน` : ''}`);
+      }
     } catch (e) { showToast('ดึงข้อมูลรายวิชาไม่สำเร็จ: ' + e.message, 'error'); }
     finally { btn.disabled = false; }
-  });
-  document.getElementById('sar-tt-pull')?.addEventListener('click', async () => {
-    sarCollect();
-    if ((d.rows.teaching || []).some(r => r.name) && !confirm('แทนที่รายวิชา/กิจกรรมที่กรอกไว้ด้วยข้อมูลจากตารางสอน?')) return;
-    try {
-      const t = await idpPullTimetable({ type: 'term', year: d.year, sem: d.semester });
-      if (!t.subjects.length && !t.activities.length) { showToast(`ยังไม่มีตารางสอนของ${t.label}`); return; }
-      d.rows.teaching = t.subjects.map(s => ({ name: s.name, hours: String(s.hours) }));
-      d.rows.activities = t.activities.map(s => ({ name: s.name, hours: String(s.hours) }));
-      if (stillHere()) { await sarRenderFormView(); showToast(`ดึงจากตารางสอน ${t.label} แล้ว — เติมห้อง/จำนวนนักเรียนเอง`); }
-    } catch (e) { showToast('ดึงตารางสอนไม่สำเร็จ: ' + e.message, 'error'); }
   });
   document.getElementById('sar-goto-profile')?.addEventListener('click', () => { sarCollect(); navigate('profile'); });
   ['sar-back-btn', 'sar-cancel-btn'].forEach(id => document.getElementById(id)?.addEventListener('click', () => { sarCollect(); SAR.view = 'list'; sarRenderListView(); }));
