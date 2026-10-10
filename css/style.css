@@ -2312,8 +2312,8 @@ table.tt tr.is-today td.tt-cell { background: color-mix(in srgb, var(--hue-orang
 }
 .idp-sum-table select::picker-icon { display: none; }
 
-/* --- IDP: Responsive stacked layout (≤ 640 px) --- */
-@media (max-width: 640px) {
+/* --- IDP: Responsive stacked layout (≤ 900 px — ตารางกว้างขั้นต่ำ 880px จึงไม่ต้องเลื่อนซ้าย-ขวาในจอที่แคบกว่านี้) --- */
+@media (max-width: 900px) {
   .idp-table-wrap { overflow-x: visible; }
   .idp-comp-table, .idp-sum-table { min-width: 0; border-collapse: separate; border-spacing: 0; }
   .idp-comp-table thead, .idp-sum-table thead { display: none; }
