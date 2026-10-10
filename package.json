@@ -23,7 +23,8 @@
     "test:idp": "node tests/idp-list.test.js",
     "test:idpai": "node tests/idp-ai.test.js",
     "test:docprint": "node tests/doc-print.test.js",
-    "test:docprev": "node tests/doc-preview.test.js"
+    "test:docprev": "node tests/doc-preview.test.js",
+    "test:tra": "node tests/tra.test.js"
   },
   "devDependencies": {
     "csso-cli": "4.0.2",

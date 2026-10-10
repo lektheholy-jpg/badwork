@@ -219,12 +219,25 @@ users/{uid}/idp_plans/{docId}                แผนพัฒนาตนเ�
 - **golden ของ PA เปลี่ยนโดยตั้งใจ 3 จุด** (`ui.reportTab` · `ui.rptPreview` · `ui.tabs` ใน `tests/pa-golden.json`) เพราะกระดาษของแท็บตัวอย่างเปลี่ยนจาก HTML แทรกในหน้า (`.doc-paper`) เป็น iframe `srcdoc` — ตรวจด้วย `PA_DUMP` เทียบก่อน/หลังแล้ว: เอกสารใน `#doc-src` เหมือนเดิมทุกตัวอักษร (ต่างแค่การ serialize `<rect/>` ของกล่องติ๊กใน `srcdoc`) · แถบ/ข้อความแนะนำ/กล่อง "ข้อมูลแบบเดิม" เหมือนเดิม
 
 ### เพิ่มระบบเอกสารใหม่ (ตัวอย่างจริง: ID-Plan = ระบบที่สอง · ระบบแรกคือ PA)
+**วิธีเร็ว: ใช้คำสั่งสร้างให้ (แนะนำ)**
+```
+node tools/new-doc-system.js <id> "<ชื่อระบบ>"        # เช่น node tools/new-doc-system.js tra "แผนการอบรม"
+node tools/new-doc-system.js <id> "<ชื่อระบบ>" --dry-run   # ดูว่าจะสร้าง/แก้อะไรบ้าง โดยยังไม่เขียนไฟล์
+```
+- `id` = a–z/0–9 ยาว 2–12 ตัว ขึ้นต้นด้วยตัวอักษร (เป็นทั้งชื่อไฟล์ · ขึ้นต้นชื่อฟังก์ชัน `<id>RenderFormView` · route `<id>-page` · collection `<id>_docs`) — ชนกับของเดิมหรือขึ้นต้นเหมือน `doc`/`pa` สคริปต์จะหยุดก่อนแตะไฟล์ใด ๆ
+- สร้างจาก `tools/templates/` (ลอกรูปแบบจาก `idp-*.js`): `js/<id>-config.js` · `js/<id>.js` · `js/<id>-ai.js` · `tests/<id>.test.js` แล้วแก้ไฟล์เดิมตามข้อ 3–5 ด้านล่างให้ครบ (`utils.js` · `app.js` รวมไทล์เมนูมือถือ · `index.html` · `sw.js` พร้อมเพิ่มเลข `VERSION` · `firestore.rules`) และเพิ่มสคริปต์ `test:<id>` ใน `package.json`
+- ตรวจต่อให้เอง: `node --check` ไฟล์ที่สร้าง · `check-sw` · `check-inline` — ไม่ผ่านจะแจ้งและ exit 1
+- ได้ระบบโครงเปล่าที่ใช้งานได้ (รายการ · ฟอร์ม · ตัวอย่าง/พิมพ์ · ปุ่ม AI) — **งานที่เหลือต้องทำเอง**: แก้ `js/<id>.js` (`Normalize` · `Collect` · `RenderFormView` · `BuildPreviewHtml`) ให้เป็นฟอร์ม/หน้าพิมพ์จริงของเอกสาร · แก้ `prompts` ใน `js/<id>-config.js` และ `<id>AiSpecs` ใน `js/<id>-ai.js` · เปลี่ยนไอคอนเมนูถ้าต้องการ · เพิ่มเทสต์ของช่องจริงใน `tests/<id>.test.js`
+- เทสต์ jsdom ต้องมี `node_modules`: `npm install && npm run test:<id>` แล้วรัน `npm run test:pa` ยืนยันว่าระบบเดิมไม่กระทบ
+- ไม่ต้องการผู้ช่วย AI: ลบ `js/<id>-ai.js` แล้วเอา `'<id>-ai'` ออกจาก `LAZY_MODULES`/`LAZY_BUNDLES` (`utils.js`) และ `PRECACHE` (`sw.js`) (และตัดส่วน AI ออกจาก `tests/<id>.test.js`)
+
+**ขั้นตอนที่คำสั่งทำให้ (อ้างอิง — ทำมือเมื่อสคริปต์หาจุดแก้ไม่เจอ):**
 ไฟล์ที่ต้องสร้าง/แก้ (ลอกรูปแบบจาก `idp-*.js`): `js/<id>-config.js` · `js/<id>.js` · `js/<id>-ai.js` (ไม่บังคับ) · `utils.js` · `app.js` · `index.html` · `sw.js` · `firestore.rules` · `tests/`
 ส่วนกลาง (ไม่ต้องแก้): `js/doc-system.js` (ทะเบียนระบบ · state · collection) และ `js/doc-shell.js` (โครงหน้า · แท็บ · ตัวช่วยร่วม)
 1. สร้าง `js/<id>-config.js` — config (`id` · `title` · `collections` · `tabs` · …) แล้วท้ายไฟล์เรียก `registerDocSystem(CONFIG)`
 2. สร้างไฟล์ UI ของระบบ (ฟอร์ม/รายการ/พิมพ์) แล้วท้ายไฟล์เรียก `registerDocUi('<id>', { tabs: { <แท็บ>: sys => …, default: sys => … }, beforeLeave(sys) {…} })` (ดูตัวอย่างท้าย `js/pa.js`) · ปุ่มพิมพ์เรียก `docPrintWindow(...)` (ดูหัวข้อ "พิมพ์ / บันทึกเป็น PDF" ด้านบน) — ไม่เขียน `window.open`/รอฟอนต์เอง · แท็บตัวอย่างเรียก `docRenderPreview(...)` (ดูหัวข้อ "หน้า ตัวอย่าง / พิมพ์") — ไม่เขียนแถบเลือก/ปุ่ม/สถานะว่างเอง
 3. `js/utils.js`: เพิ่มไฟล์ใน `LAZY_MODULES` + กลุ่มใหม่ใน `LAZY_BUNDLES` (ลำดับ `doc-system` → `doc-shell` → config → UI) และใส่ config ใน `docConfigs` (ให้ privacy.js ส่งออก/ลบข้อมูลของระบบนี้)
-4. `app.js`: เพิ่ม `ROUTE_MODULES['<id>-page'] = LAZY_BUNDLES.<id>` และ `renderRoute` → `return renderDocPage('<id>')` (ต้อง `return`) · `index.html`: ปุ่มเมนู `<button class="nav-item" data-route="<id>-page" data-tip="…">` (ดู `idp-page`) — ต้องวางไว้ในกลุ่มเมนูเดียวกับ `pa-page` / `idp-page`
+4. `app.js`: เพิ่ม `ROUTE_MODULES['<id>-page'] = LAZY_BUNDLES.<id>` และ `renderRoute` → `return renderDocPage('<id>')` (ต้อง `return`) และเพิ่ม `'<id>-page'` ในอาร์เรย์ `[...].forEach(addTile)` (ไทล์เมนู "เพิ่มเติม" บนมือถือ — ไม่ใส่ = ระบบใหม่ไม่ขึ้นบนมือถือ) · `index.html`: ปุ่มเมนู `<button class="nav-item" data-route="<id>-page" data-tip="…">` (ดู `idp-page`) — ต้องวางไว้ในกลุ่มเมนูเดียวกับ `pa-page` / `idp-page`
 5. `sw.js`: เพิ่มไฟล์ใน PRECACHE + เลข VERSION (รัน `npm run check:sw`) · `firestore.rules`: เพิ่ม collection ใหม่ใต้ `users/{uid}/`
 6. ผู้ช่วย AI (ไม่บังคับ): ไม่ต้องแก้ `js/badwork-ai.js` / `js/badwork-ai-config.js` — สร้าง `js/<id>-ai.js` ท้ายไฟล์เรียก `registerDocAi('<id>', { systemPrompt, task, context, scope, guide, itemHeading, copy, ctxBody, ctxStorageKey, docRef, slots, resolve })` (ดูตัวอย่าง `js/pa-ai.js`) · ธรรมเนียมเฉพาะระบบในหน้าต่างตรวจทานใส่ที่ `copy.reviewNote` (หมายเหตุสั้นๆ) และ `copy.placeholder = { mark, toast }` (ถ้าพร้อต์ให้ AI ใส่เครื่องหมายแทนค่าที่ผู้ใช้ต้องกรอกเอง) — ไม่บังคับ ไม่ใส่ = แกนไม่แสดง/ไม่ตรวจ · ใน config ของระบบต้องมี `aiCtx = { fields, maxLen, idPrefix }` (idPrefix ไม่ซ้ำระบบอื่น) และ `ai.storageKeys.ctx` ไม่ซ้ำระบบอื่น · ฟังก์ชันบันทึกเอกสารต้องตัดคีย์ที่ขึ้นต้น `_` · ใส่ไฟล์ใน `LAZY_MODULES`/`LAZY_BUNDLES` หลัง `badwork-ai` และ `sw.js` PRECACHE · ฟอร์มเรียก `badworkAiMount(view, form, sys)` ท้ายการวาด
 7. เทสต์: ดูตัวอย่างระบบจำลอง `idp` และ `mock` ใน `tests/pa-config.test.js` (ทะเบียน/state แยกกัน · แกน AI ร่วม)

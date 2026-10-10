@@ -542,12 +542,17 @@ const LAZY_MODULES = {
   'idp-config': 'js/idp-config.js',
   idp: 'js/idp.js',
   'idp-ai': 'js/idp-ai.js', // ตัวต่อผู้ช่วย AI ของ ID-Plan (registerDocAi) — แกน AI ใช้ร่วมกับ PA
+  // กลุ่ม แผนการอบรม (tra) — สร้างโดย tools/new-doc-system.js · ใช้ doc-system/doc-shell ร่วมกับ PA · ใช้ loadModules(LAZY_BUNDLES.tra)
+  'tra-config': 'js/tra-config.js',
+  tra: 'js/tra.js',
+  'tra-ai': 'js/tra-ai.js', // ตัวต่อผู้ช่วย AI ของ แผนการอบรม (registerDocAi) — แกน AI ใช้ร่วมกับระบบอื่น
 };
 const LAZY_BUNDLES = {
   pa: ['doc-system', 'doc-shell', 'pa-config', 'pa', 'badwork-ai-config', 'badwork-ai', 'pa-ai', 'pa-report', 'pa-rpt'],
   idp: ['doc-system', 'doc-shell', 'idp-config', 'idp', 'badwork-ai-config', 'badwork-ai', 'idp-ai'],
+  tra: ['doc-system', 'doc-shell', 'tra-config', 'tra', 'badwork-ai-config', 'badwork-ai', 'tra-ai'],
   // เฉพาะ config ของทุกระบบเอกสาร (เบา · ไม่มี UI) — privacy.js ใช้รู้ชื่อ collection · ระบบเอกสารใหม่ต้องเพิ่มไฟล์ config ของตัวเองที่นี่
-  docConfigs: ['doc-system', 'pa-config', 'idp-config'],
+  docConfigs: ['doc-system', 'pa-config', 'idp-config', 'tra-config'],
 };
 // โหลดหลายโมดูลทีละไฟล์ตามลำดับ (สคริปต์ที่แทรกด้วย JS ไม่รับประกันลำดับถ้าโหลดพร้อมกัน)
 async function loadModules(names) { for (const n of [].concat(names)) await loadModule(n); }
