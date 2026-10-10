@@ -20,6 +20,32 @@ function idpUpdatedAt(d) {
 }
 
 // ------------------------------------------------------------------
+// ดึงตารางสอน (หน้า "ข้อมูลส่วนตัว" → ตารางสอน) → 1.1 รายวิชา / 1.2 กิจกรรมพัฒนาผู้เรียน (1 คาบ = 1 ชม./สัปดาห์)
+// ------------------------------------------------------------------
+async function idpPullTimetable() {
+  await loadModule('timetable');
+  const tt = await loadTimetable();
+  const placed = ttStats(tt).placed;
+  const agg = kind => {
+    const m = new Map();
+    placed.filter(e => e.kind === kind).forEach(e => {
+      const key = (e.code || '') + '|' + e.title;
+      const cur = m.get(key) || { name: [e.code, e.title].filter(Boolean).join(' '), hours: 0 };
+      cur.hours += e.span;
+      m.set(key, cur);
+    });
+    return [...m.values()];
+  };
+  return { subjects: agg('class'), activities: agg('activity'), sem: tt.term?.sem, year: tt.term?.year };
+}
+function idpApplyTimetable(doc, t) {
+  doc.subjects = t.subjects;
+  doc.activities = t.activities;
+  if (t.sem) doc.semester = String(t.sem);
+  if (t.year) doc.year = String(t.year);
+}
+
+// ------------------------------------------------------------------
 // Firestore helpers
 // ------------------------------------------------------------------
 function idpCol(uid) {
@@ -259,6 +285,18 @@ async function idpRenderFormView() {
 
   const doc = sys.state.doc || idpBlankDoc();
   sys.state.doc = doc;
+  const stillHere = () => !docStale(root, seq, sys) && sys.state.tab === 'form' && sys.state.view === 'form';
+
+  // แผนใหม่: ดึงรายวิชา/กิจกรรมจากตารางสอนให้เลยครั้งเดียว (ไม่มีตารางสอน = เว้นว่างให้กรอกเอง)
+  if (!sys.state.docId && !doc._ttTried) {
+    doc._ttTried = true;
+    docShowLoading(root);
+    try {
+      const t = await idpPullTimetable();
+      if (!doc.subjects.length && !doc.activities.length && (t.subjects.length || t.activities.length)) idpApplyTimetable(doc, t);
+    } catch (e) { /* ไม่มีตารางสอน/โหลดไม่ได้ → กรอกเอง */ }
+    if (!stillHere()) return;
+  }
 
   const comps = sys.config.competencies;
 
@@ -334,7 +372,10 @@ async function idpRenderFormView() {
 
     <!-- ส่วนที่ 1: ภาระงาน -->
     <section class="doc-section">
-      <h2 class="doc-sec-title">ส่วนที่ 1  ภาระงาน</h2>
+      <div class="doc-sec-head">
+        <h2 class="doc-sec-title">ส่วนที่ 1  ภาระงาน</h2>
+        <button type="button" class="btn btn-ghost btn-sm" id="idp-tt-pull">ดึงจากตารางสอน</button>
+      </div>
 
       <div class="doc-subsec">
         <div class="doc-subsec-hd">1.1 รายวิชาที่รับผิดชอบ</div>
@@ -378,8 +419,8 @@ async function idpRenderFormView() {
         <table class="idp-comp-table">
           <thead>
             <tr>
-              <th class="idp-w18">สมรรถนะที่จะพัฒนา</th>
-              <th class="idp-w6">อันดับ<br>ความสำคัญ</th>
+              <th class="idp-w15">สมรรถนะที่จะพัฒนา</th>
+              <th class="idp-w9">อันดับ<br>ความสำคัญ</th>
               <th class="idp-w20">วิธีการ / รูปแบบ<br>การพัฒนา</th>
               <th class="idp-w9">ระยะเวลา<br>เริ่มต้น</th>
               <th class="idp-w9">ระยะเวลา<br>สิ้นสุด</th>
@@ -432,6 +473,20 @@ async function idpRenderFormView() {
   });
   document.getElementById('idp-add-special')?.addEventListener('click', () => {
     spcBox.insertAdjacentHTML('beforeend', idpSpecialRowHtml(''));
+  });
+
+  document.getElementById('idp-tt-pull')?.addEventListener('click', async () => {
+    idpCollect();
+    if ((doc.subjects.length || doc.activities.length) && !confirm('แทนที่รายวิชา/กิจกรรมที่กรอกไว้ด้วยข้อมูลจากตารางสอน?')) return;
+    try {
+      const t = await idpPullTimetable();
+      if (!t.subjects.length && !t.activities.length) { showToast('ยังไม่มีตารางสอน — เพิ่มได้ที่ ข้อมูลส่วนตัว → ตารางสอน'); return; }
+      idpApplyTimetable(sys.state.doc, t);
+      idpRenderFormView();
+      showToast('ดึงจากตารางสอนแล้ว');
+    } catch (e) {
+      showToast('ดึงตารางสอนไม่สำเร็จ: ' + e.message, 'error');
+    }
   });
 
   document.getElementById('idp-back-btn')?.addEventListener('click', () => {

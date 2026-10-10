@@ -2274,9 +2274,11 @@ table.tt tr.is-today td.tt-cell { background: color-mix(in srgb, var(--hue-orang
 .doc-lrows { display: flex; flex-direction: column; gap: 8px; }
 .doc-lrow { display: flex; align-items: center; gap: 8px; }
 .doc-lrow-header { display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 600; color: var(--ink-soft); }
-.doc-l-name { flex: 1; min-width: 0; }
-.doc-l-hours { flex: none; width: 96px; }
-.doc-l-act { flex: none; width: 40px; }
+.doc-lrow input.doc-l-name, .doc-lrow-header .doc-l-name { flex: 1 1 0; width: auto; min-width: 0; }
+.doc-lrow input.doc-l-hours, .doc-lrow-header .doc-l-hours { flex: none; width: 96px; }
+.doc-lrow .btn-icon, .doc-lrow-header .doc-l-act { flex: none; width: 40px; }
+.doc-sec-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.doc-sec-head .doc-sec-title { margin: 0; }
 .doc-add-row { margin-top: 8px; }
 .btn-icon { display: inline-grid; place-items: center; flex: none; width: 40px; height: 40px; padding: 0; border: none; border-radius: var(--radius-s); background: transparent; color: var(--ink-soft); cursor: pointer; transition: background .15s ease, color .15s ease; }
 .btn-icon:hover { background: var(--danger-tint); color: var(--danger); }
@@ -2299,13 +2301,13 @@ table.tt tr.is-today td.tt-cell { background: color-mix(in srgb, var(--hue-orang
 .idp-comp-table td, .idp-sum-table td { padding: 6px; vertical-align: top; border-bottom: 1px solid var(--border); }
 .idp-comp-name { font-weight: 600; font-size: 13.5px; color: var(--ink); }
 .idp-sum-rank { text-align: center; font-weight: 700; color: var(--ink); }
-.idp-w6 { width: 6%; } .idp-w9 { width: 9%; } .idp-w18 { width: 18%; } .idp-w19 { width: 19%; } .idp-w20 { width: 20%; }
+.idp-w6 { width: 6%; } .idp-w9 { width: 9%; } .idp-w15 { width: 15%; } .idp-w18 { width: 18%; } .idp-w19 { width: 19%; } .idp-w20 { width: 20%; }
 .idp-w22 { width: 22%; } .idp-w24 { width: 24%; } .idp-w28 { width: 28%; }
 
 .doc-preview-bar { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
 .doc-preview-frame-wrap { overflow: hidden; border-radius: var(--radius-m); background: var(--surface-sunken); }
 .doc-preview-frame { display: block; width: 100%; height: 80vh; border: 0; background: var(--white); }
 @media (max-width: 540px) {
-  .doc-l-hours { width: 72px; }
+  .doc-lrow input.doc-l-hours, .doc-lrow-header .doc-l-hours { width: 72px; }
   .doc-form-header { align-items: stretch; }
 }
