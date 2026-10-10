@@ -336,18 +336,18 @@ async function idpRenderFormView() {
     const c = doc.comps?.[cid] || {};
     compsHtml += `
     <tr>
-      <td><div class="idp-ai-anchor"></div><div class="idp-comp-name">${escapeHtml(fullName)}</div>${(subs || []).map(([no, nm]) => `<div class="idp-comp-sub">${no} ${escapeHtml(nm)}</div>`).join('')}</td>
-      <td><input class="input-sm" type="number" min="1" max="${comps.length}" placeholder="1–${comps.length}"
+      <td data-label="สมรรถนะที่จะพัฒนา"><div class="idp-ai-anchor"></div><div class="idp-comp-name">${escapeHtml(fullName)}</div>${(subs || []).map(([no, nm]) => `<div class="idp-comp-sub">${no} ${escapeHtml(nm)}</div>`).join('')}</td>
+      <td data-label="อันดับความสำคัญ"><input class="input-sm" type="number" min="1" max="${comps.length}" placeholder="1–${comps.length}"
             data-comp-id="${cid}" data-comp-field="priority" value="${escapeHtml(c.priority || '')}"></td>
-      <td><textarea class="idp-ta" id="idp-${cid}-method"
+      <td data-label="วิธีการ / รูปแบบการพัฒนา"><textarea class="idp-ta" id="idp-${cid}-method"
             data-comp-id="${cid}" data-comp-field="method">${escapeHtml(c.method || '')}</textarea></td>
-      <td><input class="input-sm" type="text" placeholder="เช่น ต.ค. 68"
+      <td data-label="ระยะเวลาเริ่มต้น"><input class="input-sm" type="text" placeholder="เช่น ต.ค. 68"
             data-comp-id="${cid}" data-comp-field="startDate" value="${escapeHtml(c.startDate || '')}"></td>
-      <td><input class="input-sm" type="text" placeholder="เช่น มี.ค. 69"
+      <td data-label="ระยะเวลาสิ้นสุด"><input class="input-sm" type="text" placeholder="เช่น มี.ค. 69"
             data-comp-id="${cid}" data-comp-field="endDate" value="${escapeHtml(c.endDate || '')}"></td>
-      <td><textarea class="idp-ta" id="idp-${cid}-goal"
+      <td data-label="เป้าหมาย"><textarea class="idp-ta" id="idp-${cid}-goal"
             data-comp-id="${cid}" data-comp-field="goal">${escapeHtml(c.goal || '')}</textarea></td>
-      <td><textarea class="idp-ta" id="idp-${cid}-benefit"
+      <td data-label="ประโยชน์ที่คาดว่าจะได้รับ"><textarea class="idp-ta" id="idp-${cid}-benefit"
             data-comp-id="${cid}" data-comp-field="benefit">${escapeHtml(c.benefit || '')}</textarea></td>
     </tr>`;
   });
@@ -361,16 +361,16 @@ async function idpRenderFormView() {
     const s = doc.summary?.[i] || {};
     summaryHtml += `
     <tr>
-      <td class="idp-sum-rank">${i + 1}</td>
-      <td><select data-sum="${i}" data-sf="compId">
+      <td class="idp-sum-rank" data-label="อันดับที่">${i + 1}</td>
+      <td data-label="สมรรถนะที่จะพัฒนา"><select data-sum="${i}" data-sf="compId">
         <option value="">— เลือกสมรรถนะ —</option>
         ${comps.map(([cid, shortName]) =>
           `<option value="${cid}"${s.compId === cid ? ' selected' : ''}>${escapeHtml(shortName)}</option>`
         ).join('')}
       </select></td>
-      <td><textarea class="idp-ta" data-sum="${i}" data-sf="method">${escapeHtml(s.method || '')}</textarea></td>
-      <td><input class="input-sm" type="text" placeholder="เช่น ต.ค. 68" data-sum="${i}" data-sf="startDate" value="${escapeHtml(s.startDate || '')}">–<input class="input-sm" type="text" placeholder="มี.ค. 69" data-sum="${i}" data-sf="endDate" value="${escapeHtml(s.endDate || '')}"></td>
-      <td><textarea class="idp-ta" data-sum="${i}" data-sf="benefit">${escapeHtml(s.benefit || '')}</textarea></td>
+      <td data-label="วิธีการ / รูปแบบการพัฒนา"><textarea class="idp-ta" data-sum="${i}" data-sf="method">${escapeHtml(s.method || '')}</textarea></td>
+      <td data-label="ระยะเวลา (เริ่ม–สิ้นสุด)"><input class="input-sm" type="text" placeholder="เช่น ต.ค. 68" data-sum="${i}" data-sf="startDate" value="${escapeHtml(s.startDate || '')}">–<input class="input-sm" type="text" placeholder="มี.ค. 69" data-sum="${i}" data-sf="endDate" value="${escapeHtml(s.endDate || '')}"></td>
+      <td data-label="ประโยชน์ที่คาดว่าจะได้รับ"><textarea class="idp-ta" data-sum="${i}" data-sf="benefit">${escapeHtml(s.benefit || '')}</textarea></td>
     </tr>`;
   }
 
