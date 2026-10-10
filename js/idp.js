@@ -932,83 +932,59 @@ function idpFitPaper(frame) {
 
 async function idpRenderPreviewView(pickId) {
   const sys = docSystem();
-  const root = docMount();
-  const seq = sys.state.seq;
-  docShowLoading(root);
+  return docRenderPreview({ // โครงกลางใน js/doc-shell.js (แถบเลือก · ปุ่ม · สถานะว่าง) — กระดาษเป็น iframe + ตัดหน้าเองด้านล่าง
+    sys, tab: 'preview',
+    load: async () => {
+      const open = sys.state.doc && sys.state.view === 'form' ? sys.state.doc : null;
+      let list = [];
+      try { list = await idpLoadList(); } catch (e) { /* โหลดรายการไม่ได้ → ดูได้เฉพาะแผนที่เปิดอยู่ */ }
+      // รายการให้เลือก: แผนที่เปิดอยู่มาก่อน (ฉบับที่ยังไม่บันทึกก็ดูได้) ตามด้วยแผนที่บันทึกไว้
+      const openKey = open ? (sys.state.docId || '__open__') : null;
+      const items = [];
+      if (open) items.push({ id: openKey, label: `${idpDocTitle(open)} · ${sys.state.docId ? 'กำลังแก้ไข' : 'ฉบับที่ยังไม่บันทึก'}` });
+      list.filter(x => x.id !== openKey).forEach(x => items.push({ id: x.id, label: idpDocTitle(x) }));
+      if (!items.length) return { items };
+      const pid = items.some(x => x.id === pickId) ? pickId : items[0].id;
+      const d = pid === openKey ? open : idpNormalize(JSON.parse(JSON.stringify(list.find(x => x.id === pid))));
+      const profile = await idpGetProfile(); // อ่านล่าสุดทุกครั้งที่เปิดตัวอย่าง — แก้ข้อมูลส่วนตัวแล้วพิมพ์ได้เลย
+      return { items, pickId: pid, d, open, openKey, profile };
+    },
+    selectLabel: 'เลือกแผน',
+    empty: { icon: IDP_ICO_DOC, title: 'ยังไม่มี ID-Plan', sub: 'สร้างแผนพัฒนาตนเองก่อน แล้วดูตัวอย่างและพิมพ์ที่นี่', gotoLabel: 'ไปที่แบบฟอร์ม', gotoTab: 'form' },
+    hint: () => 'ตัวอย่างตามแบบ ID-Plan ของ สพฐ. — หน้าแรกแนวตั้ง ส่วนที่ 2–3 แนวนอน (A4) · กดพิมพ์แล้วเลือก "บันทึกเป็น PDF" ในหน้าต่างพิมพ์ได้ · ใช้ Chrome/Edge จะแบ่งหน้าแนวตั้ง/แนวนอนได้ถูกต้องที่สุด',
+    paperHtml: () => `<div class="doc-preview-frame-wrap"><iframe id="idp-preview-frame" class="doc-preview-frame is-fit" title="ตัวอย่าง ID-Plan"></iframe></div>`,
+    onPick: id => idpRenderPreviewView(id),
+    onEdit: ctx => {
+      if (ctx.pickId !== ctx.openKey) { // เปิดแผนอื่นมาแก้ → แทนที่แผนที่เปิดอยู่ (ส่วนที่ยังไม่บันทึกจะหาย)
+        if (ctx.open && !confirm('เปิดแผนนี้เพื่อแก้ไข? ส่วนที่แก้ในแผนที่เปิดอยู่และยังไม่ได้บันทึกจะหายไป')) return;
+        sys.state.docId = ctx.pickId;
+        sys.state.doc = ctx.d;
+        sys.state.view = 'form';
+      }
+      docSwitchTab('form');
+    },
+    onPrint: (ctx, view) => {
+      const frame = view.querySelector('#idp-preview-frame');
+      frame?.contentWindow?.focus();
+      frame?.contentWindow?.print();
+    },
+    mount: async (view, ctx) => {
+      const frame = view.querySelector('#idp-preview-frame');
+      const loaded = new Promise(res => frame.addEventListener('load', res, { once: true }));
+      frame.srcdoc = idpBuildPreviewHtml(ctx.d, ctx.profile);
 
-  const open = sys.state.doc && sys.state.view === 'form' ? sys.state.doc : null;
-  let list = [];
-  try { list = await idpLoadList(); } catch (e) { /* โหลดรายการไม่ได้ → ดูได้เฉพาะแผนที่เปิดอยู่ */ }
-  if (docStale(root, seq, sys) || sys.state.tab !== 'preview') return;
-
-  if (!open && !list.length) {
-    root.innerHTML = `<div class="card"><div class="empty-state"><div class="icon icon-violet">${IDP_ICO_DOC}</div><div class="empty-title">ยังไม่มี ID-Plan</div><div class="empty-sub">สร้างแผนพัฒนาตนเองก่อน แล้วดูตัวอย่างและพิมพ์ที่นี่</div><button type="button" class="btn btn-primary" id="idp-prev-goto">ไปที่แบบฟอร์ม</button></div></div>`;
-    docSwapIn(root);
-    document.getElementById('idp-prev-goto')?.addEventListener('click', () => docSwitchTab('form'));
-    return;
-  }
-
-  // รายการให้เลือก: แผนที่เปิดอยู่มาก่อน (ฉบับที่ยังไม่บันทึกก็ดูได้) ตามด้วยแผนที่บันทึกไว้
-  const openKey = open ? (sys.state.docId || '__open__') : null;
-  const opts = [];
-  if (open) opts.push({ id: openKey, label: `${idpDocTitle(open)} · ${sys.state.docId ? 'กำลังแก้ไข' : 'ฉบับที่ยังไม่บันทึก'}` });
-  list.filter(x => x.id !== openKey).forEach(x => opts.push({ id: x.id, label: idpDocTitle(x) }));
-  const pid = opts.some(o => o.id === pickId) ? pickId : opts[0].id;
-  const d = pid === openKey ? open : idpNormalize(JSON.parse(JSON.stringify(list.find(x => x.id === pid))));
-
-  const profile = await idpGetProfile(); // อ่านล่าสุดทุกครั้งที่เปิดตัวอย่าง — แก้ข้อมูลส่วนตัวแล้วพิมพ์ได้เลย
-  if (docStale(root, seq, sys) || sys.state.tab !== 'preview') return;
-
-  root.innerHTML = `
-    <div class="doc-preview-bar">
-      <select class="doc-preview-select" id="idp-prev-select" aria-label="เลือกแผน">
-        ${opts.map(o => `<option value="${escapeHtml(o.id)}"${o.id === pid ? ' selected' : ''}>${escapeHtml(o.label)}</option>`).join('')}
-      </select>
-      <div class="doc-preview-actions">
-        <button type="button" class="btn btn-ghost btn-sm" id="idp-prev-edit">${DOC_ICO_EDIT} แก้ไข</button>
-        <button type="button" class="btn btn-primary btn-sm" id="idp-print-btn">${DOC_ICO_PRINT} พิมพ์ / บันทึกเป็น PDF</button>
-      </div>
-    </div>
-    <div class="u-note doc-preview-hint">ตัวอย่างตามแบบ ID-Plan ของ สพฐ. — หน้าแรกแนวตั้ง ส่วนที่ 2–3 แนวนอน (A4) · กดพิมพ์แล้วเลือก "บันทึกเป็น PDF" ในหน้าต่างพิมพ์ได้ · ใช้ Chrome/Edge จะแบ่งหน้าแนวตั้ง/แนวนอนได้ถูกต้องที่สุด</div>
-    <div class="doc-preview-frame-wrap">
-      <iframe id="idp-preview-frame" class="doc-preview-frame is-fit" title="ตัวอย่าง ID-Plan"></iframe>
-    </div>`;
-  docSwapIn(root);
-
-  const frame = document.getElementById('idp-preview-frame');
-  const loaded = new Promise(res => frame.addEventListener('load', res, { once: true }));
-  frame.srcdoc = idpBuildPreviewHtml(d, profile);
-
-  document.getElementById('idp-prev-select')?.addEventListener('change', e => idpRenderPreviewView(e.target.value));
-  document.getElementById('idp-prev-edit')?.addEventListener('click', () => {
-    if (pid !== openKey) { // เปิดแผนอื่นมาแก้ → แทนที่แผนที่เปิดอยู่ (ส่วนที่ยังไม่บันทึกจะหาย)
-      if (open && !confirm('เปิดแผนนี้เพื่อแก้ไข? ส่วนที่แก้ในแผนที่เปิดอยู่และยังไม่ได้บันทึกจะหายไป')) return;
-      sys.state.docId = pid;
-      sys.state.doc = d;
-      sys.state.view = 'form';
-    }
-    docSwitchTab('form');
+      // รอเอกสารตัวอย่างโหลด + ฟอนต์พร้อม (ความสูงแถวขึ้นกับฟอนต์) แล้วค่อยตัดหน้า — ไม่งั้นจำนวนหน้าเพี้ยน
+      await loaded;
+      const fdoc = frame.contentDocument;
+      if (await docWaitFonts(fdoc, [...DOC_FONT_SPECS, "13pt 'PA Sarabun'"])) { // ตัวช่วยกลางใน js/doc-shell.js
+        try { await fdoc.fonts.ready; } catch (e) { /* ไปต่อด้วยฟอนต์ที่มี */ }
+      }
+      if (!frame.isConnected) return;
+      idpPaginate(fdoc);
+      idpFitPaper(frame);
+      docWatchResize(sys, 'preview', frame, () => idpFitPaper(frame));
+    },
   });
-  document.getElementById('idp-print-btn')?.addEventListener('click', () => {
-    frame.contentWindow?.focus();
-    frame.contentWindow?.print();
-  });
-
-  // รอเอกสารตัวอย่างโหลด + ฟอนต์พร้อม (ความสูงแถวขึ้นกับฟอนต์) แล้วค่อยตัดหน้า — ไม่งั้นจำนวนหน้าเพี้ยน
-  await loaded;
-  const fdoc = frame.contentDocument;
-  if (await docWaitFonts(fdoc, [...DOC_FONT_SPECS, "13pt 'PA Sarabun'"])) { // ตัวช่วยกลางใน js/doc-shell.js
-    try { await fdoc.fonts.ready; } catch (e) { /* ไปต่อด้วยฟอนต์ที่มี */ }
-  }
-  if (!frame.isConnected) return;
-  idpPaginate(fdoc);
-  idpFitPaper(frame);
-
-  const onResize = () => {
-    if (!frame.isConnected || sys.state.tab !== 'preview') window.removeEventListener('resize', onResize);
-    else idpFitPaper(frame);
-  };
-  window.addEventListener('resize', onResize);
 }
 
 // ------------------------------------------------------------------

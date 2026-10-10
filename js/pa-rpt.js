@@ -305,96 +305,37 @@ async function parptPrint(d, o) {
 // ------------------------------------------------------------------
 async function renderPARptPreviewView() {
   const sys = docSystem();
-  const view = docMount();
-  const seq = sys.state.seq;
-  docShowLoading(view);
-
-  let list = [];
-  try {
-    list = await parptLoadList();
-    sys.rptState.list = list;
-  } catch (err) {
-    if (docStale(view, seq, sys) || sys.state.tab !== 'rptprev') return;
-    clearLoading(view);
-    view.classList.remove('is-switching');
-    view.innerHTML = `<div class="card card-pad"><div class="empty-state">โหลดข้อมูลไม่สำเร็จ: ${escapeHtml(err.message)}</div></div>`;
-    return;
-  }
-
-  const d0 = list.find(x => x.id === sys.rptState.previewId) || list[0] || null;
-  const [{ owner }, previewRecs] = await Promise.all([
-    parptOwner(d0),
-    d0 ? parptLoadRecordsForYear(d0.fiscalYear).catch(() => []) : Promise.resolve([]),
-  ]);
-  const previewAppendix = parptAppendixHtml(previewRecs, d0 && d0.fiscalYear);
-
-  if (docStale(view, seq, sys) || sys.state.tab !== 'rptprev') return; // สลับแท็บระหว่างรอข้อมูล — ไม่วาดทับ
-
-  if (!d0) {
-    view.innerHTML = `
-      <div class="card">
-        <div class="empty-state">
-          <div class="icon icon-violet">${PA_ICO_PA}</div>
-          <div class="empty-title">ยังไม่มีแบบรายงานผล</div>
-          <div class="empty-sub">สร้างแบบรายงานผลก่อน แล้วดูตัวอย่างและพิมพ์ที่นี่</div>
-          <button type="button" class="btn btn-primary parp-goto-rpt">ไปที่แบบฟอร์มรายงานผล</button>
-        </div>
-      </div>`;
-    view.querySelector('.parp-goto-rpt').addEventListener('click', () => docSwitchTab('rpt'));
-    docSwapIn(view);
-    return;
-  }
-
-  const d = d0;
-  sys.rptState.previewId = d.id;
-
-  view.innerHTML = `
-    <div class="parp-bar">
-      <select id="parp-select" aria-label="เลือกแบบรายงานผล">
-        ${list.map(x => `<option value="${escapeHtml(x.id)}"${x.id === d.id ? ' selected' : ''}>${escapeHtml(paDocTitle(x))}${x.status === 'submitted' ? ' · ส่งแล้ว' : ' · ร่าง'}</option>`).join('')}
-      </select>
-      <div class="parp-actions">
-        <button type="button" class="btn btn-ghost btn-sm parp-edit">${DOC_ICO_EDIT} แก้ไข</button>
-        <button type="button" class="btn btn-primary btn-sm parp-print">${DOC_ICO_PRINT} พิมพ์ / บันทึกเป็น PDF</button>
-      </div>
-    </div>
-    <div class="u-note parp-hint">ตัวอย่างแบบรายงานผลข้อตกลงในการพัฒนางาน (PA) — กดพิมพ์แล้วเลือก "บันทึกเป็น PDF" ในหน้าต่างพิมพ์ได้ · ช่องลงนามและความเห็น ผอ. เว้นไว้ให้เซ็นบนกระดาษ</div>
-    <div class="parp-paper"><style>${docFontCss()}${PA1_CSS}</style>${parptBuildDocHtml(d, owner, previewAppendix)}</div>
-    <style>
-      .parp-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:8px}
-      .parp-bar select{min-width:0;max-width:100%}
-      .parp-actions{display:flex;gap:8px}
-      .parp-actions .ico{width:16px;height:16px}
-      .parp-hint{margin-bottom:12px}
-      .parp-paper{width:fit-content;max-width:100%;margin:0 auto;background:#fff;color:#000;border-radius:var(--radius-s);box-shadow:0 0 0 1px var(--border);overflow-x:auto}
-      .parp-paper .pa1{box-sizing:border-box;width:210mm;padding:16mm 14mm}
-      @media(max-width:600px){.parp-actions{width:100%}.parp-actions .btn{flex:1}}
-    </style>`;
-
-  // แสดงเป็นหน้า A4 ขนาดจริง แล้วย่อให้พอดีความกว้างจอ (zoom) — พิมพ์ออกมาเหมือนที่เห็น
-  const fit = () => {
-    const paper = view.querySelector('.parp-paper'), pg = paper && paper.querySelector('.pa1');
-    if (!pg) return;
-    pg.style.zoom = 1;
-    pg.style.zoom = Math.min(1, paper.clientWidth / pg.offsetWidth);
-  };
-  requestAnimationFrame(fit);
-  const onResize = () => { if (!view.isConnected || sys.state.tab !== 'rptprev') window.removeEventListener('resize', onResize); else fit(); };
-  window.addEventListener('resize', onResize);
-
-  view.querySelector('#parp-select').addEventListener('change', e => {
-    sys.rptState.previewId = e.target.value;
-    renderPARptPreviewView();
+  return docRenderPreview({ // โครงกลางใน js/doc-shell.js — ใช้ชุดเดียวกับแท็บตัวอย่าง PA 1
+    sys, tab: 'rptprev',
+    load: async () => {
+      const list = await parptLoadList();
+      sys.rptState.list = list;
+      const d = list.find(x => x.id === sys.rptState.previewId) || list[0] || null;
+      const [{ owner }, recs] = await Promise.all([
+        parptOwner(d),
+        d ? parptLoadRecordsForYear(d.fiscalYear).catch(() => []) : Promise.resolve([]),
+      ]);
+      return {
+        list, d, owner, pickId: d && d.id,
+        appendix: parptAppendixHtml(recs, d && d.fiscalYear),
+        items: list.map(x => ({ id: x.id, label: paDocTitle(x) + (x.status === 'submitted' ? ' · ส่งแล้ว' : ' · ร่าง') })),
+      };
+    },
+    shown: ctx => { sys.rptState.previewId = ctx.pickId; },
+    selectLabel: 'เลือกแบบรายงานผล',
+    empty: { icon: PA_ICO_PA, title: 'ยังไม่มีแบบรายงานผล', sub: 'สร้างแบบรายงานผลก่อน แล้วดูตัวอย่างและพิมพ์ที่นี่', gotoLabel: 'ไปที่แบบฟอร์มรายงานผล', gotoTab: 'rpt' },
+    hint: () => 'ตัวอย่างแบบรายงานผลข้อตกลงในการพัฒนางาน (PA) — กดพิมพ์แล้วเลือก "บันทึกเป็น PDF" ในหน้าต่างพิมพ์ได้ · ช่องลงนามและความเห็น ผอ. เว้นไว้ให้เซ็นบนกระดาษ',
+    paperHtml: ctx => `<style>${docFontCss()}${PA1_CSS}</style>${parptBuildDocHtml(ctx.d, ctx.owner, ctx.appendix)}`,
+    fitPage: '.pa1',
+    onPick: id => { sys.rptState.previewId = id; renderPARptPreviewView(); },
+    onPrint: ctx => parptPrint(ctx.d, ctx.owner),
+    onEdit: ctx => {
+      sys.rptState.docId = ctx.d.id;
+      sys.rptState.doc = parptNormalize(JSON.parse(JSON.stringify(ctx.d)));
+      sys.rptState.view = 'form';
+      docSwitchTab('rpt'); // docSwitchTab วาดฟอร์มให้เอง (sys.rptState.view = 'form')
+    },
   });
-  view.querySelector('.parp-print').addEventListener('click', () => parptPrint(d, owner));
-  view.querySelector('.parp-edit').addEventListener('click', () => {
-    sys.rptState.docId = d.id;
-    sys.rptState.doc = parptNormalize(JSON.parse(JSON.stringify(d)));
-    sys.rptState.view = 'form';
-    docSwitchTab('rpt'); // docSwitchTab วาดฟอร์มให้เอง (sys.rptState.view = 'form')
-  });
-
-  docSwapIn(view);
 }
 
 // ------------------------------------------------------------------

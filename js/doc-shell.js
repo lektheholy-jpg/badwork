@@ -298,6 +298,105 @@ async function docPrintWindow({ title, css = '', html, fonts, page = DOC_PAGE_A4
 }
 
 // ------------------------------------------------------------------
+// หน้า "ตัวอย่าง / พิมพ์" — โครงกลาง (เดิม PA · รายงานผล · ID-Plan เขียนแถบเลือก/ปุ่ม/สถานะว่าง/ย่อกระดาษซ้ำกันคนละชุด)
+//   docRenderPreview({ sys, tab, load, shown?, hint, selectLabel, empty, paperHtml, fitPage?, afterHtml?, mount?, onPick, onEdit, onPrint })
+//     sys         ถือจากบรรทัดแรกของฟังก์ชันผู้เรียก (docSystem()) — ห้ามเรียก docSystem() ใหม่หลัง await (ดู js/doc-system.js)
+//     tab         รหัสแท็บของหน้านี้ — สลับแท็บ/ออกจากหน้าระหว่างรอข้อมูลแล้วจะไม่วาดทับ
+//     load()      โหลดข้อมูล → คืน ctx = { items: [{ id, label }], pickId, ...อะไรก็ได้ที่ตัววาดต้องใช้ }
+//                 items ว่าง = แสดงสถานะว่าง (empty) · โยน error = แสดงการ์ด "โหลดข้อมูลไม่สำเร็จ"
+//                 ห้ามเขียน state ใน load (อาจล้าสมัยก่อนวาด) — ใช้ shown(ctx) ซึ่งเรียกหลังตรวจแล้วว่ายังอยู่หน้านี้
+//     hint(ctx)   ข้อความแนะนำใต้แถบ (ข้อความล้วน — โครงกลางหนี HTML ให้)
+//     empty       { icon, title, sub, gotoLabel, gotoTab } — ปุ่มพาไปแท็บฟอร์ม
+//     paperHtml(ctx)  HTML ของกระดาษ · fitPage = selector ของหน้ากระดาษ (เช่น '.pa1') → โครงกลางห่อด้วย .doc-paper
+//                 แล้วย่อให้พอดีความกว้างจอ (docFitPaper) + ย่อซ้ำเมื่อปรับขนาดหน้าต่าง · ไม่ใส่ = ผู้เรียกจัดการเอง (เช่น iframe ของ ID-Plan)
+//     afterHtml(ctx)  HTML ต่อท้ายกระดาษ (ไม่บังคับ) · mount(view, ctx) งานหลังวาด (async ได้ — เช่นตัดหน้า)
+//     onPick(id) · onEdit(ctx) · onPrint(ctx, view)  ตัวจัดการแถบ (เลือก · แก้ไข · พิมพ์)
+//   พิมพ์: PA ใช้ docPrintWindow · ID-Plan พิมพ์ผ่าน iframe — โครงกลางไม่ผูกวิธีพิมพ์ (onPrint ของแต่ละระบบ)
+// ------------------------------------------------------------------
+async function docRenderPreview(o) {
+  const sys = o.sys;
+  const view = docMount();
+  const seq = sys.state.seq;
+  const gone = () => docStale(view, seq, sys) || sys.state.tab !== o.tab; // ผู้ใช้สลับแท็บ/ออกจากหน้าไปแล้ว
+  docShowLoading(view);
+
+  let ctx;
+  try { ctx = await o.load(); }
+  catch (err) {
+    if (gone()) return;
+    clearLoading(view);
+    view.classList.remove('is-switching');
+    view.innerHTML = `<div class="card card-pad"><div class="empty-state">โหลดข้อมูลไม่สำเร็จ: ${escapeHtml(err.message)}</div></div>`;
+    return;
+  }
+  if (gone()) return; // สลับไปแท็บอื่นระหว่างรอข้อมูล — ไม่วาดทับ
+  if (o.shown) o.shown(ctx);
+
+  const items = ctx.items || [];
+  if (!items.length) {
+    const e = o.empty;
+    view.innerHTML = `
+      <div class="card">
+        <div class="empty-state">
+          <div class="icon icon-violet">${e.icon}</div>
+          <div class="empty-title">${escapeHtml(e.title)}</div>
+          <div class="empty-sub">${escapeHtml(e.sub)}</div>
+          <button type="button" class="btn btn-primary doc-preview-goto">${escapeHtml(e.gotoLabel)}</button>
+        </div>
+      </div>`;
+    view.querySelector('.doc-preview-goto').addEventListener('click', () => docSwitchTab(e.gotoTab));
+    docSwapIn(view);
+    return;
+  }
+
+  const paper = o.paperHtml(ctx);
+  view.innerHTML = `
+    <div class="doc-preview-bar">
+      <select class="doc-preview-select" aria-label="${escapeHtml(o.selectLabel)}">
+        ${items.map(x => `<option value="${escapeHtml(x.id)}"${x.id === ctx.pickId ? ' selected' : ''}>${escapeHtml(x.label)}</option>`).join('')}
+      </select>
+      <div class="doc-preview-actions">
+        <button type="button" class="btn btn-ghost btn-sm doc-preview-edit">${DOC_ICO_EDIT} แก้ไข</button>
+        <button type="button" class="btn btn-primary btn-sm doc-preview-print">${DOC_ICO_PRINT} พิมพ์ / บันทึกเป็น PDF</button>
+      </div>
+    </div>
+    <div class="u-note doc-preview-hint">${escapeHtml(o.hint(ctx))}</div>
+    ${o.fitPage ? `<div class="doc-paper">${paper}</div>` : paper}
+    ${o.afterHtml ? o.afterHtml(ctx) : ''}`;
+
+  view.querySelector('.doc-preview-select').addEventListener('change', e => o.onPick(e.target.value));
+  view.querySelector('.doc-preview-edit').addEventListener('click', () => o.onEdit(ctx));
+  view.querySelector('.doc-preview-print').addEventListener('click', () => o.onPrint(ctx, view));
+
+  if (o.fitPage) { // แสดงเป็นหน้า A4 ขนาดจริง แล้วย่อให้พอดีความกว้างจอ — พิมพ์ออกมาเหมือนที่เห็น
+    const box = view.querySelector('.doc-paper');
+    const fit = () => docFitPaper(box, o.fitPage);
+    requestAnimationFrame(fit);
+    docWatchResize(sys, o.tab, view, fit);
+  }
+  docSwapIn(view);
+  if (o.mount) await o.mount(view, ctx);
+}
+
+// ย่อกระดาษให้พอดีความกว้างกรอบ (ไม่ขยายเกินขนาดจริง) — ตั้งตัวแปร --fit-zoom ที่ .doc-paper แล้วให้ CSS เป็นคนใช้ (zoom: var(--fit-zoom))
+function docFitPaper(box, pageSel) {
+  const pg = box && box.querySelector(pageSel);
+  if (!pg) return;
+  box.style.setProperty('--fit-zoom', '1'); // วัดที่ขนาดจริงก่อน
+  const z = box.clientWidth / pg.offsetWidth;
+  if (Number.isFinite(z) && z > 0) box.style.setProperty('--fit-zoom', String(Math.min(1, z))); // ยังไม่มีขนาด (แท็บซ่อน/ยังไม่วาง) → คงขนาดจริง ไม่ใส่ NaN/0
+}
+
+// เรียก fn ทุกครั้งที่ปรับขนาดหน้าต่าง — เลิกฟังเองเมื่อ el หลุดจากหน้า หรือสลับไปแท็บอื่น (ไม่ทิ้ง listener ค้าง)
+function docWatchResize(sys, tab, el, fn) {
+  const onResize = () => {
+    if (!el.isConnected || sys.state.tab !== tab) window.removeEventListener('resize', onResize);
+    else fn();
+  };
+  window.addEventListener('resize', onResize);
+}
+
+// ------------------------------------------------------------------
 // โครงหน้า: หัวเรื่อง + แท็บ (แบบฟอร์มข้อตกลง | ตัวอย่าง/พิมพ์) + พื้นที่เนื้อหา
 // ปุ่มเมนูข้างปุ่มเดียว (pa-page) เปิดหน้านี้ — สลับสองมุมมองด้วยแท็บโดยไม่วาดทั้งหน้าใหม่
 // ------------------------------------------------------------------
