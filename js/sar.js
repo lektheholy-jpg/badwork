@@ -79,6 +79,27 @@ function sarNormalize(d) {
   d.lv = d.lv && typeof d.lv === 'object' ? d.lv : {};
   return d;
 }
+// ข้อมูลส่วนตัวใน SAR (ส่วนที่ 1.1) — ดึงจากหน้า "ข้อมูลส่วนตัว" : อายุ ← วันเกิด · อายุราชการ ← วันที่บรรจุ · คุณวุฒิ/วิชาเอก/สถาบัน ← วุฒิการศึกษาที่สูงสุด ·
+//   วิทยฐานะ ← academicStanding · ตำแหน่งเลขที่ ← positionNo · ถ้าในโปรไฟล์ยังว่าง ใช้ค่าที่เคยกรอกไว้ใน SAR ฉบับเก่า (f.*) แทน
+const SAR_EDU_RANK = ['อนุปริญญา', 'ประกาศนียบัตรวิชาชีพชั้นสูง (ปวส.)', 'ปริญญาตรี', 'ประกาศนียบัตรบัณฑิต', 'ปริญญาโท', 'ปริญญาเอก'];
+function sarPersonal(prof, f) {
+  const p = prof || {}, o = f || {};
+  const since = iso => (typeof profileSince === 'function' ? profileSince(iso) : null);
+  const age = since(p.birthDate), svc = since(p.startDate);
+  const top = (p.education || []).filter(r => r && (r.level || r.major || r.institution))
+    .reduce((b, r) => (!b || SAR_EDU_RANK.indexOf(r.level) > SAR_EDU_RANK.indexOf(b.level) ? r : b), null);
+  return {
+    age: age ? String(age.years) : String(o.age ?? ''),
+    svcY: svc ? String(svc.years) : String(o.svcY ?? ''),
+    svcM: svc ? String(svc.months) : String(o.svcM ?? ''),
+    degree: top?.level || o.degree || '',
+    major: top?.major || o.major || '',
+    inst: top?.institution || o.inst || '',
+    rank: p.academicStanding || o.rank || '',
+    posNo: p.positionNo || o.posNo || '',
+    position: p.position || '',
+  };
+}
 const sarTitle = d => `SAR ภาคเรียนที่ ${d.semester || '—'} ปีการศึกษา ${d.year || '—'}`;
 
 // ---------------- คำนวณ (ใช้ทั้งหน้าจอและตอนพิมพ์) ----------------
@@ -207,9 +228,11 @@ async function sarRenderFormView() {
   const sys = docSystem(), root = docMount(), seq = sys.state.seq;
   const stillHere = () => !docStale(root, seq, sys) && sys.state.tab === 'sar' && SAR.view === 'form';
   const d = SAR.doc = sarNormalize(SAR.doc);
-  const prof = AppState.teacherProfile || await idpGetProfile();
+  const prof = await idpGetProfile(); // อ่านล่าสุดทุกครั้ง — เพิ่มข้อมูลส่วนตัวแล้วกลับมาเห็นทันที
   if (!stillHere()) return;
-  const pi = idpProfileInfo(prof), f = d.f;
+  const pi = idpProfileInfo(prof), f = d.f, ps = sarPersonal(prof, f);
+  const pf = prof || {}; // ตัดสินจากข้อมูลส่วนตัวจริง (ไม่นับค่าสำรองจาก SAR เก่า) — ถ้าว่างให้ชวนไปเพิ่ม
+  const miss = [['วันเกิด', pf.birthDate], ['วันที่บรรจุ', pf.startDate], ['วุฒิการศึกษา', (pf.education || []).length], ['วิทยฐานะ', pf.academicStanding], ['เลขที่ตำแหน่ง', pf.positionNo]].filter(m => !m[1]).map(m => m[0]);
   const sec = (t, body) => `<section class="doc-section"><h2 class="doc-sec-title">${t}</h2>${body}</section>`;
   const num = (label, path) => sarFld(label, sarIn(path, sarGet(d.f, path), '', 'inputmode="decimal"'));
   const lv5 = [5, 4, 3, 2, 1];
@@ -229,14 +252,13 @@ async function sarRenderFormView() {
     </div></div>
 
     ${sec('ส่วนที่ 1  ข้อมูลพื้นฐาน', `
-      <div class="doc-subsec"><div class="doc-subsec-hd">1.1 ข้อมูลพื้นฐาน <span class="doc-sec-note">(ชื่อ/ตำแหน่ง/สถานศึกษา ดึงจากข้อมูลส่วนตัว)</span></div>
+      <div class="doc-subsec"><div class="doc-subsec-hd">1.1 ข้อมูลพื้นฐาน <span class="doc-sec-note">(ทั้งหมดในส่วนนี้ดึงจากข้อมูลส่วนตัว — แก้ที่นั่นครั้งเดียว)</span></div>
         <div class="u-mt-4"><span class="u-muted">ชื่อ</span> <span class="u-semibold">${sarEsc(pi.name || '—')}</span> <span class="u-muted">ตำแหน่ง</span> <span class="u-semibold">${sarEsc(pi.position || '—')}</span> <span class="u-muted">กลุ่มสาระฯ</span> <span class="u-semibold">${sarEsc(pi.subjectGroup || '—')}</span></div>
         <div class="u-mt-4"><span class="u-muted">สถานศึกษา</span> <span class="u-semibold">${sarEsc(pi.school || '—')}</span></div>
-        <div class="doc-form-meta u-mt-4">
-          ${num('อายุ (ปี)', 'age')}${num('อายุราชการ (ปี)', 'svcY')}${num('(เดือน)', 'svcM')}
-          ${sarFld('คุณวุฒิสูงสุด', sarIn('degree', f.degree))}${sarFld('วิชาเอก', sarIn('major', f.major))}${sarFld('จากสถาบัน', sarIn('inst', f.inst))}
-          ${sarFld('วิทยฐานะ', sarIn('rank', f.rank))}${sarFld('ตำแหน่งเลขที่', sarIn('posNo', f.posNo))}
-        </div></div>
+        <div class="u-mt-4">${[['อายุ', ps.age && ps.age + ' ปี'], ['อายุราชการ', ps.svcY !== '' && `${ps.svcY} ปี ${ps.svcM || 0} เดือน`], ['คุณวุฒิสูงสุด', ps.degree], ['วิชาเอก', ps.major], ['จากสถาบัน', ps.inst], ['วิทยฐานะ', ps.rank], ['ตำแหน่งเลขที่', ps.posNo]]
+          .map(([l, v]) => `<span class="u-muted">${l}</span> <span class="u-semibold">${sarEsc(v || '—')}</span>`).join(' ')}</div>
+        ${miss.length ? `<div class="u-note u-mt-4">ยังไม่มีในข้อมูลส่วนตัว: ${miss.join(' · ')} — <button type="button" class="btn btn-ghost btn-sm" id="sar-goto-profile">ไปเพิ่มในข้อมูลส่วนตัว</button></div>` : ''}
+        </div>
       <div class="u-mt-4"><button type="button" class="btn btn-primary btn-sm" id="sar-cs-pull">ดึงจากรายวิชา · คะแนน · เกรด (ภาคเรียนนี้)</button> <button type="button" class="btn btn-ghost btn-sm" id="sar-tt-pull">ดึงจากตารางสอนอย่างเดียว</button></div>
       <div class="u-note">ปุ่มแรกเติมภาระสอน กิจกรรม และตารางผลการเรียน (1.2.4.1) จากรายวิชาที่ภาคเรียน/ปีการศึกษาตรงกับด้านบน — ชั่วโมง/สัปดาห์มาจากตารางสอน แก้ไขต่อในช่องได้</div>
       ${sarTable('teaching', '1.2.1 ปฏิบัติการสอน', 'เพิ่มรายวิชา')}<div class="u-note" id="sar-t-sum"></div>
@@ -311,6 +333,7 @@ async function sarRenderFormView() {
       if (stillHere()) { await sarRenderFormView(); showToast(`ดึงจากตารางสอน ${t.label} แล้ว — เติมห้อง/จำนวนนักเรียนเอง`); }
     } catch (e) { showToast('ดึงตารางสอนไม่สำเร็จ: ' + e.message, 'error'); }
   });
+  document.getElementById('sar-goto-profile')?.addEventListener('click', () => { sarCollect(); navigate('profile'); });
   ['sar-back-btn', 'sar-cancel-btn'].forEach(id => document.getElementById(id)?.addEventListener('click', () => { sarCollect(); SAR.view = 'list'; sarRenderListView(); }));
   document.getElementById('sar-print-btn')?.addEventListener('click', () => { sarCollect(); SAR.previewId = SAR.docId; docSwitchTab('sarprev'); });
   document.getElementById('sar-save-btn')?.addEventListener('click', async () => {
@@ -385,7 +408,7 @@ table{border-collapse:collapse;width:100%;margin:.3em 0}th,td{border:1px solid #
 
 // สร้าง HTML เนื้อหา SAR (ใช้ทั้งตอนพิมพ์และตอนแสดงตัวอย่างบนจอ)
 function sarBuildBodyHtml(d, prof) {
-  const pi = idpProfileInfo(prof), s = sarStats(d), f = d.f || {}, R = d.rows || {}, L = d.lv || {};
+  const pi = idpProfileInfo(prof), s = sarStats(d), f = d.f || {}, R = d.rows || {}, L = d.lv || {}, ps = sarPersonal(prof, f);
   const E = sarEsc, cell = v => (v === '' || v == null ? '' : E(v));
   const tbl = (key, extra) => `<table><tr>${sarCols(key).map(c => `<th>${E(c[1])}</th>`).join('')}</tr>${(R[key] || []).filter(r => Object.values(r).some(Boolean)).map(r => `<tr>${sarCols(key).map(([c]) => `<td>${cell(r[c])}</td>`).join('')}</tr>`).join('')}${extra || ''}</table>`;
   const mx = (group, items, levels) => `<table><tr><th>รายการ</th>${levels.map(l => `<th>${l}</th>`).join('')}</tr>${items.map((t, i) => `<tr><td>${E(t)}</td>${levels.map(l => `<td class="c">${(L[group] || [])[i] === l ? '✓' : ''}</td>`).join('')}</tr>`).join('')}</table>`;
@@ -397,7 +420,7 @@ function sarBuildBodyHtml(d, prof) {
   <p class="c">ภาคเรียนที่ ${E(d.semester)} ปีการศึกษา ${E(d.year)}${f.period ? ` (${E(f.period)})` : ''}</p>
   <p class="c">${E(pi.name)} ตำแหน่ง ${E(pi.position)}<br>${E(pi.school)} ${E(pi.affiliation)}</p>
   <h2>ส่วนที่ 1 ข้อมูลพื้นฐาน</h2>
-  <p>ชื่อ ${E(pi.name)} กลุ่มสาระการเรียนรู้ ${E(pi.subjectGroup)} อายุ ${E(f.age)} ปี อายุราชการ ${E(f.svcY)} ปี ${E(f.svcM)} เดือน คุณวุฒิสูงสุด ${E(f.degree)} วิชาเอก ${E(f.major)} จาก ${E(f.inst)} ตำแหน่ง ${E(pi.position)} วิทยฐานะ ${E(f.rank)} ตำแหน่งเลขที่ ${E(f.posNo)} สถานศึกษา ${E(pi.school)}</p>
+  <p>ชื่อ ${E(pi.name)} กลุ่มสาระการเรียนรู้ ${E(pi.subjectGroup)} อายุ ${E(ps.age)} ปี อายุราชการ ${E(ps.svcY)} ปี ${E(ps.svcM)} เดือน คุณวุฒิสูงสุด ${E(ps.degree)} วิชาเอก ${E(ps.major)} จาก ${E(ps.inst)} ตำแหน่ง ${E(ps.position || pi.position)} วิทยฐานะ ${E(ps.rank)} ตำแหน่งเลขที่ ${E(ps.posNo)} สถานศึกษา ${E(pi.school)}</p>
   <h3>1.2.1 ปฏิบัติการสอน</h3>${tbl('teaching', `<tr><th colspan="2">รวม</th><th>${s.teachN}</th><th>${sarFmt(s.teachHours, 1)}</th></tr>`)}
   <h3>1.2.2 กิจกรรมพัฒนาผู้เรียน</h3>${tbl('activities')}
   <h3>1.2.3 ครูที่ปรึกษา</h3><p>ชั้น ${E(f.hmCls)} ชาย ${E(f.hmM)} คน หญิง ${E(f.hmF)} คน รวม ${s.homeN} คน</p>
