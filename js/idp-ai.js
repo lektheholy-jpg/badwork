@@ -7,8 +7,7 @@
 //   • id ของ textarea = idp-<รหัสสมรรถนะ>-<ช่อง> (เช่น idp-c1-method) — ใส่ไว้ใน idpRenderFormView (js/idp.js)
 //   • พร้อต์/ช่อง/ตารางบริบทอยู่ที่ sys.config.ai.prompts (js/idp-config.js)
 //   • ปุ่ม: แถวปุ่มใต้ชื่อสมรรถนะแต่ละแถว (act c-write / c-polish · data-cid) + ปุ่มบนสุด "ร่างช่องที่ว่างของทุกสมรรถนะ" (act all)
-//   • วิธีการมาตรฐานของ สพฐ. ที่ระบบเติมให้แผนใหม่ (idpBlankDoc) ถือเป็น "ยังไม่ได้ปรับ" → ปุ่มเขียนจะปรับให้ตรงงานจริงของครู
-//     (ปุ่มบนสุดไม่แตะ — ยิงเฉพาะช่องที่ว่างจริง จำกัดจำนวนช่องต่อคำขอ)
+//   • แผนใหม่ทุกช่องว่าง (ไม่มีวิธีการเติมไว้ก่อน) → ปุ่มเขียนเติมเฉพาะช่องที่ว่าง · ปุ่มปรับสำนวนทำเฉพาะช่องที่มีข้อความ · ไม่เขียนทับช่องที่ครูกรอกแล้ว
 //   • บริบทงานเก็บใน doc.aiCtx ของเอกสารในคอลเลกชัน 'plans' (idp_plans)
 //   โหลดหลัง js/idp.js และ js/badwork-ai.js (LAZY_BUNDLES.idp) · ท้ายไฟล์ลงทะเบียน registerDocAi('idp', …)
 //   ทุกฟังก์ชันรับ sys เป็นตัวแรก (แกนส่งตัวที่ถือไว้ตอนเริ่มงาน)
@@ -17,23 +16,17 @@
 // ช่องของทุกสมรรถนะ (ids = ระบุเฉพาะบางสมรรถนะ หรือ null = ทั้งหมด) · ไม่มีผลข้างเคียง (แกนเรียกซ้ำเพื่อดูตัวอย่างขอบเขตของปุ่ม)
 function idpAiSpecs(sys, ids) {
   const out = [];
-  sys.config.competencies.forEach(([cid, , full, subs, std]) => {
+  sys.config.competencies.forEach(([cid, , full, subs]) => {
     if (ids && !ids.includes(cid)) return;
     sys.config.ai.prompts.fields.forEach(([f, fl, hint]) => out.push({
       key: `${cid}.${f}`, el: `idp-${cid}-${f}`, group: cid, cid, field: f,
       item: full, subs: subs || [], fieldLabel: fl, label: `${full} — ${fl}`, hint,
-      std: (std || []).join('\n'), // วิธีการมาตรฐานของสมรรถนะนี้ที่ระบบเติมให้ (ใช้ดูว่าครูยังไม่ได้ปรับช่อง method)
     }));
   });
   return out;
 }
 
 const idpAiNorm = v => String(v || '').replace(/\r/g, '').trim();
-// ช่องวิธีการที่ยังเป็นข้อความมาตรฐานเดิมทุกตัวอักษร (ครูยังไม่ได้แก้)
-function idpAiIsStd(spec) {
-  const v = idpAiNorm(document.getElementById(spec.el)?.value);
-  return spec.field === 'method' && !!spec.std && v !== '' && v === idpAiNorm(spec.std);
-}
 
 // รวมบริบทที่ชุดช่องนี้ต้องใช้ (ช่อง key = "c1.goal" → สมรรถนะ "c1")
 function idpAiScope(sys, fields) {
@@ -78,7 +71,7 @@ function idpAiHeading(spec) {
   let h = `สมรรถนะ: ${spec.item}${subs ? ` (สมรรถนะย่อย: ${subs})` : ''}`;
   const m = document.getElementById(`idp-${spec.cid}-method`);
   const mv = idpAiNorm(m?.value);
-  if (mv && !idpAiIsStd({ el: m.id, field: 'method', std: spec.std })) h += `\n  วิธีการที่ครูตั้งไว้: ${mv.slice(0, 400)}`;
+  if (mv) h += `\n  วิธีการที่ครูตั้งไว้: ${mv.slice(0, 400)}`;
   const dv = f => document.querySelector(`[data-comp-id="${spec.cid}"][data-comp-field="${f}"]`)?.value.trim();
   const s = dv('startDate'), e = dv('endDate');
   if (s || e) h += `\n  ระยะเวลา: ${s || '…'} – ${e || '…'}`;
@@ -96,7 +89,7 @@ function idpAiSlots(sys, form) {
     const host = tr.querySelector('td');
     if (!cid || !host) return;
     out.push({ host, buttons: [
-      { act: 'c-write', label: 'เขียนช่องที่ว่าง / ปรับวิธีมาตรฐานให้ตรงงานของฉัน', icon: 'write', data: { cid } },
+      { act: 'c-write', label: 'เขียนช่องที่ว่างของสมรรถนะนี้', icon: 'write', data: { cid } },
       { act: 'c-polish', label: 'ปรับสำนวนทั้งแถว', icon: 'polish', quiet: true, data: { cid } },
     ] });
   });
@@ -104,20 +97,18 @@ function idpAiSlots(sys, form) {
 }
 
 // act: 'all' = ปุ่มบนสุด · 'c-<โหมด>' = ปุ่มใต้ชื่อสมรรถนะแต่ละแถว
-// ปุ่มบนสุด: เฉพาะช่องที่ "ว่างจริง" (ไม่รวมวิธีมาตรฐาน) ไม่เกิน 33 ช่อง/คำขอ · ปุ่มของแต่ละแถวรวมวิธีมาตรฐานที่ยังไม่ได้ปรับด้วย
+// ปุ่มบนสุด: ร่างเฉพาะช่องที่ยังว่าง (สูงสุด 33 ช่อง = 1 คำขอ) · ปุ่มของแต่ละแถวทำเฉพาะ 3 ช่องของสมรรถนะนั้น
 function idpAiResolve(sys, a, b) {
   if (a === 'all') {
     const pick = idpAiSpecs(sys).filter(s => !badworkAiFilled(s));
-    if (!pick.length) return { toast: 'ทุกช่องในส่วนที่ 2 มีข้อความแล้ว — ใช้ปุ่มของแต่ละสมรรถนะเพื่อปรับวิธีมาตรฐานให้ตรงงานของคุณ หรือปรับสำนวนได้' };
+    if (!pick.length) return { toast: 'ทุกช่องในส่วนที่ 2 มีข้อความแล้ว — ใช้ปุ่มปรับสำนวนของแต่ละสมรรถนะได้' };
     return { specs: pick, mode: 'write' };
   }
   if (a.startsWith('c-')) {
     const mode = a.slice(2), specs = idpAiSpecs(sys, [b.dataset.cid]);
     if (!specs.length) return null;
-    const pick = mode === 'write'
-      ? specs.filter(s => !badworkAiFilled(s) || idpAiIsStd(s))
-      : specs.filter(s => badworkAiFilled(s) && !idpAiIsStd(s)); // ไม่ปรับสำนวนข้อความมาตรฐานของ สพฐ.
-    if (!pick.length) return { toast: mode === 'write' ? 'ช่องของสมรรถนะนี้มีข้อความที่คุณเขียนเองครบแล้ว — ใช้ “ปรับสำนวนทั้งแถว” ได้' : 'สมรรถนะนี้ยังไม่มีข้อความที่คุณเขียนให้ปรับสำนวน' };
+    const pick = mode === 'write' ? specs.filter(s => !badworkAiFilled(s)) : specs.filter(badworkAiFilled);
+    if (!pick.length) return { toast: mode === 'write' ? 'ช่องของสมรรถนะนี้มีข้อความครบแล้ว — ใช้ “ปรับสำนวนทั้งแถว” ได้' : 'สมรรถนะนี้ยังไม่มีข้อความให้ปรับสำนวน' };
     return { specs: pick, mode, total: specs.length };
   }
   return null; // act อื่น (เช่น ตัวฟอร์มเองที่มี data-doc-ai เป็นตัวกันติดซ้ำ) — ไม่ทำอะไร
@@ -137,11 +128,11 @@ registerDocAi('idp', {
   copy: {
     consent: 'ข้อความในแผน ID-Plan นี้ (รายวิชา ชั่วโมงสอน ข้อความที่กรอกไว้ในส่วนที่ 2 และ "บริบทงานของฉัน" เช่น ระดับชั้น ปัญหาหลัก สิ่งที่อยากพัฒนา ผลปีก่อน จุดเน้น ไม่รวมชื่อ-นามสกุล) จะถูกส่งไปประมวลผลที่ Google Gemini เฉพาะส่วนที่เกี่ยวกับช่องที่กด\n\n'
       + 'โปรดอย่าพิมพ์ชื่อหรือข้อมูลที่ระบุตัวนักเรียนลงในช่อง (ใช้เป็นตัวเลขรวมเท่านั้น) และตรวจทานข้อความที่ AI เสนอทุกครั้งก่อนใช้\n\nต้องการดำเนินการต่อหรือไม่?',
-    saveLabel: 'บันทึก',
+    saveLabel: 'บันทึก ID-Plan',
     topPoints: [
       'อ่านจากข้อมูลที่มีในแผนนี้ เช่น รายวิชา ชั่วโมงสอน สมรรถนะย่อย และบริบทงานด้านล่าง',
       'เสนอให้ตรวจก่อนใช้เสมอ ไม่เขียนทับช่องที่กรอกแล้ว และไม่บันทึกให้เอง',
-      'ปุ่มนี้ร่างช่องที่ว่างของส่วนที่ 2 · ปุ่มใต้ชื่อสมรรถนะแต่ละแถวช่วยปรับวิธีมาตรฐานให้ตรงงานของคุณ',
+      'ปุ่มนี้ร่างช่องที่ว่างของส่วนที่ 2 ทั้งหมด · ปุ่มใต้ชื่อสมรรถนะแต่ละแถวทำเฉพาะแถวนั้น',
     ],
     topWarn: 'อย่าพิมพ์ชื่อหรือข้อมูลที่ระบุตัวนักเรียนลงในช่อง',
     topButton: 'ร่างช่องที่ว่างของทุกสมรรถนะ',

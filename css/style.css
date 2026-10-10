@@ -2199,6 +2199,7 @@ table.tt tr.is-today td.tt-cell { background: color-mix(in srgb, var(--hue-orang
 .pa-field-h { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 12px; margin-bottom: 6px; }
 .pa-field-h .doc-ai-row { margin-top: 0; }
 .pa-form-footer { display: flex; justify-content: flex-end; gap: 10px; padding-bottom: 32px; }
+.pa-form-footer .btn-danger-ghost { margin-right: auto; }
 @media (max-width: 540px) {
   .pa-pf { grid-template-columns: 1fr; }
   .pa-form-footer { flex-direction: column-reverse; }
@@ -2275,7 +2276,6 @@ table.tt tr.is-today td.tt-cell { background: color-mix(in srgb, var(--hue-orang
 .doc-form-header { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px; padding: 16px 18px; background: var(--card); border-radius: var(--radius-m); }
 .doc-form-meta { display: flex; flex-wrap: wrap; gap: 12px; }
 .doc-form-meta label { display: flex; flex-direction: column; gap: 5px; color: var(--ink-soft); font-weight: 600; font-size: 13.5px; }
-.doc-form-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .doc-section { padding: 18px 20px; background: var(--card); border-radius: var(--radius-m); }
 .doc-sec-title { margin: 0 0 12px; font-size: 16px; font-weight: 700; color: var(--ink); }
 .doc-sec-note { font-size: 12.5px; font-weight: 500; color: var(--ink-soft); }

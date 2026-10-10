@@ -12,7 +12,7 @@
 // ตัวช่วยเฉพาะ ID-Plan (ไอคอน + วันที่แก้ไขล่าสุด) — ไอคอนส่วนกลางอยู่ใน js/doc-shell.js
 // ------------------------------------------------------------------
 const IDP_ICO_BACK = `<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>`;
-const IDP_ICO_SAVE = `<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>`;
+const IDP_SAVE_LABEL = 'บันทึก ID-Plan'; // ป้ายปุ่มบันทึก (เหมือน PA: ข้อความล้วน อยู่ท้ายฟอร์ม)
 const IDP_ICO_DOC = `<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><g fill="currentColor" stroke="none"><path opacity=".55" d="M7 2.5h7l5.5 5.5v11A2.5 2.5 0 0 1 17 21.5H7A2.5 2.5 0 0 1 4.5 19V5A2.5 2.5 0 0 1 7 2.5Z"/><rect x="8" y="9" width="8" height="1.5" rx=".75"/><rect x="8" y="12" width="8" height="1.5" rx=".75"/><rect x="8" y="15" width="5" height="1.5" rx=".75"/></g></svg>`;
 function idpUpdatedAt(d) {
   const t = d.updatedAt || d.createdAt;
@@ -162,11 +162,9 @@ function idpNormalize(d) {
 // ชื่อสมรรถนะแบบไม่มีคำนำหน้ากลุ่ม (สมรรถนะหลัก / สมรรถนะประจำสายงาน) — ใช้ในตารางสรุปส่วนที่ 3 ตามแบบฟอร์ม
 const idpCompTitle = fullName => String(fullName || '').replace(/^สมรรถนะ(?:หลัก|ประจำสายงาน)\s*/, '');
 
-// แผนใหม่: เติมวิธีการ/รูปแบบการพัฒนามาตรฐานของแบบฟอร์ม สพฐ. ให้ทุกสมรรถนะ (แก้/ลบได้ในฟอร์ม) — แผนที่บันทึกแล้วไม่ถูกเติมซ้ำ
+// แผนใหม่: ทุกช่องว่าง (ไม่เติมวิธีการ/รูปแบบการพัฒนาไว้ก่อน — ครูกรอกเอง หรือใช้ปุ่มผู้ช่วย AI ร่างให้)
 function idpBlankDoc() {
-  const d = idpNormalize({ semester: '1', year: String(new Date().getFullYear() + 543), status: 'draft' });
-  docSystem('idp').config.competencies.forEach(([cid, , , , method]) => { d.comps[cid].method = (method || []).join('\n'); });
-  return d;
+  return idpNormalize({ semester: '1', year: String(new Date().getFullYear() + 543), status: 'draft' });
 }
 
 function idpDocTitle(d) {
@@ -376,6 +374,13 @@ async function idpRenderFormView() {
   }
 
   root.innerHTML = `
+  <div class="pa-form-head">
+    <button type="button" class="btn btn-ghost btn-sm" id="idp-back-btn">← กลับ</button>
+    <div>
+      <h2 class="pa-form-title">ID-Plan · ${sys.state.docId ? 'แก้ไขแผน' : 'สร้างแผนใหม่'}</h2>
+      <div class="u-note">แผนพัฒนาตนเองรายบุคคล (ID-Plan) สำหรับข้าราชการครูและบุคลากรทางการศึกษา</div>
+    </div>
+  </div>
   <form id="idp-form" class="doc-form" autocomplete="off" novalidate>
 
     <!-- แถบบนฟอร์ม -->
@@ -393,11 +398,6 @@ async function idpRenderFormView() {
         <label>วันที่ลงนาม
           <input id="idp-signDate" type="text" placeholder="เช่น 8 มิ.ย. 2569" value="${escapeHtml(doc.signDate)}">
         </label>
-      </div>
-      <div class="doc-form-actions">
-        <button type="button" class="btn btn-ghost" id="idp-back-btn">${IDP_ICO_BACK} รายการ</button>
-        <button type="button" class="btn btn-primary" id="idp-save-btn">${IDP_ICO_SAVE} บันทึก</button>
-        ${sys.state.docId ? `<button type="button" class="btn btn-danger-ghost" id="idp-del-btn">${DOC_ICO_DEL} ลบ</button>` : ''}
       </div>
     </div>
 
@@ -469,6 +469,12 @@ async function idpRenderFormView() {
       </div>
     </section>
 
+    <div class="pa-form-footer">
+      ${sys.state.docId ? `<button type="button" class="btn btn-danger-ghost" id="idp-del-btn">${DOC_ICO_DEL} ลบ</button>` : ''}
+      <button type="button" class="btn btn-ghost" id="idp-cancel-btn">ยกเลิก</button>
+      <button type="button" class="btn btn-primary" id="idp-save-btn">${IDP_SAVE_LABEL}</button>
+    </div>
+
   </form>`;
   docSwapIn(root);
   if (typeof badworkAiMount === 'function') badworkAiMount(root, document.getElementById('idp-form'), sys); // ปุ่มผู้ช่วย AI (js/badwork-ai.js + ตัวต่อ js/idp-ai.js) — ไม่มีไฟล์นี้ฟอร์มก็ทำงานตามเดิม
@@ -496,11 +502,11 @@ async function idpRenderFormView() {
     });
   });
 
-  document.getElementById('idp-back-btn')?.addEventListener('click', () => {
+  ['idp-back-btn', 'idp-cancel-btn'].forEach(id => document.getElementById(id)?.addEventListener('click', () => {
     idpCollect();
     sys.state.view = 'list';
     idpRenderListView();
-  });
+  }));
 
   document.getElementById('idp-save-btn')?.addEventListener('click', async () => {
     idpCollect();
@@ -513,11 +519,11 @@ async function idpRenderFormView() {
       sys.state.list = null; // force reload list
       showToast('บันทึกแล้ว');
       btn.disabled = false;
-      btn.innerHTML = `${IDP_ICO_SAVE} บันทึก`;
+      btn.textContent = IDP_SAVE_LABEL;
     } catch (e) {
       showToast('บันทึกไม่สำเร็จ: ' + e.message, 'error');
       btn.disabled = false;
-      btn.innerHTML = `${IDP_ICO_SAVE} บันทึก`;
+      btn.textContent = IDP_SAVE_LABEL;
     }
   });
 

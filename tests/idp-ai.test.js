@@ -43,16 +43,25 @@ const prompt=()=>calls[calls.length-1].body.contents[0].parts[0].text;
  ok(d.querySelectorAll('#idp-comps-body .doc-ai-row').length===11&&d.querySelectorAll('.doc-ai-row').length===11,'ไม่มีแถวปุ่มเกิน (ส่วนที่ 1 และ 3 ไม่มีปุ่ม)');
  ok(['level','problems','wish','prev','focus'].every(k=>d.getElementById('idp-ctx-'+k)),'การ์ดบริบทงานมีช่อง idp-ctx-* ครบ 5 ช่อง (ไม่ชนกับ pa-ctx-*)');
  ok(!d.querySelector('[id^="pa-ctx-"]'),'ไม่มีช่องของ PA ปนเข้ามา');
+ // ---- ปุ่มบันทึก/ย้อนกลับ: เหมือน PA (บันทึกอยู่ท้ายฟอร์ม · กลับอยู่หัวหน้า) ----
+ const form=d.getElementById('idp-form'),foot=form.querySelector('.pa-form-footer');
+ ok(!!foot&&foot===form.lastElementChild&&foot.querySelector('#idp-save-btn')&&foot.querySelector('#idp-cancel-btn'),'ปุ่มบันทึก + ยกเลิกอยู่ใน .pa-form-footer ท้ายฟอร์ม (โครงเดียวกับ PA)');
+ ok(foot.querySelector('#idp-save-btn').textContent.trim()==='บันทึก ID-Plan'&&foot.querySelector('#idp-save-btn').classList.contains('btn-primary')&&foot.querySelector('#idp-cancel-btn').classList.contains('btn-ghost'),'ปุ่มบันทึกเป็นปุ่มหลัก ข้อความล้วนเหมือน PA · ยกเลิกเป็น ghost');
+ ok(!form.querySelector('.doc-form-header #idp-save-btn')&&!form.querySelector('.doc-form-header button'),'หัวฟอร์มไม่มีปุ่มบันทึก/ปุ่มอื่นแล้ว');
+ const head=d.querySelector('.pa-form-head');
+ ok(!!head&&head.nextElementSibling===form&&head.querySelector('#idp-back-btn')&&head.querySelector('#idp-back-btn').textContent.trim()==='← กลับ','มีปุ่ม "← กลับ" ที่หัวหน้า (โครง .pa-form-head เหมือน PA) ก่อนฟอร์ม');
+ ok(!!foot.querySelector('#idp-del-btn')&&foot.firstElementChild.id==='idp-del-btn','แผนที่บันทึกแล้ว: ปุ่มลบอยู่ซ้ายสุดของแถวปุ่มท้ายฟอร์ม');
 
  // ---- ปุ่มทำอะไร ----
  const rs=(act,cid)=>R(`(()=>{const s=docSystem('idp');return docAi(s).resolve(s,${JSON.stringify(act)},{dataset:{cid:${JSON.stringify(cid||'')}}})})()`);
  const keys=r=>r.specs.map(s=>s.key).join();
  let r=rs('all');
- ok(r.mode==='write'&&r.specs.length===22&&r.specs.every(s=>s.field!=='method'),'ปุ่มบนสุด (แผนใหม่): เป้าหมาย+ประโยชน์ที่ว่าง 22 ช่อง · ไม่ยิงวิธีมาตรฐาน 11 ช่อง');
+ ok(r.mode==='write'&&r.specs.length===33&&r.specs.filter(s=>s.field==='method').length===11,'ปุ่มบนสุด (แผนใหม่ ช่องว่างหมด): 33 ช่อง = 11 สมรรถนะ × วิธีการ/เป้าหมาย/ประโยชน์');
+ ok(cids.every(c=>d.getElementById(`idp-${c}-method`).value===''),'แผนใหม่: ช่องวิธีการ/รูปแบบการพัฒนาว่างทุกสมรรถนะ');
  r=rs('c-write','c1');
- ok(r.mode==='write'&&keys(r)==='c1.method,c1.goal,c1.benefit'&&r.total===3,'ปุ่มเขียนของแถว: วิธีมาตรฐานที่ยังไม่ได้ปรับ + ช่องว่าง → 3 ช่อง');
+ ok(r.mode==='write'&&keys(r)==='c1.method,c1.goal,c1.benefit'&&r.total===3,'ปุ่มเขียนของแถว: ช่องว่างของสมรรถนะนั้น → 3 ช่อง');
  r=rs('c-polish','c1');
- ok(!!r.toast&&!r.specs,'ปรับสำนวน: ข้อความมาตรฐานของ สพฐ. ไม่ถูกปรับ · ไม่มีอะไรให้ปรับ → toast');
+ ok(!!r.toast&&!r.specs,'ปรับสำนวน: ยังไม่มีข้อความ → toast ไม่ยิง AI');
  // ครูเขียนเอง
  d.getElementById('idp-c1-goal').value='เพิ่มทักษะการวางแผนการสอน';
  d.getElementById('idp-c1-method').value='1. เข้าร่วม PLC กลุ่มสาระ';
@@ -60,11 +69,11 @@ const prompt=()=>calls[calls.length-1].body.contents[0].parts[0].text;
  r=rs('c-polish','c1'); ok(r.mode==='polish'&&keys(r)==='c1.method,c1.goal','ปุ่มปรับสำนวน: เฉพาะช่องที่ครูเขียนเอง');
  d.getElementById('idp-c1-benefit').value='นักเรียนเรียนรู้ได้ดีขึ้น';
  r=rs('c-write','c1'); ok(!!r.toast&&/ครบแล้ว/.test(r.toast),'ครบทุกช่อง → toast ไม่ยิง AI');
- ok(rs('all').specs.length===20,'ปุ่มบนสุดนับช่องว่างจริงหลังกรอก (22 − goal/benefit ของ c1 ที่กรอกแล้ว 2 = 20)');
+ ok(rs('all').specs.length===30,'ปุ่มบนสุดนับช่องว่างจริงหลังกรอก (33 − 3 ช่องของ c1 = 30)');
  ok(rs('x-unknown','c1')===null&&rs('c-write','zz')===null,'act ที่ไม่รู้จัก/สมรรถนะที่ไม่มี → null (ไม่ทำอะไร)');
  // คืนค่า c1 เป็นแผนใหม่เพื่อทดสอบพร้อต์
  d.getElementById('idp-c1-goal').value='';d.getElementById('idp-c1-benefit').value='';
- d.getElementById('idp-c1-method').value=R(`docSystem('idp').config.competencies[0][4].join('\\n')`);
+ d.getElementById('idp-c1-method').value='';
 
  // ---- พร้อต์ ----
  d.getElementById('idp-ctx-level').value='ม.2';
@@ -78,8 +87,7 @@ const prompt=()=>calls[calls.length-1].body.contents[0].parts[0].text;
  ok(p1.includes('รายวิชาที่สอน: ค22101 คณิตศาสตร์ (3 ชม./สัปดาห์)')&&p1.includes('ระดับชั้นที่สอน: ม.2')&&p1.includes('ปัญหาหลักที่ครูพบจริง: นักเรียนส่งงานไม่ครบ'),'สมรรถนะ c1 ได้รายวิชา · ระดับชั้น · ปัญหาหลัก (idpCollect ดึงค่าที่พิมพ์ค้างเข้า doc)');
  ok(p1.includes('สมรรถนะย่อย: 1.1 ความสามารถในการวางแผนการปฏิบัติงาน')&&p1.includes('1.4 ความสามารถในการพัฒนาการปฏิบัติงานให้มีคุณภาพ'),'หัวสมรรถนะแนบสมรรถนะย่อยจาก config');
  ok(['"c1.method"','"c1.goal"','"c1.benefit"'].every(k=>p1.includes(k))&&p1.includes('แนวทางช่อง')&&p1.includes('.method (วิธีการ / รูปแบบการพัฒนา)')&&p1.includes('.benefit (ประโยชน์ที่คาดว่าจะได้รับ)'),'พร้อต์มีคีย์ช่อง + แนวทางครั้งเดียว');
- ok(p1.includes('ข้อความเดิม')&&p1.includes('ปรับและต่อเติมข้อความเดิมให้ตรงกับงานจริง')&&p1.includes('วิเคราะห์ภารกิจงานเพื่อวางแผน'),'วิธีมาตรฐานถูกส่งเป็น "ข้อความเดิม" พร้อมคำสั่งปรับให้ตรงงานจริง');
- ok(!p1.includes('วิธีการที่ครูตั้งไว้'),'วิธีมาตรฐานไม่ถูกนับเป็น "วิธีการที่ครูตั้งไว้"');
+ ok(!p1.includes('ข้อความเดิม')&&!p1.includes('วิธีการที่ครูตั้งไว้')&&p1.includes('เขียนข้อความใหม่ตามแนวทาง'),'ช่องว่างทั้งแถว → เขียนใหม่ ไม่มีข้อความเดิม/วิธีที่ครูตั้งไว้ปนไป');
  ok(calls[calls.length-1].body.systemInstruction.parts[0].text.includes('ID-Plan')&&calls[calls.length-1].body.model===R('badworkAiModelId()'),'คำสั่งระบบเป็นของ ID-Plan · ส่งผ่านพร็อกซีด้วยรุ่นที่เลือก');
  // c5: ไม่ส่งข้อมูลผู้เรียน/รายวิชา
  reply={'c5.goal':'ปฏิบัติตนตามจรรยาบรรณ','c5.benefit':'เป็นแบบอย่างที่ดี'};
@@ -109,5 +117,11 @@ const prompt=()=>calls[calls.length-1].body.contents[0].parts[0].text;
  const bundle=U.match(/idp: \['doc-system'[^\]]*\]/)[0];
  ok(/'idp-ai': 'js\/idp-ai\.js'/.test(U)&&bundle.indexOf("'badwork-ai'")>0&&bundle.indexOf("'idp-ai'")>bundle.indexOf("'badwork-ai'")&&bundle.indexOf("'idp-ai'")>bundle.indexOf("'idp'"),'LAZY_MODULES + LAZY_BUNDLES.idp: idp-ai โหลดหลัง badwork-ai และ idp');
  ok(SW.includes("'js/idp-ai.js'"),'sw.js PRECACHE มี js/idp-ai.js');
+ // ---- กด กลับ/ยกเลิก → กลับรายการ (เก็บค่าที่พิมพ์ไว้ในหน่วยความจำ) ----
+ for (const id of ['idp-back-btn','idp-cancel-btn']) {
+   R(`docSystem('idp').state.view='form'`); d.getElementById(id)?.click();
+   ok(R(`docSystem('idp').state.view`)==='list','กด '+id+' → กลับหน้ารายการ');
+   R(`docSystem('idp').state.view='form'; idpRenderFormView()`); await settle();
+ }
  console.log(fail?'FAIL '+fail:'ALL PASS');process.exit(fail?1:0);
 })().catch(e=>{console.error(e);process.exit(1)});
