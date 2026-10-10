@@ -130,7 +130,7 @@ function paAiResolve(sys, a, b) {
     if (!pick.length) return { toast: mode === 'write' ? 'ช่องในข้อนี้มีข้อความครบแล้ว — ใช้ “ปรับสำนวนทั้งข้อ” ได้' : 'ข้อนี้ยังไม่มีข้อความให้ปรับสำนวน' };
     return { specs: pick, mode };
   }
-  return null; // act อื่น (เช่น ตัวฟอร์มเองที่มี data-pa-ai เป็นตัวกันติดซ้ำ) — ไม่ทำอะไร
+  return null; // act อื่น (เช่น ตัวฟอร์มเองที่มี data-doc-ai เป็นตัวกันติดซ้ำ) — ไม่ทำอะไร
 }
 
 // ------------------------------------------------------------------
@@ -161,7 +161,7 @@ registerDocAi('pa', {
   },
 
   ctxBody: (sys, c, h) => [
-    `<div class="pa-ai-ctx-grid">${h.one('level', 'เช่น ม.2')}${h.one('rooms', 'เช่น 4', { numeric: true })}${h.one('students', 'เช่น 148', { numeric: true })}</div>`,
+    `<div class="doc-ai-ctx-grid">${h.one('level', 'เช่น ม.2')}${h.one('rooms', 'เช่น 4', { numeric: true })}${h.one('students', 'เช่น 148', { numeric: true })}</div>`,
     h.many('problems', 'เช่น นักเรียนอ่านโจทย์ปัญหาไม่คล่อง · ส่งงานไม่ครบ'),
     h.many('prev', 'เช่น ผ่านเกณฑ์ ร้อยละ 62 · เกรดเฉลี่ย 2.41'),
     h.one('focus', 'เช่น ส่งเสริมการอ่านออกเขียนได้'),

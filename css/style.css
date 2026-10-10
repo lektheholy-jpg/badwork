@@ -2208,40 +2208,41 @@ table.tt tr.is-today td.tt-cell { background: color-mix(in srgb, var(--hue-orang
 .empty-state .icon-violet { background: var(--hue-violet); }
 
 /* ==========================================================================
-   ผู้ช่วย AI ในฟอร์ม PA (js/pa-ai.js) — การ์ดบนสุด · แถวปุ่มใต้ช่อง · หน้าต่างตรวจทาน
+   ผู้ช่วย AI ในฟอร์มเอกสาร (แกน js/badwork-ai.js · ใช้ร่วมทุกระบบ) — การ์ดบนสุด · แถวปุ่มใต้ช่อง · หน้าต่างตรวจทาน
+   ชื่อ class ขึ้นต้น .doc-ai- (ไม่ผูกกับระบบใด) · .doc-ai-ctx-grid เป็นของตัวต่อ PA (js/pa-ai.js)
    ใช้ .card / .btn / .modal / .field เดิม · ที่นี่มีเฉพาะส่วนที่ของเดิมไม่มี
    ========================================================================== */
-.pa-ai-chip { --w: var(--hue-violet); }
-.pa-ai-head { display: flex; align-items: center; gap: 14px; margin-bottom: 12px; }
-.pa-ai-head .card-title { margin: 0 0 2px; }
-.pa-ai-points { display: grid; gap: 4px; margin: 0 0 14px; padding-left: 20px; }
-.pa-ai-warn { margin: 0 0 14px; padding: 10px 14px; border-radius: var(--radius-s); background: var(--warning-tint); color: var(--ink); font-size: 13px; }
-.pa-ai-top .btn .ico { width: 18px; height: 18px; }
+.doc-ai-chip { --w: var(--hue-violet); }
+.doc-ai-head { display: flex; align-items: center; gap: 14px; margin-bottom: 12px; }
+.doc-ai-head .card-title { margin: 0 0 2px; }
+.doc-ai-points { display: grid; gap: 4px; margin: 0 0 14px; padding-left: 20px; }
+.doc-ai-warn { margin: 0 0 14px; padding: 10px 14px; border-radius: var(--radius-s); background: var(--warning-tint); color: var(--ink); font-size: 13px; }
+.doc-ai-top .btn .ico { width: 18px; height: 18px; }
 
-.pa-ai-ctx { margin: 0 0 14px; padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--radius-s); background: var(--surface-sunken); }
-.pa-ai-ctx > summary { cursor: pointer; }
-.pa-ai-ctx [data-ctx-count], .pa-ai-ctx [data-ctx-save] { margin-left: 8px; }
-.pa-ai-ctx-note { margin: 8px 0 12px; }
-.pa-ai-ctx-grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
+.doc-ai-ctx { margin: 0 0 14px; padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--radius-s); background: var(--surface-sunken); }
+.doc-ai-ctx > summary { cursor: pointer; }
+.doc-ai-ctx [data-ctx-count], .doc-ai-ctx [data-ctx-save] { margin-left: 8px; }
+.doc-ai-ctx-note { margin: 8px 0 12px; }
+.doc-ai-ctx-grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
 
-.pa-ai-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; }
-.pa-ai-tag { display: inline-flex; align-items: center; gap: 5px; margin-right: 4px; font-size: 12.5px; font-weight: 700; color: var(--primary-dark); }
-.pa-ai-tag .ico { width: 16px; height: 16px; }
-.pa-ai-quiet { background: transparent; color: var(--ink-soft); }
-.pa-ai-quiet:hover { background: var(--hover-wash); color: var(--ink); }
+.doc-ai-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; }
+.doc-ai-tag { display: inline-flex; align-items: center; gap: 5px; margin-right: 4px; font-size: 12.5px; font-weight: 700; color: var(--primary-dark); }
+.doc-ai-tag .ico { width: 16px; height: 16px; }
+.doc-ai-quiet { background: transparent; color: var(--ink-soft); }
+.doc-ai-quiet:hover { background: var(--hover-wash); color: var(--ink); }
 
-.modal.pa-ai-modal { display: flex; flex-direction: column; overflow: hidden; }
-.pa-ai-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; margin-bottom: 10px; }
-.pa-ai-list { flex: 1; min-height: 0; overflow-y: auto; margin: 0 -8px; padding: 0 8px; }
-.pa-ai-grp { margin-top: 10px; padding-top: 12px; border-top: 1px solid var(--border); font-size: 13.5px; font-weight: 700; color: var(--ink); }
-.pa-ai-list > .pa-ai-grp:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
-.pa-ai-item { margin-top: 10px; }
-.pa-ai-item .pa-check { font-weight: 700; }
-.pa-ai-item .field { margin: 8px 0 4px; }
-.pa-ai-old { margin-top: 6px; font-size: 13px; color: var(--ink-soft); }
-.pa-ai-old summary { cursor: pointer; font-weight: 600; }
-.pa-ai-old-text { margin-top: 6px; padding: 10px 12px; border-radius: var(--radius-s); background: var(--surface-sunken); white-space: pre-wrap; overflow-wrap: anywhere; }
+.modal.doc-ai-modal { display: flex; flex-direction: column; overflow: hidden; }
+.doc-ai-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; margin-bottom: 10px; }
+.doc-ai-list { flex: 1; min-height: 0; overflow-y: auto; margin: 0 -8px; padding: 0 8px; }
+.doc-ai-grp { margin-top: 10px; padding-top: 12px; border-top: 1px solid var(--border); font-size: 13.5px; font-weight: 700; color: var(--ink); }
+.doc-ai-list > .doc-ai-grp:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
+.doc-ai-item { margin-top: 10px; }
+.doc-ai-item .pa-check { font-weight: 700; }
+.doc-ai-item .field { margin: 8px 0 4px; }
+.doc-ai-old { margin-top: 6px; font-size: 13px; color: var(--ink-soft); }
+.doc-ai-old summary { cursor: pointer; font-weight: 600; }
+.doc-ai-old-text { margin-top: 6px; padding: 10px 12px; border-radius: var(--radius-s); background: var(--surface-sunken); white-space: pre-wrap; overflow-wrap: anywhere; }
 @media (max-width: 540px) {
-  .pa-ai-top .btn { width: 100%; }
-  .pa-ai-ctx-grid { grid-template-columns: minmax(0, 1fr); }
+  .doc-ai-top .btn { width: 100%; }
+  .doc-ai-ctx-grid { grid-template-columns: minmax(0, 1fr); }
 }

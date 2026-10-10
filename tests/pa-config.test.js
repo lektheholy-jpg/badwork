@@ -218,12 +218,12 @@ async function aiProbe() {
   const form = document.getElementById('mock-form');
   badworkAiMount(view(), form); badworkAiMount(view(), form); // เรียกซ้ำ = ไม่ติดซ้ำ
   const html = form.innerHTML;
-  out.mount = { tops: form.querySelectorAll('.pa-ai-top').length, rows: form.querySelectorAll('.pa-ai-row').length, html };
+  out.mount = { tops: form.querySelectorAll('.doc-ai-top').length, rows: form.querySelectorAll('.doc-ai-row').length, html };
   const bare = docSystem('bare'); const bareForm = document.createElement('form'); badworkAiMount(view(), bareForm, bare);
   out.bareMounted = bareForm.children.length;
 
   // ---- กดปุ่ม: ความยินยอมครั้งเดียว · คำขอใช้พร้อต์/บริบท/รุ่นของส่วนกลาง + ตัวต่อของ mock · สลับระบบกลางคัน ----
-  const btn = form.querySelector('[data-pa-ai="w"]');
+  const btn = form.querySelector('[data-doc-ai="w"]');
   const paDocBefore = JSON.stringify([docSystem('pa').state, docSystem('pa').rptState]);
   btn.click(); await settle();
   const req1 = __pending[0]; const b1 = JSON.parse(req1.opts.body);
@@ -238,7 +238,7 @@ async function aiProbe() {
 
   // ---- ยินยอมแล้ว กดอีกรอบจาก mock และถามจาก PA ต้องไม่ถามซ้ำ · เลือกรุ่นครั้งเดียวมีผลทุกระบบ ----
   docActivate('mock');
-  const sel = form.querySelector('#pa-ai-model'); sel.value = sel.options[sel.options.length - 1].value; sel.dispatchEvent(new Event('change'));
+  const sel = form.querySelector('#doc-ai-model'); sel.value = sel.options[sel.options.length - 1].value; sel.dispatchEvent(new Event('change'));
   btn.click(); await settle(); const req2 = __pending[1]; const b2 = JSON.parse(req2.opts.body);
   req2.res({ ok: true, json: async () => ({ candidates: [{ content: { parts: [{ text: '{}' }] } }] }) }); await settle();
   out.shared = { confirmsAfter: __confirms.length, paConsent: badworkAiConsent(docSystem('pa')), confirmsAfterPa: __confirms.length, model2: b2.model, modelId: badworkAiModelId(), busy: badworkAiBusy };
@@ -336,7 +336,7 @@ globalThis.__probes = {
   'ai.ctxStorage': async () => {
     docSystem('pa').state.tab = 'agreement'; docSystem('pa').state.view = 'form'; docSystem('pa').state.docId = 'a1'; docSystem('pa').state.doc = clone(PA_FIXTURE); await renderPAFormView(); await settle();
     resetDb();
-    const sel = document.getElementById('pa-ai-model'); const out = [badworkAiModelId()];
+    const sel = document.getElementById('doc-ai-model'); const out = [badworkAiModelId()];
     sel.value = sel.options[sel.options.length - 1].value; sel.dispatchEvent(new Event('change')); out.push(badworkAiModelId(), document.querySelector('[data-model-hint]').textContent);
     document.getElementById('pa-ctx-level').value = 'ม.3'; await badworkAiCtxSave(null); out.push(J(badworkAiCtxLoadLocal()));
     docSystem('pa').state.docId = null; await badworkAiCtxSave(null);
@@ -374,7 +374,7 @@ globalThis.__probes = {
     ok(S.models.some(m => m.id === S.model), 'รุ่น AI เริ่มต้นอยู่ในรายการรุ่นที่เลือกได้ (config กลาง)');
     ok(!('models' in C.ai) && !('apiKey' in C.ai) && !('proxyUrl' in C.ai) && !('endpoint' in C.ai) && !('model' in C.ai) && !('timeout' in C.ai) && !('consent' in C.ai.storageKeys) && !('model' in C.ai.storageKeys), 'PA_CONFIG.ai ไม่มีค่าเชื่อมต่อ/รุ่น/ความยินยอมซ้ำกับ config กลาง');
     const allKeys = [...Object.values(S.storageKeys), ...Object.values(C.ai.storageKeys)];
-    ok(allKeys.every(k => /^pa-ai-/.test(k)) && new Set(allKeys).size === 3, 'คีย์ localStorage ของ AI ขึ้นต้น pa-ai- (ค่าเดิม ห้ามเปลี่ยน) และไม่ซ้ำกัน');
+    ok(allKeys.every(k => /^pa-ai-/.test(k)) && new Set(allKeys).size === 3, 'คีย์ localStorage ของ AI ขึ้นต้น pa-ai- (ค่าเดิม ห้ามเปลี่ยน — ไม่เกี่ยวกับชื่อ class doc-ai-*) และไม่ซ้ำกัน');
     const legacy = ['PA_TABS', 'PA_CLASSROOM_TYPES', 'PA_WORK_ITEMS', 'PA_LOAD_LISTS', 'PA_CTX_MAX', 'PA_AI_SYSTEM', 'PA_AI_MODE_TXT', 'PA_AI_PART2', 'PA_AI_WORK_HINTS', 'PA_AI_CTX_FIELDS', 'PA_AI_SCOPE'];
     const stray = ['js/pa.js', 'js/badwork-ai.js', 'js/pa-ai.js', 'js/pa-rpt.js', 'js/pa-report.js'].flatMap(f => legacy.filter(n => new RegExp('\\b' + n + '\\b').test(read(f))).map(n => f + ':' + n))
       .concat(['js/pa.js', 'js/badwork-ai.js', 'js/pa-ai.js', 'js/pa-rpt.js'].filter(f => /PA_AI\./.test(read(f)) || /'pa_(agreements|reports)'/.test(read(f))).map(f => f + ':literal'));
@@ -391,10 +391,23 @@ globalThis.__probes = {
     ok(cfgUse.length === 0, 'PA_CONFIG ถูกอ้างโดยตรงเฉพาะใน js/pa-config.js — ไฟล์อื่นอ่านผ่าน sys.config', cfgUse.join(', '));
     const colLit = jsFiles.filter(f => f !== 'js/pa-config.js' && /pa_(agreements|reports)/.test(code(f)));
     ok(colLit.length === 0, 'ชื่อ collection ไม่ถูกเขียนตรงในโค้ดนอก pa-config.js — อ่านผ่าน sys.col(kind, uid)', colLit.join(', '));
-    // แกน AI ต้องไม่รู้จัก PA — ตัดคอมเมนต์แล้วห้ามมีชื่อ/โครง/ข้อความของ PA หลงเหลือในโค้ด (ชื่อ class/id pa-ai-* ที่รอเปลี่ยนในขั้นถัดไปไม่นับ)
+    // แกน AI ต้องไม่รู้จัก PA — ตัดคอมเมนต์แล้วห้ามมีชื่อ/โครง/ข้อความของ PA หลงเหลือในโค้ด (ชื่อ class/id doc-ai-* เป็นชื่อกลางอยู่แล้ว ไม่ผูกกับระบบใด)
     const coreBad = [/PA_CONFIG/, /\bpa[A-Z]\w*\s*\(/, /\bpart2\b/, /workItems|classroomTypes|loadLists/, /pa-wi-|pa-witem|data-wi\b|pa-ctx-|pa-form/, /Personal Agreement|PA 1|\bPA\b/, /ประเด็นท้าทาย|ส่วนที่ 2|ช่วยครู/, /docSystem\(\s*['"`]/, /docActivate/, /'agreements'|"agreements"/, /teacherProfile/]
       .filter(re => re.test(code('js/badwork-ai.js')));
     ok(coreBad.length === 0, 'js/badwork-ai.js (แกน) ไม่มีชื่อ/โครง/ข้อความของ PA ในโค้ด', coreBad.join(' '));
+    // ชื่อ class/id/data-attribute ของ UI ผู้ช่วย AI เป็นชื่อกลาง doc-ai-* — ห้ามมี pa-ai-* หลงเหลือ (ยกเว้นคีย์ localStorage ใน js/badwork-ai-config.js และ js/pa-config.js ที่ต้องคงค่าเดิม)
+    const cssSrc = read('css/style.css');
+    const oldNames = ['js/badwork-ai.js', 'js/pa-ai.js', 'js/pa.js'].flatMap(f => (code(f).match(/\bpa-ai-[\w-]*|data-pa-ai\b|dataset\.paAi\b/g) || []).map(m => f + ':' + m))
+      .concat((cssSrc.match(/\bpa-ai-[\w-]*|data-pa-ai\b/g) || []).map(m => 'css/style.css:' + m));
+    ok(oldNames.length === 0, 'ไม่มีชื่อ pa-ai-* / data-pa-ai เหลือใน แกน · ตัวต่อ · CSS (เปลี่ยนเป็น doc-ai-* / data-doc-ai แล้ว)', oldNames.join(', '));
+    // class ที่โค้ด AI ใช้ ↔ selector ใน CSS ต้องตรงกันทั้งสองทิศ (กันพิมพ์ชื่อผิดตอนเปลี่ยนชื่อ → สไตล์หายเงียบๆ)
+    const jsClasses = new Set(['js/badwork-ai.js', 'js/pa-ai.js'].flatMap(f => (code(f).match(/\bdoc-ai-[\w-]*[\w]/g) || [])));
+    const cssClasses = new Set((cssSrc.match(/\.doc-ai-[\w-]*[\w]/g) || []).map(s => s.slice(1)));
+    const ID_ONLY = new Set(['doc-ai-model']); // ใช้เป็น id ของ <select> (และ class ของกล่องครอบ) — ไม่มีกฎ CSS ของตัวเอง
+    const noStyle = [...jsClasses].filter(c => !cssClasses.has(c) && !ID_ONLY.has(c));
+    const noUse = [...cssClasses].filter(c => !jsClasses.has(c));
+    ok(jsClasses.size >= 15 && noStyle.length === 0, 'class doc-ai-* ทุกตัวที่โค้ดใช้ มีกฎใน css/style.css', noStyle.join(', '));
+    ok(noUse.length === 0, 'กฎ .doc-ai-* ทุกตัวใน css/style.css ถูกใช้โดยโค้ด AI (ไม่มีกฎกำพร้า)', noUse.join(', '));
     // ไฟล์ PA ไม่ต่อ db.collection('users')... เอง ยกเว้นอ่าน 'records' (อบรม/เกียรติบัตร ของแอปหลัก ไม่ใช่ collection ของระบบเอกสาร) ที่ pa-rpt.js จุดเดียว
     const direct = ['js/pa.js', 'js/badwork-ai.js', 'js/pa-ai.js', 'js/pa-report.js', 'js/pa-rpt.js'].flatMap(f => (code(f).match(/collection\(\s*['"`]users['"`]\s*\)[^;]*/g) || []).map(m => f + ': ' + m.replace(/\s+/g, ' ').slice(0, 60)));
     ok(direct.length === 1 && /^js\/pa-rpt\.js: .*\.collection\('records'\)/.test(direct[0]), 'ไฟล์ PA ไม่ต่อ db.collection(\'users\')... เอง — collection ของระบบเอกสารผ่าน sys.col เท่านั้น (ยกเว้นอ่าน records จุดเดียว)', direct.join(' | '));

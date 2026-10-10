@@ -26,14 +26,14 @@
 //   ฟอร์ม
 //     docRef(sys, uid, id)            → Firestore doc ref ของเอกสาร (ใช้เขียนเฉพาะ aiCtx)
 //     slots(sys, form)                → [{ host: Element, buttons: [{ act, label, quiet?, data? }] }]  ฝังแถวปุ่มที่ไหนบ้าง
-//     resolve(sys, act, btn)          → { specs, mode } | { toast } | null   ปุ่มที่กด (data-pa-ai = act) ต้องทำอะไร
+//     resolve(sys, act, btn)          → { specs, mode } | { toast } | null   ปุ่มที่กด (data-doc-ai = act) ต้องทำอะไร
 //
 // spec ของช่อง (ตัวต่อเป็นคนสร้าง) = { key, el (id ขององค์ประกอบ), label, hint?, item?, fieldLabel?, … }
 //   มี item = ช่องในกลุ่มเดียวกัน (หัวกลุ่มพิมพ์ครั้งเดียว ใช้ fieldLabel ต่อช่อง) · ไม่มี item = พิมพ์ชื่อช่อง+แนวทางของช่องนั้นเอง
 //
 // กติกาการเขียนในไฟล์นี้: ฟังก์ชันที่เป็นจุดเข้า (เรียกจากนอก/เทสต์) รับ sys เป็นพารามิเตอร์ท้ายแบบ sys = docSystem() · ฟังก์ชันภายในส่ง sys ต่อเสมอ
 //
-// ชื่อ class/id/data-attribute ของ UI ยังขึ้นต้น pa-ai- (สไตล์อยู่ที่ css/style.css) — รอเปลี่ยนเป็นชื่อกลางพร้อมแก้ CSS ในขั้นถัดไป
+// ชื่อ class/id/data-attribute ของ UI ขึ้นต้น doc-ai- (สไตล์อยู่ที่ css/style.css หมวด "ผู้ช่วย AI") — เป็นชื่อกลาง ไม่ผูกกับระบบใด · ส่วนคีย์ localStorage ยังขึ้นต้น pa-ai- ตามเดิม (ดู js/badwork-ai-config.js ห้ามเปลี่ยน)
 // ต้องโหลดหลัง js/badwork-ai-config.js · ตัวต่อของแต่ละระบบโหลดหลังไฟล์นี้ · ระบบเรียก badworkAiMount(view, form, sys) ท้ายการวาดฟอร์ม
 // ==========================================================================
 
@@ -194,7 +194,7 @@ async function badworkAiGuard(btn, fn, sys = docSystem()) {
   if (!badworkAiConsent(sys)) return undefined;
   badworkAiBusy = true;
   // ปิดปุ่ม AI ทุกปุ่มระหว่างรอ ให้เห็นชัดว่ากำลังทำงานอยู่ (ไม่ต้องรอให้กดซ้ำแล้วเจอ toast)
-  const all = [...(btn.closest('form') || document).querySelectorAll('[data-pa-ai]')];
+  const all = [...(btn.closest('form') || document).querySelectorAll('[data-doc-ai]')];
   const old = btn.innerHTML;
   all.forEach(b => { b.disabled = true; });
   btn.innerHTML = 'กำลังคิด<span class="loader-dots" aria-hidden="true"><i></i><i></i><i></i></span>';
@@ -213,33 +213,33 @@ function badworkAiReview(items, warn, sys = docSystem()) {
   const body = items.map((it, i) => {
     let head = '';
     const g = copy.reviewGroup(it); // หัวกลุ่ม: ช่องที่อยู่กลุ่มเดียวกันใต้หัวเดียว
-    if (g.id !== lastGrp) { head = `<div class="pa-ai-grp">${escapeHtml(g.title)}</div>`; lastGrp = g.id; }
+    if (g.id !== lastGrp) { head = `<div class="doc-ai-grp">${escapeHtml(g.title)}</div>`; lastGrp = g.id; }
     const name = it.item ? it.fieldLabel : it.label;
-    return `${head}<div class="pa-ai-item">
+    return `${head}<div class="doc-ai-item">
       <label class="pa-check"><input type="checkbox" data-i="${i}" checked> ${escapeHtml(name)}</label>
-      ${it.current ? `<details class="pa-ai-old"><summary>ข้อความเดิม (จะถูกแทนที่ถ้าเลือกช่องนี้)</summary><div class="pa-ai-old-text">${escapeHtml(it.current)}</div></details>` : ''}
+      ${it.current ? `<details class="doc-ai-old"><summary>ข้อความเดิม (จะถูกแทนที่ถ้าเลือกช่องนี้)</summary><div class="doc-ai-old-text">${escapeHtml(it.current)}</div></details>` : ''}
       <div class="field"><textarea data-t="${i}" rows="4" aria-label="${escapeHtml(name)}">${escapeHtml(it.proposed)}</textarea></div>
     </div>`;
   }).join('');
 
   openModal(`<h2>ข้อความที่ AI เสนอ</h2>
     <div class="modal-sub">${items.length} ช่อง · แก้ไขในกล่องได้ก่อนกด “ใช้ที่เลือก” · ข้อความจะยังไม่ถูกบันทึกจนกว่าจะกด “${escapeHtml(copy.saveLabel)}”</div>
-    ${warn ? `<div class="pa-ai-warn">${escapeHtml(warn)}</div>` : ''}
-    <div class="pa-ai-bar">
+    ${warn ? `<div class="doc-ai-warn">${escapeHtml(warn)}</div>` : ''}
+    <div class="doc-ai-bar">
       <span class="u-note-sm">“…” คือตัวเลขที่ครูต้องกรอกเอง · AI อาจผิดพลาด โปรดตรวจทาน</span>
       <div class="u-flex u-gap-8">
         <button type="button" class="btn btn-ghost btn-sm" data-x="all">เลือกทั้งหมด</button>
         <button type="button" class="btn btn-ghost btn-sm" data-x="none">ไม่เลือก</button>
       </div>
     </div>
-    <div class="pa-ai-list">${body}</div>
+    <div class="doc-ai-list">${body}</div>
     <div class="modal-actions">
       <button type="button" class="btn btn-ghost" data-x="close">ยกเลิก</button>
       <button type="button" class="btn btn-primary" data-x="apply">ใช้ที่เลือก</button>
     </div>`);
 
   const modal = document.querySelector('#modal-root .modal');
-  modal.classList.add('modal-wide', 'pa-ai-modal');
+  modal.classList.add('modal-wide', 'doc-ai-modal');
   modal.setAttribute('role', 'dialog');
   modal.setAttribute('aria-modal', 'true');
   modal.setAttribute('aria-label', 'ข้อความที่ AI เสนอ');
@@ -364,9 +364,9 @@ function badworkAiCtxHelpers(c, sys) {
 function badworkAiCtxHtml(c, sys = docSystem()) {
   const ad = docAi(sys);
   const n = badworkAiCtxCount(c, sys), total = Object.keys(sys.config.aiCtx.fields).length;
-  return `<details class="pa-ai-ctx"${n ? '' : ' open'}>
+  return `<details class="doc-ai-ctx"${n ? '' : ' open'}>
     <summary><b>${ad.copy.ctxTitle}</b> <span class="u-note-sm" data-ctx-count>กรอกแล้ว ${n}/${total}</span> <span class="u-note-sm" data-ctx-save role="status"></span></summary>
-    <div class="u-note pa-ai-ctx-note">${ad.copy.ctxNote}</div>
+    <div class="u-note doc-ai-ctx-note">${ad.copy.ctxNote}</div>
     ${ad.ctxBody(sys, c, badworkAiCtxHelpers(c, sys))}
   </details>`;
 }
@@ -379,42 +379,42 @@ const BADWORK_AI_ICON = `<svg class="ico" viewBox="0 0 24 24" fill="none" stroke
 // แถวปุ่ม "ผู้ช่วย AI" ใต้ช่อง/ใต้กลุ่มช่อง — buttons = [{ act, label, quiet?, data? }]
 function badworkAiRowHtml(buttons) {
   const attrs = d => Object.entries(d || {}).map(([k, v]) => ` data-${k}="${escapeHtml(v)}"`).join('');
-  return `<div class="pa-ai-row">
-      <span class="pa-ai-tag">${BADWORK_AI_ICON} ผู้ช่วย AI</span>
-      ${buttons.map(b => `<button type="button" class="btn ${b.quiet ? 'btn-sm pa-ai-quiet' : 'btn-ghost btn-sm'}" data-pa-ai="${b.act}"${attrs(b.data)}>${b.label}</button>`).join('\n      ')}
+  return `<div class="doc-ai-row">
+      <span class="doc-ai-tag">${BADWORK_AI_ICON} ผู้ช่วย AI</span>
+      ${buttons.map(b => `<button type="button" class="btn ${b.quiet ? 'btn-sm doc-ai-quiet' : 'btn-ghost btn-sm'}" data-doc-ai="${b.act}"${attrs(b.data)}>${b.label}</button>`).join('\n      ')}
     </div>`;
 }
 
 function badworkAiMount(view, form, sys = docSystem()) {
   const ad = docAiFind(sys);
-  if (!ad || !form || form.dataset.paAi) return;
+  if (!ad || !form || form.dataset.docAi) return;
   const ai = BADWORK_AI_CONFIG;
-  form.dataset.paAi = '1'; // ใช้เป็นตัวกันติดซ้ำ — ฟอร์มเองจึงตรง [data-pa-ai] ด้วย ตัวฟังคลิกต้องเมินค่า act ที่ไม่รู้จัก
+  form.dataset.docAi = '1'; // ใช้เป็นตัวกันติดซ้ำ — ฟอร์มเองจึงตรง [data-doc-ai] ด้วย ตัวฟังคลิกต้องเมินค่า act ที่ไม่รู้จัก
   badworkAiSeedCtx(sys.state.doc, sys);
 
   // 1) การ์ดบนสุด: อธิบายสั้นๆ + บริบทงาน + เลือกรุ่น + ปุ่มหลัก
   const top = document.createElement('div');
-  top.className = 'card card-pad pa-ai-top';
-  top.innerHTML = `<div class="pa-ai-head">
-      <span class="course-chip pa-ai-chip">${BADWORK_AI_ICON}</span>
+  top.className = 'card card-pad doc-ai-top';
+  top.innerHTML = `<div class="doc-ai-head">
+      <span class="course-chip doc-ai-chip">${BADWORK_AI_ICON}</span>
       <div>
         <h2 class="card-title">ผู้ช่วย AI</h2>
         <div class="u-note">ช่วยร่าง ปรับสำนวน และย่อข้อความ โดยใช้ Gemini</div>
       </div>
     </div>
-    <ul class="pa-ai-points u-note">
+    <ul class="doc-ai-points u-note">
       ${ad.copy.topPoints.map(t => `<li>${t}</li>`).join('\n      ')}
     </ul>
     ${badworkAiCtxHtml(sys.state.doc.aiCtx || {}, sys)}
-    <div class="field pa-ai-model">
-      <label for="pa-ai-model">โมเดล AI</label>
-      <select id="pa-ai-model">${ai.models.map(m => `<option value="${m.id}"${m.id === badworkAiModelId() ? ' selected' : ''}>${m.label}</option>`).join('')}</select>
+    <div class="field doc-ai-model">
+      <label for="doc-ai-model">โมเดล AI</label>
+      <select id="doc-ai-model">${ai.models.map(m => `<option value="${m.id}"${m.id === badworkAiModelId() ? ' selected' : ''}>${m.label}</option>`).join('')}</select>
       <div class="field-hint" data-model-hint>${escapeHtml((ai.models.find(m => m.id === badworkAiModelId()) || {}).hint || '')}</div>
     </div>
-    <div class="pa-ai-warn">${ad.copy.topWarn}</div>
-    <button type="button" class="btn btn-primary" data-pa-ai="all">${BADWORK_AI_ICON} ${ad.copy.topButton}</button>`;
+    <div class="doc-ai-warn">${ad.copy.topWarn}</div>
+    <button type="button" class="btn btn-primary" data-doc-ai="all">${BADWORK_AI_ICON} ${ad.copy.topButton}</button>`;
   form.insertBefore(top, form.firstChild);
-  top.querySelector('#pa-ai-model').addEventListener('change', e => {
+  top.querySelector('#doc-ai-model').addEventListener('change', e => {
     const m = ai.models.find(x => x.id === e.target.value);
     if (!m) return;
     try { localStorage.setItem(ai.storageKeys.model, m.id); } catch (err) { /* ใช้ storage ไม่ได้ — มีผลเฉพาะครั้งนี้ */ }
@@ -422,7 +422,7 @@ function badworkAiMount(view, form, sys = docSystem()) {
     showToast('ใช้ ' + m.label + ' แล้ว');
   });
   // นับช่องบริบทที่กรอกแล้วแบบสด
-  const ctxBox = top.querySelector('.pa-ai-ctx');
+  const ctxBox = top.querySelector('.doc-ai-ctx');
   const saveEl = ctxBox?.querySelector('[data-ctx-save]');
   ctxBox?.addEventListener('input', () => {
     const cnt = ctxBox.querySelector('[data-ctx-count]');
@@ -438,9 +438,9 @@ function badworkAiMount(view, form, sys = docSystem()) {
 
   // 3) คลิกปุ่ม — ตัวต่อบอกว่าปุ่มนี้ต้องส่งช่องไหนด้วยโหมดอะไร (หรือแจ้งว่าทำไม่ได้เพราะอะไร)
   form.addEventListener('click', e => {
-    const b = e.target.closest('[data-pa-ai]');
+    const b = e.target.closest('[data-doc-ai]');
     if (!b) return;
-    const r = ad.resolve(sys, b.dataset.paAi, b);
+    const r = ad.resolve(sys, b.dataset.docAi, b);
     if (!r) return;
     if (r.toast) { showToast(r.toast); return; }
     badworkAiRunFields(b, r.specs, r.mode, sys);
