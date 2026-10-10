@@ -127,6 +127,7 @@ function idpNormalize(d) {
   }));
   d.subjects   = norm(d.subjects);
   d.activities = norm(d.activities);
+  d.specialGroup = String(d.specialGroup || '').trim(); // กลุ่มงานที่ต่อท้ายหัวข้อ "2. งานมอบหมายพิเศษ" (เช่น กลุ่มงานบริหารทั่วไป)
   d.specials   = Array.isArray(d.specials) ? d.specials.map(r => String(r?.name ?? r ?? '').trim()).filter(Boolean) : []; // เก็บเป็นข้อความ (idpCollect) · รับแบบ {name} จากเอกสารเก่าด้วย
   // ส่วนที่ 2: สมรรถนะ
   d.comps = d.comps && typeof d.comps === 'object' ? d.comps : {};
@@ -154,8 +155,14 @@ function idpNormalize(d) {
   return d;
 }
 
+// ชื่อสมรรถนะแบบไม่มีคำนำหน้ากลุ่ม (สมรรถนะหลัก / สมรรถนะประจำสายงาน) — ใช้ในตารางสรุปส่วนที่ 3 ตามแบบฟอร์ม
+const idpCompTitle = fullName => String(fullName || '').replace(/^สมรรถนะ(?:หลัก|ประจำสายงาน)\s*/, '');
+
+// แผนใหม่: เติมวิธีการ/รูปแบบการพัฒนามาตรฐานของแบบฟอร์ม สพฐ. ให้ทุกสมรรถนะ (แก้/ลบได้ในฟอร์ม) — แผนที่บันทึกแล้วไม่ถูกเติมซ้ำ
 function idpBlankDoc() {
-  return idpNormalize({ semester: '1', year: String(new Date().getFullYear() + 543), status: 'draft' });
+  const d = idpNormalize({ semester: '1', year: String(new Date().getFullYear() + 543), status: 'draft' });
+  docSystem('idp').config.competencies.forEach(([cid, , , , method]) => { d.comps[cid].method = (method || []).join('\n'); });
+  return d;
 }
 
 function idpDocTitle(d) {
@@ -180,6 +187,7 @@ function idpCollect() {
   doc.activities = docLRows('activities') || doc.activities;
   doc.education  = docLRows('education', false) || doc.education;
   doc.specials   = docLRows('specials', false)  || doc.specials;
+  if (document.getElementById('idp-specialGroup')) doc.specialGroup = get('idp-specialGroup');
 
   // competencies
   doc.comps = doc.comps || {};
@@ -300,6 +308,7 @@ async function idpRenderFormView() {
       if (last) {
         if (!doc.education.length) doc.education = [...last.education];
         if (!doc.specials.length) doc.specials = [...last.specials];
+        if (!doc.specialGroup) doc.specialGroup = last.specialGroup;
       }
     } catch (e) { /* ไม่มีแผนเก่า → กรอกเอง */ }
     if (!stillHere()) return;
@@ -313,14 +322,14 @@ async function idpRenderFormView() {
 
   // ส่วนที่ 2 rows
   let compsHtml = '';
-  comps.forEach(([cid, , fullName]) => {
+  comps.forEach(([cid, , fullName, subs]) => {
     const c = doc.comps?.[cid] || {};
     compsHtml += `
     <tr>
-      <td class="idp-comp-name">${escapeHtml(fullName)}</td>
-      <td><input class="input-sm" type="number" min="1" max="10" placeholder="1–10"
+      <td><div class="idp-comp-name">${escapeHtml(fullName)}</div>${(subs || []).map(([no, nm]) => `<div class="idp-comp-sub">${no} ${escapeHtml(nm)}</div>`).join('')}</td>
+      <td><input class="input-sm" type="number" min="1" max="${comps.length}" placeholder="1–${comps.length}"
             data-comp-id="${cid}" data-comp-field="priority" value="${escapeHtml(c.priority || '')}"></td>
-      <td><textarea class="idp-ta" rows="3"
+      <td><textarea class="idp-ta" rows="6"
             data-comp-id="${cid}" data-comp-field="method">${escapeHtml(c.method || '')}</textarea></td>
       <td><input class="input-sm" type="text" placeholder="เช่น ต.ค. 68"
             data-comp-id="${cid}" data-comp-field="startDate" value="${escapeHtml(c.startDate || '')}"></td>
@@ -402,6 +411,9 @@ async function idpRenderFormView() {
       ${docLBlockHtml({ key: 'activities', title: '1.2 กิจกรรมพัฒนาผู้เรียน', rows: doc.activities.length ? doc.activities : [{}], ph: 'กิจกรรม / ระดับชั้น', addLabel: 'เพิ่มกิจกรรม' })}
       ${docLTotalHtml({ label: 'รวมชั่วโมงสอน:', id: 'idp-total-hours', value: idpTotalHours(doc) })}
       ${docLBlockHtml({ key: 'specials', title: '1.3 งานมอบหมายพิเศษ / ภาระงานอื่น', rows: doc.specials.length ? doc.specials : [''], hours: false, ph: 'งาน / หน้าที่', addLabel: 'เพิ่มงาน' })}
+      <div class="field u-mt-4"><label for="idp-specialGroup">กลุ่มงาน (ต่อท้ายหัวข้อ "2. งานมอบหมายพิเศษ" ในเอกสาร)</label>
+        <input id="idp-specialGroup" type="text" maxlength="80" placeholder="เช่น กลุ่มงานบริหารทั่วไป" value="${escapeHtml(doc.specialGroup)}">
+      </div>
     </section>
 
     <!-- ส่วนที่ 2: รายละเอียดการพัฒนาตนเอง -->
@@ -532,11 +544,11 @@ const IDP1_CSS = `
 .idp1 .i1-ind2{padding-left:2.2cm;text-indent:-.45cm}
 .idp1 table{width:100%;border-collapse:collapse;margin-top:.4em}
 .idp1 th,.idp1 td{border:1px solid #000;padding:.28em .4em;vertical-align:top;text-align:left;overflow-wrap:anywhere;font-size:14pt}
-.idp1 th{text-align:center;font-weight:700;background:#fcc;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.idp1 th{text-align:center;font-weight:700;vertical-align:middle}
 .idp1 thead{display:table-header-group}
 .idp1 tr{break-inside:avoid;page-break-inside:avoid}
 .idp1 .i1-sign{margin:2em 2cm 0 auto;width:9cm;text-align:center;break-inside:avoid;page-break-inside:avoid}
-.idp1 .i1-line{border-bottom:1px dotted #000;height:1.4em;margin-bottom:.2em}
+.idp1 .i1-sub{padding-left:2.3em;text-indent:-2.3em}
 .idp1 .i1-break{break-before:page;page-break-before:always;height:0}
 .idp1 .i1-mid{text-align:center}
 .idp1 .i1-big{font-size:1.1em}
@@ -545,8 +557,8 @@ const IDP1_CSS = `
 .idp1 .i1-mb3{margin-bottom:.3em}
 .idp1 .i1-mb5{margin-bottom:.5em}
 .idp1 .i1-t13 th,.idp1 .i1-t13 td{font-size:13pt}
-.idp1 .idp-w6{width:6%}.idp1 .idp-w8{width:8%}.idp1 .idp-w18{width:18%}.idp1 .idp-w19{width:19%}
-.idp1 .idp-w20{width:20%}.idp1 .idp-w22{width:22%}.idp1 .idp-w24{width:24%}.idp1 .idp-w28{width:28%}
+.idp1 .idp-w4{width:4%}.idp1 .idp-w6{width:6%}.idp1 .idp-w7{width:7%}.idp1 .idp-w8{width:8%}.idp1 .idp-w13{width:13%}.idp1 .idp-w15{width:15%}
+.idp1 .idp-w20{width:20%}.idp1 .idp-w22{width:22%}.idp1 .idp-w25{width:25%}.idp1 .idp-w28{width:28%}.idp1 .idp-w30{width:30%}
 @media screen{
   .idp1 .pg-port,.idp1 .pg-land{padding:.4em 1em}
   .idp1 .pg-land{border-top:2px dashed #999;margin-top:1em;padding-top:1em}
@@ -570,11 +582,11 @@ function idpBuildPreviewHtml(d, profile) {
   const subjectGroup = pi.subjectGroup || dots(20);
   const school = pi.school || dots(20);
   const affiliation = pi.affiliation;
-  const term = `ภาคเรียนที่ ${escapeHtml(d.semester)}  ปีการศึกษา ${escapeHtml(d.year)}`;
+  const term = `ภาคเรียนที่ ${escapeHtml(d.semester)} ประจำปีการศึกษา ${escapeHtml(d.year)}`;
 
   // ส่วนที่ 1: การศึกษา / รายวิชา+กิจกรรม (ชม./สัปดาห์) / งานมอบหมายพิเศษ
-  const bullet = t => `<div class="i1-ind2">- ${t}</div>`;
-  const eduItems = d.education.length ? d.education.map(e => bullet(escapeHtml(e))).join('') : bullet(dots(30));
+  const bullet = (t, mark = '-') => `<div class="i1-ind2">${mark} ${t}</div>`;
+  const eduItems = d.education.length ? d.education.map(e => bullet(escapeHtml(e), '•')).join('') : bullet(dots(30), '•');
   const teachRows = [...d.subjects, ...d.activities];
   const teachItems = teachRows.length
     ? teachRows.map(r => bullet(`${escapeHtml(r.name)}${r.hours ? `  จำนวน ${r.hours} ชั่วโมง/สัปดาห์` : ''}`)).join('')
@@ -582,28 +594,31 @@ function idpBuildPreviewHtml(d, profile) {
   const specialItems = d.specials.length ? d.specials.map(x => bullet(escapeHtml(x))).join('') : bullet(dots(30));
 
   // ส่วนที่ 2
-  const compRows = comps.map(([cid, , fullName]) => {
+  const nl = t => escapeHtml(t || '').replace(/\n/g, '<br>');
+  const compRows = comps.map(([cid, , fullName, subs], i) => {
     const c = d.comps?.[cid] || {};
     return `<tr>
-      <td>${escapeHtml(fullName)}</td>
+      <td class="i1-mid">${i + 1}</td>
+      <td><b>${escapeHtml(fullName)}</b>${(subs || []).map(([no, nm]) => `<div class="i1-sub">${no} ${escapeHtml(nm)}</div>`).join('')}</td>
       <td class="i1-mid">${escapeHtml(c.priority || '')}</td>
-      <td>${escapeHtml(c.method || '').replace(/\n/g, '<br>')}</td>
+      <td>${nl(c.method)}</td>
       <td class="i1-mid">${escapeHtml(c.startDate || '')}</td>
       <td class="i1-mid">${escapeHtml(c.endDate || '')}</td>
-      <td>${escapeHtml(c.goal || '').replace(/\n/g, '<br>')}</td>
-      <td>${escapeHtml(c.benefit || '').replace(/\n/g, '<br>')}</td>
+      <td>${nl(c.goal)}</td>
+      <td>${nl(c.benefit)}</td>
     </tr>`;
   }).join('');
 
   // ส่วนที่ 3
   const sumRows = d.summary.map((s, i) => {
-    const compName = comps.find(([cid]) => cid === s.compId)?.[2] || '';
+    const compName = idpCompTitle(comps.find(([cid]) => cid === s.compId)?.[2]);
     return `<tr>
       <td class="i1-mid">${i + 1}</td>
       <td>${escapeHtml(compName)}</td>
-      <td>${escapeHtml(s.method || '').replace(/\n/g, '<br>')}</td>
-      <td class="i1-mid">${escapeHtml(s.startDate || '')}${s.startDate && s.endDate ? ' – ' : ''}${escapeHtml(s.endDate || '')}</td>
-      <td>${escapeHtml(s.benefit || '').replace(/\n/g, '<br>')}</td>
+      <td>${nl(s.method)}</td>
+      <td class="i1-mid">${escapeHtml(s.startDate || '')}</td>
+      <td class="i1-mid">${escapeHtml(s.endDate || '')}</td>
+      <td>${nl(s.benefit)}</td>
     </tr>`;
   }).join('');
 
@@ -621,11 +636,14 @@ ${docFontCss()}${IDP1_CSS}
   <div class="i1-c i1-big">(Individual Development Plan : ID PLAN)</div>
   <div class="i1-c i1-big">ของ ${escapeHtml(name)} ${escapeHtml(school)}</div>
   <div class="i1-c i1-big">${term}</div>
+  <div class="i1-c">************************************</div>
 
   <div class="i1-h">ส่วนที่ 1  ข้อมูลส่วนบุคคล</div>
   <div class="i1-mt3"><b>ชื่อ</b>  ${escapeHtml(name)}</div>
   <div><b>ตำแหน่ง</b>  ${escapeHtml(position)}</div>
   <div>${escapeHtml(school)}${affiliation ? ' ' + escapeHtml(affiliation) : ''}</div>
+  <div>สำนักงานคณะกรรมการการศึกษาขั้นพื้นฐาน</div>
+  <div>กระทรวงศึกษาธิการ</div>
   <div class="i1-mt3"><b>การศึกษาระดับ</b></div>
   ${eduItems}
 
@@ -634,7 +652,7 @@ ${docFontCss()}${IDP1_CSS}
   <div class="i1-ind"><b>รายวิชาที่สอน</b></div>
   ${teachItems}
   <div class="i1-ind2"><b>รวม จำนวน ${idpTotalHours(d)} ชั่วโมง/สัปดาห์</b></div>
-  <div class="i1-mt3"><b>2. งานมอบหมายพิเศษ</b></div>
+  <div class="i1-mt3"><b>2. งานมอบหมายพิเศษ${d.specialGroup ? ' ' + escapeHtml(d.specialGroup) : ''}</b></div>
   ${specialItems}
 </section>
 
@@ -644,14 +662,15 @@ ${docFontCss()}${IDP1_CSS}
   <table class="i1-t13">
     <thead>
       <tr>
-        <th class="idp-w18">สมรรถนะที่จะพัฒนา</th>
-        <th class="idp-w8">อันดับ<br>ความสำคัญ</th>
-        <th class="idp-w20">วิธีการ / รูปแบบ<br>การพัฒนา</th>
-        <th class="idp-w8">ระยะเวลา<br>เริ่มต้น</th>
-        <th class="idp-w8">ระยะเวลา<br>สิ้นสุด</th>
-        <th class="idp-w19">เป้าหมาย</th>
-        <th class="idp-w19">ประโยชน์ที่<br>คาดว่าจะได้รับ</th>
+        <th rowspan="2" class="idp-w4">ที่</th>
+        <th rowspan="2" class="idp-w22">สมรรถนะที่จะพัฒนา</th>
+        <th rowspan="2" class="idp-w7">อันดับ<br>ความสำคัญ</th>
+        <th rowspan="2" class="idp-w25">วิธีการ / รูปแบบการพัฒนา</th>
+        <th colspan="2">ระยะเวลาในการพัฒนา</th>
+        <th rowspan="2" class="idp-w13">เป้าหมาย</th>
+        <th rowspan="2" class="idp-w15">ประโยชน์ที่คาดว่าจะได้รับ</th>
       </tr>
+      <tr><th class="idp-w7">เริ่มต้น</th><th class="idp-w7">สิ้นสุด</th></tr>
     </thead>
     <tbody>${compRows}</tbody>
   </table>
@@ -659,26 +678,25 @@ ${docFontCss()}${IDP1_CSS}
   <div class="i1-break"></div>
 
   <div class="i1-h i1-h0">ส่วนที่ 3  ตารางสรุปแผนพัฒนาตนเอง</div>
-  <div class="i1-ind i1-mb3">(สรุปวิธีการ/รูปแบบการพัฒนา ที่มีความจำเป็นมากที่สุดในสมรรถนะ 3 อันดับแรก)</div>
+  <div class="i1-ind i1-mb3">(ให้สรุปวิธีการ/รูปแบบการพัฒนา ที่มีความจำเป็นมากที่สุด ในสมรรถนะที่ต้องการพัฒนา 3 อันดับแรก)</div>
   <table>
     <thead>
       <tr>
-        <th class="idp-w6">อันดับที่</th>
-        <th class="idp-w22">สมรรถนะที่จะพัฒนา</th>
-        <th class="idp-w28">วิธีการ / รูปแบบการพัฒนา</th>
-        <th class="idp-w20">ระยะเวลา</th>
-        <th class="idp-w24">ประโยชน์ที่คาดว่าจะได้รับ</th>
+        <th rowspan="2" class="idp-w6">อันดับที่</th>
+        <th rowspan="2" class="idp-w20">สมรรถนะที่จะพัฒนา</th>
+        <th rowspan="2" class="idp-w30">วิธีการ / รูปแบบการพัฒนา</th>
+        <th colspan="2">ระยะเวลาในการพัฒนา</th>
+        <th rowspan="2" class="idp-w28">ประโยชน์ที่คาดว่าจะได้รับ</th>
       </tr>
+      <tr><th class="idp-w8">เริ่มต้น</th><th class="idp-w8">สิ้นสุด</th></tr>
     </thead>
     <tbody>${sumRows}</tbody>
   </table>
 
   <div class="i1-sign">
-    <div class="i1-line"></div>
     <div>ผู้จัดทำ</div>
-    <div>(${escapeHtml(name)})</div>
-    <div>ตำแหน่ง ${escapeHtml(position)}</div>
-    <div class="i1-mt3">วันที่ ${escapeHtml(d.signDate) || '……………………………………………'}</div>
+    <div>(${escapeHtml(name)})</div>${d.signDate ? `
+    <div class="i1-mt3">วันที่ ${escapeHtml(d.signDate)}</div>` : ''}
   </div>
 </section>
 
