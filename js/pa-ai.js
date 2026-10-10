@@ -97,11 +97,11 @@ function paAiSlots(sys, form) {
       { act: 'f-shorten', label: 'ย่อให้กระชับ', icon: 'shorten', quiet: true, data: { key: f.key } },
     ] });
   });
-  // ใต้งานตามมาตรฐานตำแหน่งแต่ละข้อ (ชื่อข้ออยู่ในหัวกล่องอยู่แล้ว ไม่ต้องพูดซ้ำในปุ่ม)
+  // งานตามมาตรฐานตำแหน่งแต่ละข้อ: แถวปุ่มอยู่ที่หัวกล่องของข้อ (ขวามือของชื่อข้อ) — ปุ่มใช้กับทั้งกล่อง 4 ช่อง จึงอยู่ในกรอบเดียวกับชื่อข้อ
   form.querySelectorAll('.pa-witem').forEach(w => {
     const id = w.querySelector('[data-wi]')?.dataset.wi;
     if (!id) return;
-    out.push({ host: w, buttons: [
+    out.push({ host: w.querySelector('.pa-witem-h') || w, buttons: [
       { act: 'i-write', label: 'เขียนช่องที่ว่าง', icon: 'write', data: { item: id } },
       { act: 'i-polish', label: 'ปรับสำนวนทั้งข้อ', icon: 'polish', quiet: true, data: { item: id } },
     ] });
@@ -128,7 +128,7 @@ function paAiResolve(sys, a, b) {
     const mode = a.slice(2), specs = paAiWorkSpecs(sys, [b.dataset.item]);
     const pick = mode === 'write' ? specs.filter(s => !badworkAiFilled(s)) : specs.filter(badworkAiFilled);
     if (!pick.length) return { toast: mode === 'write' ? 'ช่องในข้อนี้มีข้อความครบแล้ว — ใช้ “ปรับสำนวนทั้งข้อ” ได้' : 'ข้อนี้ยังไม่มีข้อความให้ปรับสำนวน' };
-    return { specs: pick, mode };
+    return { specs: pick, mode, total: specs.length };
   }
   return null; // act อื่น (เช่น ตัวฟอร์มเองที่มี data-doc-ai เป็นตัวกันติดซ้ำ) — ไม่ทำอะไร
 }

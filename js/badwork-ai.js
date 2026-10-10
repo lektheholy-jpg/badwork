@@ -30,7 +30,8 @@
 //     slots(sys, form)                → [{ host: Element, buttons: [{ act, label, icon, quiet?, data? }] }]  ฝังแถวปุ่มที่ไหนบ้าง
 //                                       รูปแบบปุ่มใต้ช่องเหมือนกันทุกระบบ: ป้าย ✦ (ไอคอนล้วน) + ปุ่มไอคอนล้วน · icon = write | polish | shorten (เพิ่มได้ที่ BADWORK_AI_BTN_ICONS) · label = tooltip + aria-label (ตั้งให้ชัดว่าทำอะไร) · ปุ่มแรกที่เขียนข้อความใหม่ไม่ใส่ quiet · ปุ่มปรับ/ย่อใส่ quiet: true
 //                                       ไม่ใส่ icon = ขึ้น console.warn (ปุ่มจะไม่มีทั้งข้อความและไอคอน) — ปุ่มหลักในการ์ดบนสุด (topButton) ยังเป็นข้อความตามเดิม
-//     resolve(sys, act, btn)          → { specs, mode } | { toast } | null   ปุ่มที่กด (data-doc-ai = act) ต้องทำอะไร
+//     resolve(sys, act, btn)          → { specs, mode, total? } | { toast } | null   ปุ่มที่กด (data-doc-ai = act) ต้องทำอะไร
+//                                       ต้องไม่มีผลข้างเคียง: แกนเรียกซ้ำเพื่อ (1) ขึ้นกรอบช่องเป้าหมายตอนชี้/โฟกัส/กดค้าง (2) ใส่จำนวนช่องใน tooltip — total = จำนวนช่องทั้งหมดในขอบเขตของปุ่ม (ไม่ใส่ = ไม่แสดงจำนวน) (3) หรี่ปุ่มเมื่อได้ toast (ไม่มีอะไรให้ทำ) แล้วใช้ toast เป็นเหตุผลใน tooltip
 //
 // spec ของช่อง (ตัวต่อเป็นคนสร้าง) = { key, el (id ขององค์ประกอบ), label, hint?, item?, fieldLabel?, … }
 //   มี item = ช่องในกลุ่มเดียวกัน (หัวกลุ่มพิมพ์ครั้งเดียว ใช้ fieldLabel ต่อช่อง) · ไม่มี item = พิมพ์ชื่อช่อง+แนวทางของช่องนั้นเอง
@@ -411,12 +412,50 @@ function badworkAiRowHtml(buttons) {
     if (!ico) console.warn(`ปุ่ม AI "${b.act}" ไม่มี icon (หรือชื่อไม่รู้จัก) — ปุ่มใต้ช่องทุกระบบใช้ไอคอนล้วน ดู BADWORK_AI_BTN_ICONS`);
     const cls = `btn ${b.quiet ? 'btn-sm doc-ai-quiet' : 'btn-ghost btn-sm'}${ico ? ' doc-ai-ico' : ''}`;
     const tip = ico ? ` title="${escapeHtml(b.label)}" aria-label="${escapeHtml(b.label)}"` : '';
-    return `<button type="button" class="${cls}" data-doc-ai="${b.act}"${attrs(b.data)}${tip}>${ico ? badworkAiBtnIcon(b.icon) : b.label}</button>`;
+    return `<button type="button" class="${cls}" data-doc-ai="${b.act}" data-ai-label="${escapeHtml(b.label)}"${attrs(b.data)}${tip}>${ico ? badworkAiBtnIcon(b.icon) : b.label}</button>`;
   };
   return `<div class="doc-ai-row">
       <span class="doc-ai-tag" role="img" aria-label="ผู้ช่วย AI" title="ผู้ช่วย AI">${BADWORK_AI_ICON}</span>
       ${buttons.map(btn).join('\n      ')}
     </div>`;
+}
+
+// ------------------------------------------------------------------
+// ปุ่มใต้ช่องบอกขอบเขตของตัวเอง — ใช้ resolve() ของตัวต่อ (ต้องไม่มีผลข้างเคียง เพราะถูกเรียกซ้ำเพื่อดูตัวอย่าง/คำนวณสถานะ)
+//   • ชี้/โฟกัสด้วยคีย์บอร์ด/กดค้างบนมือถือ → ช่องที่ AI จะแตะขึ้นกรอบ (.doc-ai-target)
+//   • tooltip บอกจำนวนช่อง (r.total ถ้าตัวต่อส่งมา) · ไม่มีอะไรให้ทำ (resolve คืน toast) → ปุ่มหรี่ + tooltip บอกเหตุผล (กดแล้วยังขึ้นเหตุผลเหมือนเดิม)
+// ------------------------------------------------------------------
+let badworkAiPreviewEls = [];
+function badworkAiPreviewClear() {
+  badworkAiPreviewEls.forEach(el => el.classList.remove('doc-ai-target'));
+  badworkAiPreviewEls = [];
+}
+function badworkAiPreviewShow(btn, sys = docSystem()) {
+  badworkAiPreviewClear();
+  const ad = docAiFind(sys);
+  const r = ad && ad.resolve(sys, btn.dataset.docAi, btn);
+  if (!r || !r.specs) return;
+  r.specs.forEach(sp => {
+    const t = document.getElementById(sp.el);
+    const w = t && (t.closest('.field') || t);
+    if (w) { w.classList.add('doc-ai-target'); badworkAiPreviewEls.push(w); }
+  });
+}
+function badworkAiRefreshBtns(form, sys = docSystem()) {
+  const ad = docAiFind(sys);
+  if (!ad || !form) return;
+  form.querySelectorAll('.doc-ai-row [data-doc-ai]').forEach(b => {
+    const label = b.dataset.aiLabel || b.textContent.trim();
+    const r = ad.resolve(sys, b.dataset.docAi, b);
+    const off = !!(r && r.toast);
+    let tip = label;
+    if (off) tip = `${label}: ${r.toast}`;
+    else if (r && r.specs && r.total > 1) tip = `${label} (${r.specs.length} จาก ${r.total} ช่อง)`;
+    b.title = tip;
+    if (b.classList.contains('doc-ai-ico')) b.setAttribute('aria-label', tip);
+    b.classList.toggle('doc-ai-off', off);
+    if (off) b.setAttribute('aria-disabled', 'true'); else b.removeAttribute('aria-disabled');
+  });
 }
 
 function badworkAiMount(view, form, sys = docSystem()) {
@@ -470,10 +509,38 @@ function badworkAiMount(view, form, sys = docSystem()) {
   // 2) แถวปุ่มใต้ช่อง/กลุ่มช่อง — ตัวต่อบอกว่าฝังที่ไหน
   ad.slots(sys, form).forEach(s => s.host.insertAdjacentHTML('beforeend', badworkAiRowHtml(s.buttons)));
 
+  // 2.5) ดูตัวอย่างขอบเขตของปุ่ม (กรอบรอบช่อง) + tooltip/หรี่ปุ่ม — คำนวณใหม่เมื่อพิมพ์หรือเมื่อ AI ใส่ข้อความ (ส่ง input event อยู่แล้ว)
+  badworkAiPreviewClear();
+  badworkAiRefreshBtns(form, sys);
+  let refreshTimer = null;
+  form.addEventListener('input', () => { clearTimeout(refreshTimer); refreshTimer = setTimeout(() => badworkAiRefreshBtns(form, sys), 150); });
+  const hit = e => e.target.closest?.('.doc-ai-row [data-doc-ai]');
+  form.addEventListener('mouseover', e => { const b = hit(e); if (b) badworkAiPreviewShow(b, sys); });
+  form.addEventListener('mouseout', e => { if (hit(e)) badworkAiPreviewClear(); });
+  form.addEventListener('focusin', e => { const b = hit(e); if (b && b.matches(':focus-visible')) badworkAiPreviewShow(b, sys); });
+  form.addEventListener('focusout', e => { if (hit(e)) badworkAiPreviewClear(); });
+  // มือถือ: กดค้างที่ปุ่ม = ดูกรอบช่อง (ไม่สั่งงาน) · ปล่อยแล้วกรอบอยู่ต่ออีกครู่
+  let lpTimer = null, lpDone = false;
+  form.addEventListener('touchstart', e => {
+    const b = hit(e); if (!b) return;
+    lpDone = false; clearTimeout(lpTimer);
+    lpTimer = setTimeout(() => { lpDone = true; badworkAiPreviewShow(b, sys); }, 450);
+  }, { passive: true });
+  form.addEventListener('touchmove', () => clearTimeout(lpTimer), { passive: true });
+  const lpEnd = () => {
+    clearTimeout(lpTimer);
+    if (lpDone) { setTimeout(badworkAiPreviewClear, 1500); setTimeout(() => { lpDone = false; }, 400); }
+  };
+  form.addEventListener('touchend', lpEnd);
+  form.addEventListener('touchcancel', lpEnd);
+  form.addEventListener('contextmenu', e => { if (lpDone && hit(e)) e.preventDefault(); });
+  form.addEventListener('click', e => { if (lpDone && hit(e)) { lpDone = false; e.stopImmediatePropagation(); e.preventDefault(); } }, true); // กดค้างไม่นับเป็นการกด
+
   // 3) คลิกปุ่ม — ตัวต่อบอกว่าปุ่มนี้ต้องส่งช่องไหนด้วยโหมดอะไร (หรือแจ้งว่าทำไม่ได้เพราะอะไร)
   form.addEventListener('click', e => {
     const b = e.target.closest('[data-doc-ai]');
     if (!b) return;
+    badworkAiPreviewClear();
     const r = ad.resolve(sys, b.dataset.docAi, b);
     if (!r) return;
     if (r.toast) { showToast(r.toast); return; }

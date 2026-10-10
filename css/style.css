@@ -2193,8 +2193,9 @@ table.tt tr.is-today td.tt-cell { background: color-mix(in srgb, var(--hue-orang
   border: solid var(--ink-soft); border-width: 0 2px 2px 0; rotate: 45deg; translate: 0 -2px; transition: rotate .2s ease, translate .2s ease;
 }
 .pa-wgroup[open] > summary::after { rotate: 225deg; translate: 0 2px; }
-.pa-witem { padding: 16px; border-top: 1px solid var(--border); }
-.pa-witem-h { margin-bottom: 10px; font-weight: 700; color: var(--ink); }
+.pa-witem { padding: 16px; border-top: 1px solid var(--border); border-left: 3px solid var(--primary-tint); }
+.pa-witem-h { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; margin-bottom: 10px; font-weight: 700; color: var(--ink); }
+.pa-witem-h .doc-ai-row { margin-top: 0; }
 .pa-witem .field:last-child { margin-bottom: 0; }
 .pa-form-footer { display: flex; justify-content: flex-end; gap: 10px; padding-bottom: 32px; }
 @media (max-width: 540px) {
@@ -2230,6 +2231,8 @@ table.tt tr.is-today td.tt-cell { background: color-mix(in srgb, var(--hue-orang
 .doc-ai-tag .ico { width: 18px; height: 18px; }
 .btn.doc-ai-ico { display: inline-grid; place-items: center; width: 40px; height: 40px; min-height: 40px; padding: 0; }
 .doc-ai-ico .ico { width: 20px; height: 20px; }
+.doc-ai-target { outline: 2px solid var(--primary); outline-offset: 4px; border-radius: var(--radius-s); }
+.btn.doc-ai-off { opacity: .45; cursor: not-allowed; }
 .doc-ai-quiet { background: transparent; color: var(--ink-soft); }
 .doc-ai-quiet:hover { background: var(--hover-wash); color: var(--ink); }
 
