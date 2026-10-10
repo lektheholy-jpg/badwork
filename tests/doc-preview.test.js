@@ -165,7 +165,7 @@ const escapeHtml = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<':
     };
     const zoom = f => f.paper.style.getPropertyValue('--doc-zoom');
     let f = mkFrame(416, 794, 1500); ctx.docFitSheets(f.frame);
-    ok(Math.abs(zoom(f) - (416 - 16) / 794) < 1e-3 && f.frame.style.getPropertyValue('--fit-h') === '1500px', 'กรอบแคบกว่าแผ่น → ย่อ (เผื่อขอบ 16px) และตั้งความสูง iframe = ความสูงเนื้อหา');
+    ok(Math.abs(zoom(f) - (416 - 16) / 794) < 1e-3 && f.frame.style.getPropertyValue('--fit-h') === '1501px', 'กรอบแคบกว่าแผ่น → ย่อ (เผื่อขอบ 16px) และตั้งความสูง iframe = ความสูงเนื้อหา +1px กันเศษพิกเซล');
     f = mkFrame(1400, 794, 900); ctx.docFitSheets(f.frame);
     ok(zoom(f) === '1.0000', 'กรอบกว้างกว่าแผ่น → ไม่ขยายเกินขนาดจริง');
     f = mkFrame(0, 0, 100); ctx.docFitSheets(f.frame);

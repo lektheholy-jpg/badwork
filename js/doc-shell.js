@@ -390,7 +390,8 @@ const DOC_SHEET_A4 = { w: 210, h: 297, pad: [16, 14, 16, 14], label: 'A4 แน�
 
 const DOC_PAPER_CSS = `
 @media screen{
-  html{background:#dfe2e8}
+  html{background:#dfe2e8;overflow-x:hidden;scrollbar-width:none}
+  html::-webkit-scrollbar{display:none}
   html.paper-on #doc-src{display:none}
   #doc-paper{display:none;zoom:var(--doc-zoom,1);padding:14px 0 2px}
   html.paper-on #doc-paper{display:block}
@@ -538,10 +539,11 @@ function docFitSheets(frame) {
   if (!paper || !doc.documentElement.classList.contains('paper-on')) return;
   paper.style.removeProperty('--doc-zoom');
   const widest = Math.max(0, ...[...paper.querySelectorAll('.doc-sheet')].map(s => s.offsetWidth));
-  const zoom = widest ? Math.min(1, (frame.clientWidth - 16) / widest) : 1;
+  const avail = doc.documentElement.clientWidth || frame.clientWidth; // ความกว้างจริงที่วางกระดาษได้ (หักแถบเลื่อนถ้ามี)
+  const zoom = widest ? Math.floor(Math.min(1, (avail - 16) / widest) * 10000) / 10000 : 1; // ปัดลง — ไม่ให้ล้นเพราะเศษทศนิยม
   paper.style.setProperty('--doc-zoom', Number.isFinite(zoom) && zoom > 0 ? zoom.toFixed(4) : '1'); // ยังไม่มีขนาด (แท็บซ่อน) → คงขนาดจริง ไม่ใส่ NaN/0
   frame.style.setProperty('--fit-h', '100px');            // ลดก่อน เพื่อให้ scrollHeight = ความสูงเนื้อหาจริง
-  frame.style.setProperty('--fit-h', doc.documentElement.scrollHeight + 'px');
+  frame.style.setProperty('--fit-h', Math.ceil(doc.documentElement.scrollHeight) + 1 + 'px'); // +1 กันเศษพิกเซลจนเกิดแถบเลื่อนในกรอบ
 }
 
 // เรียก fn ทุกครั้งที่ปรับขนาดหน้าต่าง — เลิกฟังเองเมื่อ el หลุดจากหน้า หรือสลับไปแท็บอื่น (ไม่ทิ้ง listener ค้าง)

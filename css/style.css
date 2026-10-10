@@ -76,7 +76,8 @@
   color-scheme: light;
 }
 
-* { box-sizing: border-box; }
+* { box-sizing: border-box; scrollbar-width: none; } /* ทั้งเว็บไม่โชว์แถบเลื่อนซ้ายขวา/บนล่าง — ยังเลื่อนด้วยล้อเมาส์ · นิ้ว · แทร็กแพดได้ */
+*::-webkit-scrollbar { display: none; width: 0; height: 0; }
 html, body { height: 100%; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; overflow-x: clip;
   margin: 0;
   font-family: var(--font);
