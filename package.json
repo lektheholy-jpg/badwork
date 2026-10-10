@@ -21,7 +21,8 @@
     "check:sw": "node tools/check-sw.js",
     "test:ttscope": "node tests/timetable-scope.test.js",
     "test:idp": "node tests/idp-list.test.js",
-    "test:idpai": "node tests/idp-ai.test.js"
+    "test:idpai": "node tests/idp-ai.test.js",
+    "test:docprint": "node tests/doc-print.test.js"
   },
   "devDependencies": {
     "csso-cli": "4.0.2",

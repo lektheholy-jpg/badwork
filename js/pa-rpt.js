@@ -284,25 +284,19 @@ function parptBuildDocHtml(d, o, appendixHtml = '') {
 }
 
 async function parptPrint(d, o) {
-  const w = window.open('', '_blank');
-  if (!w) { showToast('เบราว์เซอร์บล็อกหน้าต่างพิมพ์ — อนุญาต pop-up แล้วลองใหม่'); return; }
-  let appendixHtml = '';
-  try {
-    const recs = await parptLoadRecordsForYear(d.fiscalYear);
-    appendixHtml = parptAppendixHtml(recs, d.fiscalYear);
-  } catch (err) { console.error('parptPrint: โหลดภาคผนวกไม่สำเร็จ', err); }
   const title = `PA_Report_${(o && o.name) || ''}_${d.fiscalYear || ''}`.replace(/\s+/g, '_');
-  w.document.write(`<!doctype html><html lang="th"><head><meta charset="utf-8"><title>${escapeHtml(title)}</title>
-    <style>${docFontCss()}${PA1_CSS}@page{size:A4;margin:16mm 14mm}html,body{margin:0;background:#fff}</style></head>
-    <body>${parptBuildDocHtml(d, o, appendixHtml)}</body></html>`);
-  w.document.close();
-  w.focus();
-  const go = () => { try { w.print(); } catch (err) { /* ผู้ใช้สั่งพิมพ์เองได้ */ } };
-  const fl = w.document.fonts;
-  if (fl && fl.load) {
-    const loads = Promise.allSettled(["16pt 'PA Sarabun'", "bold 16pt 'PA Sarabun'"].map(f => fl.load(f, 'กa')));
-    Promise.race([loads, new Promise(r => setTimeout(r, 2500))]).then(() => setTimeout(go, 150));
-  } else setTimeout(go, 600);
+  return docPrintWindow({ // ตัวช่วยกลางใน js/doc-shell.js — window.open ถูกเรียกก่อนโหลดภาคผนวก (กัน pop-up ถูกบล็อก)
+    title,
+    css: PA1_CSS,
+    html: async () => {
+      let appendixHtml = '';
+      try {
+        const recs = await parptLoadRecordsForYear(d.fiscalYear);
+        appendixHtml = parptAppendixHtml(recs, d.fiscalYear);
+      } catch (err) { console.error('parptPrint: โหลดภาคผนวกไม่สำเร็จ', err); }
+      return parptBuildDocHtml(d, o, appendixHtml);
+    },
+  });
 }
 
 // ------------------------------------------------------------------

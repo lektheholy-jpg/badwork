@@ -38,6 +38,7 @@ npm run test:rec         # แท็บอบรม/เกียรติบั�
 npm run test:pa          # กลุ่มหน้า Personal Agreement: โครง PA_CONFIG + เทียบผลเรนเดอร์/พร้อต์ AI/path Firestore กับ tests/pa-golden.json + ระบบเอกสารหลายระบบไม่ปนกัน (state/collection)
 npm run test:worker      # พร็อกซี Gemini (worker/worker.js): ตรวจ token/email_verified · rate limit ต่อ uid · คีย์อยู่ใน header
 npm run test:priv        # ส่งออก/ลบบัญชีครอบคลุมเอกสารทุกระบบ (pa_*) และหยุดก่อนลบถ้าโหลด config ไม่ได้
+npm run test:docprint    # ตัวช่วยพิมพ์กลาง (docWaitFonts · docPrintWindow ใน doc-shell.js) + กันไม่ให้ window.open/โค้ดรอฟอนต์หลุดนอก doc-shell.js
 ```
 
 - หน้าเว็บโหลด `css/style.min.css` · commit `.min` และ `package-lock.json` ด้วย
@@ -67,7 +68,7 @@ js/picker-pages.js    หน้าเลือกวิชา/ห้อง
 js/report-page.js     หน้ารายงาน
 js/nav-history.js     ปุ่ม/ท่าย้อนกลับของระบบ (History API): entry ต่อหน้า/รายวิชา + "ชั้น" ของป๊อปอัป · record · patch · layer · backTo · applyScroll
 js/doc-system.js      ระบบเอกสาร (context ต่อระบบ): config + state (sys.state · sys.rptState) + sys.col(kind, uid) · แทน global PAState/PARptState — โหลดก่อน pa-config.js
-js/doc-shell.js       โครงหน้ากลางของทุกระบบเอกสาร: หัวเรื่อง+แท็บ · สลับแท็บ/ตัวโหลด · ตัวช่วยร่วม (วันที่ไทย/ปีงบ/ไอคอน/ป้ายสถานะ/ฟอนต์พิมพ์) · registerDocUi · renderDocPage(id)
+js/doc-shell.js       โครงหน้ากลางของทุกระบบเอกสาร: หัวเรื่อง+แท็บ · สลับแท็บ/ตัวโหลด · ตัวช่วยร่วม (วันที่ไทย/ปีงบ/ไอคอน/ป้ายสถานะ/ฟอนต์พิมพ์) · ตัวช่วยพิมพ์ (docWaitFonts · docPrintWindow) · registerDocUi · renderDocPage(id)
 js/pa-config.js       PA_CONFIG: ค่าคงที่ของระบบ PA ที่เดียว (ชื่อ collection · แท็บ · โครงฟอร์ม PA 1/ส · ช่องบริบท AI · พร้อต์/รุ่น/คีย์ของผู้ช่วย AI) — โหลดหลัง doc-system.js ก่อน pa.js (ท้ายไฟล์ลงทะเบียนเป็นระบบ 'pa')
 js/pa.js              ฟอร์มข้อตกลง PA 1/ส (lazy — โหลดตอนเข้าหน้า PA พร้อม pa-config/badwork-ai/pa-report/pa-rpt ผ่าน LAZY_BUNDLES.pa)
 js/badwork-ai-config.js  BADWORK_AI_CONFIG: ตั้งค่า AI ที่ใช้ร่วมทุกระบบเอกสาร (คีย์/พร็อกซี · รายชื่อรุ่น · คีย์รุ่นที่เลือก · คีย์ความยินยอม) ที่เดียว
@@ -84,7 +85,7 @@ js/timetable.js       [lazy] ตารางสอน (แยกภาคเร�
 js/records.js         [lazy] แท็บอบรม/เกียรติบัตร/รางวัล (รูปย่อใน Firestore + ต้นฉบับใน Storage)
 js/vendor/            xlsx.mini.min.js (โหลดเมื่อนำเข้า/ส่งออกไฟล์)
 tools/                check-inline.js · check-css.js · check-sw.js
-tests/                score-logic.test.js · sw.test.js
+tests/                score-logic.test.js · sw.test.js · doc-print.test.js (และอื่นๆ ตามรายการใน package.json)
 worker/worker.js      Cloudflare Worker: พร็อกซี Gemini (ตรวจ Firebase token · email_verified · rate limit ต่อ uid) — ไม่ใช่ส่วนของแอปหน้าเว็บ ไม่อยู่ใน PRECACHE
 worker/wrangler.toml  ค่า deploy ของ Worker (ALLOWED_ORIGINS · RATE_LIMITER)
 firestore.rules       กฎความปลอดภัย (Firestore)
@@ -168,7 +169,7 @@ users/{uid}/pa_reports/{docId}               แบบรายงานผล P
 
 ### ฟอร์ม PA และผู้ช่วย AI
 
-- **ระบบเอกสาร (`js/doc-system.js`)**: state ของหน้า (`tab/view/docId/doc/list/seq…`) และชื่อ collection ไม่ได้เป็น global เดี่ยวอีกต่อไป — แต่ละระบบ (ตอนนี้มีแค่ `pa`) ลงทะเบียน config ของตัวเองด้วย `registerDocSystem(config)` แล้วได้ `sys = { config, state, rptState, col(kind, uid) }` ของตัวเอง
+- **ระบบเอกสาร (`js/doc-system.js`)**: state ของหน้า (`tab/view/docId/doc/list/seq…`) และชื่อ collection ไม่ได้เป็น global เดี่ยวอีกต่อไป — แต่ละระบบ (ตอนนี้มี `pa` และ `idp`) ลงทะเบียน config ของตัวเองด้วย `registerDocSystem(config)` แล้วได้ `sys = { config, state, rptState, col(kind, uid) }` ของตัวเอง
   - โค้ดในไฟล์ PA เขียน `const sys = docSystem();` **ครั้งเดียวที่บรรทัดแรกของฟังก์ชัน** แล้วใช้ `sys.state.xxx` · `sys.config.xxx` · `sys.col('agreements', uid)` — ห้ามเรียก `docSystem()` ซ้ำหลัง `await` (ให้ถือ `sys` ตัวเดิม ไม่งั้นงานที่ค้างอยู่จะไปเขียน state ของอีกระบบถ้าผู้ใช้สลับหน้ากลางคัน) · ส่ง `sys` ต่อให้ `docStale(view, seq, sys)`
   - จุดเข้าของหน้าเรียก `docActivate('pa')` · โค้ดนอกกลุ่มไฟล์ (เช่น `app.js`) อ้างด้วย id: `docSystem('pa')`
   - ชื่อ collection อยู่ที่ `PA_CONFIG.collections` ที่เดียว (ต้องตรง `firestore.rules`) · `tests/pa-config.test.js` ตรวจว่าไม่มี `PAState`/`PARptState`/`PA_CONFIG`/ชื่อ `pa_*` ตรงๆ หลุดออกนอก `pa-config.js`
@@ -181,10 +182,21 @@ users/{uid}/pa_reports/{docId}               แบบรายงานผล P
 - ประหยัดโควต้า: คำแนะนำช่องงานอยู่ที่ `PA_CONFIG.ai.prompts.workHints` (ส่งครั้งเดียวต่อคำขอ) · จำกัดความยาวเป็นตัวอักษรใน `workHints` / `PA_CONFIG.ai.prompts.part2` · อย่าเพิ่มปุ่มที่ยิงหลายสิบช่องในคำขอเดียว
 - ข้อความผู้ใช้ส่งไปประมวลผลที่ Google · ต้องมีหน้าต่างขอความยินยอมก่อนใช้ครั้งแรก (คีย์ `BADWORK_AI_CONFIG.storageKeys.consent` — **ยินยอมครั้งเดียวมีผลทุกระบบ** จึงถ้าระบบใหม่ส่งข้อมูลประเภทใหม่ให้ AI ต้องเพิ่มเลขเวอร์ชันท้ายคีย์ (v2 → v3) ให้ทุกคนยินยอมใหม่) · ห้ามกรอกชื่อ/ข้อมูลที่ระบุตัวนักเรียนลงในช่อง
 
+### พิมพ์ / บันทึกเป็น PDF (ตัวช่วยกลางใน `js/doc-shell.js`)
+
+- **ห้ามเขียน `window.open` + รอฟอนต์ + `print()` เองในไฟล์ของระบบ** — ใช้ตัวช่วยกลาง (เดิมคัดลอกกัน 3 ที่ แก้ที่หนึ่งแล้วอีกที่ไม่ตาม) · `tests/doc-print.test.js` ตรวจว่าไม่มี `window.open(` / `fonts.load(` นอก `doc-shell.js` และมี `.print()` เฉพาะ `idp.js`
+- `docPrintWindow({ title, css, html, fonts?, page? })` — เปิดหน้าต่างใหม่ → เขียนเอกสาร → รอฟอนต์ → สั่งพิมพ์ (ผู้ใช้เลือก "บันทึกเป็น PDF" ในหน้าต่างพิมพ์)
+  - `html` เป็นสตริง **หรือฟังก์ชัน (async ได้)** ที่คืนสตริง — ถ้าต้องโหลดข้อมูลก่อนพิมพ์ (เช่นภาคผนวกของรายงานผล) ให้ใส่เป็นฟังก์ชัน: `window.open` ถูกเรียกก่อน `await` เสมอ ไม่งั้นเบราว์เซอร์มองว่าไม่ได้มาจากการคลิกแล้วบล็อก pop-up · ฟังก์ชันพัง = ปิดหน้าต่างว่างแล้วโยน error ต่อ
+  - `css` = สไตล์ของแบบ (เช่น `PA1_CSS`) · `page` = กฎ `@page` (ค่าเริ่มต้น `DOC_PAGE_A4` = A4 ขอบ 16/14 มม. แบบ PA) · `fonts` = รายการฟอนต์ที่ต้องรอ (ค่าเริ่มต้น `DOC_FONT_SPECS` = ปกติ+หนา · PA ข้อตกลงเพิ่มตัวเอียง)
+  - ไม่มี `document.fonts` → หน่วง 600 มิลลิวินาทีแทน · pop-up ถูกบล็อก → แจ้งผู้ใช้และคืน `null`
+- `docWaitFonts(doc, specs?, maxMs?)` — รอฟอนต์ของเอกสาร `doc` (ไม่เกิน `maxMs` ค่าเริ่มต้น 2.5 วินาที · ไม่ reject) คืน `true` = มี font API และรอแล้ว · ใช้ก่อนวัดความสูง/ตัดหน้า เพราะความสูงแถวขึ้นกับฟอนต์
+- **ID-Plan ไม่ใช้ `docPrintWindow`** — พิมพ์ผ่าน iframe (`frame.contentWindow.print()`) เพราะใช้ named `@page` แนวตั้ง/แนวนอนในไฟล์เดียวและต้องตัดหน้าก่อน (`idpPaginate`) · ใช้ร่วมแค่ `docWaitFonts` · ระบบใหม่ที่เป็นหน้ากระดาษเดียวแนวเดียวใช้ `docPrintWindow` ได้เลย
+- ยังไม่รวม (ขั้นถัดไป): โครงหน้าตัวอย่าง (แถบเลือกเอกสาร/ปุ่มแก้ไข-พิมพ์/สถานะว่าง) และวิธีย่อกระดาษให้พอดีจอ (`idpFitPaper` กับ zoom ของ `.parp-paper` ใน PA) — ยังแยกเขียนระบบละชุด
+
 ### เพิ่มระบบเอกสารใหม่ (เช่น ID-Plan)
 ส่วนกลาง (ไม่ต้องแก้): `js/doc-system.js` (ทะเบียนระบบ · state · collection) และ `js/doc-shell.js` (โครงหน้า · แท็บ · ตัวช่วยร่วม)
 1. สร้าง `js/<id>-config.js` — config (`id` · `title` · `collections` · `tabs` · …) แล้วท้ายไฟล์เรียก `registerDocSystem(CONFIG)`
-2. สร้างไฟล์ UI ของระบบ (ฟอร์ม/รายการ/พิมพ์) แล้วท้ายไฟล์เรียก `registerDocUi('<id>', { tabs: { <แท็บ>: sys => …, default: sys => … }, beforeLeave(sys) {…} })` (ดูตัวอย่างท้าย `js/pa.js`)
+2. สร้างไฟล์ UI ของระบบ (ฟอร์ม/รายการ/พิมพ์) แล้วท้ายไฟล์เรียก `registerDocUi('<id>', { tabs: { <แท็บ>: sys => …, default: sys => … }, beforeLeave(sys) {…} })` (ดูตัวอย่างท้าย `js/pa.js`) · ปุ่มพิมพ์เรียก `docPrintWindow(...)` (ดูหัวข้อ "พิมพ์ / บันทึกเป็น PDF" ด้านบน) — ไม่เขียน `window.open`/รอฟอนต์เอง
 3. `js/utils.js`: เพิ่มไฟล์ใน `LAZY_MODULES` + กลุ่มใหม่ใน `LAZY_BUNDLES` (ลำดับ `doc-system` → `doc-shell` → config → UI) และใส่ config ใน `docConfigs` (ให้ privacy.js ส่งออก/ลบข้อมูลของระบบนี้)
 4. `app.js`: เพิ่ม route → `renderDocPage('<id>')` และ `ROUTE_MODULES` · `index.html`: ปุ่มเมนู
 5. `sw.js`: เพิ่มไฟล์ใน PRECACHE + เลข VERSION (รัน `npm run check:sw`) · `firestore.rules`: เพิ่ม collection ใหม่ใต้ `users/{uid}/`

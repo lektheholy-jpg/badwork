@@ -997,11 +997,8 @@ async function idpRenderPreviewView(pickId) {
   // รอเอกสารตัวอย่างโหลด + ฟอนต์พร้อม (ความสูงแถวขึ้นกับฟอนต์) แล้วค่อยตัดหน้า — ไม่งั้นจำนวนหน้าเพี้ยน
   await loaded;
   const fdoc = frame.contentDocument;
-  const fl = fdoc && fdoc.fonts;
-  if (fl && fl.load) {
-    const loads = Promise.allSettled(["16pt 'PA Sarabun'", "bold 16pt 'PA Sarabun'", "13pt 'PA Sarabun'"].map(f => fl.load(f, 'กa')));
-    await Promise.race([loads, new Promise(res => setTimeout(res, 2500))]);
-    try { await fl.ready; } catch (e) { /* ไปต่อด้วยฟอนต์ที่มี */ }
+  if (await docWaitFonts(fdoc, [...DOC_FONT_SPECS, "13pt 'PA Sarabun'"])) { // ตัวช่วยกลางใน js/doc-shell.js
+    try { await fdoc.fonts.ready; } catch (e) { /* ไปต่อด้วยฟอนต์ที่มี */ }
   }
   if (!frame.isConnected) return;
   idpPaginate(fdoc);

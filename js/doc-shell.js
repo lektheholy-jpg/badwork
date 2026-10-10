@@ -260,6 +260,44 @@ function docFontCss() {
 }
 
 // ------------------------------------------------------------------
+// พิมพ์ / ตัดหน้า — ตัวช่วยกลาง (เดิมแต่ละระบบเขียนซ้ำเอง: paPrint · parptPrint · idpRenderPreviewView)
+//   docWaitFonts(doc, specs?, maxMs?)  รอฟอนต์ของเอกสาร doc พร้อม (ไม่เกิน maxMs · ไม่ reject)
+//        → true = เบราว์เซอร์มี document.fonts และรอแล้ว · false = ไม่มี API (ผู้เรียกควรหน่วงเอง)
+//        ต้องรอก่อนพิมพ์/วัดความสูง ไม่งั้นได้ฟอนต์สำรอง และจำนวนหน้าเพี้ยน (ความสูงแถวขึ้นกับฟอนต์)
+//   docPrintWindow({ title, css, html, fonts?, page? })  เปิดหน้าต่างใหม่ → เขียนเอกสาร → รอฟอนต์ → สั่งพิมพ์
+//        html = สตริง หรือฟังก์ชัน (sync/async) ที่คืนสตริง — ใช้กับเอกสารที่ต้องโหลดข้อมูลก่อน (เช่นภาคผนวกรายงานผล)
+//        window.open เรียก "ก่อน await ใดๆ" เสมอ ไม่งั้นเบราว์เซอร์ถือว่าไม่ได้มาจากการคลิกแล้วบล็อก pop-up
+//        css = สไตล์ของแบบ (เช่น PA1_CSS) · page = กฎ @page (ค่าเริ่มต้น A4 ขอบ 16/14 มม. แบบ PA)
+//   ไม่ใช้กับ ID-Plan: ตัวนั้นพิมพ์ผ่าน iframe (named @page แนวตั้ง/แนวนอนในไฟล์เดียว) — ใช้แค่ docWaitFonts
+// ------------------------------------------------------------------
+const DOC_FONT_SPECS = ["16pt 'PA Sarabun'", "bold 16pt 'PA Sarabun'"];
+const DOC_PAGE_A4 = '@page{size:A4;margin:16mm 14mm}html,body{margin:0;background:#fff}';
+
+function docWaitFonts(doc, specs = DOC_FONT_SPECS, maxMs = 2500) {
+  const fl = doc && doc.fonts;
+  if (!fl || !fl.load) return Promise.resolve(false);
+  const loads = Promise.allSettled(specs.map(f => fl.load(f, 'กa')));
+  return Promise.race([loads, new Promise(r => setTimeout(r, maxMs))]).then(() => true);
+}
+
+async function docPrintWindow({ title, css = '', html, fonts, page = DOC_PAGE_A4 }) {
+  const w = window.open('', '_blank'); // ต้องเป็นคำสั่งแรก (ก่อน await)
+  if (!w) { showToast('เบราว์เซอร์บล็อกหน้าต่างพิมพ์ — อนุญาต pop-up แล้วลองใหม่'); return null; }
+  let body;
+  try { body = typeof html === 'function' ? await html() : html; }
+  catch (err) { try { w.close(); } catch (e) { /* ปิดไม่ได้ก็ปล่อย */ } throw err; } // ไม่ทิ้งหน้าต่างว่างค้าง
+  w.document.write(`<!doctype html><html lang="th"><head><meta charset="utf-8"><title>${escapeHtml(title || '')}</title>
+    <style>${docFontCss()}${css}${page}</style></head>
+    <body>${body}</body></html>`);
+  w.document.close();
+  w.focus();
+  const go = () => { try { w.print(); } catch (err) { /* ผู้ใช้สั่งพิมพ์เองได้ */ } };
+  const hasFonts = await docWaitFonts(w.document, fonts);
+  setTimeout(go, hasFonts ? 150 : 600);
+  return w;
+}
+
+// ------------------------------------------------------------------
 // โครงหน้า: หัวเรื่อง + แท็บ (แบบฟอร์มข้อตกลง | ตัวอย่าง/พิมพ์) + พื้นที่เนื้อหา
 // ปุ่มเมนูข้างปุ่มเดียว (pa-page) เปิดหน้านี้ — สลับสองมุมมองด้วยแท็บโดยไม่วาดทั้งหน้าใหม่
 // ------------------------------------------------------------------
