@@ -505,6 +505,26 @@ async function idpRenderFormView() {
   // Wire events
   docLBind(document.getElementById('idp-form'), { totalKeys: ['subjects', 'activities'], totalEl: '#idp-total-hours' });
 
+  // ส่วนที่ 3: เลือกสมรรถนะแล้วดึงวิธีการ/ระยะเวลา/ประโยชน์ที่กรอกไว้ในส่วนที่ 2 มาใส่ให้ (แก้ต่อในช่องได้)
+  document.querySelectorAll('#idp-form select[data-sum][data-sf="compId"]').forEach(sel => {
+    sel.addEventListener('change', () => {
+      const i = sel.dataset.sum, cid = sel.value;
+      if (!cid) return;
+      idpCollect(); // เก็บค่าล่าสุดของส่วนที่ 2 ก่อนดึง
+      const src = sys.state.doc.comps?.[cid] || {};
+      const fields = ['method', 'startDate', 'endDate', 'benefit'];
+      const els = Object.fromEntries(fields.map(f => [f, document.querySelector(`#idp-form [data-sum="${i}"][data-sf="${f}"]`)]));
+      if (!fields.some(f => src[f])) { showToast('ส่วนที่ 2 ของสมรรถนะนี้ยังไม่ได้กรอก — กรอกแล้วเลือกใหม่ หรือพิมพ์ในตารางนี้ได้เลย'); return; }
+      if (fields.some(f => els[f]?.value.trim()) && !confirm('แทนที่ข้อความในแถวนี้ด้วยข้อมูลจากส่วนที่ 2?')) return;
+      fields.forEach(f => {
+        const el = els[f];
+        if (!el) return;
+        el.value = src[f] || '';
+        if (el.tagName === 'TEXTAREA') window._idpExpandTa?.(el);
+      });
+    });
+  });
+
   document.getElementById('idp-tt-pull')?.addEventListener('click', () => {
     idpCollect();
     const sd = sys.state.doc;
