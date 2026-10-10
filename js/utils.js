@@ -533,12 +533,14 @@ const LAZY_MODULES = {
   'doc-shell': 'js/doc-shell.js', // โครงหน้า/แท็บ/ตัวช่วยร่วมของทุกระบบเอกสาร — โหลดหลัง doc-system ก่อนไฟล์ของแต่ละระบบ
   'pa-config': 'js/pa-config.js',
   pa: 'js/pa.js',
-  'badwork-ai': 'js/badwork-ai.js',
+  'badwork-ai-config': 'js/badwork-ai-config.js', // ตั้งค่าผู้ช่วย AI ที่ใช้ร่วมทุกระบบ (คีย์/พร็อกซี/รุ่น/ความยินยอม)
+  'badwork-ai': 'js/badwork-ai.js', // แกนผู้ช่วย AI (ไม่รู้จักชื่อระบบ)
+  'pa-ai': 'js/pa-ai.js', // ตัวต่อผู้ช่วย AI ของ PA (registerDocAi)
   'pa-report': 'js/pa-report.js',
   'pa-rpt': 'js/pa-rpt.js',
 };
 const LAZY_BUNDLES = {
-  pa: ['doc-system', 'doc-shell', 'pa-config', 'pa', 'badwork-ai', 'pa-report', 'pa-rpt'],
+  pa: ['doc-system', 'doc-shell', 'pa-config', 'pa', 'badwork-ai-config', 'badwork-ai', 'pa-ai', 'pa-report', 'pa-rpt'],
   // เฉพาะ config ของทุกระบบเอกสาร (เบา · ไม่มี UI) — privacy.js ใช้รู้ชื่อ collection · ระบบเอกสารใหม่ต้องเพิ่มไฟล์ config ของตัวเองที่นี่
   docConfigs: ['doc-system', 'pa-config'],
 };

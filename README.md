@@ -70,7 +70,9 @@ js/doc-system.js      ระบบเอกสาร (context ต่อระบ
 js/doc-shell.js       โครงหน้ากลางของทุกระบบเอกสาร: หัวเรื่อง+แท็บ · สลับแท็บ/ตัวโหลด · ตัวช่วยร่วม (วันที่ไทย/ปีงบ/ไอคอน/ป้ายสถานะ/ฟอนต์พิมพ์) · registerDocUi · renderDocPage(id)
 js/pa-config.js       PA_CONFIG: ค่าคงที่ของระบบ PA ที่เดียว (ชื่อ collection · แท็บ · โครงฟอร์ม PA 1/ส · ช่องบริบท AI · พร้อต์/รุ่น/คีย์ของผู้ช่วย AI) — โหลดหลัง doc-system.js ก่อน pa.js (ท้ายไฟล์ลงทะเบียนเป็นระบบ 'pa')
 js/pa.js              ฟอร์มข้อตกลง PA 1/ส (lazy — โหลดตอนเข้าหน้า PA พร้อม pa-config/badwork-ai/pa-report/pa-rpt ผ่าน LAZY_BUNDLES.pa)
-js/badwork-ai.js      ผู้ช่วย AI ในฟอร์มเอกสาร (ตอนนี้ใช้กับ PA · พรอมต์/ฟิลด์อ่านจาก config.ai ของระบบ)
+js/badwork-ai-config.js  BADWORK_AI_CONFIG: ตั้งค่า AI ที่ใช้ร่วมทุกระบบเอกสาร (คีย์/พร็อกซี · รายชื่อรุ่น · คีย์รุ่นที่เลือก · คีย์ความยินยอม) ที่เดียว
+js/badwork-ai.js      แกนผู้ช่วย AI (ไม่รู้จักชื่อระบบ): เรียก Gemini · โครงพร้อต์ · ยินยอม · ตัวกันกดซ้ำ · หน้าต่างตรวจทาน · เก็บบริบท · ฝังปุ่ม — เรียกผ่าน sys + ตัวต่อ (registerDocAi)
+js/pa-ai.js           ตัวต่อ AI ของ PA: ช่องที่ให้ AI เขียน · ข้อมูลประกอบพร้อต์ · ข้อความของ PA · ตำแหน่งปุ่ม · ที่เก็บบริบท
 js/pa-report.js       ตัวอย่าง/พิมพ์ PA
 js/pa-rpt.js          แบบฟอร์มรายงานผล Personal Agreement (แท็บที่ 3) + แท็บ ตัวอย่าง/พิมพ์ รายงานผล (แท็บที่ 4)
 js/report.js          [lazy] สรุปผลรายห้อง ส่งออก CSV/ปพ.5/SGS เกณฑ์เกรด แปลงคะแนน NextSchool
@@ -93,7 +95,7 @@ storage.rules         กฎความปลอดภัย (Firebase Storage)
 ```sh
 cd worker
 npx wrangler secret put GEMINI_API_KEY   # คีย์จาก aistudio.google.com/apikey — เก็บเป็น secret ไม่ใส่ในไฟล์
-npx wrangler deploy                      # แล้วนำ URL ที่ได้ไปใส่ PA_CONFIG.ai.proxyUrl (js/pa-config.js)
+npx wrangler deploy                      # แล้วนำ URL ที่ได้ไปใส่ BADWORK_AI_CONFIG.proxyUrl (js/badwork-ai-config.js)
 ```
 
 - แก้ `ALLOWED_ORIGINS` ใน `worker/wrangler.toml` เป็นโดเมนจริงของเว็บ (คั่นด้วย `,`)
@@ -171,10 +173,11 @@ users/{uid}/pa_reports/{docId}               แบบรายงานผล P
   - ชื่อ collection อยู่ที่ `PA_CONFIG.collections` ที่เดียว (ต้องตรง `firestore.rules`) · `tests/pa-config.test.js` ตรวจว่าไม่มี `PAState`/`PARptState`/`PA_CONFIG`/ชื่อ `pa_*` ตรงๆ หลุดออกนอก `pa-config.js`
   - ยังเป็นของ PA เฉพาะ (รอขั้นตอนถัดไป): รหัสแท็บ `'agreement'/'report'/'rpt'/'rptprev'` ใน `docRenderTab` · id ช่องฟอร์มและ HTML ของฟอร์ม · การอ่าน `records` ใน `parptLoadRecordsForYear`
 - `js/pa.js` ฟอร์มตามแบบ PA 1/ส ของ สพฐ. (ส่วนที่ 1: ภาระงาน + งานตามมาตรฐานตำแหน่ง 15 ข้อ · ส่วนที่ 2: ประเด็นท้าทาย) · `js/pa-report.js` ตัวอย่างและพิมพ์/บันทึก PDF
-- `js/badwork-ai.js` เรียก Gemini REST ผ่านพร็อกซีของเรา (`PA_CONFIG.ai.proxyUrl` → `worker/worker.js` บน Cloudflare) · แนบ Firebase ID token ให้พร็อกซีตรวจ · **คีย์ Gemini อยู่เป็น secret ที่เซิร์ฟเวอร์ ไม่อยู่ในโค้ดหน้าเว็บ** (`PA_CONFIG.ai.apiKey` ต้องว่างเสมอ — `tests/pa-config.test.js` ตรวจ) · ไม่โหลด SDK เพิ่ม ใช้ `fetch` · ชื่อรุ่นแก้ที่ `PA_CONFIG.ai.model` (รายชื่อที่เลือกได้อยู่ที่ `PA_CONFIG.ai.models`) ใน `js/pa-config.js` · โหมดตรง (ใส่ `apiKey` ในหน้าเว็บ) ยังมีในโค้ดแต่ไม่แนะนำ
+- **ผู้ช่วย AI แยกเป็น 3 ชั้น**: `js/badwork-ai-config.js` (ค่าร่วมทุกระบบ) · `js/badwork-ai.js` (แกน — ไม่รู้จัก PA ใช้ได้กับทุกระบบเอกสาร อ่านผ่าน `sys` ที่ถือไว้ + ตัวต่อที่ลงทะเบียนด้วย `registerDocAi('<id>', adapter)`) · `js/pa-ai.js` (ตัวต่อของ PA) · สัญญาของตัวต่อ (เมธอด/ข้อความที่ต้องมี) เขียนไว้ที่หัว `js/badwork-ai.js` และ `registerDocAi` ตรวจความครบให้ · `tests/pa-config.test.js` มีระบบจำลองที่สองยืนยันว่าใช้แกนเดียวกันโดยไม่ปนกับ PA และตรวจว่าแกนไม่มีชื่อ/ข้อความของ PA
+- `js/badwork-ai.js` เรียก Gemini REST ผ่านพร็อกซีของเรา (`BADWORK_AI_CONFIG.proxyUrl` → `worker/worker.js` บน Cloudflare) · แนบ Firebase ID token ให้พร็อกซีตรวจ · **คีย์ Gemini อยู่เป็น secret ที่เซิร์ฟเวอร์ ไม่อยู่ในโค้ดหน้าเว็บ** (`BADWORK_AI_CONFIG.apiKey` ต้องว่างเสมอ — `tests/pa-config.test.js` ตรวจ) · ไม่โหลด SDK เพิ่ม ใช้ `fetch` · ชื่อรุ่นแก้ที่ `BADWORK_AI_CONFIG.model` (รายชื่อที่เลือกได้อยู่ที่ `BADWORK_AI_CONFIG.models`) ใน `js/badwork-ai-config.js` · รุ่นที่ผู้ใช้เลือกใช้ร่วมทุกระบบ · โหมดตรง (ใส่ `apiKey` ในหน้าเว็บ) ยังมีในโค้ดแต่ไม่แนะนำ
 - ปุ่มบนสุดร่างเฉพาะส่วนที่ 2 ที่ว่าง (1 คำขอ) · งานข้อ 1.1–3.3 ใช้ปุ่มใต้แต่ละข้อ (ข้อละ 4 ช่อง) · ไม่เขียนทับช่องที่กรอกแล้ว · ข้อความที่ AI เสนอแสดงในหน้าต่างให้ตรวจก่อนใช้ ไม่บันทึกอัตโนมัติ
 - ประหยัดโควต้า: คำแนะนำช่องงานอยู่ที่ `PA_CONFIG.ai.prompts.workHints` (ส่งครั้งเดียวต่อคำขอ) · จำกัดความยาวเป็นตัวอักษรใน `workHints` / `PA_CONFIG.ai.prompts.part2` · อย่าเพิ่มปุ่มที่ยิงหลายสิบช่องในคำขอเดียว
-- ข้อความผู้ใช้ส่งไปประมวลผลที่ Google · ต้องมีหน้าต่างขอความยินยอมก่อนใช้ครั้งแรก (คีย์ `PA_CONFIG.ai.storageKeys.consent`) · ห้ามกรอกชื่อ/ข้อมูลที่ระบุตัวนักเรียนลงในช่อง
+- ข้อความผู้ใช้ส่งไปประมวลผลที่ Google · ต้องมีหน้าต่างขอความยินยอมก่อนใช้ครั้งแรก (คีย์ `BADWORK_AI_CONFIG.storageKeys.consent` — **ยินยอมครั้งเดียวมีผลทุกระบบ** จึงถ้าระบบใหม่ส่งข้อมูลประเภทใหม่ให้ AI ต้องเพิ่มเลขเวอร์ชันท้ายคีย์ (v2 → v3) ให้ทุกคนยินยอมใหม่) · ห้ามกรอกชื่อ/ข้อมูลที่ระบุตัวนักเรียนลงในช่อง
 
 ### เพิ่มระบบเอกสารใหม่ (เช่น ID-Plan)
 ส่วนกลาง (ไม่ต้องแก้): `js/doc-system.js` (ทะเบียนระบบ · state · collection) และ `js/doc-shell.js` (โครงหน้า · แท็บ · ตัวช่วยร่วม)
@@ -183,7 +186,8 @@ users/{uid}/pa_reports/{docId}               แบบรายงานผล P
 3. `js/utils.js`: เพิ่มไฟล์ใน `LAZY_MODULES` + กลุ่มใหม่ใน `LAZY_BUNDLES` (ลำดับ `doc-system` → `doc-shell` → config → UI) และใส่ config ใน `docConfigs` (ให้ privacy.js ส่งออก/ลบข้อมูลของระบบนี้)
 4. `app.js`: เพิ่ม route → `renderDocPage('<id>')` และ `ROUTE_MODULES` · `index.html`: ปุ่มเมนู
 5. `sw.js`: เพิ่มไฟล์ใน PRECACHE + เลข VERSION (รัน `npm run check:sw`) · `firestore.rules`: เพิ่ม collection ใหม่ใต้ `users/{uid}/`
-6. เทสต์: ดูตัวอย่างระบบจำลอง `idp` ใน `tests/pa-config.test.js` (ทะเบียน/state แยกกัน)
+6. ผู้ช่วย AI (ไม่บังคับ): ไม่ต้องแก้ `js/badwork-ai.js` / `js/badwork-ai-config.js` — สร้าง `js/<id>-ai.js` ท้ายไฟล์เรียก `registerDocAi('<id>', { systemPrompt, task, context, scope, guide, itemHeading, copy, ctxBody, ctxStorageKey, docRef, slots, resolve })` (ดูตัวอย่าง `js/pa-ai.js`) · ใน config ของระบบต้องมี `aiCtx = { fields, maxLen, idPrefix }` (idPrefix ไม่ซ้ำระบบอื่น) และ `ai.storageKeys.ctx` ไม่ซ้ำระบบอื่น · ฟังก์ชันบันทึกเอกสารต้องตัดคีย์ที่ขึ้นต้น `_` · ใส่ไฟล์ใน `LAZY_MODULES`/`LAZY_BUNDLES` หลัง `badwork-ai` และ `sw.js` PRECACHE · ฟอร์มเรียก `badworkAiMount(view, form, sys)` ท้ายการวาด
+7. เทสต์: ดูตัวอย่างระบบจำลอง `idp` และ `mock` ใน `tests/pa-config.test.js` (ทะเบียน/state แยกกัน · แกน AI ร่วม)
 
 ### ปุ่ม/ท่าย้อนกลับของระบบ (`js/nav-history.js`)
 - `navigate()` และ `openCourse()` เรียก `NavHistory.record(...)` → ปุ่ม Back / ปัดย้อนกลับของ Android และ Safari ถอยไปหน้าก่อนหน้าในแอป (ไม่ออกจากแอป) · หน้าแรกของเซสชันใช้ `replaceState` จึงกด Back ที่หน้าแรกแล้วออกจากแอปตามปกติ
@@ -254,7 +258,7 @@ users/{uid}/pa_reports/{docId}               แบบรายงานผล P
 ## บันทึกการลดขนาด (2026-10-08)
 
 - ลบรูป `assets/banner*.webp` (ซ้ำกับ `head-cat*.webp` ทุกไฟล์ และโค้ดไม่ได้เรียกใช้) และ `js/score-logic.test.js` (ฉบับเก่า — ใช้ `tests/score-logic.test.js`)
-- กลุ่มหน้า PA (`doc-system.js`, `pa-config.js`, `pa.js`, `badwork-ai.js`, `pa-report.js`, `pa-rpt.js`) ย้ายเป็น lazy: `LAZY_MODULES` + `LAZY_BUNDLES.pa` ใน `js/utils.js` โหลดตามลำดับด้วย `loadModules()` — ลด JS ตอนเปิดแอป ~174 KB (ยังอยู่ใน `PRECACHE` ออฟไลน์ได้เหมือนเดิม)
+- กลุ่มหน้า PA (`doc-system.js`, `pa-config.js`, `pa.js`, `badwork-ai-config.js`, `badwork-ai.js`, `pa-ai.js`, `pa-report.js`, `pa-rpt.js`) ย้ายเป็น lazy: `LAZY_MODULES` + `LAZY_BUNDLES.pa` ใน `js/utils.js` โหลดตามลำดับด้วย `loadModules()` — ลด JS ตอนเปิดแอป ~174 KB (ยังอยู่ใน `PRECACHE` ออฟไลน์ได้เหมือนเดิม)
 - ลบ CSS variable ที่ไม่มีใครใช้ 32 ตัว, คลาสที่ไม่มีใครใช้ 9 คลาส, ยุบ `--font-modern` เป็น `--font-head`
   (อย่าลบ `--bgp-*` — `theme.js` ประกอบชื่อตอนรัน: `'var(--bgp-' + id + ')'`)
 - โลโก้ในหน้าแอปใช้ `assets/icons/logo-128.webp` (PNG 192/512 ยังอยู่สำหรับ manifest / iOS)

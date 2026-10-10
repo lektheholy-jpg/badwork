@@ -1,56 +1,77 @@
 // ==========================================================================
-// ผู้ช่วย AI (Gemini) สำหรับหน้าสร้างPersonal Agreement — ร่าง/เติม/ปรับสำนวนได้ทุกช่อง
-//   เรียก Gemini API ตรงผ่าน REST ด้วย Google AI Studio key (PA_CONFIG.ai.apiKey) หรือผ่านพร็อกซีของเราเอง (PA_CONFIG.ai.proxyUrl · แนะนำ เพราะไม่ต้องใส่คีย์ในหน้าเว็บ)
-//   - ปุ่มใต้ช่องส่วนที่ 2 (ประเด็นท้าทาย) : ช่วยเขียน/เติม · ปรับสำนวน · ทำให้กระชับ
-//   - ปุ่มใต้งานมาตรฐานตำแหน่งแต่ละข้อ (1.1–3.3) : ช่วยเขียนช่องที่ว่าง · ปรับสำนวนทั้งข้อ
-//   - ปุ่มบนสุดของฟอร์ม : ร่างช่องส่วนที่ 2 ที่ยังว่างในครั้งเดียว (1 คำขอ) โดยอ่านจากข้อมูลที่มีอยู่ในเอกสาร
-//   ข้อความจาก AI แสดงในหน้าต่าง (.modal) ให้ตรวจ/แก้ก่อน "ใช้" เสมอ · สไตล์อยู่ที่ css/style.css (ส่วน .pa-ai-*) · ไม่บันทึกอัตโนมัติ · ตัวเลขที่ไม่มีข้อมูลให้เป็น "…"
-//   การ์ดบนสุดมี "บริบทงานของฉัน" (ระดับชั้น/ห้อง/นักเรียน/ปัญหา/ผลปีก่อน/จุดเน้น) เก็บใน doc.aiCtx · ส่งเข้าพร้อต์เฉพาะส่วนที่เกี่ยวกับช่องนั้น (PA_CONFIG.ai.prompts.scope)
-//   ไม่ต้องโหลด SDK เพิ่ม — ใช้ fetch ธรรมดา
-//   ต้องโหลดหลัง pa.js · pa.js เรียก badworkAiMount(view, form) ท้าย renderPAFormView
+// แกนผู้ช่วย AI (Gemini) ของฟอร์มเอกสาร — ใช้ร่วมกันทุกระบบเอกสาร (PA · ID-Plan · …) · ไม่รู้จักชื่อระบบใดเลย
+//   แกนทำ: เรียก Gemini (เลือกรุ่น · โหมดคิด · แปลง JSON · จัดการ error · ผ่านพร็อกซีหรือตรง) · ประกอบโครงพร้อต์ ·
+//          ขอความยินยอม · ตัวกันกดซ้ำ · หน้าต่างตรวจทานก่อน "ใช้" · เก็บ/สำรอง/หยิบบริบทงาน (doc.aiCtx) · ฝังการ์ดบนสุด+ปุ่ม+ตัวฟัง
+//   ข้อความจาก AI แสดงในหน้าต่าง (.modal) ให้ตรวจ/แก้ก่อน "ใช้" เสมอ · ไม่บันทึกอัตโนมัติ · ไม่โหลด SDK เพิ่ม ใช้ fetch ธรรมดา
+//
+// สิ่งที่แกนอ่าน
+//   • BADWORK_AI_CONFIG (js/badwork-ai-config.js)  การเชื่อมต่อ · รายชื่อรุ่น · คีย์รุ่นที่เลือก · คีย์ความยินยอม — ค่าเดียวกันทุกระบบ
+//   • sys = docSystem() ของระบบที่กำลังแสดง (js/doc-system.js)  sys.state.doc / docId / list และ sys.config.aiCtx = { fields, maxLen, idPrefix }
+//   • ตัวต่อ (adapter) ของระบบนั้น — ลงทะเบียนด้วย registerDocAi('<id>', adapter) ที่ท้ายไฟล์ตัวต่อ (ตัวอย่าง: js/pa-ai.js)
+//
+// ตัวต่อ (adapter) ต้องมี — ทุกเมธอดรับ sys เป็นตัวแรก (แกนส่งตัวที่ถือไว้ตอนเริ่มงาน ไม่เรียก docSystem() ซ้ำหลัง await)
+//   พร้อต์
+//     systemPrompt(sys)               → string   คำสั่งระบบของ Gemini
+//     task(sys, mode, current)        → string   คำสั่งงานของโหมด 'write' | 'polish' | 'shorten' (current = ข้อความเดิมของช่อง · '' = ใช้หาคำสั่งกลางของคำขอ)
+//     context(sys, known, scope)      → string   บล็อก "ข้อมูลประกอบ" (scope = ผลของ scope() · null = ทุกส่วน) — ดึงค่าที่พิมพ์ค้างในฟอร์มเข้า sys.state.doc เองได้ที่นี่
+//     scope(sys, fields)              → Set|null ส่วนของข้อมูลประกอบที่ช่องเหล่านี้ต้องใช้ (ส่งเฉพาะที่เกี่ยวข้อง)
+//     guide(sys, fields)              → string   บล็อกแนวทางกลางที่ส่งครั้งเดียวต่อคำขอ ('' ถ้าไม่มี)
+//     itemHeading(spec)               → string   บรรทัดหัวของกลุ่มช่อง (ใช้กับช่องที่มี spec.item)
+//   ข้อความที่ผู้ใช้เห็น (copy)
+//     consent · saveLabel · topPoints[] · topWarn · topButton · ctxTitle · ctxNote   (string)
+//     reviewGroup(spec)               → { id, title }  หัวกลุ่มในหน้าต่างตรวจทาน
+//   บริบทงาน
+//     ctxBody(sys, c, h)              → string   HTML ช่องกรอกของการ์ดบริบท (h.one(key, placeholder, { numeric }) · h.many(key, placeholder))
+//     ctxStorageKey(sys)              → string   คีย์ localStorage ที่สำรองบริบทล่าสุด — ต้องไม่ซ้ำกับระบบอื่น
+//   ฟอร์ม
+//     docRef(sys, uid, id)            → Firestore doc ref ของเอกสาร (ใช้เขียนเฉพาะ aiCtx)
+//     slots(sys, form)                → [{ host: Element, buttons: [{ act, label, quiet?, data? }] }]  ฝังแถวปุ่มที่ไหนบ้าง
+//     resolve(sys, act, btn)          → { specs, mode } | { toast } | null   ปุ่มที่กด (data-pa-ai = act) ต้องทำอะไร
+//
+// spec ของช่อง (ตัวต่อเป็นคนสร้าง) = { key, el (id ขององค์ประกอบ), label, hint?, item?, fieldLabel?, … }
+//   มี item = ช่องในกลุ่มเดียวกัน (หัวกลุ่มพิมพ์ครั้งเดียว ใช้ fieldLabel ต่อช่อง) · ไม่มี item = พิมพ์ชื่อช่อง+แนวทางของช่องนั้นเอง
+//
+// กติกาการเขียนในไฟล์นี้: ฟังก์ชันที่เป็นจุดเข้า (เรียกจากนอก/เทสต์) รับ sys เป็นพารามิเตอร์ท้ายแบบ sys = docSystem() · ฟังก์ชันภายในส่ง sys ต่อเสมอ
+//
+// ชื่อ class/id/data-attribute ของ UI ยังขึ้นต้น pa-ai- (สไตล์อยู่ที่ css/style.css) — รอเปลี่ยนเป็นชื่อกลางพร้อมแก้ CSS ในขั้นถัดไป
+// ต้องโหลดหลัง js/badwork-ai-config.js · ตัวต่อของแต่ละระบบโหลดหลังไฟล์นี้ · ระบบเรียก badworkAiMount(view, form, sys) ท้ายการวาดฟอร์ม
 // ==========================================================================
 
-// รวมบริบทที่ชุดช่องนี้ต้องใช้ (ช่องงาน key = "1.1.s1" → ข้อ "1.1" · ช่องส่วนที่ 2 = "part2")
-function badworkAiScope(fields) {
-  const sys = docSystem();
-  const set = new Set();
-  fields.forEach(f => {
-    const id = f.group ? f.key.slice(0, f.key.lastIndexOf('.')) : 'part2';
-    (sys.config.ai.prompts.scope[id] || sys.config.ai.prompts.scope.part2).forEach(k => set.add(k));
-  });
-  return set;
+// ------------------------------------------------------------------
+// ทะเบียนตัวต่อ (หนึ่งระบบเอกสาร = หนึ่งตัวต่อ) — รูปแบบเดียวกับ registerDocUi ใน js/doc-shell.js
+// ------------------------------------------------------------------
+const DOC_AI = {};
+const DOC_AI_METHODS = ['systemPrompt', 'task', 'context', 'scope', 'guide', 'itemHeading', 'ctxBody', 'ctxStorageKey', 'docRef', 'slots', 'resolve'];
+const DOC_AI_COPY = ['consent', 'saveLabel', 'topPoints', 'topWarn', 'topButton', 'ctxTitle', 'ctxNote'];
+
+function registerDocAi(id, adapter) {
+  const miss = [];
+  DOC_AI_METHODS.forEach(k => { if (!adapter || typeof adapter[k] !== 'function') miss.push(k); });
+  DOC_AI_COPY.forEach(k => { if (!adapter || !adapter.copy || !adapter.copy[k]) miss.push('copy.' + k); });
+  if (!adapter || !adapter.copy || typeof adapter.copy.reviewGroup !== 'function') miss.push('copy.reviewGroup');
+  if (miss.length) throw new Error(`ตัวต่อ AI ของระบบเอกสาร "${id}" ไม่ครบ: ${miss.join(', ')}`);
+  if (DOC_AI[id]) throw new Error(`ตัวต่อ AI ของระบบเอกสาร "${id}" ลงทะเบียนซ้ำ`);
+  DOC_AI[id] = adapter;
+  return adapter;
+}
+function docAiFind(sys) { return DOC_AI[sys.id] || null; }
+function docAi(sys = docSystem()) {
+  const ad = docAiFind(sys);
+  if (!ad) throw new Error(`ระบบเอกสาร "${sys.id}" ยังไม่ได้ลงทะเบียนตัวต่อ AI (registerDocAi)`);
+  return ad;
 }
 
-// ช่องงานตามมาตรฐานตำแหน่ง 15 ข้อ × 4 ช่อง (ids = ระบุเฉพาะบางข้อ หรือ null = ทั้งหมด)
-function badworkAiWorkSpecs(ids) {
-  const sys = docSystem();
-  const [t1, t2] = paTermLabels(sys.state.doc?.fiscalYear);
-  const defs = [
-    ['s1', `งานที่จะดำเนินการ · ${t1}`, sys.config.ai.prompts.workHints.s1],
-    ['s2', `งานที่จะดำเนินการ · ${t2}`, sys.config.ai.prompts.workHints.s2],
-    ['outcome', 'ผลลัพธ์ (Outcomes) ที่คาดหวังกับผู้เรียน', sys.config.ai.prompts.workHints.outcome],
-    ['indicator', 'ตัวชี้วัด (Indicators)', sys.config.ai.prompts.workHints.indicator],
-  ];
-  const out = [];
-  sys.config.workItems.forEach(([, , items]) => items.forEach(([id, label]) => {
-    if (ids && !ids.includes(id)) return;
-    defs.forEach(([f, fl, hint]) => out.push({
-      key: `${id}.${f}`, el: `pa-wi-${id.replace('.', '_')}-${f}`, group: id[0],
-      item: `${id} ${label}`, fieldLabel: fl,
-      label: `ข้อ ${id} ${label} — ${fl}`, hint,
-    }));
-  }));
-  return out;
-}
+// ช่องนี้มีข้อความอยู่แล้วหรือยัง (ตัวต่อใช้แยกช่องว่าง/ช่องที่มีข้อความ ตอนตัดสินใจว่าปุ่มไหนทำอะไร)
+function badworkAiFilled(spec) { return !!(document.getElementById(spec.el)?.value || '').trim(); }
 
 // ------------------------------------------------------------------
-// เรียก Gemini (โหลด SDK ตอนใช้ครั้งแรก)
+// เรียก Gemini
 // ------------------------------------------------------------------
 function badworkAiModelId() {
-  const sys = docSystem();
+  const ai = BADWORK_AI_CONFIG;
   let v = null;
-  try { v = localStorage.getItem(sys.config.ai.storageKeys.model); } catch (err) { /* ใช้ storage ไม่ได้ — ใช้ค่าเริ่มต้น */ }
-  return sys.config.ai.models.some(m => m.id === v) ? v : sys.config.ai.model;
+  try { v = localStorage.getItem(ai.storageKeys.model); } catch (err) { /* ใช้ storage ไม่ได้ — ใช้ค่าเริ่มต้น */ }
+  return ai.models.some(m => m.id === v) ? v : ai.model;
 }
 // Gemini 3 ใช้ thinkingLevel · Gemini 2.5 ใช้ thinkingBudget (ส่ง thinkingLevel ให้ 2.5 จะถูกปฏิเสธ)
 function badworkAiThinking(id) {
@@ -64,11 +85,11 @@ function badworkAiParseJson(text) {
   return o;
 }
 
-async function badworkAiGenerate(prompt) {
-  const ai = docSystem().config.ai;
+async function badworkAiGenerate(prompt, sys = docSystem()) {
+  const ai = BADWORK_AI_CONFIG;
   const id = badworkAiModelId();
   const body = {
-    systemInstruction: { parts: [{ text: ai.prompts.system }] },
+    systemInstruction: { parts: [{ text: docAi(sys).systemPrompt(sys) }] },
     contents: [{ role: 'user', parts: [{ text: prompt }] }],
     generationConfig: { responseMimeType: 'application/json', temperature: 0.6, thinkingConfig: badworkAiThinking(id) },
   };
@@ -83,7 +104,7 @@ async function badworkAiGenerate(prompt) {
     if (user) headers.Authorization = 'Bearer ' + await user.getIdToken();
   } else {
     // โหมดตรง: คีย์อยู่ในหน้าเว็บ (ใครเปิด DevTools ก็เห็น) — ต้องจำกัด HTTP referrer ที่ Google Cloud Console
-    if (!ai.apiKey) throw new Error('ยังไม่ได้ตั้ง API key (js/pa-config.js > ai.apiKey)');
+    if (!ai.apiKey) throw new Error('ยังไม่ได้ตั้ง API key (js/badwork-ai-config.js > apiKey)');
     url = `${ai.endpoint}/models/${encodeURIComponent(id)}:generateContent`;
     headers['x-goog-api-key'] = ai.apiKey;
   }
@@ -104,14 +125,14 @@ async function badworkAiGenerate(prompt) {
 }
 
 function badworkAiError(err) {
-  console.error('PA AI:', err);
+  console.error('AI:', err);
   const m = String((err && (err.message || err.code)) || err);
   const code = (m.match(/\[(\d{3})\b/) || m.match(/\b(4\d\d|5\d\d)\b/) || [])[1]; // รหัส HTTP ถ้ามี
   const tag = code ? ` (รหัส ${code})` : '';
   let msg;
   if (!navigator.onLine || /Failed to fetch|dynamically imported module|NetworkError/i.test(m)) msg = 'ใช้ AI ไม่ได้ — ไม่มีอินเทอร์เน็ตหรือโหลดชุดคำสั่งไม่สำเร็จ';
-  else if (/API key not valid|API_KEY_INVALID|ยังไม่ได้ตั้ง/i.test(m)) msg = `API key ไม่ถูกต้องหรือยังไม่ได้ตั้ง${tag} — ตรวจ ai.apiKey ใน js/pa-config.js (สร้างคีย์ที่ aistudio.google.com/apikey)`;
-  else if (code === '404' || /not found|is not supported|no longer available/i.test(m)) msg = `ไม่พบโมเดล ${badworkAiModelId()}${tag} — ลองเลือกรุ่นอื่นในการ์ดผู้ช่วย AI หรือตรวจชื่อรุ่นใน js/pa-config.js (PA_CONFIG.ai.models)`;
+  else if (/API key not valid|API_KEY_INVALID|ยังไม่ได้ตั้ง/i.test(m)) msg = `API key ไม่ถูกต้องหรือยังไม่ได้ตั้ง${tag} — ตรวจ apiKey ใน js/badwork-ai-config.js (สร้างคีย์ที่ aistudio.google.com/apikey)`;
+  else if (code === '404' || /not found|is not supported|no longer available/i.test(m)) msg = `ไม่พบโมเดล ${badworkAiModelId()}${tag} — ลองเลือกรุ่นอื่นในการ์ดผู้ช่วย AI หรือตรวจชื่อรุ่นใน js/badwork-ai-config.js (BADWORK_AI_CONFIG.models)`;
   else if (code === '403' || /PERMISSION_DENIED|API has not been used|API_KEY_SERVICE_BLOCKED|not enabled/i.test(m)) msg = `AI ถูกปฏิเสธสิทธิ์${tag} — ตรวจว่า API key อนุญาต Generative Language API และโดเมนของเว็บอยู่ในรายการ HTTP referrer ที่อนุญาต`;
   else if (code === '429' || /RESOURCE_EXHAUSTED|quota exceeded|too many requests|rate limit/i.test(m)) msg = `โควตา AI เต็มหรือเรียกถี่เกิน${tag} — รอ 1 นาทีแล้วลองใหม่ (ดูโควตาใน Google AI Studio > Usage)`;
   else if (/timeout/i.test(m)) msg = 'AI ตอบช้าเกินไป ลองใหม่อีกครั้ง';
@@ -121,47 +142,11 @@ function badworkAiError(err) {
 }
 
 // ------------------------------------------------------------------
-// สร้างคำสั่ง
+// สร้างคำสั่ง — โครงเป็นของแกน · เนื้อ (ข้อมูลประกอบ · แนวทาง · คำสั่งงาน · หัวกลุ่ม) มาจากตัวต่อ
 // ------------------------------------------------------------------
-// บรรทัดบริบทเรียงลำดับคงที่เสมอ (ส่วนที่ซ้ำกันอยู่ต้นข้อความ → ช่วย implicit caching) · scope = Set ของส่วนที่ต้องส่ง (null = ทุกส่วน)
-function badworkAiContext(known = {}, scope = null) {
-  const sys = docSystem();
-  paCollectFormData(); // ดึงค่าที่พิมพ์ค้างในฟอร์มเข้า sys.state.doc
-  const d = sys.state.doc, L = d.load || {}, c = d.aiCtx || {};
-  let p = {};
-  try { p = AppState.teacherProfile || {}; } catch (err) { /* ไม่มีโปรไฟล์ — ข้าม */ }
-  const rows = a => (a || []).map(r => `${r.name}${r.hours ? ` (${docFmtH(r.hours)} ชม./สัปดาห์)` : ''}`).join('; ') || '-';
-  const types = sys.config.classroomTypes.filter(([k]) => d.classroomTypes[k]).map(([, l]) => l).join(', ') || '-';
-  const [t1, t2] = paTermLabels(d.fiscalYear);
-  const cls = [c.level && `ระดับชั้น ${c.level}`, c.rooms && `${c.rooms} ห้อง`, c.students && `นักเรียนรวม ${c.students} คน`].filter(Boolean).join(' · ');
-  const names = { challengeTitle: 'ประเด็นท้าทาย', problem: 'สภาพปัญหา', method: 'วิธีดำเนินการ', outcomeQuant: 'ผลลัพธ์เชิงปริมาณ', outcomeQual: 'ผลลัพธ์เชิงคุณภาพ' };
-  const part2 = keys => keys.map(k => {
-    const v = String(known[k] ?? d[k] ?? '').trim();
-    return v ? `${names[k]} (มีอยู่แล้วในเอกสาร): ${v.slice(0, 400)}` : '';
-  });
-  const want = k => !scope || scope.has(k);
-  const lines = [
-    `ปีงบประมาณ พ.ศ. ${d.fiscalYear || '-'} (${t1} และ ${t2})`,
-    `ตำแหน่ง: ${p.position || 'ครู'}${p.academicStanding ? ' วิทยฐานะ' + p.academicStanding : ''}`,
-    want('group') && `กลุ่มสาระการเรียนรู้: ${L.group || '-'}`,
-    want('types') && `ประเภทห้องเรียน: ${types}`,
-    want('subjects') && `รายวิชาที่สอน: ${rows(L.subjects)}`,
-    want('activities') && `กิจกรรมพัฒนาผู้เรียน: ${rows(L.activities)}`,
-    want('support') && `งานส่งเสริมและสนับสนุนการจัดการเรียนรู้ (1.2): ${rows(L.support)}`,
-    want('quality') && `งานพัฒนาคุณภาพการจัดการศึกษาของสถานศึกษา (1.3): ${rows(L.quality)}`,
-    want('policy') && `งานตอบสนองนโยบายและจุดเน้น (1.4): ${rows(L.policy)}`,
-    want('class') && cls && `ห้องเรียนที่รับผิดชอบ: ${cls}`,
-    want('problems') && c.problems && `ปัญหาหลักที่ครูพบจริง: ${c.problems}`,
-    want('prev') && c.prev && `ผลปีก่อน: ${c.prev}`,
-    want('focus') && c.focus && `จุดเน้นของโรงเรียน: ${c.focus}`,
-    ...(scope === null || scope.has('part2') ? part2(Object.keys(names)) : scope.has('title') ? part2(['challengeTitle']) : []),
-  ];
-  return lines.filter(Boolean).join('\n');
-}
-
 // ขอข้อความสำหรับกลุ่มช่องหนึ่งชุด → [{...spec, el, current, proposed}]
-async function badworkAiBatch(specs, mode, known) {
-  const sys = docSystem();
+async function badworkAiBatch(specs, mode, known, sys = docSystem()) {
+  const ad = docAi(sys);
   const fields = specs.map(s => {
     const el = document.getElementById(s.el);
     return { ...s, el, current: (el?.value || '').trim() };
@@ -169,46 +154,44 @@ async function badworkAiBatch(specs, mode, known) {
   if (!fields.length) return [];
   // ลำดับพร้อต์: ส่วนที่ซ้ำกันทุกคำขอ (ข้อมูลประกอบ → แนวทางช่องงาน) ก่อน · ส่วนที่เปลี่ยนตามคำขอ (โหมด/รายชื่อช่อง) ท้ายสุด
   // งานหลักบอกครั้งเดียว · ช่องที่มี "ข้อความเดิม" บอกซ้ำเฉพาะเมื่อคำสั่งต่างจากค่าตั้งต้น (เช่น โหมดต่อเติม)
-  const base = sys.config.ai.prompts.modes[mode]('');
+  const base = ad.task(sys, mode, '');
   const lines = [];
   let lastItem = '';
   fields.forEach(f => {
-    if (f.group) { // ช่องงาน: ชื่อข้อใส่ครั้งเดียวต่อข้อ · แนวทางอยู่ในบล็อกกลาง
-      if (f.item !== lastItem) { lines.push(`ข้อ ${f.item}`); lastItem = f.item; }
+    if (f.item) { // ช่องในกลุ่ม: หัวกลุ่มใส่ครั้งเดียวต่อกลุ่ม · แนวทางอยู่ในบล็อกกลาง (ad.guide)
+      if (f.item !== lastItem) { lines.push(ad.itemHeading(f)); lastItem = f.item; }
       lines.push(`- "${f.key}" ${f.fieldLabel}`);
     } else {
       lastItem = '';
       lines.push(`- "${f.key}" ชื่อช่อง: ${f.label}\n  แนวทาง: ${f.hint}`);
     }
     if (f.current) {
-      const t = sys.config.ai.prompts.modes[mode](f.current);
+      const t = ad.task(sys, mode, f.current);
       lines.push((t !== base ? `  งาน: ${t}\n` : '') + `  ข้อความเดิม: """${f.current.slice(0, 2000)}"""`);
     }
   });
-  const guide = fields.some(f => f.group)
-    ? `\n\nแนวทางช่องงาน (ใช้กับทุกข้อ ตามส่วนท้ายของคีย์):\n${Object.entries(sys.config.ai.prompts.workHints).map(([k, v]) => `- .${k}: ${v}`).join('\n')}`
-    : '';
-  const prompt = `ข้อมูลประกอบ:\n${badworkAiContext(known, badworkAiScope(fields))}${guide}\n\nงาน (ทุกช่อง): ${base}\n\nช่องที่ต้องการ:\n${lines.join('\n')}\n\nตอบเป็น JSON object ที่มีคีย์เหล่านี้เท่านั้น: ${JSON.stringify(fields.map(f => f.key))}`;
-  const out = await badworkAiGenerate(prompt);
+  const guide = ad.guide(sys, fields);
+  const prompt = `ข้อมูลประกอบ:\n${ad.context(sys, known, ad.scope(sys, fields))}${guide}\n\nงาน (ทุกช่อง): ${base}\n\nช่องที่ต้องการ:\n${lines.join('\n')}\n\nตอบเป็น JSON object ที่มีคีย์เหล่านี้เท่านั้น: ${JSON.stringify(fields.map(f => f.key))}`;
+  const out = await badworkAiGenerate(prompt, sys);
   return fields.map(f => ({ ...f, proposed: String(out[f.key] ?? '').trim() })).filter(f => f.proposed);
 }
 
 // ------------------------------------------------------------------
 // ความยินยอม + ตัวกันกดซ้ำ
+//   ยินยอมครั้งเดียวมีผลทุกระบบ (คีย์เดียว BADWORK_AI_CONFIG.storageKeys.consent) — ข้อความในหน้าต่างเป็นของระบบที่ผู้ใช้กดก่อน
 // ------------------------------------------------------------------
-function badworkAiConsent() {
-  const sys = docSystem();
-  try { if (localStorage.getItem(sys.config.ai.storageKeys.consent) === '1') return true; } catch (err) { /* ใช้ storage ไม่ได้ — ถามทุกครั้ง */ }
-  const ok = confirm('ข้อความในฟอร์ม PA นี้ (รายวิชา ชั่วโมงสอน ข้อความที่กรอกไว้ และ "บริบทงานของฉัน" เช่น ระดับชั้น จำนวนห้อง/นักเรียนรวม ปัญหาหลัก ผลปีก่อน จุดเน้น ไม่รวมชื่อ-นามสกุล) จะถูกส่งไปประมวลผลที่ Google Gemini เฉพาะส่วนที่เกี่ยวกับช่องที่กด\n\n'
-    + 'โปรดอย่าพิมพ์ชื่อหรือข้อมูลที่ระบุตัวนักเรียนลงในช่อง (ใช้เป็นตัวเลขรวมเท่านั้น) และตรวจทานข้อความที่ AI เสนอทุกครั้งก่อนใช้\n\nต้องการดำเนินการต่อหรือไม่?');
-  if (ok) { try { localStorage.setItem(sys.config.ai.storageKeys.consent, '1'); } catch (err) { /* ข้าม */ } }
+function badworkAiConsent(sys = docSystem()) {
+  const key = BADWORK_AI_CONFIG.storageKeys.consent;
+  try { if (localStorage.getItem(key) === '1') return true; } catch (err) { /* ใช้ storage ไม่ได้ — ถามทุกครั้ง */ }
+  const ok = confirm(docAi(sys).copy.consent);
+  if (ok) { try { localStorage.setItem(key, '1'); } catch (err) { /* ข้าม */ } }
   return ok;
 }
 
-let badworkAiBusy = false;
-async function badworkAiGuard(btn, fn) {
+let badworkAiBusy = false; // ทั้งแอปทำได้ทีละคำขอ (กันโควตา) ไม่แยกตามระบบ
+async function badworkAiGuard(btn, fn, sys = docSystem()) {
   if (badworkAiBusy) { showToast('AI กำลังทำงานอยู่ รอสักครู่'); return undefined; }
-  if (!badworkAiConsent()) return undefined;
+  if (!badworkAiConsent(sys)) return undefined;
   badworkAiBusy = true;
   // ปิดปุ่ม AI ทุกปุ่มระหว่างรอ ให้เห็นชัดว่ากำลังทำงานอยู่ (ไม่ต้องรอให้กดซ้ำแล้วเจอ toast)
   const all = [...(btn.closest('form') || document).querySelectorAll('[data-pa-ai]')];
@@ -223,14 +206,15 @@ async function badworkAiGuard(btn, fn) {
 // ------------------------------------------------------------------
 // หน้าต่างตรวจทานข้อความที่ AI เสนอ (ใช้ .modal มาตรฐานของแอป)
 // ------------------------------------------------------------------
-function badworkAiReview(items, warn) {
+function badworkAiReview(items, warn, sys = docSystem()) {
+  const copy = docAi(sys).copy;
   const prev = document.activeElement;
   let lastGrp = '';
   const body = items.map((it, i) => {
     let head = '';
-    const grp = it.group ? it.item : 'part2'; // หัวกลุ่ม: แต่ละข้อของส่วนที่ 1 · ช่องส่วนที่ 2 รวมเป็นกลุ่มเดียว
-    if (grp !== lastGrp) { head = `<div class="pa-ai-grp">${it.group ? 'ข้อ ' + escapeHtml(it.item) : 'ส่วนที่ 2 ประเด็นท้าทาย'}</div>`; lastGrp = grp; }
-    const name = it.group ? it.fieldLabel : it.label;
+    const g = copy.reviewGroup(it); // หัวกลุ่ม: ช่องที่อยู่กลุ่มเดียวกันใต้หัวเดียว
+    if (g.id !== lastGrp) { head = `<div class="pa-ai-grp">${escapeHtml(g.title)}</div>`; lastGrp = g.id; }
+    const name = it.item ? it.fieldLabel : it.label;
     return `${head}<div class="pa-ai-item">
       <label class="pa-check"><input type="checkbox" data-i="${i}" checked> ${escapeHtml(name)}</label>
       ${it.current ? `<details class="pa-ai-old"><summary>ข้อความเดิม (จะถูกแทนที่ถ้าเลือกช่องนี้)</summary><div class="pa-ai-old-text">${escapeHtml(it.current)}</div></details>` : ''}
@@ -239,7 +223,7 @@ function badworkAiReview(items, warn) {
   }).join('');
 
   openModal(`<h2>ข้อความที่ AI เสนอ</h2>
-    <div class="modal-sub">${items.length} ช่อง · แก้ไขในกล่องได้ก่อนกด “ใช้ที่เลือก” · ข้อความจะยังไม่ถูกบันทึกจนกว่าจะกด “บันทึกPersonal Agreement”</div>
+    <div class="modal-sub">${items.length} ช่อง · แก้ไขในกล่องได้ก่อนกด “ใช้ที่เลือก” · ข้อความจะยังไม่ถูกบันทึกจนกว่าจะกด “${escapeHtml(copy.saveLabel)}”</div>
     ${warn ? `<div class="pa-ai-warn">${escapeHtml(warn)}</div>` : ''}
     <div class="pa-ai-bar">
       <span class="u-note-sm">“…” คือตัวเลขที่ครูต้องกรอกเอง · AI อาจผิดพลาด โปรดตรวจทาน</span>
@@ -298,7 +282,7 @@ function badworkAiReview(items, warn) {
       });
       close();
       showToast(lost ? `ใส่ได้ ${n} ช่อง (${lost} ช่องหายไปเพราะฟอร์มถูกโหลดใหม่ — ลองกดใหม่)`
-        : `ใส่ข้อความ ${n} ช่องแล้ว${dots ? ' · มี “…” ที่ต้องกรอกตัวเลข' : ''} · ตรวจแล้วกด “บันทึกPersonal Agreement”`);
+        : `ใส่ข้อความ ${n} ช่องแล้ว${dots ? ' · มี “…” ที่ต้องกรอกตัวเลข' : ''} · ตรวจแล้วกด “${copy.saveLabel}”`);
     }
   });
   areas[0]?.focus();
@@ -307,131 +291,133 @@ function badworkAiReview(items, warn) {
 // ------------------------------------------------------------------
 // การทำงานของปุ่ม
 // ------------------------------------------------------------------
-async function badworkAiRunFields(btn, specs, mode) {
-  const items = await badworkAiGuard(btn, () => badworkAiBatch(specs, mode, {}));
+async function badworkAiRunFields(btn, specs, mode, sys = docSystem()) {
+  const items = await badworkAiGuard(btn, () => badworkAiBatch(specs, mode, {}, sys), sys);
   if (!items) return; // error แสดงไปแล้ว
   if (!items.length) { showToast('AI ไม่ได้ส่งข้อความกลับมา ลองอีกครั้ง'); return; }
-  badworkAiReview(items);
+  badworkAiReview(items, undefined, sys);
 }
-
-// ปุ่มบนสุด: ร่างเฉพาะช่องส่วนที่ 2 ที่ยังว่าง (5 ช่อง = 1 คำขอ)
-// ช่องงาน 1.1–3.3 ใช้ปุ่มใต้แต่ละข้อ (ข้อละ 4 ช่อง) ไม่ยิงทั้ง 60 ช่องในครั้งเดียวอีกต่อไป
-async function badworkAiDraftAll(btn) {
-  const sys = docSystem();
-  const empty = s => !((document.getElementById(s.el)?.value || '').trim());
-  const pick = sys.config.ai.prompts.part2.filter(empty);
-  if (!pick.length) { showToast('ช่องส่วนที่ 2 มีข้อความครบแล้ว — ใช้ปุ่มปรับสำนวนใต้แต่ละช่อง หรือปุ่มของแต่ละข้อในส่วนงานตามมาตรฐานตำแหน่งได้'); return; }
-  await badworkAiRunFields(btn, pick, 'write');
-}
-
-// ------------------------------------------------------------------
-// ติดปุ่มเข้ากับฟอร์ม (เรียกจาก renderPAFormView)
-// ------------------------------------------------------------------
-const PA_AI_ICON = `<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M19 15l.7 1.8 1.8.7-1.8.7L19 20l-.7-1.8-1.8-.7 1.8-.7z"/></svg>`;
 
 // ------------------------------------------------------------------
 // บันทึกบริบทอัตโนมัติ: มีเอกสารแล้ว → เขียนเฉพาะ aiCtx ลง Firestore ทันที (ไม่แตะช่องอื่นที่ยังพิมพ์ค้าง)
 //   ยังเป็นเอกสารใหม่ → สำรองในเครื่อง แล้วเก็บเข้าเอกสารเมื่อกดบันทึก · เอกสารใหม่ถัดไปจะหยิบบริบทล่าสุดมาให้แก้ต่อ
+//   ช่องบริบทมี id = sys.config.aiCtx.idPrefix + รหัสช่อง (ต้องไม่ซ้ำกับระบบอื่น)
 // ------------------------------------------------------------------
-function badworkAiCtxValues() {
-  const sys = docSystem();
+function badworkAiCtxValues(sys = docSystem()) {
+  const { fields, maxLen, idPrefix } = sys.config.aiCtx;
   const v = {};
-  Object.keys(sys.config.aiCtx.fields).forEach(k => { v[k] = (document.getElementById('pa-ctx-' + k)?.value || '').trim().slice(0, sys.config.aiCtx.maxLen[k]); });
+  Object.keys(fields).forEach(k => { v[k] = (document.getElementById(idPrefix + k)?.value || '').trim().slice(0, maxLen[k]); });
   return v;
 }
 
-function badworkAiCtxLoadLocal() {
-  const sys = docSystem();
+function badworkAiCtxLoadLocal(sys = docSystem()) {
   try {
-    const o = JSON.parse(localStorage.getItem(sys.config.ai.storageKeys.ctx) || 'null');
+    const o = JSON.parse(localStorage.getItem(docAi(sys).ctxStorageKey(sys)) || 'null');
     return o && typeof o === 'object' ? o : null;
   } catch (err) { return null; }
 }
 
 // เอกสารใหม่ที่ยังไม่มีบริบท → หยิบจากเอกสารล่าสุดที่มี (รายการเรียงใหม่→เก่า) หรือที่สำรองในเครื่อง · ทำครั้งเดียวต่อเอกสาร
-function badworkAiSeedCtx(d) {
-  const sys = docSystem();
-  if (sys.state.docId || d._ctxSeeded || badworkAiCtxCount(d.aiCtx || {})) return;
-  d._ctxSeeded = true; // ขึ้นต้น _ → paSave ตัดทิ้ง
-  const last = (sys.state.list || []).find(x => x.aiCtx && badworkAiCtxCount(x.aiCtx));
-  const src = last ? last.aiCtx : badworkAiCtxLoadLocal();
+function badworkAiSeedCtx(d, sys = docSystem()) {
+  if (sys.state.docId || d._ctxSeeded || badworkAiCtxCount(d.aiCtx || {}, sys)) return;
+  d._ctxSeeded = true; // ขึ้นต้น _ → ฟังก์ชันบันทึกของระบบต้องตัดทิ้ง (paSave ทำให้ PA)
+  const last = (sys.state.list || []).find(x => x.aiCtx && badworkAiCtxCount(x.aiCtx, sys));
+  const src = last ? last.aiCtx : badworkAiCtxLoadLocal(sys);
   if (!src) return;
   d.aiCtx = {};
   Object.entries(sys.config.aiCtx.maxLen).forEach(([k, n]) => { d.aiCtx[k] = String(src[k] || '').slice(0, n); });
 }
 
 let badworkAiCtxTimer = null;
-async function badworkAiCtxSave(statusEl) {
-  const sys = docSystem();
+async function badworkAiCtxSave(statusEl, sys = docSystem()) {
+  const ad = docAi(sys);
   clearTimeout(badworkAiCtxTimer);
   badworkAiCtxTimer = null;
-  const v = badworkAiCtxValues();
+  // ฟอร์มถูกถอดไปแล้ว (สลับแท็บ/ระบบก่อนตัวหน่วงครบ) → ค่าที่อ่านได้จะว่างหมด ห้ามเขียนทับบริบทที่เก็บไว้
+  if (!document.getElementById(sys.config.aiCtx.idPrefix + Object.keys(sys.config.aiCtx.fields)[0])) return;
+  const v = badworkAiCtxValues(sys);
   sys.state.doc.aiCtx = v;
-  try { localStorage.setItem(sys.config.ai.storageKeys.ctx, JSON.stringify(v)); } catch (err) { /* ใช้ storage ไม่ได้ — ข้าม */ }
+  try { localStorage.setItem(ad.ctxStorageKey(sys), JSON.stringify(v)); } catch (err) { /* ใช้ storage ไม่ได้ — ข้าม */ }
   const uid = AppState.user?.uid, id = sys.state.docId;
   if (!id || !uid) { if (statusEl) statusEl.textContent = 'จะเก็บกับเอกสารเมื่อกดบันทึก'; return; }
   try {
-    await paRef(uid, id).update({ aiCtx: v });
+    await ad.docRef(sys, uid, id).update({ aiCtx: v });
     if (statusEl?.isConnected) statusEl.textContent = 'บันทึกอัตโนมัติแล้ว';
   } catch (err) {
-    console.error('PA AI ctx save:', err);
-    if (statusEl?.isConnected) statusEl.textContent = 'บันทึกอัตโนมัติไม่สำเร็จ — กด “บันทึกPersonal Agreement” เพื่อเก็บ';
+    console.error('AI ctx save:', err);
+    if (statusEl?.isConnected) statusEl.textContent = `บันทึกอัตโนมัติไม่สำเร็จ — กด “${ad.copy.saveLabel}” เพื่อเก็บ`;
   }
 }
 
 // การ์ดพับได้ "บริบทงานของฉัน" — เปิดไว้เมื่อยังว่าง · พับเมื่อกรอกแล้ว
-function badworkAiCtxCount(c) { const sys = docSystem(); return Object.keys(sys.config.aiCtx.fields).filter(k => String(c[k] || '').trim()).length; }
+function badworkAiCtxCount(c, sys = docSystem()) { return Object.keys(sys.config.aiCtx.fields).filter(k => String(c[k] || '').trim()).length; }
 
-function badworkAiCtxHtml(c) {
-  const sys = docSystem();
-  const n = badworkAiCtxCount(c), total = Object.keys(sys.config.aiCtx.fields).length;
-  const L = sys.config.aiCtx.fields, mx = sys.config.aiCtx.maxLen;
-  const one = (k, ph) => `<div class="field"><label for="pa-ctx-${k}">${L[k]}</label><input id="pa-ctx-${k}" type="text" maxlength="${mx[k]}"${k === 'rooms' || k === 'students' ? ' inputmode="numeric"' : ''} value="${escapeHtml(c[k] || '')}" placeholder="${ph}"></div>`;
-  const many = (k, ph) => `<div class="field"><label for="pa-ctx-${k}">${L[k]}</label><textarea id="pa-ctx-${k}" rows="2" maxlength="${mx[k]}" placeholder="${ph}">${escapeHtml(c[k] || '')}</textarea></div>`;
+// ตัวช่วยสร้างช่องกรอกให้ ad.ctxBody — ป้ายชื่อ/ความยาวสูงสุด/ขึ้นต้น id มาจาก sys.config.aiCtx
+function badworkAiCtxHelpers(c, sys) {
+  const { fields: L, maxLen: mx, idPrefix: p } = sys.config.aiCtx;
+  return {
+    one: (k, ph, o = {}) => `<div class="field"><label for="${p}${k}">${L[k]}</label><input id="${p}${k}" type="text" maxlength="${mx[k]}"${o.numeric ? ' inputmode="numeric"' : ''} value="${escapeHtml(c[k] || '')}" placeholder="${ph}"></div>`,
+    many: (k, ph) => `<div class="field"><label for="${p}${k}">${L[k]}</label><textarea id="${p}${k}" rows="2" maxlength="${mx[k]}" placeholder="${ph}">${escapeHtml(c[k] || '')}</textarea></div>`,
+  };
+}
+
+function badworkAiCtxHtml(c, sys = docSystem()) {
+  const ad = docAi(sys);
+  const n = badworkAiCtxCount(c, sys), total = Object.keys(sys.config.aiCtx.fields).length;
   return `<details class="pa-ai-ctx"${n ? '' : ' open'}>
-    <summary><b>บริบทงานของฉัน</b> <span class="u-note-sm" data-ctx-count>กรอกแล้ว ${n}/${total}</span> <span class="u-note-sm" data-ctx-save role="status"></span></summary>
-    <div class="u-note pa-ai-ctx-note">ยิ่งระบุตามจริง AI ยิ่งเขียนตรงงาน และไม่ต้องกด “สร้างใหม่” หลายรอบ · ว่างไว้ได้ AI จะเขียนกว้าง ๆ และใช้ “…” แทนตัวเลข · ส่งให้ AI เฉพาะส่วนที่เกี่ยวกับช่องที่กด</div>
-    <div class="pa-ai-ctx-grid">${one('level', 'เช่น ม.2')}${one('rooms', 'เช่น 4')}${one('students', 'เช่น 148')}</div>
-    ${many('problems', 'เช่น นักเรียนอ่านโจทย์ปัญหาไม่คล่อง · ส่งงานไม่ครบ')}
-    ${many('prev', 'เช่น ผ่านเกณฑ์ ร้อยละ 62 · เกรดเฉลี่ย 2.41')}
-    ${one('focus', 'เช่น ส่งเสริมการอ่านออกเขียนได้')}
+    <summary><b>${ad.copy.ctxTitle}</b> <span class="u-note-sm" data-ctx-count>กรอกแล้ว ${n}/${total}</span> <span class="u-note-sm" data-ctx-save role="status"></span></summary>
+    <div class="u-note pa-ai-ctx-note">${ad.copy.ctxNote}</div>
+    ${ad.ctxBody(sys, c, badworkAiCtxHelpers(c, sys))}
   </details>`;
 }
 
-function badworkAiMount(view, form) {
-  const sys = docSystem();
-  if (!form || form.dataset.paAi) return;
-  form.dataset.paAi = '1';
-  badworkAiSeedCtx(sys.state.doc);
+// ------------------------------------------------------------------
+// ติดปุ่มเข้ากับฟอร์ม (ระบบเรียกท้ายการวาดฟอร์ม — เช่น renderPAFormView) · ไม่มีตัวต่อ = ไม่ติดอะไร ฟอร์มทำงานตามเดิม
+// ------------------------------------------------------------------
+const BADWORK_AI_ICON = `<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M19 15l.7 1.8 1.8.7-1.8.7L19 20l-.7-1.8-1.8-.7 1.8-.7z"/></svg>`;
 
-  // 1) การ์ดบนสุด: อธิบายสั้นๆ + ร่างส่วนที่ 2
+// แถวปุ่ม "ผู้ช่วย AI" ใต้ช่อง/ใต้กลุ่มช่อง — buttons = [{ act, label, quiet?, data? }]
+function badworkAiRowHtml(buttons) {
+  const attrs = d => Object.entries(d || {}).map(([k, v]) => ` data-${k}="${escapeHtml(v)}"`).join('');
+  return `<div class="pa-ai-row">
+      <span class="pa-ai-tag">${BADWORK_AI_ICON} ผู้ช่วย AI</span>
+      ${buttons.map(b => `<button type="button" class="btn ${b.quiet ? 'btn-sm pa-ai-quiet' : 'btn-ghost btn-sm'}" data-pa-ai="${b.act}"${attrs(b.data)}>${b.label}</button>`).join('\n      ')}
+    </div>`;
+}
+
+function badworkAiMount(view, form, sys = docSystem()) {
+  const ad = docAiFind(sys);
+  if (!ad || !form || form.dataset.paAi) return;
+  const ai = BADWORK_AI_CONFIG;
+  form.dataset.paAi = '1'; // ใช้เป็นตัวกันติดซ้ำ — ฟอร์มเองจึงตรง [data-pa-ai] ด้วย ตัวฟังคลิกต้องเมินค่า act ที่ไม่รู้จัก
+  badworkAiSeedCtx(sys.state.doc, sys);
+
+  // 1) การ์ดบนสุด: อธิบายสั้นๆ + บริบทงาน + เลือกรุ่น + ปุ่มหลัก
   const top = document.createElement('div');
   top.className = 'card card-pad pa-ai-top';
   top.innerHTML = `<div class="pa-ai-head">
-      <span class="course-chip pa-ai-chip">${PA_AI_ICON}</span>
+      <span class="course-chip pa-ai-chip">${BADWORK_AI_ICON}</span>
       <div>
         <h2 class="card-title">ผู้ช่วย AI</h2>
         <div class="u-note">ช่วยร่าง ปรับสำนวน และย่อข้อความ โดยใช้ Gemini</div>
       </div>
     </div>
     <ul class="pa-ai-points u-note">
-      <li>อ่านจากข้อมูลที่มีในเอกสารนี้ เช่น รายวิชา ชั่วโมงสอน ข้อความที่กรอกไว้ และบริบทงานด้านล่าง</li>
-      <li>เสนอให้ตรวจก่อนใช้เสมอ ไม่เขียนทับช่องที่กรอกแล้ว และไม่บันทึกให้เอง</li>
-      <li>ปุ่มนี้ร่างส่วนที่ 2 ที่ว่าง · งานข้อ 1.1–3.3 กดปุ่มใต้แต่ละข้อ</li>
+      ${ad.copy.topPoints.map(t => `<li>${t}</li>`).join('\n      ')}
     </ul>
-    ${badworkAiCtxHtml(sys.state.doc.aiCtx || {})}
+    ${badworkAiCtxHtml(sys.state.doc.aiCtx || {}, sys)}
     <div class="field pa-ai-model">
       <label for="pa-ai-model">โมเดล AI</label>
-      <select id="pa-ai-model">${sys.config.ai.models.map(m => `<option value="${m.id}"${m.id === badworkAiModelId() ? ' selected' : ''}>${m.label}</option>`).join('')}</select>
-      <div class="field-hint" data-model-hint>${escapeHtml((sys.config.ai.models.find(m => m.id === badworkAiModelId()) || {}).hint || '')}</div>
+      <select id="pa-ai-model">${ai.models.map(m => `<option value="${m.id}"${m.id === badworkAiModelId() ? ' selected' : ''}>${m.label}</option>`).join('')}</select>
+      <div class="field-hint" data-model-hint>${escapeHtml((ai.models.find(m => m.id === badworkAiModelId()) || {}).hint || '')}</div>
     </div>
-    <div class="pa-ai-warn">อย่าพิมพ์ชื่อหรือข้อมูลที่ระบุตัวนักเรียนลงในช่อง</div>
-    <button type="button" class="btn btn-primary" data-pa-ai="all">${PA_AI_ICON} ร่างส่วนที่ 2 ที่ว่าง</button>`;
+    <div class="pa-ai-warn">${ad.copy.topWarn}</div>
+    <button type="button" class="btn btn-primary" data-pa-ai="all">${BADWORK_AI_ICON} ${ad.copy.topButton}</button>`;
   form.insertBefore(top, form.firstChild);
   top.querySelector('#pa-ai-model').addEventListener('change', e => {
-    const m = sys.config.ai.models.find(x => x.id === e.target.value);
+    const m = ai.models.find(x => x.id === e.target.value);
     if (!m) return;
-    try { localStorage.setItem(sys.config.ai.storageKeys.model, m.id); } catch (err) { /* ใช้ storage ไม่ได้ — มีผลเฉพาะครั้งนี้ */ }
+    try { localStorage.setItem(ai.storageKeys.model, m.id); } catch (err) { /* ใช้ storage ไม่ได้ — มีผลเฉพาะครั้งนี้ */ }
     top.querySelector('[data-model-hint]').textContent = m.hint;
     showToast('ใช้ ' + m.label + ' แล้ว');
   });
@@ -440,52 +426,23 @@ function badworkAiMount(view, form) {
   const saveEl = ctxBox?.querySelector('[data-ctx-save]');
   ctxBox?.addEventListener('input', () => {
     const cnt = ctxBox.querySelector('[data-ctx-count]');
-    if (cnt) cnt.textContent = `กรอกแล้ว ${badworkAiCtxCount(badworkAiCtxValues())}/${Object.keys(sys.config.aiCtx.fields).length}`;
+    if (cnt) cnt.textContent = `กรอกแล้ว ${badworkAiCtxCount(badworkAiCtxValues(sys), sys)}/${Object.keys(sys.config.aiCtx.fields).length}`;
     if (saveEl) saveEl.textContent = 'กำลังบันทึก…';
     clearTimeout(badworkAiCtxTimer);
-    badworkAiCtxTimer = setTimeout(() => badworkAiCtxSave(saveEl), 700);
+    badworkAiCtxTimer = setTimeout(() => badworkAiCtxSave(saveEl, sys), 700);
   });
-  ctxBox?.addEventListener('focusout', () => { if (badworkAiCtxTimer) badworkAiCtxSave(saveEl); }); // ออกจากช่อง = บันทึกทันที ไม่รอ
+  ctxBox?.addEventListener('focusout', () => { if (badworkAiCtxTimer) badworkAiCtxSave(saveEl, sys); }); // ออกจากช่อง = บันทึกทันที ไม่รอ
 
-  // 2) ใต้ช่องส่วนที่ 2
-  sys.config.ai.prompts.part2.forEach(f => {
-    const ta = form.querySelector('#' + f.el);
-    if (!ta) return;
-    ta.closest('.field').insertAdjacentHTML('beforeend', `<div class="pa-ai-row">
-      <span class="pa-ai-tag">${PA_AI_ICON} ผู้ช่วย AI</span>
-      <button type="button" class="btn btn-ghost btn-sm" data-pa-ai="f-write" data-key="${f.key}">เขียน/เติมให้</button>
-      <button type="button" class="btn btn-sm pa-ai-quiet" data-pa-ai="f-polish" data-key="${f.key}">ปรับสำนวน</button>
-      <button type="button" class="btn btn-sm pa-ai-quiet" data-pa-ai="f-shorten" data-key="${f.key}">ย่อให้กระชับ</button>
-    </div>`);
-  });
+  // 2) แถวปุ่มใต้ช่อง/กลุ่มช่อง — ตัวต่อบอกว่าฝังที่ไหน
+  ad.slots(sys, form).forEach(s => s.host.insertAdjacentHTML('beforeend', badworkAiRowHtml(s.buttons)));
 
-  // 3) ใต้งานตามมาตรฐานตำแหน่งแต่ละข้อ (ชื่อข้ออยู่ในหัวกล่องอยู่แล้ว ไม่ต้องพูดซ้ำในปุ่ม)
-  form.querySelectorAll('.pa-witem').forEach(w => {
-    const id = w.querySelector('[data-wi]')?.dataset.wi;
-    if (!id) return;
-    w.insertAdjacentHTML('beforeend', `<div class="pa-ai-row">
-      <span class="pa-ai-tag">${PA_AI_ICON} ผู้ช่วย AI</span>
-      <button type="button" class="btn btn-ghost btn-sm" data-pa-ai="i-write" data-item="${id}">เขียนช่องที่ว่าง</button>
-      <button type="button" class="btn btn-sm pa-ai-quiet" data-pa-ai="i-polish" data-item="${id}">ปรับสำนวนทั้งข้อ</button>
-    </div>`);
-  });
-
+  // 3) คลิกปุ่ม — ตัวต่อบอกว่าปุ่มนี้ต้องส่งช่องไหนด้วยโหมดอะไร (หรือแจ้งว่าทำไม่ได้เพราะอะไร)
   form.addEventListener('click', e => {
     const b = e.target.closest('[data-pa-ai]');
     if (!b) return;
-    const a = b.dataset.paAi;
-    const has = s => !!(document.getElementById(s.el)?.value || '').trim();
-    if (a === 'all') { badworkAiDraftAll(b); return; }
-    if (a.startsWith('f-')) {
-      const mode = a.slice(2), spec = sys.config.ai.prompts.part2.find(s => s.key === b.dataset.key);
-      if (!spec) return;
-      if (mode !== 'write' && !has(spec)) { showToast('ช่องนี้ยังว่าง — กด “ช่วยเขียน/เติม” ก่อน'); return; }
-      badworkAiRunFields(b, [spec], mode);
-    } else if (a.startsWith('i-')) {
-      const mode = a.slice(2), specs = badworkAiWorkSpecs([b.dataset.item]);
-      const pick = mode === 'write' ? specs.filter(s => !has(s)) : specs.filter(has);
-      if (!pick.length) { showToast(mode === 'write' ? 'ช่องในข้อนี้มีข้อความครบแล้ว — ใช้ “ปรับสำนวนทั้งข้อ” ได้' : 'ข้อนี้ยังไม่มีข้อความให้ปรับสำนวน'); return; }
-      badworkAiRunFields(b, pick, mode);
-    }
+    const r = ad.resolve(sys, b.dataset.paAi, b);
+    if (!r) return;
+    if (r.toast) { showToast(r.toast); return; }
+    badworkAiRunFields(b, r.specs, r.mode, sys);
   });
 }

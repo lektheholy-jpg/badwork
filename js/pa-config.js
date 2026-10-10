@@ -10,8 +10,10 @@
 //   collections  ชื่อ collection ใต้ users/{uid}/ — ต้องตรงกับ match ใน firestore.rules (tests/pa-config.test.js ตรวจให้)
 //   tabs         แท็บของหน้า [รหัสแท็บ, ป้าย]
 //   classroomTypes / workItems / loadLists   โครงแบบฟอร์มตามแบบ PA 1/ส
-//   aiCtx        ช่อง "บริบทงานของฉัน" ของผู้ช่วย AI (เก็บใน doc.aiCtx): fields = ป้ายชื่อช่อง · maxLen = ความยาวสูงสุด (ตัวอักษร)
-//   ai           ผู้ช่วย AI: ค่าเชื่อมต่อ · รุ่นที่เลือกได้ · คีย์ใน localStorage · prompts (system / modes / part2 / workHints / scope)
+//   aiCtx        ช่อง "บริบทงานของฉัน" ของผู้ช่วย AI (เก็บใน doc.aiCtx): fields = ป้ายชื่อช่อง · maxLen = ความยาวสูงสุด (ตัวอักษร) · idPrefix = ขึ้นต้น id ของช่องในฟอร์ม
+//   ai           ผู้ช่วย AI ของระบบนี้: storageKeys.ctx (คีย์สำรองบริบท) · prompts (system / modes / part2 / workHints / scope)
+//                การเชื่อมต่อ Gemini · รายชื่อรุ่น · คีย์ความยินยอม ใช้ร่วมทุกระบบ → BADWORK_AI_CONFIG ใน js/badwork-ai-config.js
+//                ตัวต่อที่ประกอบพร้อต์/ฝังปุ่มของระบบนี้อยู่ที่ js/pa-ai.js (registerDocAi)
 // ==========================================================================
 
 const PA_CONFIG = {
@@ -66,30 +68,15 @@ const PA_CONFIG = {
     },
     // ความยาวสูงสุดของแต่ละช่อง (ตัวอักษร)
     maxLen: { level: 40, rooms: 6, students: 6, problems: 240, prev: 200, focus: 160 },
+    // ขึ้นต้น id ของช่องบริบทในฟอร์ม (id = idPrefix + รหัสช่อง) — ใช้ทั้งตอนวาดการ์ด (js/pa-ai.js) และตอนเก็บค่า (paCollectFormData ใน js/pa.js)
+    idPrefix: 'pa-ctx-',
   },
 
   ai: {
-    endpoint: 'https://generativelanguage.googleapis.com/v1beta', // Gemini Developer API (REST)
-    // โหมดตรง: ใส่ Google AI Studio key (สร้างที่ aistudio.google.com/apikey) — คีย์จะอยู่ในหน้าเว็บ ใครก็เห็นได้
-    //   → ต้องจำกัด "HTTP referrers" ให้เฉพาะโดเมนของเว็บนี้ และจำกัด API เป็น Generative Language API เท่านั้น
-    apiKey: '',
-    // โหมดพร็อกซี (แนะนำ): ใส่ URL ของพร็อกซีที่เก็บคีย์ไว้ฝั่งเซิร์ฟเวอร์ — ถ้าตั้งค่านี้ จะไม่ใช้ apiKey ด้านบน
-    proxyUrl: 'https://badwork-gemini-proxy.badwork.workers.dev',
-    model: 'gemini-3.8-flash',                            // รุ่นเริ่มต้น (ต้องอยู่ใน models ด้านล่าง) · ชื่อรุ่น/รุ่นที่ใช้ฟรีได้ ดู ai.google.dev/gemini-api/docs/models และ /pricing
-    timeout: 90000,
-    // รายชื่อรุ่นที่ให้เลือก — ชื่อต้องตรงกับที่ Gemini API รองรับ (ดูรายชื่อรุ่นที่ ai.google.dev) · เพิ่ม/ลบรุ่นที่นี่ที่เดียว
-    models: [
-      { id: 'gemini-3.8-flash', label: 'Gemini 3.8 Flash', hint: 'ค่าเริ่มต้น · รุ่น Flash ใหม่สุด ใช้ฟรีได้ · เหมาะกับร่างข้อความยาว' },
-      { id: 'gemini-3.7-flash', label: 'Gemini 3.7 Flash', hint: 'ใช้ฟรีได้ · ถ้ารุ่นเริ่มต้นโควตาเต็ม ลองสลับมารุ่นนี้ (โควตานับแยกรุ่น)' },
-      { id: 'gemini-3.5-flash', label: 'Gemini 3.5 Flash', hint: 'ใช้ฟรีได้ · รุ่นที่ใช้อยู่เดิม Google จัดเป็นรุ่นเก่า' },
-      { id: 'gemini-3.5-flash-lite', label: 'Gemini 3.5 Flash-Lite', hint: 'ใช้ฟรีได้ · เร็วและเบา เหมาะกับปรับสำนวน/ย่อข้อความสั้น ๆ' },
-      { id: 'gemini-3.1-flash-lite', label: 'Gemini 3.1 Flash-Lite', hint: 'ใช้ฟรีได้ · เบาที่สุดในรายการ สำรองเมื่อรุ่นอื่นเต็ม' },
-    ],
-    // คีย์ใน localStorage ของเครื่องนี้ (ห้ามเปลี่ยนค่า — ผู้ใช้เดิมจะเสียรุ่นที่เลือก/บริบท/การยินยอม)
+    // คีย์ใน localStorage ของระบบนี้ (ห้ามเปลี่ยนค่า — ผู้ใช้เดิมจะเสียบริบทที่สำรองไว้)
+    //   การเชื่อมต่อ Gemini · รายชื่อรุ่น · รุ่นที่ผู้ใช้เลือก · ความยินยอม เป็นของส่วนกลางทุกระบบ → BADWORK_AI_CONFIG (js/badwork-ai-config.js)
     storageKeys: {
-      model: 'pa-ai-model-v1', // รุ่นที่ผู้ใช้เลือก (จำไว้ในเครื่องนี้)
       ctx: 'pa-ai-ctx-v1', // สำรองบริบทล่าสุดในเครื่องนี้ (ใช้เมื่อยังไม่มีเอกสารให้บันทึก)
-      consent: 'pa-ai-consent-v2', // v2: เพิ่มบริบทงาน (ระดับชั้น จำนวนห้อง/นักเรียน ปัญหา ผลปีก่อน) — ผู้ใช้เดิมต้องยินยอมใหม่
     },
     prompts: {
       system: `คุณเป็นผู้ช่วยครูไทยในการเขียนแบบข้อตกลงในการพัฒนางาน (PA 1/ส) ของ สพฐ.

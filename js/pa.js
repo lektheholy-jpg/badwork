@@ -729,7 +729,7 @@ async function renderPAFormView() {
     }
   });
 
-  if (typeof badworkAiMount === 'function') badworkAiMount(view, form); // ปุ่มผู้ช่วย AI (js/badwork-ai.js) — ไม่มีไฟล์นี้ฟอร์มก็ทำงานตามเดิม
+  if (typeof badworkAiMount === 'function') badworkAiMount(view, form, sys); // ปุ่มผู้ช่วย AI (js/badwork-ai.js + ตัวต่อ js/pa-ai.js) — ไม่มีไฟล์นี้ฟอร์มก็ทำงานตามเดิม
 
   docSwapIn(view);
 }
@@ -764,7 +764,7 @@ function paCollectFormData() {
 
   // ช่องบริบท AI อยู่ในการ์ดที่ badwork-ai.js ติดให้ — ถ้าไม่มีช่อง (ไม่โหลดไฟล์นั้น) คงค่าเดิมไว้
   const aiCtx = {};
-  Object.entries(sys.config.aiCtx.maxLen).forEach(([k, n]) => { aiCtx[k] = el('pa-ctx-' + k) ? get('pa-ctx-' + k).slice(0, n) : (sys.state.doc.aiCtx?.[k] || ''); });
+  Object.entries(sys.config.aiCtx.maxLen).forEach(([k, n]) => { aiCtx[k] = el(sys.config.aiCtx.idPrefix + k) ? get(sys.config.aiCtx.idPrefix + k).slice(0, n) : (sys.state.doc.aiCtx?.[k] || ''); });
 
   Object.assign(sys.state.doc, {
     fiscalYear: get('pa-fiscalYear'),
