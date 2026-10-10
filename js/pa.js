@@ -600,8 +600,8 @@ async function renderPAFormView() {
           </div>
         </div>
         <div class="pa-sub">ประเภทห้องเรียนที่จัดการเรียนรู้ (เลือกได้มากกว่า 1)</div>
-        <div class="pa-checks">
-          ${sys.config.classroomTypes.map(([k, l]) => `<label class="pa-check"><input type="checkbox" data-ct="${k}"${d.classroomTypes[k] ? ' checked' : ''}> ${l}</label>`).join('')}
+        <div class="doc-checks">
+          ${sys.config.classroomTypes.map(([k, l]) => `<label class="doc-check"><input type="checkbox" data-ct="${k}"${d.classroomTypes[k] ? ' checked' : ''}> ${l}</label>`).join('')}
         </div>
         <div class="field pa-field-date">
           <label for="pa-signDate">วันที่ลงนามของผู้จัดทำ</label>

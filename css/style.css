@@ -2146,18 +2146,18 @@ table.tt tr.is-today td.tt-cell { background: color-mix(in srgb, var(--hue-orang
 .pa-pf-item dd { margin: 2px 0 0; font-weight: 600; overflow-wrap: anywhere; }
 .pa-pf-note { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 12px; margin-bottom: 16px; font-size: 13px; color: var(--ink-soft); }
 .pa-sub { margin: 0 0 6px; font-size: 13.5px; font-weight: 600; color: var(--ink-soft); }
-.pa-check { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 500; }
-.pa-check input { width: 18px; height: 18px; accent-color: var(--primary-solid); }
+.doc-check { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 500; }
+.doc-check input { width: 18px; height: 18px; accent-color: var(--primary-solid); }
 
 /* ฟอร์ม PA: ประเภทห้องเรียน (ปุ่มเลือกได้หลายอัน) */
-.pa-checks { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; }
-.pa-checks .pa-check {
+.doc-checks { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; }
+.doc-checks .doc-check {
   padding: 11px 14px; border: 1.5px solid transparent; border-radius: var(--radius-s); background: var(--surface-sunken); cursor: pointer;
   transition: background-color .15s ease, border-color .15s ease, color .15s ease;
 }
-.pa-checks .pa-check:hover { border-color: var(--border); }
-.pa-checks .pa-check:has(input:checked) { border-color: var(--primary); background: var(--primary-tint); color: var(--primary-dark); font-weight: 600; }
-.pa-checks .pa-check:has(input:focus-visible) { box-shadow: 0 0 0 4px var(--primary-tint); }
+.doc-checks .doc-check:hover { border-color: var(--border); }
+.doc-checks .doc-check:has(input:checked) { border-color: var(--primary); background: var(--primary-tint); color: var(--primary-dark); font-weight: 600; }
+.doc-checks .doc-check:has(input:focus-visible) { box-shadow: 0 0 0 4px var(--primary-tint); }
 .pa-field-date { max-width: 260px; margin-top: 14px; }
 
 /* ฟอร์ม PA: ภาระงาน 1.1–1.4 (แถว = ชื่อรายการ · ชั่วโมง · ปุ่มลบ) — เดิมเป็น \3c style> ใน js/pa.js */
@@ -2200,7 +2200,7 @@ table.tt tr.is-today td.tt-cell { background: color-mix(in srgb, var(--hue-orang
 @media (max-width: 540px) {
   .pa-pf { grid-template-columns: 1fr; }
   .pa-form-footer { flex-direction: column-reverse; }
-  .pa-checks { grid-template-columns: 1fr; }
+  .doc-checks { grid-template-columns: 1fr; }
   .pa-lblock { --pa-cols: minmax(0, 1fr) 80px 44px; }
 }
 .empty-title { margin-bottom: 8px; font-size: 17px; font-weight: 600; }
@@ -2237,7 +2237,7 @@ table.tt tr.is-today td.tt-cell { background: color-mix(in srgb, var(--hue-orang
 .doc-ai-grp { margin-top: 10px; padding-top: 12px; border-top: 1px solid var(--border); font-size: 13.5px; font-weight: 700; color: var(--ink); }
 .doc-ai-list > .doc-ai-grp:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
 .doc-ai-item { margin-top: 10px; }
-.doc-ai-item .pa-check { font-weight: 700; }
+.doc-ai-item .doc-check { font-weight: 700; }
 .doc-ai-item .field { margin: 8px 0 4px; }
 .doc-ai-old { margin-top: 6px; font-size: 13px; color: var(--ink-soft); }
 .doc-ai-old summary { cursor: pointer; font-weight: 600; }

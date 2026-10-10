@@ -374,7 +374,8 @@ globalThis.__probes = {
     ok(S.models.some(m => m.id === S.model), 'รุ่น AI เริ่มต้นอยู่ในรายการรุ่นที่เลือกได้ (config กลาง)');
     ok(!('models' in C.ai) && !('apiKey' in C.ai) && !('proxyUrl' in C.ai) && !('endpoint' in C.ai) && !('model' in C.ai) && !('timeout' in C.ai) && !('consent' in C.ai.storageKeys) && !('model' in C.ai.storageKeys), 'PA_CONFIG.ai ไม่มีค่าเชื่อมต่อ/รุ่น/ความยินยอมซ้ำกับ config กลาง');
     const allKeys = [...Object.values(S.storageKeys), ...Object.values(C.ai.storageKeys)];
-    ok(allKeys.every(k => /^pa-ai-/.test(k)) && new Set(allKeys).size === 3, 'คีย์ localStorage ของ AI ขึ้นต้น pa-ai- (ค่าเดิม ห้ามเปลี่ยน — ไม่เกี่ยวกับชื่อ class doc-ai-*) และไม่ซ้ำกัน');
+    ok(allKeys.length === 3 && new Set(allKeys).size === 3 && Object.values(S.storageKeys).every(k => /^doc-ai-/.test(k)), 'คีย์ localStorage ร่วมทุกระบบ (รุ่น/ยินยอม) ขึ้นต้น doc-ai- · ทั้ง 3 คีย์ไม่ซ้ำกัน');
+    ok(JSON.stringify(S.legacyStorageKeys) === JSON.stringify({ model: 'pa-ai-model-v1', consent: 'pa-ai-consent-v2' }), 'legacyStorageKeys ชี้ชื่อคีย์เดิมถูกต้อง (ใช้ย้ายค่าของผู้ใช้เดิม)');
     const legacy = ['PA_TABS', 'PA_CLASSROOM_TYPES', 'PA_WORK_ITEMS', 'PA_LOAD_LISTS', 'PA_CTX_MAX', 'PA_AI_SYSTEM', 'PA_AI_MODE_TXT', 'PA_AI_PART2', 'PA_AI_WORK_HINTS', 'PA_AI_CTX_FIELDS', 'PA_AI_SCOPE'];
     const stray = ['js/pa.js', 'js/badwork-ai.js', 'js/pa-ai.js', 'js/pa-rpt.js', 'js/pa-report.js'].flatMap(f => legacy.filter(n => new RegExp('\\b' + n + '\\b').test(read(f))).map(n => f + ':' + n))
       .concat(['js/pa.js', 'js/badwork-ai.js', 'js/pa-ai.js', 'js/pa-rpt.js'].filter(f => /PA_AI\./.test(read(f)) || /'pa_(agreements|reports)'/.test(read(f))).map(f => f + ':literal'));
@@ -494,6 +495,28 @@ globalThis.__probes = {
     ok(JSON.stringify(A.ctx.ls) === '["set:mock-ai-ctx-v1"]' && JSON.stringify(A.ctx.db) === '["idp_plans/p1:update:aiCtx"]' && A.ctx.saved.topic === 'X' && A.ctx.local.topic === 'X' && !A.ctx.paKeyTouched, 'บริบทของ mock เก็บที่คีย์สำรอง/collection ของ mock เท่านั้น (ไม่แตะ pa-ai-ctx-v1 / pa_*)', JSON.stringify(A.ctx));
     ok(A.ctxGuard.ls.length === 0 && A.ctxGuard.db.length === 0 && A.ctxGuard.kept === 'X', 'ฟอร์มถูกถอดก่อนตัวหน่วงครบ: ไม่เขียนทับบริบทที่เก็บไว้ด้วยค่าว่าง', JSON.stringify(A.ctxGuard));
     ok(A.paBefore === A.paAfter && A.paBefore.length > 500, 'พร้อต์ของ PA เหมือนเดิมทุกตัวอักษรก่อน/หลังมีระบบที่สองลงทะเบียนและใช้งานแกน');
+  }
+
+  // ---- ย้ายคีย์ localStorage เดิม (pa-ai-*) → คีย์กลาง (doc-ai-*): ผู้ใช้เดิมไม่เสียรุ่นที่เลือก/ความยินยอม ----
+  console.log('ย้ายคีย์ localStorage ของผู้ช่วย AI (pa-ai-* → doc-ai-*)');
+  {
+    const run = code => vm.runInContext(code, env5);
+    const env5 = makeEnv(); let asked = 0; env5.confirm = () => { asked++; return true; };
+    const last = run('BADWORK_AI_CONFIG.models[BADWORK_AI_CONFIG.models.length - 1].id');
+    const dflt = run('BADWORK_AI_CONFIG.model');
+    env5.localStorage.setItem('pa-ai-model-v1', last); env5.localStorage.setItem('pa-ai-consent-v2', '1'); env5.lslog.length = 0;
+    const got = { model: run('badworkAiModelId()'), consent: run("badworkAiConsent(docSystem('pa'))") };
+    ok(got.model === last && last !== dflt, 'ผู้ใช้เดิม: รุ่นที่เคยเลือกไว้ (คีย์ pa-ai-model-v1) ยังได้ใช้ต่อ', got.model);
+    ok(got.consent === true && asked === 0, 'ผู้ใช้เดิม: ความยินยอมเดิม (pa-ai-consent-v2) ยังมีผล ไม่ถูกถามซ้ำ', asked);
+    ok(env5.localStorage.getItem('doc-ai-model-v1') === last && env5.localStorage.getItem('doc-ai-consent-v2') === '1', 'ค่าถูกคัดลอกลงคีย์ใหม่แล้ว (ครั้งถัดไปอ่านคีย์ใหม่ตรงๆ)');
+    ok(env5.localStorage.getItem('pa-ai-model-v1') === last && env5.localStorage.getItem('pa-ai-consent-v2') === '1', 'คีย์เดิมไม่ถูกลบ (ย้อนกลับเวอร์ชันได้)');
+    env5.lslog.length = 0; run('badworkAiModelId()');
+    ok(JSON.stringify(env5.lslog) === '["get:doc-ai-model-v1"]', 'หลังย้ายแล้วอ่านแค่คีย์ใหม่คีย์เดียว', env5.lslog.join());
+    const env6 = makeEnv(); let asked6 = 0; env6.confirm = () => { asked6++; return true; };
+    env6.lslog.length = 0;
+    const fresh = vm.runInContext("[badworkAiModelId() === BADWORK_AI_CONFIG.model, badworkAiConsent(docSystem('pa'))]", env6);
+    ok(fresh[0] && fresh[1] === true && asked6 === 1, 'ผู้ใช้ใหม่: ใช้รุ่นเริ่มต้น และถามยินยอม 1 ครั้ง', asked6);
+    ok(env6.lslog.filter(x => x.startsWith('set:')).join() === 'set:doc-ai-consent-v2', 'ผู้ใช้ใหม่: เขียนเฉพาะคีย์ใหม่ ไม่สร้างคีย์ pa-ai-* เพิ่ม', env6.lslog.join());
   }
 
   console.log(`\nผลรวม: ผ่าน ${pass}, ไม่ผ่าน ${fail}`);

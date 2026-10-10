@@ -67,10 +67,22 @@ function badworkAiFilled(spec) { return !!(document.getElementById(spec.el)?.val
 // ------------------------------------------------------------------
 // เรียก Gemini
 // ------------------------------------------------------------------
+// อ่านค่าจาก localStorage ตามชื่อใน BADWORK_AI_CONFIG.storageKeys · ไม่พบ → หยิบจากคีย์เดิม (legacyStorageKeys) มาเขียนลงคีย์ใหม่ให้ แล้วคืนค่านั้น
+//   ผู้ใช้เดิมจึงไม่เสียรุ่นที่เลือก/ความยินยอมตอนเปลี่ยนชื่อคีย์ · ใช้ storage ไม่ได้ → null
+function badworkAiStorageGet(name) {
+  const ai = BADWORK_AI_CONFIG;
+  try {
+    const v = localStorage.getItem(ai.storageKeys[name]);
+    if (v !== null) return v;
+    const old = ai.legacyStorageKeys && ai.legacyStorageKeys[name] ? localStorage.getItem(ai.legacyStorageKeys[name]) : null;
+    if (old !== null) { try { localStorage.setItem(ai.storageKeys[name], old); } catch (err) { /* เขียนไม่ได้ — ใช้ค่าเดิมครั้งนี้ */ } }
+    return old;
+  } catch (err) { return null; }
+}
+
 function badworkAiModelId() {
   const ai = BADWORK_AI_CONFIG;
-  let v = null;
-  try { v = localStorage.getItem(ai.storageKeys.model); } catch (err) { /* ใช้ storage ไม่ได้ — ใช้ค่าเริ่มต้น */ }
+  const v = badworkAiStorageGet('model'); // null ถ้าใช้ storage ไม่ได้/ยังไม่เคยเลือก → ใช้ค่าเริ่มต้น
   return ai.models.some(m => m.id === v) ? v : ai.model;
 }
 // Gemini 3 ใช้ thinkingLevel · Gemini 2.5 ใช้ thinkingBudget (ส่ง thinkingLevel ให้ 2.5 จะถูกปฏิเสธ)
@@ -182,7 +194,7 @@ async function badworkAiBatch(specs, mode, known, sys = docSystem()) {
 // ------------------------------------------------------------------
 function badworkAiConsent(sys = docSystem()) {
   const key = BADWORK_AI_CONFIG.storageKeys.consent;
-  try { if (localStorage.getItem(key) === '1') return true; } catch (err) { /* ใช้ storage ไม่ได้ — ถามทุกครั้ง */ }
+  if (badworkAiStorageGet('consent') === '1') return true; // ใช้ storage ไม่ได้ → null → ถามทุกครั้ง
   const ok = confirm(docAi(sys).copy.consent);
   if (ok) { try { localStorage.setItem(key, '1'); } catch (err) { /* ข้าม */ } }
   return ok;
@@ -216,7 +228,7 @@ function badworkAiReview(items, warn, sys = docSystem()) {
     if (g.id !== lastGrp) { head = `<div class="doc-ai-grp">${escapeHtml(g.title)}</div>`; lastGrp = g.id; }
     const name = it.item ? it.fieldLabel : it.label;
     return `${head}<div class="doc-ai-item">
-      <label class="pa-check"><input type="checkbox" data-i="${i}" checked> ${escapeHtml(name)}</label>
+      <label class="doc-check"><input type="checkbox" data-i="${i}" checked> ${escapeHtml(name)}</label>
       ${it.current ? `<details class="doc-ai-old"><summary>ข้อความเดิม (จะถูกแทนที่ถ้าเลือกช่องนี้)</summary><div class="doc-ai-old-text">${escapeHtml(it.current)}</div></details>` : ''}
       <div class="field"><textarea data-t="${i}" rows="4" aria-label="${escapeHtml(name)}">${escapeHtml(it.proposed)}</textarea></div>
     </div>`;
