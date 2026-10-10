@@ -662,6 +662,28 @@ const IDP1_CSS = `
 `;
 
 // ------------------------------------------------------------------
+// PAPER CSS — ตัวอย่างบนจอแสดงเป็นแผ่น A4 แยกหน้า (หน้าแรกแนวตั้ง · ส่วนที่ 2–3 แนวนอน) ขอบกระดาษเท่าตอนพิมพ์
+//   #idp-src   = เอกสารต้นฉบับ (ใช้พิมพ์จริง — เบราว์เซอร์แบ่งหน้าเองด้วย named page) · ซ่อนบนจอเมื่อวาดแผ่นกระดาษเสร็จ (html.paper-on)
+//   #idp-paper = แผ่นกระดาษที่ idpPaginate() ตัดแบ่งจาก #idp-src · ซ่อนตอนพิมพ์ · ย่อให้พอดีความกว้างด้วย --idp-zoom
+// ------------------------------------------------------------------
+const IDP_PAPER_CSS = `
+@media screen{
+  html{background:#dfe2e8}
+  html.paper-on #idp-src{display:none}
+  #idp-paper{display:none;zoom:var(--idp-zoom,1);padding:14px 0 2px}
+  html.paper-on #idp-paper{display:block}
+  .idp-pgwrap{margin:0 0 16px}
+  .idp-sheet{box-sizing:border-box;margin:0 auto;overflow:hidden;background:#fff;box-shadow:0 0 0 1px rgba(0,0,0,.08),0 2px 6px rgba(0,0,0,.18),0 10px 24px rgba(0,0,0,.10)}
+  .idp-sheet.is-port{width:210mm;height:297mm;padding:20mm 20mm 20mm 25mm}
+  .idp-sheet.is-land{width:297mm;height:210mm;padding:15mm}
+  .idp-sheet-body{height:100%}
+  .idp-sheet-body>:first-child{margin-top:0}
+  .idp-pgno{margin-top:7px;font:calc(12px / var(--idp-zoom,1))/1 Tahoma,sans-serif;color:#5b6270;text-align:center}
+}
+@media print{#idp-paper{display:none}}
+`;
+
+// ------------------------------------------------------------------
 // Build preview HTML
 //   หน้า 1 (แนวตั้ง): ข้อมูลส่วนบุคคล + ภาระงาน (ชั่วโมงสอน) — ไม่มีบันทึกข้อความนำส่ง
 //   หน้า 2+ (แนวนอน): ส่วนที่ 2 ตารางสมรรถนะ · ส่วนที่ 3 ตารางสรุป + ลงชื่อผู้จัดทำ
@@ -722,9 +744,9 @@ function idpBuildPreviewHtml(d, profile) {
 <html lang="th">
 <head><meta charset="UTF-8"><style>
 body{margin:0;padding:0}
-${docFontCss()}${IDP1_CSS}
+${docFontCss()}${IDP1_CSS}${IDP_PAPER_CSS}
 </style></head>
-<body><div class="idp1">
+<body><div id="idp-src"><div class="idp1">
 
 <!-- หน้า 1 · แนวตั้ง · ข้อมูลส่วนบุคคล + ภาระงาน -->
 <section class="pg-port">
@@ -774,7 +796,7 @@ ${docFontCss()}${IDP1_CSS}
   <div class="i1-break"></div>
 
   <div class="i1-h i1-h0">ส่วนที่ 3  ตารางสรุปแผนพัฒนาตนเอง</div>
-  <div class="i1-ind i1-mb3">(ให้สรุปวิธีการ/รูปแบบการพัฒนา ที่มีความจำเป็นมากที่สุด ในสมรรถนะที่ต้องการพัฒนา 3 อันดับแรก)</div>
+  <div class="i1-ind i1-mb3 i1-keep">(ให้สรุปวิธีการ/รูปแบบการพัฒนา ที่มีความจำเป็นมากที่สุด ในสมรรถนะที่ต้องการพัฒนา 3 อันดับแรก)</div>
   <table>
     <thead>
       <tr>
@@ -796,63 +818,200 @@ ${docFontCss()}${IDP1_CSS}
   </div>
 </section>
 
-</div></body></html>`;
+</div></div><div id="idp-paper"></div></body></html>`;
 }
 
 // ------------------------------------------------------------------
-// PREVIEW VIEW
+// PREVIEW VIEW — แสดงเป็นแผ่นกระดาษ A4 เหมือนตอนพิมพ์ (รูปแบบเดียวกับตัวอย่าง/พิมพ์ของ PA)
+//   อ่านจากแผนที่เปิดอยู่ (รวมฉบับที่ยังไม่บันทึก) · เลือกดูแผนอื่นที่บันทึกไว้ได้จากรายการด้านบน
 // ------------------------------------------------------------------
-async function idpRenderPreviewView() {
+const IDP_SHEET = {
+  port: { w: 210, h: 297, pad: [20, 20, 20, 25], label: 'A4 แนวตั้ง' },   // mm [บน, ขวา, ล่าง, ซ้าย] — ต้องตรงกับ @page idp-port
+  land: { w: 297, h: 210, pad: [15, 15, 15, 15], label: 'A4 แนวนอน' },   // ต้องตรงกับ @page idp-land
+};
+
+// ตัด #idp-src ในเอกสารตัวอย่าง (doc) เป็นแผ่นกระดาษทีละหน้า วางลง #idp-paper → คืนจำนวนแผ่น
+//   บล็อกยาวเกินหน้า = ขึ้นแผ่นใหม่ · ตารางแบ่งทีละแถว (ซ้ำหัวตารางทุกแผ่น) · หัวข้อ (.i1-h/.i1-keep) ไม่ถูกทิ้งไว้ท้ายแผ่นตามลำพัง
+//   ต้องเรียกตอนฟอนต์โหลดแล้ว และตอน --idp-zoom ยังเป็น 1 (วัดความสูงจริง)
+function idpPaginate(doc) {
+  const src = doc.getElementById('idp-src'), paper = doc.getElementById('idp-paper');
+  if (!src || !paper) return 0;
+  paper.style.removeProperty('--idp-zoom');
+  paper.textContent = '';
+  doc.documentElement.classList.add('paper-on');
+
+  const sheets = [];
+  let cur = null;
+  const newSheet = kind => {
+    const spec = IDP_SHEET[kind];
+    const wrap = doc.createElement('div');
+    wrap.className = 'idp-pgwrap';
+    const sheet = doc.createElement('section');
+    sheet.className = 'idp-sheet is-' + kind;
+    const body = doc.createElement('div');
+    body.className = 'idp1 idp-sheet-body';
+    sheet.appendChild(body);
+    const no = doc.createElement('div');
+    no.className = 'idp-pgno';
+    wrap.append(sheet, no);
+    paper.appendChild(wrap);
+    cur = { kind, spec, body, no };
+    sheets.push(cur);
+  };
+  const over = () => cur.body.scrollHeight > cur.body.clientHeight + 1;
+  const isKeep = el => el.classList.contains('i1-h') || el.classList.contains('i1-keep');
+  // หัวข้อที่อยู่ท้ายแผ่นปัจจุบัน → เอาออกเพื่อพาไปแผ่นใหม่พร้อมเนื้อหาที่ตามมา
+  const takeKeep = () => {
+    const out = [];
+    while (cur.body.childElementCount > 1 && isKeep(cur.body.lastElementChild)) out.unshift(cur.body.removeChild(cur.body.lastElementChild));
+    return out;
+  };
+  const moveToNewSheet = (...els) => {
+    const kind = cur.kind, carry = takeKeep();
+    newSheet(kind);
+    [...carry, ...els].forEach(e => cur.body.appendChild(e));
+  };
+  const placeBlock = node => {
+    const el = node.cloneNode(true);
+    cur.body.appendChild(el);
+    if (over() && cur.body.childElementCount > 1) { cur.body.removeChild(el); moveToNewSheet(el); }
+  };
+  const placeTable = tbl => {
+    const mk = () => {
+      const t = tbl.cloneNode(false);
+      if (tbl.tHead) t.appendChild(tbl.tHead.cloneNode(true));
+      const tb = doc.createElement('tbody');
+      t.appendChild(tb);
+      return { t, tb };
+    };
+    let { t, tb } = mk();
+    cur.body.appendChild(t);
+    for (const r of [...tbl.tBodies[0].rows]) {
+      const row = r.cloneNode(true);
+      tb.appendChild(row);
+      if (!over()) continue;
+      if (tb.rows.length > 1) {                      // แถวนี้ไม่พอที่ → ตารางต่อบนแผ่นใหม่ (หัวตารางซ้ำ)
+        tb.removeChild(row);
+        moveToNewSheet();
+        ({ t, tb } = mk());
+        cur.body.appendChild(t);
+        tb.appendChild(row);
+      } else if (cur.body.childElementCount > 1) {   // แถวแรกยังไม่พอที่ → ย้ายทั้งตาราง (พร้อมหัวข้อ) ไปแผ่นใหม่
+        cur.body.removeChild(t);
+        moveToNewSheet();
+        ({ t, tb } = mk());
+        cur.body.appendChild(t);
+        tb.appendChild(row);
+      }
+    }
+  };
+
+  src.querySelectorAll('section').forEach(section => {
+    newSheet(section.classList.contains('pg-land') ? 'land' : 'port');
+    [...section.children].forEach(node => {
+      if (node.classList.contains('i1-break')) { if (cur.body.childElementCount) newSheet(cur.kind); return; }
+      if (node.tagName === 'TABLE') placeTable(node); else placeBlock(node);
+    });
+  });
+  sheets.forEach((s, i) => { s.no.textContent = `หน้า ${i + 1} / ${sheets.length} · ${s.spec.label}`; });
+  return sheets.length;
+}
+
+// ย่อแผ่นกระดาษให้พอดีความกว้างกรอบ (ไม่ขยายเกินขนาดจริง) แล้วปรับความสูง iframe ให้เท่าเนื้อหา — เลื่อนดูด้วยหน้าเพจ ไม่มีแถบเลื่อนซ้อน
+function idpFitPaper(frame) {
+  const doc = frame.contentDocument;
+  const paper = doc && doc.getElementById('idp-paper');
+  if (!paper || !doc.documentElement.classList.contains('paper-on')) return;
+  paper.style.removeProperty('--idp-zoom');
+  const widest = Math.max(0, ...[...paper.querySelectorAll('.idp-sheet')].map(s => s.offsetWidth));
+  const zoom = widest ? Math.min(1, (frame.clientWidth - 16) / widest) : 1;
+  paper.style.setProperty('--idp-zoom', zoom.toFixed(4));
+  frame.style.setProperty('--fit-h', '100px');            // ลดก่อน เพื่อให้ scrollHeight = ความสูงเนื้อหาจริง
+  frame.style.setProperty('--fit-h', doc.documentElement.scrollHeight + 'px');
+}
+
+async function idpRenderPreviewView(pickId) {
   const sys = docSystem();
   const root = docMount();
   const seq = sys.state.seq;
+  docShowLoading(root);
 
-  // โหลด doc ถ้ายังไม่มี
-  if (!sys.state.doc && sys.state.docId) {
-    docShowLoading(root);
-    try {
-      const uid = AppState.user?.uid;
-      if (uid) {
-        const snap = await idpCol(uid).doc(sys.state.docId).get();
-        if (snap.exists) sys.state.doc = idpNormalize(snap.data());
-      }
-    } catch (e) { /* ignore */ }
-  }
+  const open = sys.state.doc && sys.state.view === 'form' ? sys.state.doc : null;
+  let list = [];
+  try { list = await idpLoadList(); } catch (e) { /* โหลดรายการไม่ได้ → ดูได้เฉพาะแผนที่เปิดอยู่ */ }
+  if (docStale(root, seq, sys) || sys.state.tab !== 'preview') return;
 
-  if (!sys.state.doc || sys.state.view !== 'form') {
-    root.innerHTML = `<div class="card"><div class="empty-state"><div class="empty-title">ยังไม่ได้เปิด ID-Plan</div><div class="empty-sub">เปิดหรือสร้างแผนจากแท็บ "แบบฟอร์ม" ก่อน แล้วจึงดูตัวอย่าง / พิมพ์</div></div></div>`;
+  if (!open && !list.length) {
+    root.innerHTML = `<div class="card"><div class="empty-state"><div class="icon icon-violet">${IDP_ICO_DOC}</div><div class="empty-title">ยังไม่มี ID-Plan</div><div class="empty-sub">สร้างแผนพัฒนาตนเองก่อน แล้วดูตัวอย่างและพิมพ์ที่นี่</div><button type="button" class="btn btn-primary" id="idp-prev-goto">ไปที่แบบฟอร์ม</button></div></div>`;
     docSwapIn(root);
+    document.getElementById('idp-prev-goto')?.addEventListener('click', () => docSwitchTab('form'));
     return;
   }
-  const doc = sys.state.doc;
 
-  // โหลด profile
+  // รายการให้เลือก: แผนที่เปิดอยู่มาก่อน (ฉบับที่ยังไม่บันทึกก็ดูได้) ตามด้วยแผนที่บันทึกไว้
+  const openKey = open ? (sys.state.docId || '__open__') : null;
+  const opts = [];
+  if (open) opts.push({ id: openKey, label: `${idpDocTitle(open)} · ${sys.state.docId ? 'กำลังแก้ไข' : 'ฉบับที่ยังไม่บันทึก'}` });
+  list.filter(x => x.id !== openKey).forEach(x => opts.push({ id: x.id, label: idpDocTitle(x) }));
+  const pid = opts.some(o => o.id === pickId) ? pickId : opts[0].id;
+  const d = pid === openKey ? open : idpNormalize(JSON.parse(JSON.stringify(list.find(x => x.id === pid))));
+
   const profile = await idpGetProfile(); // อ่านล่าสุดทุกครั้งที่เปิดตัวอย่าง — แก้ข้อมูลส่วนตัวแล้วพิมพ์ได้เลย
   if (docStale(root, seq, sys) || sys.state.tab !== 'preview') return;
-  const html = idpBuildPreviewHtml(doc, profile);
 
   root.innerHTML = `
     <div class="doc-preview-bar">
-      <button type="button" class="btn btn-ghost" id="idp-prev-back">${IDP_ICO_BACK} กลับ</button>
-      <button type="button" class="btn btn-primary" id="idp-print-btn">
-        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><g fill="currentColor" stroke="none"><path opacity=".55" d="M6 2.5h12a2 2 0 0 1 2 2v5H4v-5a2 2 0 0 1 2-2Z"/><rect opacity=".55" x="4" y="9.5" width="16" height="9" rx="2"/><rect x="7" y="14" width="10" height="6.5" rx="1"/></g></svg>
-        พิมพ์
-      </button>
+      <select class="doc-preview-select" id="idp-prev-select" aria-label="เลือกแผน">
+        ${opts.map(o => `<option value="${escapeHtml(o.id)}"${o.id === pid ? ' selected' : ''}>${escapeHtml(o.label)}</option>`).join('')}
+      </select>
+      <div class="doc-preview-actions">
+        <button type="button" class="btn btn-ghost btn-sm" id="idp-prev-edit">${DOC_ICO_EDIT} แก้ไข</button>
+        <button type="button" class="btn btn-primary btn-sm" id="idp-print-btn">${DOC_ICO_PRINT} พิมพ์ / บันทึกเป็น PDF</button>
+      </div>
     </div>
+    <div class="u-note doc-preview-hint">ตัวอย่างตามแบบ ID-Plan ของ สพฐ. — หน้าแรกแนวตั้ง ส่วนที่ 2–3 แนวนอน (A4) · กดพิมพ์แล้วเลือก "บันทึกเป็น PDF" ในหน้าต่างพิมพ์ได้ · ใช้ Chrome/Edge จะแบ่งหน้าแนวตั้ง/แนวนอนได้ถูกต้องที่สุด</div>
     <div class="doc-preview-frame-wrap">
-      <iframe id="idp-preview-frame" class="doc-preview-frame" title="ตัวอย่าง ID-Plan"></iframe>
+      <iframe id="idp-preview-frame" class="doc-preview-frame is-fit" title="ตัวอย่าง ID-Plan"></iframe>
     </div>`;
-
   docSwapIn(root);
-  const frame = document.getElementById('idp-preview-frame');
-  frame.srcdoc = html;
 
-  document.getElementById('idp-prev-back')?.addEventListener('click', () => {
+  const frame = document.getElementById('idp-preview-frame');
+  const loaded = new Promise(res => frame.addEventListener('load', res, { once: true }));
+  frame.srcdoc = idpBuildPreviewHtml(d, profile);
+
+  document.getElementById('idp-prev-select')?.addEventListener('change', e => idpRenderPreviewView(e.target.value));
+  document.getElementById('idp-prev-edit')?.addEventListener('click', () => {
+    if (pid !== openKey) { // เปิดแผนอื่นมาแก้ → แทนที่แผนที่เปิดอยู่ (ส่วนที่ยังไม่บันทึกจะหาย)
+      if (open && !confirm('เปิดแผนนี้เพื่อแก้ไข? ส่วนที่แก้ในแผนที่เปิดอยู่และยังไม่ได้บันทึกจะหายไป')) return;
+      sys.state.docId = pid;
+      sys.state.doc = d;
+      sys.state.view = 'form';
+    }
     docSwitchTab('form');
   });
   document.getElementById('idp-print-btn')?.addEventListener('click', () => {
+    frame.contentWindow?.focus();
     frame.contentWindow?.print();
   });
+
+  // รอเอกสารตัวอย่างโหลด + ฟอนต์พร้อม (ความสูงแถวขึ้นกับฟอนต์) แล้วค่อยตัดหน้า — ไม่งั้นจำนวนหน้าเพี้ยน
+  await loaded;
+  const fdoc = frame.contentDocument;
+  const fl = fdoc && fdoc.fonts;
+  if (fl && fl.load) {
+    const loads = Promise.allSettled(["16pt 'PA Sarabun'", "bold 16pt 'PA Sarabun'", "13pt 'PA Sarabun'"].map(f => fl.load(f, 'กa')));
+    await Promise.race([loads, new Promise(res => setTimeout(res, 2500))]);
+    try { await fl.ready; } catch (e) { /* ไปต่อด้วยฟอนต์ที่มี */ }
+  }
+  if (!frame.isConnected) return;
+  idpPaginate(fdoc);
+  idpFitPaper(frame);
+
+  const onResize = () => {
+    if (!frame.isConnected || sys.state.tab !== 'preview') window.removeEventListener('resize', onResize);
+    else idpFitPaper(frame);
+  };
+  window.addEventListener('resize', onResize);
 }
 
 // ------------------------------------------------------------------
