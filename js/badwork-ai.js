@@ -467,11 +467,11 @@ function badworkAiMount(view, form, sys = docSystem()) {
 
   // 1) การ์ดบนสุด: อธิบายสั้นๆ + บริบทงาน + เลือกรุ่น + ปุ่มหลัก
   const top = document.createElement('div');
-  top.className = 'card card-pad doc-ai-top';
+  top.className = 'doc-section doc-ai-top';
   top.innerHTML = `<div class="doc-ai-head">
       <span class="course-chip doc-ai-chip">${BADWORK_AI_ICON}</span>
       <div>
-        <h2 class="card-title">ผู้ช่วย AI</h2>
+        <h2 class="doc-sec-title">ผู้ช่วย AI</h2>
         <div class="u-note">ช่วยร่าง ปรับสำนวน และย่อข้อความ โดยใช้ Gemini</div>
       </div>
     </div>

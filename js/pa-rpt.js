@@ -418,23 +418,6 @@ async function parptOwner(d) {
   return { live, owner: (d && d.status === 'submitted' && d.owner) ? d.owner : live };
 }
 
-const PARPT_LIST_CSS = `
-.pa-toolbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
-.pa-list{display:flex;flex-direction:column;gap:10px}
-.pa-row{display:flex;align-items:center;gap:12px;padding:14px 16px;cursor:pointer;transition:box-shadow .15s}
-.pa-row:hover{box-shadow:0 0 0 2px var(--primary)}
-.pa-row-icon .nav-icon{position:relative;isolation:isolate;width:40px;height:40px;border-radius:var(--radius-xs);display:grid;place-items:center;flex-shrink:0;overflow:hidden}
-.pa-row-icon .nav-icon::after{content:'';position:absolute;inset:0;z-index:-1;background:linear-gradient(145deg,oklch(from var(--w) calc(l + .06) calc(c * 1.18) h),oklch(from var(--w) calc(l - .05) calc(c * 1.25) h));-webkit-mask:var(--squircle) center/100% 100% no-repeat;mask:var(--squircle) center/100% 100% no-repeat}
-.pa-row-info{flex:1;min-width:0}
-.pa-row-title{font-weight:600;font-size:15px;color:var(--ink)}
-.pa-row-sub{font-size:13px;color:var(--ink-soft);margin-top:2px}
-.pa-row-meta{flex-shrink:0}
-.pa-row-actions{display:flex;gap:6px;flex-shrink:0}
-.pa-row-actions .ico{width:16px;height:16px}
-.badge{display:inline-block;padding:3px 10px;border-radius:var(--radius-pill);font-size:12px;font-weight:600}
-@media(max-width:540px){.pa-row{flex-wrap:wrap}.pa-row-actions{width:100%;justify-content:flex-end}}
-`;
-
 async function parptRenderList() {
   const sys = docSystem();
   const view = docMount();
@@ -453,40 +436,15 @@ async function parptRenderList() {
   }
   if (docStale(view, seq, sys) || sys.state.tab !== 'rpt' || sys.rptState.view !== 'list') return;
 
-  const rows = list.map(d => `
-    <div class="pa-row card" data-id="${escapeHtml(d.id)}">
-      <span class="pa-row-icon"><span class="nav-icon" style="--w:var(--hue-blue)">${PA_ICO_PA}</span></span>
-      <div class="pa-row-info">
-        <div class="pa-row-title">รายงานผล ${escapeHtml(paDocTitle(d))}</div>
-        <div class="pa-row-sub">${escapeHtml(d.challengeTitle || '')}</div>
-      </div>
-      <div class="pa-row-meta">${docStatusBadge(d.status)}</div>
-      <div class="pa-row-actions">
-        <button type="button" class="btn btn-ghost btn-sm rpt-print-btn" data-id="${escapeHtml(d.id)}" title="พิมพ์ / บันทึกเป็น PDF">${DOC_ICO_PRINT} พิมพ์</button>
-        <button type="button" class="btn btn-ghost btn-sm rpt-dup-btn" data-id="${escapeHtml(d.id)}" title="คัดลอกเป็นฉบับใหม่เพื่อนำไปปรับแก้">${DOC_ICO_COPY} คัดลอก</button>
-        <button type="button" class="btn btn-ghost btn-sm rpt-edit-btn" data-id="${escapeHtml(d.id)}" title="แก้ไข">${DOC_ICO_EDIT} แก้ไข</button>
-        <button type="button" class="btn btn-danger-ghost btn-sm rpt-del-btn" data-id="${escapeHtml(d.id)}" title="ลบ">${DOC_ICO_DEL}</button>
-      </div>
-    </div>`).join('');
-
-  const empty = list.length === 0 ? `
-    <div class="card">
-      <div class="empty-state">
-        <div class="icon">${PA_ICO_PA}</div>
-        <div class="empty-title">ยังไม่มีแบบรายงานผล</div>
-        <div class="empty-sub">สร้างแบบรายงานผลการปฏิบัติงานตาม Personal Agreement ประจำปีงบประมาณ</div>
-        <button type="button" class="btn btn-primary rpt-new-btn">${DOC_ICO_ADD} สร้างแบบรายงานผลใหม่</button>
-      </div>
-    </div>` : '';
-
-  view.innerHTML = `
-    <div class="pa-toolbar">
-      <span class="u-note">${list.length > 0 ? `${list.length} รายการ` : ''}</span>
-      ${list.length > 0 ? `<button type="button" class="btn btn-primary btn-sm rpt-new-btn">${DOC_ICO_ADD} สร้างใหม่</button>` : ''}
-    </div>
-    ${empty}
-    <div class="pa-list">${rows}</div>
-    <style>${PARPT_LIST_CSS}</style>`;
+  view.innerHTML = docListHtml({
+    list, icon: PA_ICO_PA, hue: 'blue',
+    title: d => 'รายงานผล ' + paDocTitle(d),
+    sub: d => d.challengeTitle || '',
+    actions: ['print', 'dup', 'edit', 'del'],
+    emptyTitle: 'ยังไม่มีแบบรายงานผล',
+    emptySub: 'สร้างแบบรายงานผลการปฏิบัติงานตาม Personal Agreement ประจำปีงบประมาณ',
+    newLabel: 'สร้างแบบรายงานผลใหม่',
+  });
 
   const open = (id) => {
     const d = id && sys.rptState.list?.find(x => x.id === id);
@@ -495,33 +453,14 @@ async function parptRenderList() {
     sys.rptState.view = 'form';
     parptRenderForm();
   };
-  view.querySelectorAll('.rpt-new-btn').forEach(b => b.addEventListener('click', () => open(null)));
-  view.querySelectorAll('.pa-row').forEach(r => r.addEventListener('click', () => open(r.dataset.id)));
-  view.querySelectorAll('.rpt-edit-btn').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); open(b.dataset.id); }));
-  view.querySelectorAll('.rpt-dup-btn').forEach(b => b.addEventListener('click', e => {
-    e.stopPropagation();
-    const d = sys.rptState.list?.find(x => x.id === b.dataset.id);
-    if (d) parptDuplicate(d);
-  }));
-  view.querySelectorAll('.rpt-print-btn').forEach(b => b.addEventListener('click', async e => {
-    e.stopPropagation();
-    sys.rptState.previewId = b.dataset.id;
-    docSwitchTab('rptprev'); // เปิดแท็บตัวอย่าง/พิมพ์ รายงานผล (เหมือนปุ่มพิมพ์ของแท็บข้อตกลง)
-  }));
-  view.querySelectorAll('.rpt-del-btn').forEach(b => b.addEventListener('click', async e => {
-    e.stopPropagation();
-    const row = b.closest('.pa-row');
-    if (!row.dataset.confirmDel) {
-      row.dataset.confirmDel = '1';
-      b.textContent = 'ยืนยันลบ?';
-      b.classList.add('btn-danger'); b.classList.remove('btn-danger-ghost');
-      setTimeout(() => { delete row.dataset.confirmDel; b.innerHTML = DOC_ICO_DEL; b.classList.remove('btn-danger'); b.classList.add('btn-danger-ghost'); }, 3000);
-      return;
-    }
-    b.disabled = true;
-    try { await parptDelete(b.dataset.id); await parptRenderList(); }
-    catch (err) { b.disabled = false; alert('ลบไม่สำเร็จ: ' + err.message); }
-  }));
+  docBindList(view, {
+    create: () => open(null),
+    open,
+    edit: open,
+    dup: id => { const d = sys.rptState.list?.find(x => x.id === id); if (d) parptDuplicate(d); },
+    print: id => { sys.rptState.previewId = id; docSwitchTab('rptprev'); }, // เปิดแท็บตัวอย่าง/พิมพ์ รายงานผล
+    del: async id => { await parptDelete(id); await parptRenderList(); },
+  });
 
   docSwapIn(view);
 }
@@ -558,8 +497,8 @@ async function parptRenderForm() {
     </div>
 
     <form id="rpt-form" class="pa-form" novalidate>
-      <div class="card card-pad">
-        <h2 class="card-title">ผู้รายงาน</h2>
+      <div class="doc-section">
+        <h2 class="doc-sec-title">ผู้รายงาน</h2>
         <dl class="pa-pf">
           ${item('ชื่อ-นามสกุล', o.name)}${item('ตำแหน่ง', o.position)}
           ${item('วิทยฐานะ', o.standing)}${item('กลุ่มสาระการเรียนรู้', o.subjectGroup)}
@@ -591,7 +530,7 @@ async function parptRenderForm() {
           ${inp('rpt-selfScore', 'คะแนนประเมินตนเอง (คะแนน)', d.selfScore, 'เช่น 98')}
           ${inp('rpt-teachHours', 'ชั่วโมงการสอน (ชั่วโมง/สัปดาห์)', d.teachHours, 'เช่น 27')}
         </div>
-        <div class="pa-sub">จำนวนวันลาในรอบการประเมิน <b id="rpt-leave-total">${(docNum(lv.sickDays) || docNum(lv.bizDays)) ? docFmtH(docNum(lv.sickDays) + docNum(lv.bizDays)) : '0'}</b> วัน</div>
+        <div class="doc-subsec-hd">จำนวนวันลาในรอบการประเมิน <b id="rpt-leave-total">${(docNum(lv.sickDays) || docNum(lv.bizDays)) ? docFmtH(docNum(lv.sickDays) + docNum(lv.bizDays)) : '0'}</b> วัน</div>
         <div class="field-row">
           ${inp('rpt-sickTimes', '1) ลาป่วย (ครั้ง)', lv.sickTimes, '0', 'numeric')}${inp('rpt-sickDays', 'ลาป่วย (วัน)', lv.sickDays, '0')}
         </div>
@@ -604,8 +543,8 @@ async function parptRenderForm() {
         </div>
       </div>
 
-      <div class="card card-pad">
-        <h2 class="card-title">ผลการปฏิบัติงานตามมาตรฐานตำแหน่ง</h2>
+      <div class="doc-section">
+        <h2 class="doc-sec-title">ผลการปฏิบัติงานตามมาตรฐานตำแหน่ง</h2>
         <div class="u-note u-mb-12">แต่ละข้อ: เล่าสิ่งที่ปฏิบัติจริง และระบุเอกสารอ้างอิงที่ใช้เป็นหลักฐาน (ไปอยู่ในตารางท้ายเอกสาร) — ข้อที่เว้นว่างจะแสดงเป็นช่องว่างในเอกสาร</div>
         ${sys.config.workItems.map(([gid, gt, items]) => `
           <details class="pa-wgroup"${gid === '1' ? ' open' : ''}>
@@ -621,8 +560,8 @@ async function parptRenderForm() {
           </details>`).join('')}
       </div>
 
-      <div class="card card-pad">
-        <h2 class="card-title">4. ความสำเร็จในการพัฒนางานที่เสนอเป็นประเด็นท้าทาย</h2>
+      <div class="doc-section">
+        <h2 class="doc-sec-title">4. ความสำเร็จในการพัฒนางานที่เสนอเป็นประเด็นท้าทาย</h2>
         ${area('rpt-challengeTitle', 'เรื่อง', d.challengeTitle, 3)}
         ${area('rpt-problem', '1. สภาพปัญหาของผู้เรียนและการจัดการเรียนรู้', d.problem, 5)}
         ${area('rpt-method', '2. วิธีการดำเนินการให้บรรลุผล', d.method, 5)}
@@ -630,8 +569,8 @@ async function parptRenderForm() {
         ${area('rpt-outcomeQual', '3.2 ผลลัพธ์การพัฒนา · เชิงคุณภาพ', d.outcomeQual, 4)}
       </div>
 
-      <div class="card card-pad">
-        <h2 class="card-title">5. ความสำเร็จที่ได้รับมอบหมายจากผู้บังคับบัญชา</h2>
+      <div class="doc-section">
+        <h2 class="doc-sec-title">5. ความสำเร็จที่ได้รับมอบหมายจากผู้บังคับบัญชา</h2>
         ${area('rpt-assigned', 'รายละเอียด', d.assigned, 5, 'เช่น งานที่ได้รับมอบหมายจากฝ่ายบริหาร การฝึกซ้อมนักเรียนเข้าร่วมการแข่งขัน')}
       </div>
 

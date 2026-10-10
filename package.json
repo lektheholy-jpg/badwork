@@ -18,7 +18,8 @@
     "test:priv": "node tests/privacy.test.js",
     "test:nav": "node tests/nav-history.test.js",
     "test:cache": "node tests/course-cache.test.js",
-    "check:sw": "node tools/check-sw.js"
+    "check:sw": "node tools/check-sw.js",
+    "test:ttscope": "node tests/timetable-scope.test.js"
   },
   "devDependencies": {
     "csso-cli": "4.0.2",

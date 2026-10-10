@@ -134,21 +134,16 @@ function paOwnerFromProfile(p) {
 }
 
 // ชั่วโมงสอนจากตารางสอน (1 คาบ = 1 ชั่วโมง) — รวมคาบที่วางจริง ไม่นับคาบที่ทับกัน
-async function paPullTimetable() {
+//   scope = { type: 'term'|'year'|'fiscal', year, sem } → รวมตารางของทุกภาคเรียนในช่วงนั้น · ไม่ส่ง scope = ภาคเรียนที่ใช้งานอยู่ตอนนี้ (ใช้ตอนสร้างแผนใหม่)
+//   วิชามีรหัส → 1.1 รายวิชา (เรียงตามรหัส) · ไม่มีรหัส/เป็นคาบกิจกรรม → กิจกรรมพัฒนาผู้เรียน (ดู ttAggregateTerms ใน js/timetable.js)
+async function paPullTimetable(scope) {
   await loadModule('timetable');
+  if (scope && scope.year) {
+    const { items, missing } = ttCollectScope(await loadAllTimetables(), scope);
+    return { ...ttAggregateTerms(items, false), term: ttScopeLabel(scope), missing };
+  }
   const tt = await loadTimetable();
-  const placed = ttStats(tt).placed;
-  const agg = kind => {
-    const m = new Map();
-    placed.filter(e => e.kind === kind).forEach(e => {
-      const key = (e.code || '') + '|' + e.title;
-      const cur = m.get(key) || { name: [e.code, e.title].filter(Boolean).join(' '), hours: 0 };
-      cur.hours += e.span;
-      m.set(key, cur);
-    });
-    return [...m.values()];
-  };
-  return { subjects: agg('class'), activities: agg('activity'), term: ttTermLabel(tt.term) };
+  return { ...ttAggregateTerms([{ tt }], false), term: ttTermLabel(tt.term), missing: [] };
 }
 
 // ไอคอนเฉพาะของ PA (ไอคอนทั่วไป DOC_ICO_* อยู่ที่ js/doc-shell.js)
@@ -399,64 +394,16 @@ async function renderPAListView() {
 
   if (docStale(view, seq, sys) || sys.state.tab !== 'agreement' || sys.state.view !== 'list') return;
 
-  const rows = list.map(d => `
-    <div class="pa-row card" data-id="${escapeHtml(d.id)}">
-      <span class="pa-row-icon"><span class="nav-icon" style="--w:var(--hue-blue)">${PA_ICO_PA}</span></span>
-      <div class="pa-row-info">
-        <div class="pa-row-title">${escapeHtml(paDocTitle(d))}</div>
-        <div class="pa-row-sub">${escapeHtml(d.challengeTitle || d.department || d.position || '')}</div>
-      </div>
-      <div class="pa-row-meta">
-        ${docStatusBadge(d.status)}
-      </div>
-      <div class="pa-row-actions">
-        <button type="button" class="btn btn-ghost btn-sm pa-print-btn" data-id="${escapeHtml(d.id)}" title="ดูตัวอย่าง / พิมพ์">${DOC_ICO_PRINT} พิมพ์</button>
-        <button type="button" class="btn btn-ghost btn-sm pa-dup-btn" data-id="${escapeHtml(d.id)}" title="คัดลอกเป็นฉบับใหม่เพื่อนำไปปรับแก้">${DOC_ICO_COPY} คัดลอก</button>
-        <button type="button" class="btn btn-ghost btn-sm pa-edit-btn" data-id="${escapeHtml(d.id)}" title="แก้ไข">${DOC_ICO_EDIT} แก้ไข</button>
-        <button type="button" class="btn btn-danger-ghost btn-sm pa-del-btn" data-id="${escapeHtml(d.id)}" title="ลบ">${DOC_ICO_DEL}</button>
-      </div>
-    </div>`).join('');
+  view.innerHTML = docListHtml({
+    list, icon: PA_ICO_PA, hue: 'blue',
+    title: d => paDocTitle(d),
+    sub: d => d.challengeTitle || d.department || d.position || '',
+    actions: ['print', 'dup', 'edit', 'del'],
+    emptyTitle: 'ยังไม่มีPersonal Agreement',
+    emptySub: 'กดปุ่มด้านล่างเพื่อสร้างPersonal Agreement ประจำปีงบประมาณ',
+    newLabel: 'สร้างPersonal Agreement ใหม่',
+  });
 
-  const empty = list.length === 0 ? `
-    <div class="card">
-      <div class="empty-state">
-        <div class="icon">${PA_ICO_PA}</div>
-        <div class="empty-title">ยังไม่มีPersonal Agreement</div>
-        <div class="empty-sub">กดปุ่มด้านล่างเพื่อสร้างPersonal Agreement ประจำปีงบประมาณ</div>
-        <button type="button" class="btn btn-primary pa-new-btn">${DOC_ICO_ADD} สร้างPersonal Agreement ใหม่</button>
-      </div>
-    </div>` : '';
-
-  view.innerHTML = `
-    <div class="pa-toolbar">
-      <span class="u-note">${list.length > 0 ? `${list.length} รายการ` : ''}</span>
-      ${list.length > 0 ? `<button type="button" class="btn btn-primary btn-sm pa-new-btn">${DOC_ICO_ADD} สร้างใหม่</button>` : ''}
-    </div>
-    ${empty}
-    <div class="pa-list">${rows}</div>
-    <style>
-      .pa-toolbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
-      .pa-list{display:flex;flex-direction:column;gap:10px}
-      .pa-row{display:flex;align-items:center;gap:12px;padding:14px 16px;cursor:pointer;transition:box-shadow .15s}
-      .pa-row:hover{box-shadow:0 0 0 2px var(--primary)}
-      .pa-row-icon .nav-icon{position:relative;isolation:isolate;width:40px;height:40px;border-radius:var(--radius-xs);display:grid;place-items:center;flex-shrink:0;overflow:hidden}
-      .pa-row-icon .nav-icon::after{content:'';position:absolute;inset:0;z-index:-1;background:linear-gradient(145deg,oklch(from var(--w) calc(l + .06) calc(c * 1.18) h),oklch(from var(--w) calc(l - .05) calc(c * 1.25) h));-webkit-mask:var(--squircle) center/100% 100% no-repeat;mask:var(--squircle) center/100% 100% no-repeat}
-      .pa-row-info{flex:1;min-width:0}
-      .pa-row-title{font-weight:600;font-size:15px;color:var(--ink)}
-      .pa-row-sub{font-size:13px;color:var(--ink-soft);margin-top:2px}
-      .pa-row-meta{flex-shrink:0}
-      .pa-row-actions{display:flex;gap:6px;flex-shrink:0}
-      .pa-row-actions .ico{width:16px;height:16px}
-      .badge{display:inline-block;padding:3px 10px;border-radius:var(--radius-pill);font-size:12px;font-weight:600}
-      @media(max-width:540px){.pa-row{flex-wrap:wrap}.pa-row-actions{width:100%;justify-content:flex-end}}
-    </style>`;
-
-  view.querySelectorAll('.pa-new-btn').forEach(b => b.addEventListener('click', () => {
-    sys.state.docId = null;
-    sys.state.doc = paBlankDoc();
-    sys.state.view = 'form';
-    renderPAFormView();
-  }));
   const openEdit = id => {
     const d = sys.state.list?.find(x => x.id === id);
     if (!d) return;
@@ -465,42 +412,19 @@ async function renderPAListView() {
     sys.state.view = 'form';
     renderPAFormView();
   };
-  view.querySelectorAll('.pa-edit-btn').forEach(b => b.addEventListener('click', (e) => {
-    e.stopPropagation();
-    openEdit(b.dataset.id);
-  }));
-  view.querySelectorAll('.pa-dup-btn').forEach(b => b.addEventListener('click', (e) => {
-    e.stopPropagation();
-    const d = sys.state.list?.find(x => x.id === b.dataset.id);
-    if (d) paDuplicate(d);
-  }));
-  view.querySelectorAll('.pa-row').forEach(r => r.addEventListener('click', () => openEdit(r.dataset.id)));
-  view.querySelectorAll('.pa-print-btn').forEach(b => b.addEventListener('click', (e) => {
-    e.stopPropagation();
-    sys.state.previewId = b.dataset.id;
-    docSwitchTab('report');
-  }));
-  view.querySelectorAll('.pa-del-btn').forEach(b => b.addEventListener('click', async (e) => {
-    e.stopPropagation();
-    const id = b.dataset.id;
-    const row = b.closest('.pa-row');
-    if (!row.dataset.confirmDel) {
-      row.dataset.confirmDel = '1';
-      b.textContent = 'ยืนยันลบ?';
-      b.classList.add('btn-danger');
-      b.classList.remove('btn-danger-ghost');
-      setTimeout(() => { delete row.dataset.confirmDel; b.innerHTML = DOC_ICO_DEL; b.classList.remove('btn-danger'); b.classList.add('btn-danger-ghost'); }, 3000);
-      return;
-    }
-    b.disabled = true;
-    try {
-      await paDelete(id);
-      await renderPAListView();
-    } catch (err) {
-      b.disabled = false;
-      alert('ลบไม่สำเร็จ: ' + err.message);
-    }
-  }));
+  docBindList(view, {
+    create: () => {
+      sys.state.docId = null;
+      sys.state.doc = paBlankDoc();
+      sys.state.view = 'form';
+      renderPAFormView();
+    },
+    open: openEdit,
+    edit: openEdit,
+    dup: id => { const d = sys.state.list?.find(x => x.id === id); if (d) paDuplicate(d); },
+    print: id => { sys.state.previewId = id; docSwitchTab('report'); },
+    del: async id => { await paDelete(id); await renderPAListView(); },
+  });
 
   docSwapIn(view);
 }
@@ -518,7 +442,7 @@ function paRowHtml(r = {}, ph = '') {
 
 function paLoadBlock(key, title, rows, ph) {
   return `<div class="pa-lblock">
-    <div class="pa-sub">${title}</div>
+    <div class="doc-subsec-hd">${title}</div>
     <div class="pa-lhead" aria-hidden="true"><span>รายการ</span><span>ชม./สัปดาห์</span></div>
     <div class="pa-lrows" data-list="${key}">${rows.map(r => paRowHtml(r, ph)).join('')}</div>
     <button type="button" class="btn btn-ghost btn-sm pa-l-add" data-list="${key}" data-ph="${escapeHtml(ph)}">${DOC_ICO_ADD} เพิ่มแถว</button>
@@ -574,8 +498,8 @@ async function renderPAFormView() {
     </div>
 
     <form id="pa-form" class="pa-form" novalidate>
-      <div class="card card-pad">
-        <h2 class="card-title">ผู้จัดทำข้อตกลง</h2>
+      <div class="doc-section">
+        <h2 class="doc-sec-title">ผู้จัดทำข้อตกลง</h2>
         <dl class="pa-pf">
           ${item('ชื่อ-นามสกุล', o.name)}${item('ตำแหน่ง', o.position)}
           ${item('วิทยฐานะ', o.standing)}${item('รับเงินเดือนในตำแหน่ง', o.pay)}
@@ -599,7 +523,7 @@ async function renderPAFormView() {
             </select>
           </div>
         </div>
-        <div class="pa-sub">ประเภทห้องเรียนที่จัดการเรียนรู้ (เลือกได้มากกว่า 1)</div>
+        <div class="doc-subsec-hd">ประเภทห้องเรียนที่จัดการเรียนรู้ (เลือกได้มากกว่า 1)</div>
         <div class="doc-checks">
           ${sys.config.classroomTypes.map(([k, l]) => `<label class="doc-check"><input type="checkbox" data-ct="${k}"${d.classroomTypes[k] ? ' checked' : ''}> ${l}</label>`).join('')}
         </div>
@@ -609,13 +533,13 @@ async function renderPAFormView() {
         </div>
       </div>
 
-      <div class="card card-pad">
-        <h2 class="card-title">ส่วนที่ 1 · 1. ภาระงาน</h2>
+      <div class="doc-section">
+        <h2 class="doc-sec-title">ส่วนที่ 1 · 1. ภาระงาน</h2>
         <div class="pa-pf-note u-mb-12">
-          <span>1.1 ดึงจากตารางสอน (นับ 1 คาบ = 1 ชั่วโมง) เก็บเป็นสำเนาในเอกสารนี้ — แก้ไขได้ และไม่เปลี่ยนตามตารางสอนภายหลัง · ดึงจากตารางสอนของภาคเรียนปัจจุบันเท่านั้น ถ้า PA ครอบสองภาคเรียนให้เพิ่มรายวิชาอีกภาคเอง</span>
+          <span>1.1 ดึงจากตารางสอน (นับ 1 คาบ = 1 ชั่วโมง) เก็บเป็นสำเนาในเอกสารนี้ — แก้ไขได้ และไม่เปลี่ยนตามตารางสอนภายหลัง · กดปุ่มเพื่อเลือกช่วงเวลาที่จะดึง (ภาคเรียน / ปีการศึกษา / ปีงบประมาณ)</span>
           <button type="button" class="btn btn-ghost btn-sm" id="pa-tt-pull">ดึงจากตารางสอนใหม่</button>
         </div>
-        ${hasLegacyLoad ? `<div class="pa-legacy"><div class="pa-sub">ข้อความภาระงานแบบเดิม (ยังเก็บไว้ ไม่ถูกลบ)</div><div class="pa-legacy-text">${escapeHtml(d.workload)}</div></div>` : ''}
+        ${hasLegacyLoad ? `<div class="pa-legacy"><div class="doc-subsec-hd">ข้อความภาระงานแบบเดิม (ยังเก็บไว้ ไม่ถูกลบ)</div><div class="pa-legacy-text">${escapeHtml(d.workload)}</div></div>` : ''}
         <div class="field"><label for="pa-load-group">กลุ่มสาระการเรียนรู้</label><input id="pa-load-group" type="text" maxlength="100" value="${escapeHtml(d.load.group)}" placeholder="เช่น วิทยาศาสตร์และเทคโนโลยี"></div>
         ${paLoadBlock('subjects', '1.1 รายวิชาที่สอน', d.load.subjects, 'เช่น ว32105 วิทยาการคำนวณ')}
         ${paLoadBlock('activities', '1.1 กิจกรรมพัฒนาผู้เรียน', d.load.activities, 'เช่น กิจกรรมชุมนุม')}
@@ -625,8 +549,8 @@ async function renderPAFormView() {
         ${paLoadBlock('policy', '1.4 งานตอบสนองนโยบายและจุดเน้น', d.load.policy, 'ระบุงาน (ถ้ามี)')}
       </div>
 
-      <div class="card card-pad">
-        <h2 class="card-title">ส่วนที่ 1 · 2. งานที่จะปฏิบัติตามมาตรฐานตำแหน่งครู</h2>
+      <div class="doc-section">
+        <h2 class="doc-sec-title">ส่วนที่ 1 · 2. งานที่จะปฏิบัติตามมาตรฐานตำแหน่งครู</h2>
         <div class="u-note u-mb-12">กรอกแต่ละข้อ: งานที่จะทำในแต่ละภาคเรียน · ผลลัพธ์ที่คาดหวังกับผู้เรียน · ตัวชี้วัด — ข้อที่เว้นว่างจะแสดงเป็นช่องว่างในเอกสาร</div>
         ${sys.config.workItems.map(([gid, gt, items]) => `
           <details class="pa-wgroup"${gid === '1' ? ' open' : ''}>
@@ -644,12 +568,12 @@ async function renderPAFormView() {
           </details>`).join('')}
       </div>
 
-      <div class="card card-pad">
-        <h2 class="card-title">ส่วนที่ 2 ข้อตกลงในการพัฒนางานที่เป็นประเด็นท้าทาย</h2>
+      <div class="doc-section">
+        <h2 class="doc-sec-title">ส่วนที่ 2 ข้อตกลงในการพัฒนางานที่เป็นประเด็นท้าทาย</h2>
         ${area('pa-challengeTitle', 'เรื่อง ประเด็นท้าทาย', d.challengeTitle, 3, 'เช่น การพัฒนาทักษะ … ของนักเรียนระดับชั้น … โดยใช้ …')}
         ${area('pa-problem', '1. สภาพปัญหาของผู้เรียนและการจัดการเรียนรู้', d.problem, 5)}
         ${area('pa-method', '2. วิธีการดำเนินการให้บรรลุผล', d.method, 5)}
-        ${d.outcome && !d.outcomeQuant && !d.outcomeQual ? `<div class="pa-legacy"><div class="pa-sub">ผลลัพธ์ที่คาดหวังแบบเดิม (ยังเก็บไว้ — ย้ายไปช่อง 3.1/3.2 ด้านล่างได้)</div><div class="pa-legacy-text">${escapeHtml(d.outcome)}</div></div>` : ''}
+        ${d.outcome && !d.outcomeQuant && !d.outcomeQual ? `<div class="pa-legacy"><div class="doc-subsec-hd">ผลลัพธ์ที่คาดหวังแบบเดิม (ยังเก็บไว้ — ย้ายไปช่อง 3.1/3.2 ด้านล่างได้)</div><div class="pa-legacy-text">${escapeHtml(d.outcome)}</div></div>` : ''}
         ${area('pa-outcomeQuant', '3.1 ผลลัพธ์การพัฒนาที่คาดหวัง · เชิงปริมาณ', d.outcomeQuant, 4, 'จำนวนห้อง/นักเรียน และร้อยละที่คาดหวัง')}
         ${area('pa-outcomeQual', '3.2 ผลลัพธ์การพัฒนาที่คาดหวัง · เชิงคุณภาพ', d.outcomeQual, 4)}
       </div>
@@ -689,22 +613,27 @@ async function renderPAFormView() {
   });
   form.addEventListener('input', e => { if (e.target.classList.contains('pa-l-hours')) updTotal(); });
 
-  view.querySelector('#pa-tt-pull').addEventListener('click', async () => {
+  view.querySelector('#pa-tt-pull').addEventListener('click', () => {
     paCollectFormData();
-    const has = ['subjects', 'activities'].some(k => sys.state.doc.load[k].length);
-    if (has && !confirm('แทนที่รายวิชาและกิจกรรมที่กรอกไว้ด้วยข้อมูลจากตารางสอน?')) return;
-    try {
-      const t = await paPullTimetable();
-      if (!t.subjects.length && !t.activities.length) { showToast('ตารางสอนยังไม่มีคาบ'); return; }
-      sys.state.doc.load.subjects = t.subjects;
-      sys.state.doc.load.activities = t.activities;
-      const y = window.scrollY;
-      await renderPAFormView();
-      window.scrollTo(0, y);
-      showToast(`ดึงชั่วโมงสอนจากตารางสอน ${t.term} แล้ว`);
-    } catch (err) {
-      showToast('ดึงตารางสอนไม่สำเร็จ: ' + (err.message || err));
-    }
+    docPickTtScope({
+      scope: { type: 'fiscal', year: sys.state.doc.fiscalYear || docFiscalYear() },
+      onPick: async scope => {
+        const has = ['subjects', 'activities'].some(k => sys.state.doc.load[k].length);
+        if (has && !confirm('แทนที่รายวิชาและกิจกรรมที่กรอกไว้ด้วยข้อมูลจากตารางสอน?')) return;
+        try {
+          const t = await paPullTimetable(scope);
+          if (!t.subjects.length && !t.activities.length) { showToast(`ยังไม่มีตารางสอนของ${t.term}`); return; }
+          sys.state.doc.load.subjects = t.subjects;
+          sys.state.doc.load.activities = t.activities;
+          const y = window.scrollY;
+          await renderPAFormView();
+          window.scrollTo(0, y);
+          showToast(`ดึงชั่วโมงสอนจากตารางสอน ${t.term} แล้ว` + (t.missing.length ? ` (ไม่พบตารางของ ${t.missing.map(ttTermLabel).join(', ')})` : ''));
+        } catch (err) {
+          showToast('ดึงตารางสอนไม่สำเร็จ: ' + (err.message || err));
+        }
+      },
+    });
   });
 
   form.addEventListener('submit', async (e) => {

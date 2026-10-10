@@ -315,7 +315,7 @@ globalThis.__probes = {
   'fn.normalize': () => J([paNormalize(clone(PA_FIXTURE)), paNormalize(clone(PA_LEGACY_FIXTURE)), paNormalize({}), paNormalize(null)]),
   'fn.docHtml': () => paBuildDocHtml(paNormalize(clone(PA_FIXTURE)), OWNER_FIXTURE) + '\\n----\\n' + paBuildDocHtml(paNormalize({ fiscalYear: '2569' }), {}) + '\\n----\\n' + paBuildDocHtml(paNormalize(clone(PA_LEGACY_FIXTURE)), OWNER_FIXTURE),
   'fn.rptHtml': () => parptBuildDocHtml(parptNormalize(clone(RPT_FIXTURE)), OWNER_FIXTURE, '') + '\\n----\\n' + parptBuildDocHtml(parptNormalize({ fiscalYear: '2569' }), {}, '<p>ภาคผนวก</p>'),
-  'fn.css': () => PA1_CSS + '\\n----\\n' + PARPT_LIST_CSS + '\\n----\\n' + docFontCss(),
+  'fn.css': () => PA1_CSS + '\\n----\\n' + docFontCss(), // PARPT_LIST_CSS ถูกย้ายไป css/style.css (.doc-row*) แล้ว — ต้องรัน PA_UPDATE=1 เพื่ออัปเดต golden
   'fn.aiScopes': () => J(['part2', ...cfg().workItems.flatMap(([, , items]) => items.map(([id]) => id))].map(id => [id, [...paAiScope(docSystem('pa'), id === 'part2' ? [{ key: 'problem' }] : [{ group: id[0], key: id + '.s1' }])].sort()])),
   'fn.aiWorkSpecs': () => J([paAiWorkSpecs(docSystem('pa'), null), paAiWorkSpecs(docSystem('pa'), ['1.1', '2.3']), paAiWorkSpecs(docSystem('pa'), ['9.9'])]),
   'fn.aiCtxHtml': () => badworkAiCtxHtml({}) + '\\n----\\n' + badworkAiCtxHtml(clone(PA_FIXTURE).aiCtx) + '\\n----\\n' + J([badworkAiCtxCount({}), badworkAiCtxCount(PA_FIXTURE.aiCtx)]),

@@ -1095,7 +1095,7 @@ table.sheet tbody tr:nth-child(even) td.grp-sub-total { background: var(--col-co
   .page-header h1 { font-size: 28px; }
   .modal { border-radius: var(--radius-l); }
   .card-pad { padding: 14px 12px; }
-  .main .card-pad { padding: 14px 12px; }
+  .main .card-pad, .main .doc-section { padding: 14px 12px; }
 }
 @media print { body, #app { background: var(--white); } }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } .pa-wgroup > summary::after { transition: none !important; } select::picker-icon, ::picker(select) { transition: none !important; } }
@@ -2138,14 +2138,12 @@ table.tt tr.is-today td.tt-cell { background: color-mix(in srgb, var(--hue-orang
 .pa-form-head { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
 .pa-form-head .pa-dup-btn { margin-left: auto; flex-shrink: 0; }
 .pa-form-title { font-size: 20px; font-weight: 700; margin: 0 0 2px; color: var(--ink); }
-.pa-form .card { margin-bottom: 16px; }
-.pa-form .card-title { margin: 0 0 12px; }
+.pa-form .doc-section { margin-bottom: 16px; }
 .pa-pf { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; margin: 0 0 12px; }
 .pa-pf-item { min-width: 0; margin: 0; padding: 10px 12px; border-radius: var(--radius-s); background: var(--surface-sunken); }
 .pa-pf-item dt { font-size: 12px; font-weight: 600; color: var(--ink-soft); }
 .pa-pf-item dd { margin: 2px 0 0; font-weight: 600; overflow-wrap: anywhere; }
 .pa-pf-note { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 12px; margin-bottom: 16px; font-size: 13px; color: var(--ink-soft); }
-.pa-sub { margin: 0 0 6px; font-size: 13.5px; font-weight: 600; color: var(--ink-soft); }
 .doc-check { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 500; }
 .doc-check input { width: 18px; height: 18px; accent-color: var(--primary-solid); }
 
@@ -2162,7 +2160,6 @@ table.tt tr.is-today td.tt-cell { background: color-mix(in srgb, var(--hue-orang
 
 /* ฟอร์ม PA: ภาระงาน 1.1–1.4 (แถว = ชื่อรายการ · ชั่วโมง · ปุ่มลบ) — เดิมเป็น \3c style> ใน js/pa.js */
 .pa-lblock { --pa-cols: minmax(0, 1fr) 92px 44px; margin-top: 22px; }
-.pa-lblock .pa-sub { margin-bottom: 10px; font-size: 14.5px; font-weight: 700; color: var(--ink); }
 .pa-lhead { display: grid; grid-template-columns: var(--pa-cols); gap: 8px; margin: 0 0 6px; padding: 0 2px; font-size: 12px; font-weight: 600; color: var(--ink-soft); }
 .pa-lhead span:nth-child(2) { text-align: center; white-space: nowrap; }
 .pa-lblock:has(.pa-lrows:empty) .pa-lhead { display: none; }
@@ -2256,16 +2253,20 @@ table.tt tr.is-today td.tt-cell { background: color-mix(in srgb, var(--hue-orang
 }
 
 /* ---------- ID-Plan (js/idp.js) · แผนพัฒนาตนเอง ---------- */
-.doc-list-wrap { display: flex; flex-direction: column; gap: 12px; }
-.doc-new-btn { align-self: flex-start; }
-.doc-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
-.doc-list-item { padding: 14px 16px; background: var(--card); border-radius: var(--radius-m); cursor: pointer; transition: box-shadow .15s ease; }
-.doc-list-item:hover { box-shadow: 0 0 0 2px var(--primary); }
-.doc-list-main { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.doc-list-title { font-weight: 600; font-size: 15px; color: var(--ink); }
-.doc-list-sub { font-size: 13px; margin-top: 2px; }
+.doc-toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.doc-rows { display: flex; flex-direction: column; gap: 10px; }
+.doc-row { display: flex; align-items: center; gap: 12px; padding: 14px 16px; cursor: pointer; transition: box-shadow .15s ease; }
+.doc-row:hover { box-shadow: 0 0 0 2px var(--primary); }
+.doc-row-icon .nav-icon { position: relative; isolation: isolate; width: 40px; height: 40px; border-radius: var(--radius-xs); display: grid; place-items: center; flex-shrink: 0; overflow: hidden; }
+.doc-row-icon .nav-icon::after { content: ''; position: absolute; inset: 0; z-index: -1; background: linear-gradient(145deg, oklch(from var(--w) calc(l + .06) calc(c * 1.18) h), oklch(from var(--w) calc(l - .05) calc(c * 1.25) h)); -webkit-mask: var(--squircle) center/100% 100% no-repeat; mask: var(--squircle) center/100% 100% no-repeat; }
+.doc-row-info { flex: 1; min-width: 0; }
+.doc-row-title { font-weight: 600; font-size: 15px; color: var(--ink); }
+.doc-row-sub { font-size: 13px; color: var(--ink-soft); margin-top: 2px; }
+.doc-row-meta { flex-shrink: 0; }
+.doc-row-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.doc-row-actions .ico { width: 16px; height: 16px; }
+@media (max-width: 540px) { .doc-row { flex-wrap: wrap; } .doc-row-actions { width: 100%; justify-content: flex-end; } }
 .u-muted { color: var(--ink-soft); }
-.doc-empty { text-align: center; padding: 32px 16px; color: var(--ink-soft); }
 .doc-error { padding: 16px; color: var(--danger); }
 
 .doc-form { display: flex; flex-direction: column; gap: 16px; }
@@ -2293,7 +2294,7 @@ table.tt tr.is-today td.tt-cell { background: color-mix(in srgb, var(--hue-orang
 .btn-text { display: inline-flex; align-items: center; gap: 6px; padding: 8px 4px; border: none; background: transparent; color: var(--primary); font-family: var(--font); font-size: 14px; font-weight: 600; cursor: pointer; }
 .btn-text:hover { color: var(--primary-dark); }
 
-.doc-form-meta input, .doc-form-meta select, input.doc-l-name, input.doc-l-hours, .input-sm, .idp-ta {
+.doc-form-meta input, input.doc-l-name, input.doc-l-hours, .input-sm, .idp-ta {
   width: 100%; min-width: 0; font-size: 14px; line-height: 1.6; font-family: var(--font); padding: 9px 10px; resize: vertical;
   border: 1.5px solid transparent; border-radius: var(--radius-s); background: var(--surface-sunken); color: var(--ink);
   transition: border-color .15s ease, background-color .15s ease, box-shadow .15s ease;

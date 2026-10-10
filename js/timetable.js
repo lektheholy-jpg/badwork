@@ -284,6 +284,63 @@ function ttStatsHtml(s) {
   return card('คาบสอนต่อสัปดาห์', s.teachPeriods) + card('ห้อง/กลุ่มที่สอน', s.groups) + card('คาบกิจกรรมอื่นๆ', s.activityPeriods);
 }
 
+// ---------- ดึงตารางสอนไปใส่เอกสาร (PA · ID-Plan) ----------
+// ช่วงเวลา scope = { type: 'term', year, sem } ภาคเรียนเดียว · { type: 'year', year } ปีการศึกษา (ภาค 1+2) · { type: 'fiscal', year } ปีงบประมาณ
+//   ปีงบ F = 1 ต.ค. (F-1) – 30 ก.ย. F = ภาค 2/(F-1) + ภาค 1/F (ตรงกับ paTermLabels ใน js/pa.js)
+function ttScopeTerms(scope) {
+  const y = Number(scope.year), s = Number(scope.sem);
+  if (scope.type === 'year') return TT_SEMESTERS.map(sem => ({ year: y, sem }));
+  if (scope.type === 'fiscal') return [{ year: y - 1, sem: 2 }, { year: y, sem: 1 }];
+  return [{ year: y, sem: s }];
+}
+function ttScopeLabel(scope) {
+  if (scope.type === 'year') return `ปีการศึกษา ${scope.year}`;
+  if (scope.type === 'fiscal') return `ปีงบประมาณ ${scope.year}`;
+  return ttTermLabel({ year: Number(scope.year), sem: Number(scope.sem) });
+}
+// ตารางของทุกภาคเรียนในช่วงที่เลือก → { items: [{ term, tt }] เฉพาะภาคที่มีตาราง, missing: [term ที่ไม่มี] }
+function ttCollectScope(all, scope) {
+  const items = [], missing = [];
+  ttScopeTerms(scope).forEach(term => {
+    const hit = ttPick(all, ttTermKey(term));
+    if (hit) items.push({ term, tt: hit }); else missing.push(term);
+  });
+  return { items, missing };
+}
+// ตารางสอนของหนึ่งภาค → รายวิชา (1.1) กับกิจกรรมพัฒนาผู้เรียน แถว { name, hours }
+//   • มีรหัสวิชา = รายวิชา · ไม่มีรหัส (หรือเป็นคาบกิจกรรม) = หมวด "กิจกรรมพัฒนาผู้เรียน" (ชื่อแถวใช้ชื่อตามที่ลงในตาราง)
+//   • เรียงตามรหัส (กิจกรรมที่ไม่มีรหัสต่อท้าย เรียงตามชื่อ) · 1 คาบ = 1 ชม./สัปดาห์
+//   • withLevels = ต่อท้ายชื่อด้วยระดับชั้น เช่น "ค21101 คณิตศาสตร์พื้นฐาน ม.1" (ใช้กับ ID-Plan)
+function ttAggregateOne(tt, withLevels) {
+  const groups = { subjects: new Map(), activities: new Map() };
+  ttStats(tt).placed.forEach(e => {
+    const g = e.kind === 'activity' || !e.code ? 'activities' : 'subjects';
+    const key = (e.code || '') + '|' + e.title;
+    const cur = groups[g].get(key) || { code: e.code || '', title: e.title, levels: new Set(), hours: 0 };
+    if (e.cls) cur.levels.add(String(e.cls).split('/')[0].trim());
+    cur.hours += e.span;
+    groups[g].set(key, cur);
+  });
+  const byCode = (a, b) => (!a.code - !b.code) || a.code.localeCompare(b.code, 'th', { numeric: true }) || a.title.localeCompare(b.title, 'th', { numeric: true });
+  const rows = g => [...groups[g].values()].sort(byCode).map(c => ({
+    name: [c.code, c.title, withLevels ? [...c.levels].filter(Boolean).join(', ') : ''].filter(Boolean).join(' '),
+    hours: c.hours,
+  }));
+  return { subjects: rows('subjects'), activities: rows('activities') };
+}
+// หลายภาคเรียน (ปีการศึกษา/ปีงบประมาณ) → เขียนรวมเป็นเทอม: แต่ละภาคมีแถวของตัวเอง ต่อท้ายชื่อด้วย "(ภาค n/ปี)" ไม่รวมข้ามภาค
+// ภาคเดียว → ไม่ต่อท้าย · items = [{ term, tt }] เรียงตามลำดับที่ส่งมา (ttScopeTerms เรียงเวลาให้แล้ว)
+function ttAggregateTerms(items, withLevels) {
+  const multi = items.length > 1;
+  const out = { subjects: [], activities: [] };
+  items.forEach(({ term, tt }) => {
+    const r = ttAggregateOne(tt, withLevels);
+    const tag = multi && term ? ` (ภาค ${term.sem}/${term.year})` : '';
+    ['subjects', 'activities'].forEach(g => r[g].forEach(row => out[g].push({ name: row.name + tag, hours: row.hours })));
+  });
+  return out;
+}
+
 function ttLegendHtml(placed) {
   if (!placed.length) return '<div class="u-note">ยังไม่ได้เพิ่มคาบเรียน — แตะช่องว่างในตารางเพื่อเริ่มต้น</div>';
   const map = new Map();

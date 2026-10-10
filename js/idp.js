@@ -13,6 +13,7 @@
 // ------------------------------------------------------------------
 const IDP_ICO_BACK = `<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>`;
 const IDP_ICO_SAVE = `<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>`;
+const IDP_ICO_DOC = `<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><g fill="currentColor" stroke="none"><path opacity=".55" d="M7 2.5h7l5.5 5.5v11A2.5 2.5 0 0 1 17 21.5H7A2.5 2.5 0 0 1 4.5 19V5A2.5 2.5 0 0 1 7 2.5Z"/><rect x="8" y="9" width="8" height="1.5" rx=".75"/><rect x="8" y="12" width="8" height="1.5" rx=".75"/><rect x="8" y="15" width="5" height="1.5" rx=".75"/></g></svg>`;
 function idpUpdatedAt(d) {
   const t = d.updatedAt || d.createdAt;
   const dt = t && typeof t.toDate === 'function' ? t.toDate() : null;
@@ -21,39 +22,23 @@ function idpUpdatedAt(d) {
 
 // ------------------------------------------------------------------
 // ดึงตารางสอน (หน้า "ข้อมูลส่วนตัว" → ตารางสอน) → 1.1 รายวิชา / 1.2 กิจกรรมพัฒนาผู้เรียน (1 คาบ = 1 ชม./สัปดาห์)
-//   term = { sem, year } → ใช้ตารางของภาคเรียนนั้นพอดี (ไม่มีตาราง = คืนรายการว่าง)
-//   ไม่ส่ง term → ใช้ตารางภาคเรียนที่ใช้งานอยู่ตอนนี้ (ใช้ตอนสร้างแผนใหม่)
+//   scope = { type: 'term'|'year'|'fiscal', year, sem } → รวมตารางของทุกภาคเรียนในช่วงนั้น (ไม่มีตาราง = รายการว่าง) · ดู ttScopeTerms ใน js/timetable.js
+//   ไม่ส่ง scope → ใช้ตารางภาคเรียนที่ใช้งานอยู่ตอนนี้ (ใช้ตอนสร้างแผนใหม่)
+//   วิชามีรหัส → 1.1 รายวิชา (เรียงตามรหัส) · ไม่มีรหัส/เป็นคาบกิจกรรม → 1.2 กิจกรรมพัฒนาผู้เรียน
 //   ชื่อวิชาต่อท้ายด้วยระดับชั้นที่สอน เช่น "ค21101 คณิตศาสตร์พื้นฐาน ม.1" (มาจากช่องห้อง "ม.1/2" → "ม.1")
 // ------------------------------------------------------------------
 function idpClsLevel(cls) {
   return String(cls || '').split('/')[0].trim();
 }
-async function idpPullTimetable(term) {
+async function idpPullTimetable(scope) {
   await loadModule('timetable');
-  let tt;
-  if (term && term.sem && term.year) {
-    const all = await loadAllTimetables();
-    const hit = ttPick(all, ttTermKey({ sem: Number(term.sem), year: Number(term.year) }));
-    tt = hit ? { term: { sem: Number(term.sem), year: Number(term.year) }, ...hit } : { term, entries: [] };
-  } else {
-    tt = await loadTimetable();
+  if (scope && scope.year) {
+    const { items, missing } = ttCollectScope(await loadAllTimetables(), scope);
+    const sc = ttScopeTerms(scope)[0];
+    return { ...ttAggregateTerms(items, true), sem: sc.sem, year: sc.year, missing, label: ttScopeLabel(scope) };
   }
-  const placed = ttStats(tt).placed;
-  const agg = kind => {
-    const m = new Map();
-    placed.filter(e => e.kind === kind).forEach(e => {
-      const key = (e.code || '') + '|' + e.title;
-      const cur = m.get(key) || { code: e.code, title: e.title, levels: new Set(), hours: 0 };
-      if (e.cls) cur.levels.add(idpClsLevel(e.cls));
-      cur.hours += e.span;
-      m.set(key, cur);
-    });
-    return [...m.values()].map(c => ({
-      name: [c.code, c.title, [...c.levels].filter(Boolean).join(', ')].filter(Boolean).join(' '),
-      hours: c.hours,
-    }));
-  };
-  return { subjects: agg('class'), activities: agg('activity'), sem: tt.term?.sem, year: tt.term?.year };
+  const tt = await loadTimetable();
+  return { ...ttAggregateTerms([{ tt }], true), sem: tt.term?.sem, year: tt.term?.year, missing: [], label: ttTermLabel(tt.term) };
 }
 function idpApplyTimetable(doc, t, keepTerm) {
   doc.subjects = t.subjects;
@@ -240,45 +225,56 @@ async function idpRenderListView() {
     if (!sys.state.list) sys.state.list = await idpLoadList();
     if (docStale(root, seq, sys) || sys.state.tab !== 'form' || sys.state.view !== 'list') return;
     const list = sys.state.list;
-    const canNew = true;
-    let html = `<div class="doc-list-wrap">`;
-    if (canNew) html += `<button class="btn btn-primary doc-new-btn" id="idp-new-btn">${DOC_ICO_ADD} สร้าง ID-Plan ใหม่</button>`;
-    if (!list.length) {
-      html += `<div class="doc-empty"><p>ยังไม่มี ID-Plan<br><span class="u-muted">กด "สร้าง ID-Plan ใหม่" เพื่อเริ่มต้น</span></p></div>`;
-    } else {
-      html += `<ul class="doc-list">`;
-      list.forEach(d => {
-        const badge = docStatusBadge(d.status);
-        html += `<li class="doc-list-item" data-id="${escapeHtml(d.id)}">
-          <div class="doc-list-main">
-            <span class="doc-list-title">${escapeHtml(idpDocTitle(d))}</span>
-            ${badge}
-          </div>
-          <div class="doc-list-sub u-muted">${escapeHtml(idpUpdatedAt(d))}</div>
-        </li>`;
-      });
-      html += `</ul>`;
-    }
-    html += `</div>`;
-    root.innerHTML = html;
+    root.innerHTML = docListHtml({
+      list, icon: IDP_ICO_DOC, hue: 'violet',
+      title: d => idpDocTitle(d),
+      sub: d => idpUpdatedAt(d),
+      actions: ['print', 'dup', 'edit', 'del'],
+      emptyTitle: 'ยังไม่มี ID-Plan',
+      emptySub: 'กดปุ่มด้านล่างเพื่อสร้างแผนพัฒนาตนเอง (ID-Plan) ประจำปีการศึกษา',
+      newLabel: 'สร้าง ID-Plan ใหม่',
+    });
     docSwapIn(root);
 
-    document.getElementById('idp-new-btn')?.addEventListener('click', () => {
-      sys.state.doc = idpBlankDoc();
-      sys.state.docId = null;
+    const openEdit = id => {
+      const found = list.find(d => d.id === id);
+      if (!found) return;
+      sys.state.docId = id;
+      sys.state.doc = idpNormalize(JSON.parse(JSON.stringify(found)));
       sys.state.view = 'form';
       idpRenderFormView();
-    });
-    root.querySelectorAll('.doc-list-item').forEach(li => {
-      li.addEventListener('click', async () => {
-        const id = li.dataset.id;
+    };
+    docBindList(root, {
+      create: () => {
+        sys.state.doc = idpBlankDoc();
+        sys.state.docId = null;
+        sys.state.view = 'form';
+        idpRenderFormView();
+      },
+      open: openEdit,
+      edit: openEdit,
+      dup: id => {
+        const found = list.find(d => d.id === id);
+        if (!found) return;
+        const d = idpNormalize(JSON.parse(JSON.stringify(found)));
+        ['id', 'createdAt', 'updatedAt'].forEach(k => { delete d[k]; });
+        d.status = 'draft';
+        d._ttTried = true; // มีรายวิชา/กิจกรรมจากฉบับเดิมแล้ว ไม่ดึงตารางสอนทับ
+        sys.state.docId = null;
+        sys.state.doc = d;
+        sys.state.view = 'form';
+        idpRenderFormView();
+        showToast('คัดลอกแล้ว — แก้ไขตามต้องการ แล้วกด “บันทึก” จะได้เป็นฉบับใหม่');
+      },
+      print: id => {
         const found = list.find(d => d.id === id);
         if (!found) return;
         sys.state.docId = id;
-        sys.state.doc = idpNormalize({ ...found });
-        sys.state.view = 'form';
-        idpRenderFormView();
-      });
+        sys.state.doc = idpNormalize(JSON.parse(JSON.stringify(found)));
+        sys.state.view = 'form'; // ตัวอย่าง/พิมพ์ อ่านจากแผนที่เปิดอยู่
+        docSwitchTab('preview');
+      },
+      del: async id => { await idpDelete(id); await idpRenderListView(); },
     });
   } catch (e) {
     if (!root.isConnected) return;
@@ -576,19 +572,24 @@ async function idpRenderFormView() {
     spcBox.insertAdjacentHTML('beforeend', idpSpecialRowHtml(''));
   });
 
-  document.getElementById('idp-tt-pull')?.addEventListener('click', async () => {
+  document.getElementById('idp-tt-pull')?.addEventListener('click', () => {
     idpCollect();
-    if ((doc.subjects.length || doc.activities.length) && !confirm('แทนที่รายวิชา/กิจกรรมที่กรอกไว้ด้วยข้อมูลจากตารางสอน?')) return;
-    try {
-      const sd = sys.state.doc;
-      const t = await idpPullTimetable({ sem: sd.semester, year: sd.year });
-      if (!t.subjects.length && !t.activities.length) { showToast(`ยังไม่มีตารางสอนของภาคเรียนที่ ${sd.semester}/${sd.year} — เพิ่มได้ที่ ข้อมูลส่วนตัว → ตารางสอน`); return; }
-      idpApplyTimetable(sd, t, true);
-      idpRenderFormView();
-      showToast('ดึงจากตารางสอนแล้ว');
-    } catch (e) {
-      showToast('ดึงตารางสอนไม่สำเร็จ: ' + e.message, 'error');
-    }
+    const sd = sys.state.doc;
+    docPickTtScope({
+      scope: { type: 'term', year: sd.year, sem: sd.semester },
+      onPick: async scope => {
+        if ((sd.subjects.length || sd.activities.length) && !confirm('แทนที่รายวิชา/กิจกรรมที่กรอกไว้ด้วยข้อมูลจากตารางสอน?')) return;
+        try {
+          const t = await idpPullTimetable(scope);
+          if (!t.subjects.length && !t.activities.length) { showToast(`ยังไม่มีตารางสอนของ${t.label} — เพิ่มได้ที่ ข้อมูลส่วนตัว → ตารางสอน`); return; }
+          idpApplyTimetable(sd, t, true);
+          idpRenderFormView();
+          showToast(`ดึงจากตารางสอน ${t.label} แล้ว` + (t.missing.length ? ` (ไม่พบตารางของ ${t.missing.map(ttTermLabel).join(', ')})` : ''));
+        } catch (e) {
+          showToast('ดึงตารางสอนไม่สำเร็จ: ' + e.message, 'error');
+        }
+      },
+    });
   });
 
   document.getElementById('idp-back-btn')?.addEventListener('click', () => {
@@ -646,6 +647,7 @@ const IDP1_CSS = `
 .idp1 b{font-weight:700}
 .idp1 .i1-c{text-align:center;font-weight:700}
 .idp1 .i1-h{font-weight:700;margin-top:.7em;break-after:avoid;page-break-after:avoid}
+.idp1 .i1-h.i1-h0{margin-top:0}
 .idp1 .i1-ind{padding-left:1.27cm}
 .idp1 .i1-ind2{padding-left:2.2cm;text-indent:-.45cm}
 .idp1 table{width:100%;border-collapse:collapse;margin-top:.4em}
@@ -758,7 +760,7 @@ ${docFontCss()}${IDP1_CSS}
 
 <!-- หน้า 2+ · แนวนอน · ส่วนที่ 2 และ 3 -->
 <section class="pg-land">
-  <div class="i1-h" style="margin-top:0">ส่วนที่ 2  รายละเอียดการพัฒนาตนเอง</div>
+  <div class="i1-h i1-h0">ส่วนที่ 2  รายละเอียดการพัฒนาตนเอง</div>
   <table class="i1-t13">
     <thead>
       <tr>
@@ -776,7 +778,7 @@ ${docFontCss()}${IDP1_CSS}
 
   <div class="i1-break"></div>
 
-  <div class="i1-h" style="margin-top:0">ส่วนที่ 3  ตารางสรุปแผนพัฒนาตนเอง</div>
+  <div class="i1-h i1-h0">ส่วนที่ 3  ตารางสรุปแผนพัฒนาตนเอง</div>
   <div class="i1-ind i1-mb3">(สรุปวิธีการ/รูปแบบการพัฒนา ที่มีความจำเป็นมากที่สุดในสมรรถนะ 3 อันดับแรก)</div>
   <table>
     <thead>

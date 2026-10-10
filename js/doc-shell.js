@@ -61,6 +61,125 @@ function docStatusBadge(status) {
   return `<span class="badge badge-neutral">ร่าง</span>`;
 }
 
+// ------------------------------------------------------------------
+// รายการเอกสารในหน้ารายการ (ส่วนกลาง — PA · รายงานผล · ID-Plan ใช้ร่วมกัน · สไตล์อยู่ที่ .doc-row* ใน css/style.css)
+//   docListHtml({ list, icon, hue, title(d), sub(d), actions, newLabel, count })  → แถบเครื่องมือ + แถวรายการ
+//   docEmptyHtml({ icon, title, sub, newLabel })                                 → สถานะว่าง (มีปุ่มสร้าง)
+//   docBindList(root, { open, print, dup, del })                                 → ผูกการคลิก (ไม่ส่งตัวไหน = ไม่แสดง/ไม่ผูกปุ่มนั้น)
+//   ปุ่มลบกดสองครั้งยืนยันที่แถว (3 วินาที) · ปุ่มสร้างใหม่ใช้คลาส .doc-new-btn
+// ------------------------------------------------------------------
+const DOC_ROW_ACTIONS = {
+  print: { label: 'พิมพ์', title: 'ดูตัวอย่าง / พิมพ์', icon: DOC_ICO_PRINT },
+  dup:   { label: 'คัดลอก', title: 'คัดลอกเป็นฉบับใหม่เพื่อนำไปปรับแก้', icon: DOC_ICO_COPY },
+  edit:  { label: 'แก้ไข', title: 'แก้ไข', icon: DOC_ICO_EDIT },
+  del:   { label: '', title: 'ลบ', icon: DOC_ICO_DEL, danger: true },
+};
+function docRowHtml(d, o) {
+  const id = escapeHtml(d.id);
+  const btns = o.actions.map(k => {
+    const a = DOC_ROW_ACTIONS[k];
+    return `<button type="button" class="btn ${a.danger ? 'btn-danger-ghost' : 'btn-ghost'} btn-sm doc-row-btn" data-act="${k}" data-id="${id}" title="${a.title}" aria-label="${a.title}">${a.icon}${a.label ? ' ' + a.label : ''}</button>`;
+  }).join('');
+  return `
+    <div class="doc-row card" data-id="${id}">
+      <span class="doc-row-icon"><span class="nav-icon" style="--w:var(--hue-${o.hue || 'blue'})">${o.icon}</span></span>
+      <div class="doc-row-info">
+        <div class="doc-row-title">${escapeHtml(o.title(d))}</div>
+        <div class="doc-row-sub">${escapeHtml(o.sub ? o.sub(d) : '')}</div>
+      </div>
+      <div class="doc-row-meta">${docStatusBadge(d.status)}</div>
+      <div class="doc-row-actions">${btns}</div>
+    </div>`;
+}
+function docListHtml(o) {
+  const n = o.list.length;
+  return `
+    <div class="doc-toolbar">
+      <span class="u-note">${n ? `${n} รายการ` : ''}</span>
+      ${n ? `<button type="button" class="btn btn-primary btn-sm doc-new-btn">${DOC_ICO_ADD} สร้างใหม่</button>` : ''}
+    </div>
+    ${n ? '' : docEmptyHtml(o)}
+    <div class="doc-rows">${o.list.map(d => docRowHtml(d, o)).join('')}</div>`;
+}
+function docEmptyHtml(o) {
+  return `
+    <div class="card">
+      <div class="empty-state">
+        <div class="icon">${o.icon}</div>
+        <div class="empty-title">${escapeHtml(o.emptyTitle)}</div>
+        <div class="empty-sub">${escapeHtml(o.emptySub)}</div>
+        <button type="button" class="btn btn-primary doc-new-btn">${DOC_ICO_ADD} ${escapeHtml(o.newLabel)}</button>
+      </div>
+    </div>`;
+}
+function docBindList(root, h) {
+  root.querySelectorAll('.doc-new-btn').forEach(b => b.addEventListener('click', () => h.create()));
+  root.querySelectorAll('.doc-row').forEach(r => r.addEventListener('click', () => h.open(r.dataset.id)));
+  root.querySelectorAll('.doc-row-btn').forEach(b => b.addEventListener('click', async e => {
+    e.stopPropagation();
+    const id = b.dataset.id, act = b.dataset.act;
+    if (act !== 'del') { if (h[act]) h[act](id); return; }
+    const row = b.closest('.doc-row');
+    if (!row.dataset.confirmDel) {
+      row.dataset.confirmDel = '1';
+      b.textContent = 'ยืนยันลบ?';
+      b.classList.add('btn-danger');
+      b.classList.remove('btn-danger-ghost');
+      setTimeout(() => { delete row.dataset.confirmDel; b.innerHTML = DOC_ICO_DEL; b.classList.remove('btn-danger'); b.classList.add('btn-danger-ghost'); }, 3000);
+      return;
+    }
+    b.disabled = true;
+    try { await h.del(id); }
+    catch (err) { b.disabled = false; alert('ลบไม่สำเร็จ: ' + err.message); }
+  }));
+}
+
+// ------------------------------------------------------------------
+// เลือกช่วงเวลาของตารางสอนที่จะดึงเข้าเอกสาร (PA · ID-Plan ใช้ร่วมกัน) — ภาคเรียน / ปีการศึกษา / ปีงบประมาณ
+//   docPickTtScope({ scope, onPick(scope) })  scope เริ่มต้น = { type, year, sem } (ดู ttScopeTerms ใน js/timetable.js)
+// ------------------------------------------------------------------
+async function docPickTtScope({ scope, onPick }) {
+  await loadModule('timetable');
+  const types = [['term', 'ภาคเรียน'], ['year', 'ปีการศึกษา'], ['fiscal', 'ปีงบประมาณ']];
+  const cur = { type: scope.type || 'term', year: String(scope.year || ''), sem: String(scope.sem || '1') };
+  openModal(`
+    <h2>ดึงจากตารางสอน</h2>
+    <div class="modal-sub">เลือกช่วงเวลาของตารางสอนที่จะนำมาใส่ในเอกสารนี้</div>
+    <div class="field"><label for="tts-type">ช่วงเวลา</label>
+      <select id="tts-type">${types.map(([v, l]) => `<option value="${v}"${v === cur.type ? ' selected' : ''}>${l}</option>`).join('')}</select>
+    </div>
+    <div class="field"><label for="tts-year" id="tts-year-l"></label>
+      <input id="tts-year" type="text" inputmode="numeric" maxlength="4" value="${escapeHtml(cur.year)}">
+    </div>
+    <div class="field" id="tts-sem-f"><label for="tts-sem">ภาคเรียน</label>
+      <select id="tts-sem">${TT_SEMESTERS.map(n => `<option value="${n}"${String(n) === cur.sem ? ' selected' : ''}>ภาคเรียนที่ ${n}</option>`).join('')}</select>
+    </div>
+    <div class="field-hint" id="tts-hint"></div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-ghost" id="tts-cancel">ยกเลิก</button>
+      <button type="button" class="btn btn-primary" id="tts-ok">ดึงข้อมูล</button>
+    </div>`);
+  const $ = id => document.getElementById(id);
+  const read = () => ({ type: $('tts-type').value, year: $('tts-year').value.trim(), sem: $('tts-sem').value });
+  const refresh = () => {
+    const sc = read();
+    $('tts-year-l').textContent = sc.type === 'fiscal' ? 'ปีงบประมาณ พ.ศ.' : 'ปีการศึกษา พ.ศ.';
+    $('tts-sem-f').classList.toggle('hidden', sc.type !== 'term');
+    $('tts-hint').textContent = /^\d{4}$/.test(sc.year)
+      ? 'จะรวมตารางสอนของ ' + ttScopeTerms(sc).map(ttTermLabel).join(' และ ')
+      : 'กรอกปีเป็นตัวเลข 4 หลัก เช่น ' + docFiscalYear();
+  };
+  ['tts-type', 'tts-year', 'tts-sem'].forEach(id => $(id).addEventListener('input', refresh));
+  refresh();
+  $('tts-cancel').addEventListener('click', closeModal);
+  $('tts-ok').addEventListener('click', () => {
+    const sc = read();
+    if (!/^\d{4}$/.test(sc.year)) { $('tts-year').focus(); return; }
+    closeModal();
+    onPick(sc);
+  });
+}
+
 // ฟอนต์สำรองเมื่อเครื่องไม่มี TH Sarabun PSK (ตัวที่แบบราชการใช้): Sarabun (OFL) เก็บไว้ใน assets/fonts
 // size-adjust 65.4% = ความกว้างตัวอักษรเท่า TH Sarabun PSK ที่ขนาดเดียวกัน (วัดจากแบบ PA ตัวจริง) → ตัดบรรทัด/จำนวนหน้าใกล้เคียงฟอร์มราชการ
 function docFontCss() {
