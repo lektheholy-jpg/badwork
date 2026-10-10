@@ -177,7 +177,13 @@ async function sarPullCourses(d) {
   if (!mine.length) return { found: 0 };
   let tt = { subjects: [], activities: [] };
   try { tt = await idpPullTimetable({ type: 'term', year: d.year, sem: d.semester }); } catch (e) { /* ไม่มีตารางสอน → เว้นชั่วโมงให้กรอกเอง */ }
-  const hoursOf = (c, list) => { const h = (list || []).find(x => (c.code && x.name.includes(c.code)) || x.name.includes(c.name)); return h ? String(h.hours) : ''; };
+  // หาชั่วโมงจากตารางสอน · ถ้าไม่พบ → คำนวณจากหน่วยกิต (0.5 หน่วยกิต = 1 ชม./สัปดาห์)
+  const hoursOf = (c, list) => {
+    const h = (list || []).find(x => (c.code && x.name.includes(c.code)) || x.name.includes(c.name));
+    if (h) return String(h.hours);
+    const cr = Number(c.credit);
+    return cr > 0 ? String(cr * 2) : '';
+  };
   const rows = { teaching: [], activities: [], grades: [] };
   let noScore = 0;
   mine.forEach(c => {
@@ -306,7 +312,7 @@ async function sarRenderFormView() {
     } catch (e) { showToast('ดึงตารางสอนไม่สำเร็จ: ' + e.message, 'error'); }
   });
   ['sar-back-btn', 'sar-cancel-btn'].forEach(id => document.getElementById(id)?.addEventListener('click', () => { sarCollect(); SAR.view = 'list'; sarRenderListView(); }));
-  document.getElementById('sar-print-btn')?.addEventListener('click', () => { sarCollect(); sarPrint(d); });
+  document.getElementById('sar-print-btn')?.addEventListener('click', () => { sarCollect(); SAR.previewId = SAR.docId; SAR.view = 'preview'; sarRenderPreviewView(SAR.docId); });
   document.getElementById('sar-save-btn')?.addEventListener('click', async () => {
     sarCollect();
     const btn = document.getElementById('sar-save-btn');
@@ -354,7 +360,7 @@ async function sarRenderListView() {
     docBindList(root, {
       create: () => { SAR.docId = null; SAR.doc = sarNormalize({}); SAR.view = 'form'; sarRenderFormView(); },
       open: id => edit(id), edit: id => edit(id), dup: id => edit(id, true),
-      print: id => { const d = open(id); if (d) sarPrint(d); },
+      print: id => { SAR.previewId = id; SAR.view = 'preview'; sarRenderPreviewView(id); },
       del: async id => { await sarCol(AppState.user.uid).doc(id).delete(); SAR.list = null; await sarRenderListView(); },
     });
   } catch (e) {
@@ -364,14 +370,22 @@ async function sarRenderListView() {
   }
 }
 
-function sarRenderView() { return SAR.view === 'form' ? sarRenderFormView() : sarRenderListView(); }
+function sarRenderView() {
+  if (SAR.view === 'form') return sarRenderFormView();
+  if (SAR.view === 'preview') return sarRenderPreviewView(SAR.previewId);
+  return sarRenderListView();
+}
 function sarBeforeLeave() { if (SAR.view === 'form') sarCollect(); }
 
-// ---------------- พิมพ์ ----------------
-const SAR_PRINT_CSS = `body{font-family:'PA Sarabun',sans-serif;font-size:14pt;line-height:1.3}h1,h2,h3{margin:.6em 0 .2em}h1{font-size:18pt;text-align:center}h2{font-size:15pt}h3{font-size:14pt}
+// ---------------- CSS / HTML ต้นฉบับ (ใช้ร่วมกันระหว่างพิมพ์และตัวอย่างบนจอ) ----------------
+const SAR_PRINT_CSS = `
+@page{size:A4 portrait;margin:1.6cm 1.4cm}
+body{font-family:'TH SarabunPSK','TH Sarabun PSK','THSarabunPSK','TH Sarabun New','PA Sarabun','Noto Sans Thai',Tahoma,sans-serif;font-size:14pt;line-height:1.3}
+h1,h2,h3{margin:.6em 0 .2em}h1{font-size:18pt;text-align:center}h2{font-size:15pt}h3{font-size:14pt}
 table{border-collapse:collapse;width:100%;margin:.3em 0}th,td{border:1px solid #000;padding:2px 5px;vertical-align:top}th{text-align:center}.c{text-align:center}.sg{margin:2em 0 0 auto;width:9cm;text-align:center;break-inside:avoid}p{margin:.2em 0}`;
-async function sarPrint(d) {
-  const prof = await idpGetProfile();
+
+// สร้าง HTML เนื้อหา SAR (ใช้ทั้งตอนพิมพ์และตอนแสดงตัวอย่างบนจอ)
+function sarBuildBodyHtml(d, prof) {
   const pi = idpProfileInfo(prof), s = sarStats(d), f = d.f || {}, R = d.rows || {}, L = d.lv || {};
   const E = sarEsc, cell = v => (v === '' || v == null ? '' : E(v));
   const tbl = (key, extra) => `<table><tr>${sarCols(key).map(c => `<th>${E(c[1])}</th>`).join('')}</tr>${(R[key] || []).filter(r => Object.values(r).some(Boolean)).map(r => `<tr>${sarCols(key).map(([c]) => `<td>${cell(r[c])}</td>`).join('')}</tr>`).join('')}${extra || ''}</table>`;
@@ -379,7 +393,7 @@ async function sarPrint(d) {
   const para = (k, l) => f[k] ? `<h3>${E(l)}</h3><p>${docNl(f[k])}</p>` : '';
   const at = ['late', 'sick', 'biz', 'ord', 'mat'].map((k, i) => `<tr><td>${['มาสาย', 'ลาป่วย', 'ลากิจ', 'ลาอุปสมบท', 'ลาคลอด'][i]}</td><td class="c">${cell(f.at?.[k + 'T']) || '-'}</td><td class="c">${cell(f.at?.[k + 'D']) || '-'}</td></tr>`).join('');
   const gr = s.gradeTot, gradeFoot = (R.grades || []).length ? `<tr><th colspan="3">รวม</th>${SAR_G.map(([k]) => `<th>${gr[k]}</th>`).join('')}<th>${gr.r}</th><th>${gr.ms}</th></tr>` : '';
-  const html = `
+  return `
   <h1>รายงานผลการปฏิบัติงานและการประเมินตนเองรายบุคคล<br>Self-Assessment Report : SAR</h1>
   <p class="c">ภาคเรียนที่ ${E(d.semester)} ปีการศึกษา ${E(d.year)}${f.period ? ` (${E(f.period)})` : ''}</p>
   <p class="c">${E(pi.name)} ตำแหน่ง ${E(pi.position)}<br>${E(pi.school)} ${E(pi.affiliation)}</p>
@@ -410,5 +424,58 @@ async function sarPrint(d) {
   <p>ข้าพเจ้าขอรับรองว่าข้อมูลที่ได้ประเมินตนเองทั้งหมดถูกต้องตรงตามเอกสารหลักฐานที่มีอยู่จริง</p>
   <div class="sg">ลงชื่อ ……………………………… ผู้รายงาน<br>(${E(pi.name)})<br>ตำแหน่ง ${E(pi.position)}</div>
   ${[['หัวหน้ากลุ่มสาระการเรียนรู้', prof?.subjectHead], ['รองผู้อำนวยการฝ่ายวิชาการ', prof?.deputyAcademic], ['ผู้อำนวยการสถานศึกษา', prof?.director]].map(([t, n]) => `<div class="sg">ลงชื่อ ……………………………… ผู้รับรอง<br>(${E(n || '………………………')})<br>ตำแหน่ง ${E(t)}</div>`).join('')}`;
+}
+
+async function sarPrint(d) {
+  const prof = await idpGetProfile();
+  const html = sarBuildBodyHtml(d, prof);
   return docPrintWindow({ title: sarTitle(d), css: SAR_PRINT_CSS, html });
+}
+
+// ---------------- ตัวอย่าง/พิมพ์บนจอ (docRenderPreview) ----------------
+const SAR_SHEET = { port: { w: 210, h: 297, pad: [16, 14, 16, 14], label: 'A4 แนวตั้ง' } };
+
+async function sarRenderPreviewView(pickId) {
+  const sys = docSystem();
+  return docRenderPreview({
+    sys, tab: 'sar',
+    load: async () => {
+      const open = SAR.view === 'form' ? SAR.doc : null;
+      let list = [];
+      try { list = await sarLoadList(); } catch (e) { /* โหลดรายการไม่ได้ → ดูได้เฉพาะรายงานที่เปิดอยู่ */ }
+      const openKey = open ? (SAR.docId || '__open__') : null;
+      const items = [];
+      if (open) items.push({ id: openKey, label: `${sarTitle(open)} · ${SAR.docId ? 'กำลังแก้ไข' : 'ฉบับที่ยังไม่บันทึก'}` });
+      list.filter(x => x.id !== openKey).forEach(x => items.push({ id: x.id, label: sarTitle(x) }));
+      if (!items.length) return { items };
+      const pid = items.some(x => x.id === pickId) ? pickId : items[0].id;
+      const d = pid === openKey ? open : sarNormalize(JSON.parse(JSON.stringify(list.find(x => x.id === pid))));
+      const profile = await idpGetProfile();
+      return { items, pickId: pid, d, open, openKey, profile };
+    },
+    selectLabel: 'เลือก SAR',
+    empty: { icon: IDP_ICO_DOC, title: 'ยังไม่มี SAR', sub: 'สร้างรายงานผลการปฏิบัติงานก่อน แล้วดูตัวอย่างและพิมพ์ที่นี่', gotoLabel: 'ไปที่แบบฟอร์ม', gotoTab: 'sar' },
+    hint: () => 'ตัวอย่าง SAR แบบ A4 แนวตั้ง — กด "พิมพ์ / บันทึกเป็น PDF" ในหน้าต่างพิมพ์ได้',
+    sheets: ctx => ({
+      html: () => docSheetsHtml(SAR_PRINT_CSS, `<div class="sar1">${sarBuildBodyHtml(ctx.d, ctx.profile)}</div>`),
+      specs: SAR_SHEET, bodyClass: 'sar1',
+      keep: 'h2,h3',
+      fonts: [...DOC_FONT_SPECS],
+    }),
+    onPick: id => { SAR.previewId = id; sarRenderPreviewView(id); },
+    onEdit: ctx => {
+      if (ctx.pickId !== ctx.openKey) {
+        if (ctx.open && !confirm('เปิด SAR นี้เพื่อแก้ไข? ส่วนที่แก้ในรายงานที่เปิดอยู่และยังไม่ได้บันทึกจะหายไป')) return;
+        SAR.docId = ctx.pickId;
+        SAR.doc = ctx.d;
+      }
+      SAR.view = 'form';
+      sarRenderFormView();
+    },
+    onPrint: (ctx, view) => {
+      const frame = view.querySelector('.doc-preview-frame');
+      frame?.contentWindow?.focus();
+      frame?.contentWindow?.print();
+    },
+  });
 }
