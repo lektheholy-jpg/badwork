@@ -27,7 +27,9 @@
 //     ctxStorageKey(sys)              → string   คีย์ localStorage ที่สำรองบริบทล่าสุด — ต้องไม่ซ้ำกับระบบอื่น
 //   ฟอร์ม
 //     docRef(sys, uid, id)            → Firestore doc ref ของเอกสาร (ใช้เขียนเฉพาะ aiCtx)
-//     slots(sys, form)                → [{ host: Element, buttons: [{ act, label, quiet?, data? }] }]  ฝังแถวปุ่มที่ไหนบ้าง
+//     slots(sys, form)                → [{ host: Element, buttons: [{ act, label, icon, quiet?, data? }] }]  ฝังแถวปุ่มที่ไหนบ้าง
+//                                       รูปแบบปุ่มใต้ช่องเหมือนกันทุกระบบ: ป้าย ✦ (ไอคอนล้วน) + ปุ่มไอคอนล้วน · icon = write | polish | shorten (เพิ่มได้ที่ BADWORK_AI_BTN_ICONS) · label = tooltip + aria-label (ตั้งให้ชัดว่าทำอะไร) · ปุ่มแรกที่เขียนข้อความใหม่ไม่ใส่ quiet · ปุ่มปรับ/ย่อใส่ quiet: true
+//                                       ไม่ใส่ icon = ขึ้น console.warn (ปุ่มจะไม่มีทั้งข้อความและไอคอน) — ปุ่มหลักในการ์ดบนสุด (topButton) ยังเป็นข้อความตามเดิม
 //     resolve(sys, act, btn)          → { specs, mode } | { toast } | null   ปุ่มที่กด (data-doc-ai = act) ต้องทำอะไร
 //
 // spec ของช่อง (ตัวต่อเป็นคนสร้าง) = { key, el (id ขององค์ประกอบ), label, hint?, item?, fieldLabel?, … }
@@ -396,6 +398,7 @@ const BADWORK_AI_ICON = `<svg class="ico" viewBox="0 0 24 24" fill="none" stroke
 const BADWORK_AI_BTN_ICONS = {
   write: '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>', // ปากกา = เขียน/เติมข้อความที่ว่าง
   polish: '<path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72"/><path d="m14 7 3 3"/><path d="M5 6v4"/><path d="M19 14v4"/><path d="M10 2v2"/><path d="M7 8H3"/><path d="M21 16h-4"/><path d="M11 3H9"/>', // ไม้กายสิทธิ์ = ขัดเกลาสำนวน
+  shorten: '<path d="m7 20 5-5 5 5"/><path d="m7 4 5 5 5-5"/>', // ลูกศรบีบเข้า = ย่อให้กระชับ
 };
 function badworkAiBtnIcon(name) {
   return `<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${BADWORK_AI_BTN_ICONS[name] || ''}</svg>`;
@@ -405,6 +408,7 @@ function badworkAiRowHtml(buttons) {
   const attrs = d => Object.entries(d || {}).map(([k, v]) => ` data-${k}="${escapeHtml(v)}"`).join('');
   const btn = b => {
     const ico = b.icon && BADWORK_AI_BTN_ICONS[b.icon];
+    if (!ico) console.warn(`ปุ่ม AI "${b.act}" ไม่มี icon (หรือชื่อไม่รู้จัก) — ปุ่มใต้ช่องทุกระบบใช้ไอคอนล้วน ดู BADWORK_AI_BTN_ICONS`);
     const cls = `btn ${b.quiet ? 'btn-sm doc-ai-quiet' : 'btn-ghost btn-sm'}${ico ? ' doc-ai-ico' : ''}`;
     const tip = ico ? ` title="${escapeHtml(b.label)}" aria-label="${escapeHtml(b.label)}"` : '';
     return `<button type="button" class="${cls}" data-doc-ai="${b.act}"${attrs(b.data)}${tip}>${ico ? badworkAiBtnIcon(b.icon) : b.label}</button>`;

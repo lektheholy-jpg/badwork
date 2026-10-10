@@ -92,9 +92,9 @@ function paAiSlots(sys, form) {
     const ta = form.querySelector('#' + f.el);
     if (!ta) return;
     out.push({ host: ta.closest('.field'), buttons: [
-      { act: 'f-write', label: 'เขียน/เติมให้', data: { key: f.key } },
-      { act: 'f-polish', label: 'ปรับสำนวน', quiet: true, data: { key: f.key } },
-      { act: 'f-shorten', label: 'ย่อให้กระชับ', quiet: true, data: { key: f.key } },
+      { act: 'f-write', label: 'เขียน/เติมให้', icon: 'write', data: { key: f.key } },
+      { act: 'f-polish', label: 'ปรับสำนวน', icon: 'polish', quiet: true, data: { key: f.key } },
+      { act: 'f-shorten', label: 'ย่อให้กระชับ', icon: 'shorten', quiet: true, data: { key: f.key } },
     ] });
   });
   // ใต้งานตามมาตรฐานตำแหน่งแต่ละข้อ (ชื่อข้ออยู่ในหัวกล่องอยู่แล้ว ไม่ต้องพูดซ้ำในปุ่ม)
