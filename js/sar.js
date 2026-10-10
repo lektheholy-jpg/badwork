@@ -167,6 +167,36 @@ function sarCalc() {
   });
 }
 
+// วิชาที่เป็นกิจกรรมพัฒนาผู้เรียน (ไม่ใช่รายวิชา): รหัสขึ้นต้น ก หรือชื่อเข้าข่าย — ผิดก็แก้ย้ายเองในฟอร์มได้
+const sarIsActivity = c => /^ก/.test(String(c.code || '').trim()) || /ชุมนุม|กิจกรรม|ลูกเสือ|เนตรนารี|แนะแนว|โฮมรูม|ผู้บำเพ็ญ|สวดมนต์/.test(c.name || '');
+// ดึงจากรายวิชา/ห้อง/คะแนน/เกรดของภาคเรียน+ปีนั้น (loadCoursesWithGrades ใน dashboard.js ใช้แคชเดียวกับหน้าแรก)
+async function sarPullCourses(d) {
+  const { courses } = await loadCoursesWithGrades();
+  const yr = String(d.year).trim(), sm = String(d.semester).trim();
+  const mine = courses.filter(c => String(c.year || '').trim() === yr && String(c.semester || '').trim() === sm);
+  if (!mine.length) return { found: 0 };
+  let tt = { subjects: [], activities: [] };
+  try { tt = await idpPullTimetable({ type: 'term', year: d.year, sem: d.semester }); } catch (e) { /* ไม่มีตารางสอน → เว้นชั่วโมงให้กรอกเอง */ }
+  const hoursOf = (c, list) => { const h = (list || []).find(x => (c.code && x.name.includes(c.code)) || x.name.includes(c.name)); return h ? String(h.hours) : ''; };
+  const rows = { teaching: [], activities: [], grades: [] };
+  let noScore = 0;
+  mine.forEach(c => {
+    const act = sarIsActivity(c), title = [c.code, c.name].filter(Boolean).join(' ');
+    (c.roomsData || []).forEach(rm => {
+      const g = gradeSummaryCounts(rm.students); // N + จำนวนตามเกรด (นับเฉพาะคนที่มีคะแนนแล้ว)
+      const base = { name: title, room: rm.room || '', n: String(g.N) };
+      if (act) { rows.activities.push({ ...base, hours: hoursOf(c, tt.activities) }); return; }
+      rows.teaching.push({ ...base, hours: hoursOf(c, tt.subjects) });
+      if (!g.n) noScore++;
+      const gr = { ...base };
+      ['g4', 'g35', 'g3', 'g25', 'g2', 'g15', 'g1', 'g0'].forEach((k, i) => { gr[k] = g.counts[i] ? String(g.counts[i]) : ''; });
+      rows.grades.push(gr);
+    });
+  });
+  Object.assign(d.rows, rows);
+  return { found: mine.length, teach: rows.teaching.length, act: rows.activities.length, noScore };
+}
+
 async function sarRenderFormView() {
   const sys = docSystem(), root = docMount(), seq = sys.state.seq;
   const stillHere = () => !docStale(root, seq, sys) && sys.state.tab === 'sar' && SAR.view === 'form';
@@ -201,7 +231,8 @@ async function sarRenderFormView() {
           ${sarFld('คุณวุฒิสูงสุด', sarIn('degree', f.degree))}${sarFld('วิชาเอก', sarIn('major', f.major))}${sarFld('จากสถาบัน', sarIn('inst', f.inst))}
           ${sarFld('วิทยฐานะ', sarIn('rank', f.rank))}${sarFld('ตำแหน่งเลขที่', sarIn('posNo', f.posNo))}
         </div></div>
-      <div class="u-mt-4"><button type="button" class="btn btn-ghost btn-sm" id="sar-tt-pull">ดึงรายวิชา/กิจกรรมจากตารางสอน</button></div>
+      <div class="u-mt-4"><button type="button" class="btn btn-primary btn-sm" id="sar-cs-pull">ดึงจากรายวิชา · คะแนน · เกรด (ภาคเรียนนี้)</button> <button type="button" class="btn btn-ghost btn-sm" id="sar-tt-pull">ดึงจากตารางสอนอย่างเดียว</button></div>
+      <div class="u-note">ปุ่มแรกเติมภาระสอน กิจกรรม และตารางผลการเรียน (1.2.4.1) จากรายวิชาที่ภาคเรียน/ปีการศึกษาตรงกับด้านบน — ชั่วโมง/สัปดาห์มาจากตารางสอน แก้ไขต่อในช่องได้</div>
       ${sarTable('teaching', '1.2.1 ปฏิบัติการสอน', 'เพิ่มรายวิชา')}<div class="u-note" id="sar-t-sum"></div>
       ${sarTable('activities', '1.2.2 กิจกรรมพัฒนาผู้เรียน', 'เพิ่มกิจกรรม')}
       <div class="doc-subsec"><div class="doc-subsec-hd">1.2.3 ครูที่ปรึกษา</div><div class="doc-form-meta">
@@ -250,6 +281,19 @@ async function sarRenderFormView() {
   });
   sarCalc();
 
+  document.getElementById('sar-cs-pull')?.addEventListener('click', async () => {
+    sarCollect();
+    const has = ['teaching', 'activities', 'grades'].some(k => (d.rows[k] || []).some(r => Object.values(r).some(Boolean)));
+    if (has && !confirm('แทนที่ภาระสอน กิจกรรม และตารางผลการเรียนที่กรอกไว้ ด้วยข้อมูลจากรายวิชา?')) return;
+    const btn = document.getElementById('sar-cs-pull');
+    btn.disabled = true;
+    try {
+      const r = await sarPullCourses(d);
+      if (!r.found) { showToast(`ไม่พบรายวิชาภาคเรียนที่ ${d.semester} ปี ${d.year} — ตรวจภาคเรียน/ปีของรายวิชา`); return; }
+      if (stillHere()) { await sarRenderFormView(); showToast(`ดึงแล้ว: สอน ${r.teach} ห้อง · กิจกรรม ${r.act} ห้อง${r.noScore ? ` · ${r.noScore} ห้องยังไม่มีคะแนน` : ''}`); }
+    } catch (e) { showToast('ดึงข้อมูลรายวิชาไม่สำเร็จ: ' + e.message, 'error'); }
+    finally { btn.disabled = false; }
+  });
   document.getElementById('sar-tt-pull')?.addEventListener('click', async () => {
     sarCollect();
     if ((d.rows.teaching || []).some(r => r.name) && !confirm('แทนที่รายวิชา/กิจกรรมที่กรอกไว้ด้วยข้อมูลจากตารางสอน?')) return;
