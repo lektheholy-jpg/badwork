@@ -855,6 +855,7 @@ registerDocUi('idp', {
   tabs: {
     preview: () => idpRenderPreviewView(),
     sar: () => sarRenderView(), // แท็บ Self-Assessment Report — js/sar.js (อยู่ใน LAZY_BUNDLES.idp)
+    sarprev: () => sarRenderPreviewView(SAR.previewId), // แท็บตัวอย่าง/พิมพ์ SAR — ต่อจากแท็บ sar (js/sar.js)
     default: sys => sys.state.view === 'form' ? idpRenderFormView() : idpRenderListView(),
   },
   beforeLeave(sys) {

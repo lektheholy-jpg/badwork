@@ -312,7 +312,7 @@ async function sarRenderFormView() {
     } catch (e) { showToast('ดึงตารางสอนไม่สำเร็จ: ' + e.message, 'error'); }
   });
   ['sar-back-btn', 'sar-cancel-btn'].forEach(id => document.getElementById(id)?.addEventListener('click', () => { sarCollect(); SAR.view = 'list'; sarRenderListView(); }));
-  document.getElementById('sar-print-btn')?.addEventListener('click', () => { sarCollect(); SAR.previewId = SAR.docId; SAR.view = 'preview'; sarRenderPreviewView(SAR.docId); });
+  document.getElementById('sar-print-btn')?.addEventListener('click', () => { sarCollect(); SAR.previewId = SAR.docId; docSwitchTab('sarprev'); });
   document.getElementById('sar-save-btn')?.addEventListener('click', async () => {
     sarCollect();
     const btn = document.getElementById('sar-save-btn');
@@ -360,7 +360,7 @@ async function sarRenderListView() {
     docBindList(root, {
       create: () => { SAR.docId = null; SAR.doc = sarNormalize({}); SAR.view = 'form'; sarRenderFormView(); },
       open: id => edit(id), edit: id => edit(id), dup: id => edit(id, true),
-      print: id => { SAR.previewId = id; SAR.view = 'preview'; sarRenderPreviewView(id); },
+      print: id => { SAR.previewId = id; docSwitchTab('sarprev'); },
       del: async id => { await sarCol(AppState.user.uid).doc(id).delete(); SAR.list = null; await sarRenderListView(); },
     });
   } catch (e) {
@@ -372,7 +372,6 @@ async function sarRenderListView() {
 
 function sarRenderView() {
   if (SAR.view === 'form') return sarRenderFormView();
-  if (SAR.view === 'preview') return sarRenderPreviewView(SAR.previewId);
   return sarRenderListView();
 }
 function sarBeforeLeave() { if (SAR.view === 'form') sarCollect(); }
@@ -432,13 +431,13 @@ async function sarPrint(d) {
   return docPrintWindow({ title: sarTitle(d), css: SAR_PRINT_CSS, html });
 }
 
-// ---------------- ตัวอย่าง/พิมพ์บนจอ (docRenderPreview) ----------------
+// ---------------- ตัวอย่าง/พิมพ์บนจอ (docRenderPreview) — แท็บ 'sarprev' ต่อจากแท็บ 'sar' ----------------
 const SAR_SHEET = { port: { w: 210, h: 297, pad: [16, 14, 16, 14], label: 'A4 แนวตั้ง' } };
 
 async function sarRenderPreviewView(pickId) {
   const sys = docSystem();
   return docRenderPreview({
-    sys, tab: 'sar',
+    sys, tab: 'sarprev',
     load: async () => {
       const open = SAR.view === 'form' ? SAR.doc : null;
       let list = [];
@@ -470,7 +469,7 @@ async function sarRenderPreviewView(pickId) {
         SAR.doc = ctx.d;
       }
       SAR.view = 'form';
-      sarRenderFormView();
+      docSwitchTab('sar'); // กลับไปแท็บ SAR (แสดงฟอร์ม)
     },
     onPrint: (ctx, view) => {
       const frame = view.querySelector('.doc-preview-frame');

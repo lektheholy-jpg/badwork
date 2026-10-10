@@ -19,7 +19,7 @@ const IDP_CONFIG = {
 
   collections: { plans: 'idp_plans', sar: 'idp_sar' }, // sar = แท็บ SAR (js/sar.js)
 
-  tabs: [['form', 'แบบฟอร์ม'], ['preview', 'ตัวอย่าง / พิมพ์'], ['sar', 'SAR']], // sar = Self-Assessment Report (js/sar.js)
+  tabs: [['form', 'แบบฟอร์ม'], ['preview', 'ตัวอย่าง / พิมพ์'], ['sar', 'SAR'], ['sarprev', 'ตัวอย่าง / พิมพ์ SAR']], // sar = Self-Assessment Report (js/sar.js) · sarprev = ตัวอย่าง/พิมพ์ SAR (แท็บต่อจาก sar ไม่ซ้อนในแท็บ sar)
 
   // สมรรถนะตามแบบฟอร์ม ID-Plan ของ สพฐ. (11 ข้อ) — พิมพ์ตามไฟล์ตัวอย่างแผนจริง (ID-PLAN1-_69.pdf)
   //   [id, ชื่อย่อ (ใช้ในรายการเลือก), ชื่อเต็ม (หัวข้อหลักในตาราง), สมรรถนะย่อย [[เลขข้อ, ชื่อ], ...], วิธีการ/รูปแบบการพัฒนามาตรฐาน [ย่อหน้า, ...]]
