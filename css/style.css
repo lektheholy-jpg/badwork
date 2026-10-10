@@ -2022,6 +2022,18 @@ table.sheet tbody tr:nth-child(n) td.over-max { background: var(--danger-tint); 
   .profile-wide { grid-column: 1 / -1; }
 }
 @media (max-width: 860px) { .field-row-3 { grid-template-columns: minmax(0, 1fr); } }
+/* วุฒิการศึกษาในข้อมูลส่วนตัว — วัดจากความกว้างของกล่องเอง (การ์ดอยู่ในกริด จึงแคบกว่าหน้าจอ) */
+.pf-edu { container: pf-edu / inline-size; }
+.pf-edu-rows { display: flex; flex-direction: column; gap: 12px; margin-top: 10px; }
+.pf-edu-row { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.4fr) minmax(0, 1.8fr) minmax(0, .8fr) auto; gap: 10px; align-items: end; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+.pf-edu-row .field { margin: 0; }
+@container pf-edu (max-width: 700px) {
+  .pf-edu-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .pf-edu-row .pf-edu-del { grid-column: 1 / -1; justify-self: end; }
+}
+@container pf-edu (max-width: 440px) {
+  .pf-edu-row { grid-template-columns: minmax(0, 1fr); }
+}
 @media (max-width: 480px) { .profile-actions .btn { flex: 1 1 100%; justify-content: center; } }
 @media (max-width: 860px) { .main .sheet-wrap { border-radius: var(--radius-m); } }
 

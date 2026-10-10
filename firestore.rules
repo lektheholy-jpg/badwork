@@ -23,19 +23,22 @@ service cloud.firestore {
     }
 
     // ข้อมูลส่วนตัวของครู (หน้า "ข้อมูลส่วนตัว" → users/{uid}.profile) · รายชื่อฟิลด์ต้องตรงกับ PROFILE_FIELDS ใน js/profile.js
-    // ข้อความยาวไม่เกิน 200 ตัวอักษร · salary เป็นตัวเลขหรือ null
+    // ข้อความยาวไม่เกิน 200 ตัวอักษร · salary เป็นตัวเลขหรือ null · birthDate/startDate = YYYY-MM-DD · education = list ไม่เกิน 10 วุฒิ ([{level, major, institution, year}])
     function validTeacherProfile(p) {
       return p == null || (p is map
         && p.keys().hasOnly(['prefix', 'firstName', 'lastName', 'phone',
                              'position', 'academicStanding', 'ksLevel', 'salary', 'positionNo', 'subjectGroup',
                              'school', 'affiliation',
-                             'director', 'deputyAcademic', 'subjectHead', 'assessmentHead'])
+                             'director', 'deputyAcademic', 'subjectHead', 'assessmentHead',
+                             'birthDate', 'startDate', 'licenseNo', 'education'])
         && okStr(p.get('prefix', null), 200) && okStr(p.get('firstName', null), 200) && okStr(p.get('lastName', null), 200)
         && okStr(p.get('phone', null), 200) && okStr(p.get('position', null), 200) && okStr(p.get('academicStanding', null), 200)
         && okStr(p.get('ksLevel', null), 200) && okStr(p.get('positionNo', null), 200) && okStr(p.get('subjectGroup', null), 200)
         && okStr(p.get('school', null), 200) && okStr(p.get('affiliation', null), 200)
         && okStr(p.get('director', null), 200) && okStr(p.get('deputyAcademic', null), 200)
         && okStr(p.get('subjectHead', null), 200) && okStr(p.get('assessmentHead', null), 200)
+        && okStr(p.get('birthDate', null), 10) && okStr(p.get('startDate', null), 10) && okStr(p.get('licenseNo', null), 200)
+        && (p.get('education', null) == null || (p.get('education', null) is list && p.get('education', null).size() <= 10))
         && (p.get('salary', null) == null || p.get('salary', null) is number));
     }
 

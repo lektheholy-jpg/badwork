@@ -9,7 +9,11 @@ const PROFILE_FIELDS = [
   'position', 'academicStanding', 'ksLevel', 'salary', 'positionNo', 'subjectGroup',
   'school', 'affiliation',
   'director', 'deputyAcademic', 'subjectHead', 'assessmentHead',
+  'birthDate', 'startDate', 'licenseNo', // birthDate · startDate = วันที่รูปแบบ YYYY-MM-DD (ค.ศ.) · แสดงเป็น พ.ศ. ด้วย profileThaiDate()
 ];
+// วุฒิการศึกษา (profile.education = [{ level, major, institution, year }] สูงสุด PROFILE_EDU_MAX รายการ · year = พ.ศ.) — เอกสารอื่นดึงด้วย profileEducationLines(p)
+const PROFILE_EDU_MAX = 10;
+const PROFILE_EDU_LEVELS = ['ปริญญาตรี', 'ปริญญาโท', 'ปริญญาเอก', 'ประกาศนียบัตรบัณฑิต', 'ประกาศนียบัตรวิชาชีพชั้นสูง (ปวส.)', 'อนุปริญญา'];
 const PROFILE_PREFIXES = ['นาย', 'นาง', 'นางสาว'];
 const PROFILE_POSITIONS = ['ครูผู้ช่วย', 'ครู'];
 // วิทยฐานะ → คศ. ที่คู่กัน (ใช้เติมช่อง คศ. ให้เมื่อยังว่าง แก้เองได้เสมอ)
@@ -26,11 +30,66 @@ function cleanProfileText(v) {
   return String(v == null ? '' : v).replace(/\u0E4D\u0E32/g, '\u0E33').replace(/\s+/g, ' ').trim();
 }
 
+function cleanProfileEducation(list) {
+  return (Array.isArray(list) ? list : []).slice(0, PROFILE_EDU_MAX)
+    .map(r => ({
+      level: cleanProfileText(r?.level).slice(0, 200), major: cleanProfileText(r?.major).slice(0, 200),
+      institution: cleanProfileText(r?.institution).slice(0, 200), year: cleanProfileText(r?.year).slice(0, 4),
+    }))
+    .filter(r => r.level || r.major || r.institution || r.year);
+}
+
+// 1 วุฒิ → 1 บรรทัดข้อความ เช่น "ปริญญาตรี สาขาวิชาคณิตศาสตร์ มหาวิทยาลัยขอนแก่น พ.ศ. 2555" · profileEducationLines(p) = ทุกวุฒิ (ใช้เติมช่อง "ระดับการศึกษา" ในเอกสาร)
+function profileEducationLine(r) {
+  const major = r.major && (/^(สาขา|วิชาเอก)/.test(r.major) ? r.major : 'สาขาวิชา' + r.major);
+  return [r.level, major, r.institution, r.year && 'พ.ศ. ' + r.year].filter(Boolean).join(' ');
+}
+function profileEducationLines(p) {
+  return cleanProfileEducation(p && p.education).map(profileEducationLine);
+}
+
+// ---------- วันที่ (เก็บ YYYY-MM-DD ค.ศ.) ----------
+const PROFILE_TH_MONTHS_SHORT = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+const PROFILE_TH_MONTHS = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+function profileParseIso(iso) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || ''));
+  if (!m) return null;
+  const y = +m[1], mo = +m[2], d = +m[3], t = new Date(y, mo - 1, d);
+  return t.getFullYear() === y && t.getMonth() === mo - 1 && t.getDate() === d ? { y, mo, d } : null;
+}
+function profileTodayIso() {
+  const n = new Date(), z = v => String(v).padStart(2, '0');
+  return `${n.getFullYear()}-${z(n.getMonth() + 1)}-${z(n.getDate())}`;
+}
+// "15 มิถุนายน 2530" (พ.ศ.) · short = เดือนย่อ · ว่าง/ผิดรูปแบบ = ''
+function profileThaiDate(iso, short = false) {
+  const t = profileParseIso(iso);
+  return t ? `${t.d} ${(short ? PROFILE_TH_MONTHS_SHORT : PROFILE_TH_MONTHS)[t.mo - 1]} ${t.y + 543}` : '';
+}
+// ระยะเวลาจาก iso ถึงวันนี้ → { years, months } (null = ว่าง/ผิด/อนาคต)
+function profileSince(iso, now = new Date()) {
+  const t = profileParseIso(iso);
+  if (!t) return null;
+  let years = now.getFullYear() - t.y, months = now.getMonth() - (t.mo - 1);
+  if (now.getDate() < t.d) months--;
+  if (months < 0) { years--; months += 12; }
+  return years < 0 ? null : { years, months };
+}
+function profileAgeText(p) {
+  const a = profileSince(p && p.birthDate);
+  return a ? `${a.years} ปี` : '';
+}
+function profileServiceText(p) { // อายุราชการ นับจากวันที่บรรจุ
+  const a = profileSince(p && p.startDate);
+  return a ? `${a.years} ปี${a.months ? ` ${a.months} เดือน` : ''}` : '';
+}
+
 async function loadTeacherProfile() {
   const snap = await db.collection('users').doc(AppState.user.uid).get();
   const raw = (snap.exists && snap.data().profile) || {};
   const p = {};
   PROFILE_FIELDS.forEach(k => { p[k] = raw[k] == null ? '' : raw[k]; });
+  p.education = cleanProfileEducation(raw.education);
   AppState.teacherProfile = p;
   return p;
 }
@@ -54,13 +113,24 @@ function profileSummary(p) {
   ].filter(Boolean).join(' ');
 }
 
-function pfInput(id, label, value, { ph = '', list = '', mode = '', opt = false, hint = '' } = {}) {
+function pfInput(id, label, value, { ph = '', list = '', mode = '', opt = false, hint = '', type = 'text', hintId = '' } = {}) {
   return `
     <div class="field">
       <label for="pf-${id}">${escapeHtml(label)}${opt ? ' <span class="profile-opt">(ไม่บังคับ)</span>' : ''}</label>
-      <input id="pf-${id}" type="text" maxlength="200" autocomplete="off" value="${escapeHtml(value)}" placeholder="${escapeHtml(ph)}"${list ? ` list="pf-dl-${list}"` : ''}${mode ? ` inputmode="${mode}"` : ''}>
-      ${hint ? `<div class="field-hint">${escapeHtml(hint)}</div>` : ''}
+      <input id="pf-${id}" type="${type}" maxlength="200" autocomplete="off" value="${escapeHtml(value)}" placeholder="${escapeHtml(ph)}"${list ? ` list="pf-dl-${list}"` : ''}${mode ? ` inputmode="${mode}"` : ''}>
+      ${hint || hintId ? `<div class="field-hint"${hintId ? ` id="${hintId}"` : ''}>${escapeHtml(hint)}</div>` : ''}
     </div>`;
+}
+
+function pfEduRowHtml(r = {}) {
+  const f = (key, label, value, extra = '') => `<div class="field"><label>${label}</label><input type="text" maxlength="${key === 'year' ? 4 : 200}" autocomplete="off" data-edu="${key}" value="${escapeHtml(value || '')}" ${extra}></div>`;
+  return `<div class="pf-edu-row">
+    ${f('level', 'ระดับ', r.level, 'placeholder="ปริญญาตรี" list="pf-dl-eduLevel"')}
+    ${f('major', 'สาขาวิชา', r.major, 'placeholder="คณิตศาสตร์"')}
+    ${f('institution', 'สถาบัน', r.institution, 'placeholder="มหาวิทยาลัย..."')}
+    ${f('year', 'ปีที่จบ (พ.ศ.)', r.year, 'placeholder="2555" inputmode="numeric"')}
+    <button type="button" class="btn btn-danger-ghost btn-sm pf-edu-del">ลบ</button>
+  </div>`;
 }
 
 function pfDatalist(id, items) {
@@ -89,6 +159,7 @@ function profileFormHtml(p) {
           ${pfInput('lastName', 'นามสกุล', p.lastName)}
         </div>
         ${pfInput('phone', 'เบอร์โทรศัพท์', p.phone, { mode: 'tel', opt: true })}
+        ${pfInput('birthDate', 'วันเกิด', p.birthDate, { type: 'date', opt: true, hintId: 'pf-birthDate-hint' })}
       </div>
 
       <div class="card card-pad">
@@ -103,6 +174,8 @@ function profileFormHtml(p) {
           ${pfInput('salary', 'อัตราเงินเดือน (บาท)', salaryText, { ph: '32,290', mode: 'decimal' })}
         </div>
         ${pfInput('positionNo', 'เลขที่ตำแหน่ง', p.positionNo, { opt: true, hint: 'บางแบบฟอร์มของ ก.ค.ศ. ขอข้อมูลนี้' })}
+        ${pfInput('startDate', 'วันที่บรรจุเข้ารับราชการ', p.startDate, { type: 'date', opt: true, hintId: 'pf-startDate-hint' })}
+        ${pfInput('licenseNo', 'เลขที่ใบอนุญาตประกอบวิชาชีพครู', p.licenseNo, { opt: true })}
         ${pfInput('subjectGroup', 'กลุ่มสาระการเรียนรู้ / กลุ่มงาน', p.subjectGroup, { ph: 'คณิตศาสตร์', opt: true })}
       </div>
 
@@ -122,6 +195,15 @@ function profileFormHtml(p) {
       </div>
 
       <div class="card card-pad profile-wide">
+        <h2 class="card-title">วุฒิการศึกษา <span class="profile-opt">(ไม่บังคับ)</span></h2>
+        <div class="u-note">กรอกครั้งเดียว — ID-Plan และแบบรายงานอื่นดึงไปใส่ให้ ไม่ต้องพิมพ์ซ้ำ</div>
+        <div class="pf-edu">
+          <div class="pf-edu-rows" id="pf-edu-rows">${(p.education && p.education.length ? p.education : [{}]).map(pfEduRowHtml).join('')}</div>
+        </div>
+        <button type="button" class="btn btn-ghost btn-sm u-mt-12" id="pf-edu-add">+ เพิ่มวุฒิการศึกษา</button>
+      </div>
+
+      <div class="card card-pad profile-wide">
         <h2 class="card-title">ตัวอย่างข้อความหัวเอกสาร</h2>
         <div class="u-note">แสดงตามที่กรอกอยู่ตอนนี้ ใช้ตรวจว่าสะกดและเรียงถูกก่อนบันทึก</div>
         <div class="profile-preview" id="pf-preview" aria-live="polite"></div>
@@ -133,6 +215,7 @@ function profileFormHtml(p) {
       ${pfDatalist('prefix', PROFILE_PREFIXES)}
       ${pfDatalist('position', PROFILE_POSITIONS)}
       ${pfDatalist('standing', PROFILE_STANDINGS.map(s => s[0]))}
+      ${pfDatalist('eduLevel', PROFILE_EDU_LEVELS)}
     </div>`;
 }
 
@@ -140,6 +223,18 @@ function profileFormHtml(p) {
 function readProfileForm(form) {
   const data = {};
   PROFILE_FIELDS.forEach(k => { data[k] = cleanProfileText(form.querySelector('#pf-' + k).value); });
+  data.education = cleanProfileEducation([...form.querySelectorAll('.pf-edu-row')].map(row => {
+    const r = {};
+    row.querySelectorAll('[data-edu]').forEach(el => { r[el.dataset.edu] = el.value; });
+    return r;
+  }));
+  for (const k of ['birthDate', 'startDate']) {
+    const v = data[k];
+    if (v && (!profileParseIso(v) || v > profileTodayIso())) {
+      data[k] = '';
+      return { data, error: (k === 'birthDate' ? 'วันเกิด' : 'วันที่บรรจุ') + 'ไม่ถูกต้อง (ต้องเป็นวันที่จริงและไม่เกินวันนี้)', field: k };
+    }
+  }
 
   const digits = data.salary.replace(/[๐-๙]/g, d => String(d.charCodeAt(0) - 0x0E50)).replace(/[,\s]|บาท/g, '');
   const n = Number(digits);
@@ -169,7 +264,11 @@ async function renderProfileInfoTab(body, isActive) {
   const saveBtn = form.querySelector('#pf-save-btn');
 
   const refreshPreview = () => {
-    const text = profileSummary(readProfileForm(form).data);
+    const pdata = readProfileForm(form).data;
+    const setHint = (id, text) => { const el = form.querySelector('#' + id); if (el) el.textContent = text; };
+    setHint('pf-birthDate-hint', pdata.birthDate ? `${profileThaiDate(pdata.birthDate)} · อายุ ${profileAgeText(pdata)}` : '');
+    setHint('pf-startDate-hint', pdata.startDate ? `${profileThaiDate(pdata.startDate)} · อายุราชการ ${profileServiceText(pdata) || '—'}` : '');
+    const text = profileSummary(pdata);
     preview.textContent = text || 'ยังไม่ได้กรอกข้อมูล';
     preview.classList.toggle('is-empty', !text);
   };
@@ -183,6 +282,22 @@ async function renderProfileInfoTab(body, isActive) {
     refreshPreview();
   });
   form.addEventListener('change', () => { AppState.profileDirty = true; refreshPreview(); });
+  const eduBox = form.querySelector('#pf-edu-rows');
+  form.addEventListener('click', e => {
+    if (e.target.closest('#pf-edu-add')) {
+      if (eduBox.children.length >= PROFILE_EDU_MAX) { showToast(`เพิ่มได้สูงสุด ${PROFILE_EDU_MAX} วุฒิ`); return; }
+      eduBox.insertAdjacentHTML('beforeend', pfEduRowHtml({}));
+      eduBox.lastElementChild.querySelector('input').focus();
+      AppState.profileDirty = true;
+      return;
+    }
+    const del = e.target.closest('.pf-edu-del');
+    if (del) {
+      del.closest('.pf-edu-row').remove();
+      if (!eduBox.children.length) eduBox.insertAdjacentHTML('beforeend', pfEduRowHtml({}));
+      AppState.profileDirty = true;
+    }
+  });
   form.querySelector('#pf-salary').addEventListener('blur', e => {
     const { data } = readProfileForm(form);
     if (data.salary != null) e.target.value = formatSalary(data.salary); // จัดรูปแบบ 32290 → 32,290

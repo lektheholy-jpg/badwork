@@ -51,7 +51,7 @@ function idpApplyTimetable(doc, t, keepTerm) {
 
 // ------------------------------------------------------------------
 // ข้อมูลส่วนบุคคล — ดึงจากหน้า "ข้อมูลส่วนตัว" (profile) ทุกครั้งที่เปิดฟอร์ม/พิมพ์ ไม่ต้องกรอกซ้ำ
-//   ระดับการศึกษาไม่มีในหน้าข้อมูลส่วนตัว → เก็บในแผน (doc.education) และยกจากแผนล่าสุดมาให้ตอนสร้างแผนใหม่
+//   ระดับการศึกษา: แผนใหม่ดึงจากหน้าข้อมูลส่วนตัว (profileEducationLines) · ถ้าไม่มีให้ยกจากแผนล่าสุด · เก็บในแผน (doc.education) แก้ได้ · ปุ่ม "ดึงจากข้อมูลส่วนตัว" ใช้ซ้ำกับแผนเดิมได้
 // ------------------------------------------------------------------
 async function idpGetProfile() {
   try {
@@ -311,6 +311,12 @@ async function idpRenderFormView() {
       const t = await idpPullTimetable();
       if (!doc.subjects.length && !doc.activities.length && (t.subjects.length || t.activities.length)) idpApplyTimetable(doc, t);
     } catch (e) { /* ไม่มีตารางสอน/โหลดไม่ได้ → กรอกเอง */ }
+    // ระดับการศึกษา: ดึงจากหน้าข้อมูลส่วนตัวก่อน (ไม่มี → ยกจากแผนล่าสุดด้านล่าง)
+    try {
+      const pr0 = await idpGetProfile();
+      const eds = typeof profileEducationLines === 'function' ? profileEducationLines(pr0) : [];
+      if (eds.length && !doc.education.length) doc.education = eds;
+    } catch (e) { /* ใช้แผนล่าสุดแทน */ }
     // ระดับการศึกษา + งานมอบหมายพิเศษ มักไม่เปลี่ยนทุกภาคเรียน → ยกจากแผนล่าสุดมาให้ แก้ได้
     try {
       if (!sys.state.list) sys.state.list = await idpLoadList();
@@ -432,6 +438,7 @@ async function idpRenderFormView() {
       </div>
 
       ${docLBlockHtml({ key: 'education', title: 'ระดับการศึกษา', rows: doc.education.length ? doc.education : [''], hours: false, ph: 'เช่น ปริญญาตรี สาขาวิชาคณิตศาสตร์ มหาวิทยาลัย...', addLabel: 'เพิ่มวุฒิการศึกษา' })}
+      <div class="u-mt-4"><button type="button" class="btn btn-ghost btn-sm" id="idp-edu-pull">ดึงจากข้อมูลส่วนตัว</button></div>
       ${docLBlockHtml({ key: 'subjects', title: '1.1 รายวิชาที่รับผิดชอบ', rows: doc.subjects.length ? doc.subjects : [{}], ph: 'วิชา / ระดับชั้น', addLabel: 'เพิ่มรายวิชา' })}
       ${docLBlockHtml({ key: 'activities', title: '1.2 กิจกรรมพัฒนาผู้เรียน', rows: doc.activities.length ? doc.activities : [{}], ph: 'กิจกรรม / ระดับชั้น', addLabel: 'เพิ่มกิจกรรม' })}
       ${docLTotalHtml({ label: 'รวมชั่วโมงสอน:', id: 'idp-total-hours', value: idpTotalHours(doc) })}
@@ -540,6 +547,17 @@ async function idpRenderFormView() {
         if (el.tagName === 'TEXTAREA') window._idpExpandTa?.(el);
       });
     });
+  });
+
+  document.getElementById('idp-edu-pull')?.addEventListener('click', async () => {
+    idpCollect();
+    const sd = sys.state.doc;
+    const lines = typeof profileEducationLines === 'function' ? profileEducationLines(await idpGetProfile()) : [];
+    if (!lines.length) { showToast('ยังไม่ได้กรอกวุฒิการศึกษา — เพิ่มได้ที่ ข้อมูลส่วนตัว → วุฒิการศึกษา'); return; }
+    if (sd.education.length && !confirm('แทนที่ระดับการศึกษาที่กรอกไว้ด้วยข้อมูลจากข้อมูลส่วนตัว?')) return;
+    sd.education = lines;
+    idpRenderFormView();
+    showToast('ดึงวุฒิการศึกษาจากข้อมูลส่วนตัวแล้ว');
   });
 
   document.getElementById('idp-tt-pull')?.addEventListener('click', () => {
