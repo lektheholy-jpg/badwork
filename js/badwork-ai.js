@@ -395,7 +395,7 @@ const BADWORK_AI_ICON = `<svg class="ico" viewBox="0 0 24 24" fill="none" stroke
 function badworkAiRowHtml(buttons) {
   const attrs = d => Object.entries(d || {}).map(([k, v]) => ` data-${k}="${escapeHtml(v)}"`).join('');
   return `<div class="doc-ai-row">
-      <span class="doc-ai-tag">${BADWORK_AI_ICON} ผู้ช่วย AI</span>
+      <span class="doc-ai-tag" role="img" aria-label="ผู้ช่วย AI" title="ผู้ช่วย AI">${BADWORK_AI_ICON}</span>
       ${buttons.map(b => `<button type="button" class="btn ${b.quiet ? 'btn-sm doc-ai-quiet' : 'btn-ghost btn-sm'}" data-doc-ai="${b.act}"${attrs(b.data)}>${b.label}</button>`).join('\n      ')}
     </div>`;
 }

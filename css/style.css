@@ -2226,8 +2226,8 @@ table.tt tr.is-today td.tt-cell { background: color-mix(in srgb, var(--hue-orang
 .doc-ai-ctx-grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
 
 .doc-ai-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; }
-.doc-ai-tag { display: inline-flex; align-items: center; gap: 5px; margin-right: 4px; font-size: 12.5px; font-weight: 700; color: var(--primary-dark); }
-.doc-ai-tag .ico { width: 16px; height: 16px; }
+.doc-ai-tag { display: inline-grid; place-items: center; flex: none; width: 32px; height: 32px; margin-right: 2px; border-radius: 50%; background: var(--primary-tint); color: var(--primary-dark); cursor: help; }
+.doc-ai-tag .ico { width: 18px; height: 18px; }
 .doc-ai-quiet { background: transparent; color: var(--ink-soft); }
 .doc-ai-quiet:hover { background: var(--hover-wash); color: var(--ink); }
 
