@@ -21,28 +21,70 @@ function idpUpdatedAt(d) {
 
 // ------------------------------------------------------------------
 // ดึงตารางสอน (หน้า "ข้อมูลส่วนตัว" → ตารางสอน) → 1.1 รายวิชา / 1.2 กิจกรรมพัฒนาผู้เรียน (1 คาบ = 1 ชม./สัปดาห์)
+//   term = { sem, year } → ใช้ตารางของภาคเรียนนั้นพอดี (ไม่มีตาราง = คืนรายการว่าง)
+//   ไม่ส่ง term → ใช้ตารางภาคเรียนที่ใช้งานอยู่ตอนนี้ (ใช้ตอนสร้างแผนใหม่)
+//   ชื่อวิชาต่อท้ายด้วยระดับชั้นที่สอน เช่น "ค21101 คณิตศาสตร์พื้นฐาน ม.1" (มาจากช่องห้อง "ม.1/2" → "ม.1")
 // ------------------------------------------------------------------
-async function idpPullTimetable() {
+function idpClsLevel(cls) {
+  return String(cls || '').split('/')[0].trim();
+}
+async function idpPullTimetable(term) {
   await loadModule('timetable');
-  const tt = await loadTimetable();
+  let tt;
+  if (term && term.sem && term.year) {
+    const all = await loadAllTimetables();
+    const hit = ttPick(all, ttTermKey({ sem: Number(term.sem), year: Number(term.year) }));
+    tt = hit ? { term: { sem: Number(term.sem), year: Number(term.year) }, ...hit } : { term, entries: [] };
+  } else {
+    tt = await loadTimetable();
+  }
   const placed = ttStats(tt).placed;
   const agg = kind => {
     const m = new Map();
     placed.filter(e => e.kind === kind).forEach(e => {
       const key = (e.code || '') + '|' + e.title;
-      const cur = m.get(key) || { name: [e.code, e.title].filter(Boolean).join(' '), hours: 0 };
+      const cur = m.get(key) || { code: e.code, title: e.title, levels: new Set(), hours: 0 };
+      if (e.cls) cur.levels.add(idpClsLevel(e.cls));
       cur.hours += e.span;
       m.set(key, cur);
     });
-    return [...m.values()];
+    return [...m.values()].map(c => ({
+      name: [c.code, c.title, [...c.levels].filter(Boolean).join(', ')].filter(Boolean).join(' '),
+      hours: c.hours,
+    }));
   };
   return { subjects: agg('class'), activities: agg('activity'), sem: tt.term?.sem, year: tt.term?.year };
 }
-function idpApplyTimetable(doc, t) {
+function idpApplyTimetable(doc, t, keepTerm) {
   doc.subjects = t.subjects;
   doc.activities = t.activities;
-  if (t.sem) doc.semester = String(t.sem);
-  if (t.year) doc.year = String(t.year);
+  if (!keepTerm) {
+    if (t.sem) doc.semester = String(t.sem);
+    if (t.year) doc.year = String(t.year);
+  }
+}
+
+// ------------------------------------------------------------------
+// ข้อมูลส่วนบุคคล — ดึงจากหน้า "ข้อมูลส่วนตัว" (profile) ทุกครั้งที่เปิดฟอร์ม/พิมพ์ ไม่ต้องกรอกซ้ำ
+//   ระดับการศึกษาไม่มีในหน้าข้อมูลส่วนตัว → เก็บในแผน (doc.education) และยกจากแผนล่าสุดมาให้ตอนสร้างแผนใหม่
+// ------------------------------------------------------------------
+async function idpGetProfile() {
+  try {
+    await loadModule('profile');
+    return await loadTeacherProfile();
+  } catch (e) {
+    return AppState.teacherProfile || null;
+  }
+}
+function idpProfileInfo(p) {
+  p = p || {};
+  const name = [(p.prefix || '') + (p.firstName || ''), p.lastName || ''].filter(Boolean).join(' ');
+  const position = [p.position, p.academicStanding].filter(Boolean).join(' ');
+  return { name, position, subjectGroup: p.subjectGroup || '', school: p.school || '', affiliation: p.affiliation || '' };
+}
+function idpTotalHours(d) {
+  const sum = a => (a || []).reduce((t, r) => t + (Number(r.hours) || 0), 0);
+  return sum(d.subjects) + sum(d.activities);
 }
 
 // ------------------------------------------------------------------
@@ -93,13 +135,14 @@ function idpNormalize(d) {
   d.semester = String(d.semester || '1');
   d.year     = String(d.year || String(new Date().getFullYear() + 543));
   d.signDate = String(d.signDate || '');
-  // ส่วนที่ 1: ภาระงาน
+  // ส่วนที่ 1: ข้อมูลส่วนบุคคล (ระดับการศึกษา) + ภาระงาน
+  d.education = Array.isArray(d.education) ? d.education.map(r => String(r?.name ?? r ?? '').trim()).filter(Boolean) : [];
   const norm = arr => (Array.isArray(arr) ? arr : []).map(r => ({
     name: String(r?.name || ''), hours: Number(r?.hours) || 0,
   }));
   d.subjects   = norm(d.subjects);
   d.activities = norm(d.activities);
-  d.specials   = Array.isArray(d.specials) ? d.specials.map(r => String(r?.name || '')).filter(Boolean) : [];
+  d.specials   = Array.isArray(d.specials) ? d.specials.map(r => String(r?.name ?? r ?? '').trim()).filter(Boolean) : []; // เก็บเป็นข้อความ (idpCollect) · รับแบบ {name} จากเอกสารเก่าด้วย
   // ส่วนที่ 2: สมรรถนะ
   d.comps = d.comps && typeof d.comps === 'object' ? d.comps : {};
   sys.config.competencies.forEach(([cid]) => {
@@ -158,6 +201,9 @@ function idpCollect() {
     name:  r.querySelector('.idp-act-name')?.value.trim() || '',
     hours: Number(r.querySelector('.idp-act-hours')?.value) || 0,
   })).filter(r => r.name || r.hours);
+
+  // education
+  doc.education = [...document.querySelectorAll('.idp-edu-row input')].map(r => r.value.trim()).filter(Boolean);
 
   // specials
   doc.specials = [...document.querySelectorAll('.idp-special-row input')].map(r => r.value.trim()).filter(Boolean);
@@ -267,10 +313,26 @@ function idpSpecialRowHtml(name) {
   </div>`;
 }
 
+function idpEducationRowHtml(name) {
+  return `<div class="idp-edu-row doc-lrow">
+    <input type="text" class="doc-l-name" placeholder="เช่น ปริญญาตรี สาขาวิชาคณิตศาสตร์ มหาวิทยาลัย..." value="${escapeHtml(name || '')}">
+    <button type="button" class="btn-icon doc-lrow-del" title="ลบ" aria-label="ลบ">${DOC_ICO_DEL}</button>
+  </div>`;
+}
+
+// รวมชั่วโมงสอน/สัปดาห์ = รายวิชา + กิจกรรม (ตัวเลขที่พิมพ์ในส่วนที่ 1 ของแผน)
+function idpUpdateTotal() {
+  const el = document.getElementById('idp-total-hours');
+  if (!el) return;
+  const sum = sel => [...document.querySelectorAll(sel)].reduce((t, i) => t + (Number(i.value) || 0), 0);
+  el.textContent = `รวม ${sum('.idp-sub-hours') + sum('.idp-act-hours')} ชั่วโมง/สัปดาห์`;
+}
+
 function idpAddRowHandler(container, buildFn) {
   container.addEventListener('click', e => {
     if (e.target.closest('.doc-lrow-del')) {
       e.target.closest('.doc-lrow').remove();
+      idpUpdateTotal();
     }
   });
 }
@@ -295,8 +357,21 @@ async function idpRenderFormView() {
       const t = await idpPullTimetable();
       if (!doc.subjects.length && !doc.activities.length && (t.subjects.length || t.activities.length)) idpApplyTimetable(doc, t);
     } catch (e) { /* ไม่มีตารางสอน/โหลดไม่ได้ → กรอกเอง */ }
+    // ระดับการศึกษา + งานมอบหมายพิเศษ มักไม่เปลี่ยนทุกภาคเรียน → ยกจากแผนล่าสุดมาให้ แก้ได้
+    try {
+      if (!sys.state.list) sys.state.list = await idpLoadList();
+      const last = sys.state.list[0] && idpNormalize({ ...sys.state.list[0] });
+      if (last) {
+        if (!doc.education.length) doc.education = [...last.education];
+        if (!doc.specials.length) doc.specials = [...last.specials];
+      }
+    } catch (e) { /* ไม่มีแผนเก่า → กรอกเอง */ }
     if (!stillHere()) return;
   }
+  // ข้อมูลส่วนบุคคลดึงจากหน้า "ข้อมูลส่วนตัว" (ใช้ค่าที่แคชไว้ก่อน ไม่ต้องอ่านซ้ำทุกครั้งที่วาดฟอร์ม)
+  const prof = AppState.teacherProfile || await idpGetProfile();
+  if (!stillHere()) return;
+  const pi = idpProfileInfo(prof);
 
   const comps = sys.config.competencies;
 
@@ -370,11 +445,28 @@ async function idpRenderFormView() {
       </div>
     </div>
 
-    <!-- ส่วนที่ 1: ภาระงาน -->
+    <!-- ส่วนที่ 1: ข้อมูลส่วนบุคคล + ภาระงาน (พิมพ์เป็นหน้าแรก แนวตั้ง) -->
     <section class="doc-section">
       <div class="doc-sec-head">
-        <h2 class="doc-sec-title">ส่วนที่ 1  ภาระงาน</h2>
+        <h2 class="doc-sec-title">ส่วนที่ 1  ข้อมูลส่วนบุคคล และภาระงาน</h2>
         <button type="button" class="btn btn-ghost btn-sm" id="idp-tt-pull">ดึงจากตารางสอน</button>
+      </div>
+
+      <div class="doc-subsec">
+        <div class="doc-subsec-hd">ข้อมูลส่วนบุคคล <span class="doc-sec-note">(ดึงจากหน้าข้อมูลส่วนตัวอัตโนมัติ)</span></div>
+        ${pi.name ? `
+          <div class="u-mt-4"><span class="u-muted">ชื่อ</span> <span class="u-semibold">${escapeHtml(pi.name)}</span></div>
+          <div class="u-mt-4"><span class="u-muted">ตำแหน่ง</span> <span class="u-semibold">${escapeHtml(pi.position || '—')}</span>${pi.subjectGroup ? ` <span class="u-muted">กลุ่มสาระฯ</span> <span class="u-semibold">${escapeHtml(pi.subjectGroup)}</span>` : ''}</div>
+          <div class="u-mt-4"><span class="u-muted">สถานศึกษา</span> <span class="u-semibold">${escapeHtml(pi.school || '—')}</span>${pi.affiliation ? ` <span class="u-muted">สังกัด</span> <span class="u-semibold">${escapeHtml(pi.affiliation)}</span>` : ''}</div>`
+        : `<div class="u-note">ยังไม่ได้กรอกข้อมูลส่วนตัว — กรอกที่ไอคอนบัญชี (มุมซ้ายล่าง) → ข้อมูลส่วนตัว แล้วกลับมาเปิดแผนนี้ใหม่ ชื่อ/ตำแหน่ง/โรงเรียนจะขึ้นเองและพิมพ์ลงแผนให้</div>`}
+      </div>
+
+      <div class="doc-subsec">
+        <div class="doc-subsec-hd">ระดับการศึกษา</div>
+        <div id="idp-education-box" class="doc-lrows">
+          ${(doc.education.length ? doc.education : ['']).map(idpEducationRowHtml).join('')}
+        </div>
+        <button type="button" class="btn-text doc-add-row" id="idp-add-education">${DOC_ICO_ADD} เพิ่มวุฒิการศึกษา</button>
       </div>
 
       <div class="doc-subsec">
@@ -401,6 +493,7 @@ async function idpRenderFormView() {
           ${(doc.activities.length ? doc.activities : [{}]).map(idpActivityRowHtml).join('')}
         </div>
         <button type="button" class="btn-text doc-add-row" id="idp-add-activity">${DOC_ICO_ADD} เพิ่มกิจกรรม</button>
+        <div class="u-semibold u-mt-4" id="idp-total-hours">รวม ${idpTotalHours(doc)} ชั่วโมง/สัปดาห์</div>
       </div>
 
       <div class="doc-subsec">
@@ -461,10 +554,18 @@ async function idpRenderFormView() {
   const subBox = document.getElementById('idp-subjects-box');
   const actBox = document.getElementById('idp-activities-box');
   const spcBox = document.getElementById('idp-specials-box');
+  const eduBox = document.getElementById('idp-education-box');
+  idpAddRowHandler(eduBox);
   idpAddRowHandler(subBox);
   idpAddRowHandler(actBox);
   idpAddRowHandler(spcBox);
 
+  document.getElementById('idp-add-education')?.addEventListener('click', () => {
+    eduBox.insertAdjacentHTML('beforeend', idpEducationRowHtml(''));
+  });
+  document.getElementById('idp-form')?.addEventListener('input', e => {
+    if (e.target.matches('.idp-sub-hours, .idp-act-hours')) idpUpdateTotal();
+  });
   document.getElementById('idp-add-subject')?.addEventListener('click', () => {
     subBox.insertAdjacentHTML('beforeend', idpSubjectRowHtml({}));
   });
@@ -479,9 +580,10 @@ async function idpRenderFormView() {
     idpCollect();
     if ((doc.subjects.length || doc.activities.length) && !confirm('แทนที่รายวิชา/กิจกรรมที่กรอกไว้ด้วยข้อมูลจากตารางสอน?')) return;
     try {
-      const t = await idpPullTimetable();
-      if (!t.subjects.length && !t.activities.length) { showToast('ยังไม่มีตารางสอน — เพิ่มได้ที่ ข้อมูลส่วนตัว → ตารางสอน'); return; }
-      idpApplyTimetable(sys.state.doc, t);
+      const sd = sys.state.doc;
+      const t = await idpPullTimetable({ sem: sd.semester, year: sd.year });
+      if (!t.subjects.length && !t.activities.length) { showToast(`ยังไม่มีตารางสอนของภาคเรียนที่ ${sd.semester}/${sd.year} — เพิ่มได้ที่ ข้อมูลส่วนตัว → ตารางสอน`); return; }
+      idpApplyTimetable(sd, t, true);
       idpRenderFormView();
       showToast('ดึงจากตารางสอนแล้ว');
     } catch (e) {
@@ -530,62 +632,72 @@ async function idpRenderFormView() {
 
 // ------------------------------------------------------------------
 // PRINT CSS
+//   หน้าแรก (.pg-port) = A4 แนวตั้ง · ตั้งแต่หน้าที่ 2 (.pg-land) = A4 แนวนอน — ใช้ named page (@page + คุณสมบัติ page)
+//   เปลี่ยนชื่อหน้า = ขึ้นหน้าใหม่ให้เอง · รองรับใน Chrome/Edge (แนะนำ) และ Firefox 110+
 // ------------------------------------------------------------------
 const IDP1_CSS = `
+@page{size:A4 portrait;margin:2cm 2cm 2cm 2.5cm}
+@page idp-port{size:A4 portrait;margin:2cm 2cm 2cm 2.5cm}
+@page idp-land{size:A4 landscape;margin:1.5cm 1.5cm 1.5cm 1.5cm}
+.idp1 .pg-port{page:idp-port}
+.idp1 .pg-land{page:idp-land}
 .idp1{background:#fff;color:#000;font-family:'TH SarabunPSK','TH Sarabun PSK','THSarabunPSK','TH Sarabun New','THSarabunNew','PA Sarabun','Noto Sans Thai',Tahoma,sans-serif;font-size:16pt;line-height:1.22;text-align:left}
 .idp1 *{box-sizing:border-box}
 .idp1 b{font-weight:700}
 .idp1 .i1-c{text-align:center;font-weight:700}
-.idp1 .i1-r{text-align:right}
 .idp1 .i1-h{font-weight:700;margin-top:.7em;break-after:avoid;page-break-after:avoid}
-.idp1 .i1-p{text-indent:1.27cm}
 .idp1 .i1-ind{padding-left:1.27cm}
+.idp1 .i1-ind2{padding-left:2.2cm;text-indent:-.45cm}
 .idp1 table{width:100%;border-collapse:collapse;margin-top:.4em}
 .idp1 th,.idp1 td{border:1px solid #000;padding:.28em .4em;vertical-align:top;text-align:left;overflow-wrap:anywhere;font-size:14pt}
 .idp1 th{text-align:center;font-weight:700;background:#fcc;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .idp1 thead{display:table-header-group}
-.idp1 .i1-sign{margin:2em 0 0 6cm;width:9cm;text-align:center;break-inside:avoid;page-break-inside:avoid}
+.idp1 tr{break-inside:avoid;page-break-inside:avoid}
+.idp1 .i1-sign{margin:2em 2cm 0 auto;width:9cm;text-align:center;break-inside:avoid;page-break-inside:avoid}
 .idp1 .i1-line{border-bottom:1px dotted #000;height:1.4em;margin-bottom:.2em}
 .idp1 .i1-break{break-before:page;page-break-before:always;height:0}
-.idp1 .i1-memo-header{margin-bottom:1em}
-.idp1 .i1-approve{display:grid;grid-template-columns:1fr 1fr;gap:1em;margin-top:1em;border:1px solid #000}
-.idp1 .i1-approve>div{padding:.5em .7em;border-right:1px solid #000}
-.idp1 .i1-approve>div:last-child{border-right:none}
 .idp1 .i1-mid{text-align:center}
 .idp1 .i1-big{font-size:1.1em}
 .idp1 .i1-mt3{margin-top:.3em}
 .idp1 .i1-mt5{margin-top:.5em}
 .idp1 .i1-mb3{margin-bottom:.3em}
 .idp1 .i1-mb5{margin-bottom:.5em}
-.idp1 .i1-flex{display:flex;gap:2em}
-.idp1 .i1-gap{height:2.5em}
 .idp1 .i1-t13 th,.idp1 .i1-t13 td{font-size:13pt}
 .idp1 .idp-w6{width:6%}.idp1 .idp-w8{width:8%}.idp1 .idp-w18{width:18%}.idp1 .idp-w19{width:19%}
 .idp1 .idp-w20{width:20%}.idp1 .idp-w22{width:22%}.idp1 .idp-w24{width:24%}.idp1 .idp-w28{width:28%}
+@media screen{
+  .idp1 .pg-port,.idp1 .pg-land{padding:.4em 1em}
+  .idp1 .pg-land{border-top:2px dashed #999;margin-top:1em;padding-top:1em}
+}
 `;
 
 // ------------------------------------------------------------------
 // Build preview HTML
+//   หน้า 1 (แนวตั้ง): ข้อมูลส่วนบุคคล + ภาระงาน (ชั่วโมงสอน) — ไม่มีบันทึกข้อความนำส่ง
+//   หน้า 2+ (แนวนอน): ส่วนที่ 2 ตารางสมรรถนะ · ส่วนที่ 3 ตารางสรุป + ลงชื่อผู้จัดทำ
 // ------------------------------------------------------------------
 function idpBuildPreviewHtml(d, profile) {
   d = idpNormalize(d);
   const sys = docSystem('idp');
   const comps = sys.config.competencies;
 
-  const p = profile || {};
-  const name = [(p.prefix || '') + (p.firstName || ''), p.lastName || ''].filter(Boolean).join(' ') || '…………………………………';
-  const position = p.position || '…………………';
-  const subjectGroup = p.subjectGroup || '…………………………………';
-  const school = p.school || '…………………………………';
+  const pi = idpProfileInfo(profile);
+  const dots = n => '…'.repeat(n);
+  const name = pi.name || dots(20);
+  const position = pi.position || dots(12);
+  const subjectGroup = pi.subjectGroup || dots(20);
+  const school = pi.school || dots(20);
+  const affiliation = pi.affiliation;
+  const term = `ภาคเรียนที่ ${escapeHtml(d.semester)}  ปีการศึกษา ${escapeHtml(d.year)}`;
 
-  // ส่วนที่ 1
-  const subjectRows = (d.subjects.length ? d.subjects : [{name:'', hours:''}]).map(r =>
-    `<tr><td>${escapeHtml(r.name)}</td><td class="i1-mid">${r.hours || ''}</td></tr>`).join('');
-  const activityRows = (d.activities.length ? d.activities : [{name:'', hours:''}]).map(r =>
-    `<tr><td>${escapeHtml(r.name)}</td><td class="i1-mid">${r.hours || ''}</td></tr>`).join('');
-  const specialItems = d.specials.length
-    ? d.specials.map(s => `<div class="i1-ind">- ${escapeHtml(s)}</div>`).join('')
-    : '<div class="i1-ind">-</div>';
+  // ส่วนที่ 1: การศึกษา / รายวิชา+กิจกรรม (ชม./สัปดาห์) / งานมอบหมายพิเศษ
+  const bullet = t => `<div class="i1-ind2">- ${t}</div>`;
+  const eduItems = d.education.length ? d.education.map(e => bullet(escapeHtml(e))).join('') : bullet(dots(30));
+  const teachRows = [...d.subjects, ...d.activities];
+  const teachItems = teachRows.length
+    ? teachRows.map(r => bullet(`${escapeHtml(r.name)}${r.hours ? `  จำนวน ${r.hours} ชั่วโมง/สัปดาห์` : ''}`)).join('')
+    : bullet(dots(30));
+  const specialItems = d.specials.length ? d.specials.map(x => bullet(escapeHtml(x))).join('') : bullet(dots(30));
 
   // ส่วนที่ 2
   const compRows = comps.map(([cid, , fullName]) => {
@@ -616,108 +728,77 @@ function idpBuildPreviewHtml(d, profile) {
   return `<!DOCTYPE html>
 <html lang="th">
 <head><meta charset="UTF-8"><style>
-@page{size:A4;margin:1.5cm 1.5cm 2cm}
 body{margin:0;padding:0}
 ${docFontCss()}${IDP1_CSS}
 </style></head>
 <body><div class="idp1">
 
-<div class="i1-memo-header">
-  <div class="i1-c i1-big">บันทึกข้อความ</div>
-  <div class="i1-mt5"><b>ส่วนราชการ</b>  ${escapeHtml(school)}</div>
-  <div class="i1-flex i1-mt3">
-    <div><b>เรื่อง</b>  ส่งแผนพัฒนาตนเอง (ID-PLAN)  ภาคเรียนที่ ${escapeHtml(d.semester)}  ปีการศึกษา  ${escapeHtml(d.year)}</div>
-  </div>
-  <div class="i1-mt3"><b>เรียน</b>  ผู้อำนวยการ${escapeHtml(school)}</div>
-  <div class="i1-p i1-mt5">ด้วยข้าพเจ้า${escapeHtml(name)}  ตำแหน่ง  ${escapeHtml(position)}  กลุ่มสาระการเรียนรู้${escapeHtml(subjectGroup)} ได้จัดทำแผนพัฒนาตนเอง (ID-PLAN) ภาคเรียนที่ ${escapeHtml(d.semester)} ปีการศึกษา ${escapeHtml(d.year)} ซึ่งเป็นการพัฒนาที่สนองตอบความต้องการแต่ละบุคคล เพื่อให้การปฏิบัติงานในหน้าที่ที่ได้รับมอบหมายมีความสมบูรณ์ มีประสิทธิภาพและประสิทธิผล จึงเสนอรายงานแผนพัฒนาตนเอง ตามรายละเอียดแนบท้ายนี้</div>
-  <div class="i1-p i1-mt3">จึงเรียนมาเพื่อโปรดทราบ</div>
+<!-- หน้า 1 · แนวตั้ง · ข้อมูลส่วนบุคคล + ภาระงาน -->
+<section class="pg-port">
+  <div class="i1-c i1-big">แผนพัฒนาตนเองรายบุคคล</div>
+  <div class="i1-c i1-big">(Individual Development Plan : ID PLAN)</div>
+  <div class="i1-c i1-big">ของ ${escapeHtml(name)} ${escapeHtml(school)}</div>
+  <div class="i1-c i1-big">${term}</div>
+
+  <div class="i1-h">ส่วนที่ 1  ข้อมูลส่วนบุคคล</div>
+  <div class="i1-mt3"><b>ชื่อ</b>  ${escapeHtml(name)}</div>
+  <div><b>ตำแหน่ง</b>  ${escapeHtml(position)}</div>
+  <div>${escapeHtml(school)}${affiliation ? ' ' + escapeHtml(affiliation) : ''}</div>
+  <div class="i1-mt3"><b>การศึกษาระดับ</b></div>
+  ${eduItems}
+
+  <div class="i1-h">ภารกิจ/บทบาทหน้าที่ในปีการศึกษาปัจจุบัน (ภาคเรียนที่ ${escapeHtml(d.semester)}/${escapeHtml(d.year)})</div>
+  <div class="i1-mt3"><b>1. ด้านการเรียนการสอน</b>  กลุ่มสาระการเรียนรู้${escapeHtml(subjectGroup)}</div>
+  <div class="i1-ind"><b>รายวิชาที่สอน</b></div>
+  ${teachItems}
+  <div class="i1-ind2"><b>รวม จำนวน ${idpTotalHours(d)} ชั่วโมง/สัปดาห์</b></div>
+  <div class="i1-mt3"><b>2. งานมอบหมายพิเศษ</b></div>
+  ${specialItems}
+</section>
+
+<!-- หน้า 2+ · แนวนอน · ส่วนที่ 2 และ 3 -->
+<section class="pg-land">
+  <div class="i1-h" style="margin-top:0">ส่วนที่ 2  รายละเอียดการพัฒนาตนเอง</div>
+  <table class="i1-t13">
+    <thead>
+      <tr>
+        <th class="idp-w18">สมรรถนะที่จะพัฒนา</th>
+        <th class="idp-w8">อันดับ<br>ความสำคัญ</th>
+        <th class="idp-w20">วิธีการ / รูปแบบ<br>การพัฒนา</th>
+        <th class="idp-w8">ระยะเวลา<br>เริ่มต้น</th>
+        <th class="idp-w8">ระยะเวลา<br>สิ้นสุด</th>
+        <th class="idp-w19">เป้าหมาย</th>
+        <th class="idp-w19">ประโยชน์ที่<br>คาดว่าจะได้รับ</th>
+      </tr>
+    </thead>
+    <tbody>${compRows}</tbody>
+  </table>
+
+  <div class="i1-break"></div>
+
+  <div class="i1-h" style="margin-top:0">ส่วนที่ 3  ตารางสรุปแผนพัฒนาตนเอง</div>
+  <div class="i1-ind i1-mb3">(สรุปวิธีการ/รูปแบบการพัฒนา ที่มีความจำเป็นมากที่สุดในสมรรถนะ 3 อันดับแรก)</div>
+  <table>
+    <thead>
+      <tr>
+        <th class="idp-w6">อันดับที่</th>
+        <th class="idp-w22">สมรรถนะที่จะพัฒนา</th>
+        <th class="idp-w28">วิธีการ / รูปแบบการพัฒนา</th>
+        <th class="idp-w20">ระยะเวลา</th>
+        <th class="idp-w24">ประโยชน์ที่คาดว่าจะได้รับ</th>
+      </tr>
+    </thead>
+    <tbody>${sumRows}</tbody>
+  </table>
+
   <div class="i1-sign">
     <div class="i1-line"></div>
-    <div>ผู้รายงาน</div>
+    <div>ผู้จัดทำ</div>
     <div>(${escapeHtml(name)})</div>
     <div>ตำแหน่ง ${escapeHtml(position)}</div>
     <div class="i1-mt3">วันที่ ${escapeHtml(d.signDate) || '……………………………………………'}</div>
   </div>
-  <div class="i1-approve">
-    <div>
-      <div><b>ความเห็นหัวหน้ากลุ่มสาระการเรียนรู้</b></div>
-      <div class="i1-gap"></div>
-      <div class="i1-line"></div>
-      <div>หัวหน้ากลุ่มสาระฯ</div>
-    </div>
-    <div>
-      <div><b>ความเห็นผู้ช่วยผู้อำนวยการกลุ่มบริหารงานบุคคล</b></div>
-      <div class="i1-gap"></div>
-      <div class="i1-line"></div>
-      <div>ผู้ช่วยผู้อำนวยการ</div>
-    </div>
-  </div>
-</div>
-
-<div class="i1-break"></div>
-
-<!-- แผนพัฒนาตนเอง (ID-PLAN) -->
-<div class="i1-c i1-big i1-mb5">แผนพัฒนาตนเอง (ID-PLAN)<br>ภาคเรียนที่ ${escapeHtml(d.semester)}  ปีการศึกษา ${escapeHtml(d.year)}</div>
-<div class="i1-mb3">${escapeHtml(name)}  ตำแหน่ง ${escapeHtml(position)}  กลุ่มสาระ${escapeHtml(subjectGroup)}</div>
-
-<div class="i1-h">ส่วนที่ 1  ภาระงาน</div>
-
-<div class="i1-h">1.1 รายวิชาที่รับผิดชอบ</div>
-<table>
-  <thead><tr><th>รายวิชา / ระดับชั้น</th><th class="idp-w20">จำนวนชั่วโมง/สัปดาห์</th></tr></thead>
-  <tbody>${subjectRows}</tbody>
-</table>
-
-<div class="i1-h">1.2 กิจกรรมพัฒนาผู้เรียน</div>
-<table>
-  <thead><tr><th>กิจกรรม / ระดับชั้น</th><th class="idp-w20">จำนวนชั่วโมง/สัปดาห์</th></tr></thead>
-  <tbody>${activityRows}</tbody>
-</table>
-
-<div class="i1-h">1.3 งานมอบหมายพิเศษ / ภาระงานอื่น</div>
-${specialItems}
-
-<div class="i1-break"></div>
-
-<div class="i1-h">ส่วนที่ 2  รายละเอียดการพัฒนาตนเอง</div>
-<table class="i1-t13">
-  <thead>
-    <tr>
-      <th class="idp-w18">สมรรถนะที่จะพัฒนา</th>
-      <th class="idp-w8">อันดับ<br>ความสำคัญ</th>
-      <th class="idp-w20">วิธีการ / รูปแบบ<br>การพัฒนา</th>
-      <th class="idp-w8">ระยะเวลา<br>เริ่มต้น</th>
-      <th class="idp-w8">ระยะเวลา<br>สิ้นสุด</th>
-      <th class="idp-w19">เป้าหมาย</th>
-      <th class="idp-w19">ประโยชน์ที่<br>คาดว่าจะได้รับ</th>
-    </tr>
-  </thead>
-  <tbody>${compRows}</tbody>
-</table>
-
-<div class="i1-break"></div>
-
-<div class="i1-h">ส่วนที่ 3  ตารางสรุปแผนพัฒนาตนเอง</div>
-<div class="i1-ind i1-mb3">(สรุปวิธีการ/รูปแบบการพัฒนา ที่มีความจำเป็นมากที่สุดในสมรรถนะ 3 อันดับแรก)</div>
-<table>
-  <thead>
-    <tr>
-      <th class="idp-w6">อันดับที่</th>
-      <th class="idp-w22">สมรรถนะที่จะพัฒนา</th>
-      <th class="idp-w28">วิธีการ / รูปแบบการพัฒนา</th>
-      <th class="idp-w20">ระยะเวลา</th>
-      <th class="idp-w24">ประโยชน์ที่คาดว่าจะได้รับ</th>
-    </tr>
-  </thead>
-  <tbody>${sumRows}</tbody>
-</table>
-
-<div class="i1-sign">
-  <div class="i1-line"></div>
-  <div>(${escapeHtml(name)})</div>
-  <div>ตำแหน่ง ${escapeHtml(position)}</div>
-  <div class="i1-mt3">วันที่ ${escapeHtml(d.signDate) || '……………………………………………'}</div>
-</div>
+</section>
 
 </div></body></html>`;
 }
@@ -750,13 +831,7 @@ async function idpRenderPreviewView() {
   const doc = sys.state.doc;
 
   // โหลด profile
-  let profile = null;
-  try {
-    await loadModule('profile');
-    profile = await loadTeacherProfile();
-  } catch (e) { /* ignore */ }
-
-  if (!profile) profile = AppState.teacherProfile || null;
+  const profile = await idpGetProfile(); // อ่านล่าสุดทุกครั้งที่เปิดตัวอย่าง — แก้ข้อมูลส่วนตัวแล้วพิมพ์ได้เลย
   if (docStale(root, seq, sys) || sys.state.tab !== 'preview') return;
   const html = idpBuildPreviewHtml(doc, profile);
 
