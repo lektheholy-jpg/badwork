@@ -39,12 +39,18 @@ npm run test:pa          # กลุ่มหน้า Personal Agreement: โ�
 npm run test:worker      # พร็อกซี Gemini (worker/worker.js): ตรวจ token/email_verified · rate limit ต่อ uid · คีย์อยู่ใน header
 npm run test:priv        # ส่งออก/ลบบัญชีครอบคลุมเอกสารทุกระบบ (pa_*) และหยุดก่อนลบถ้าโหลด config ไม่ได้
 npm run test:docprint    # ตัวช่วยพิมพ์กลาง (docWaitFonts · docPrintWindow ใน doc-shell.js) + กันไม่ให้ window.open/โค้ดรอฟอนต์หลุดนอก doc-shell.js
+npm run test:ttscope     # ตารางสอน: ขอบเขตรายวิชาตามปี/ภาคเรียน
+npm run test:idp         # ID-Plan: รายการ/แผน และไม่ปนกับ PA
+npm run test:idpai       # ตัวต่อ AI ของ ID-Plan (js/idp-ai.js)
+npm run test:nav         # ปุ่ม/ท่าย้อนกลับ (NavHistory)
+npm run test:cache       # แคชวาดทันทีของหน้ารายวิชา
+npm run check:sw         # PRECACHE ใน sw.js ตรงกับไฟล์จริง
 npm run test:docprev     # โครงหน้าตัวอย่างกลาง (docRenderPreview · docPaginate · docFitSheets · docWatchResize) + หน้าตัวอย่าง ID-Plan จริง + กันโค้ด resize/zoom/ตัดหน้า/CSS แถบตัวอย่างหลุดเข้าไฟล์ระบบ
 ```
 
 - หน้าเว็บโหลด `css/style.min.css` · commit `.min` และ `package-lock.json` ด้วย
 - `csso-cli`, `postcss`, `jsdom` ล็อกเวอร์ชันเป๊ะใน `package.json` (ไม่ใช้ `^`/`~`)
-- `.githooks/pre-commit` สร้าง `.min` ให้เองเมื่อ commit แตะ `style.css` (เปิดอัตโนมัติจาก `npm install` หรือ `git config core.hooksPath .githooks`)
+- `npm install` รัน `prepare` ซึ่งตั้ง `core.hooksPath` เป็น `.githooks` — **แต่ ณ ตอนนี้ยังไม่มีโฟลเดอร์ `.githooks/` ใน repo (ไม่มี pre-commit hook)** จึงต้องรัน `./build-css.sh` เองทุกครั้งที่แก้ `style.css` ก่อน commit (ถ้าจะทำ hook: สร้าง `.githooks/pre-commit` ที่เรียก `./build-css.sh` แล้ว `git add css/style.min.css`)
 - เพิ่ม/ลบ/เปลี่ยนชื่อไฟล์ใน `js/`, `css/`, `assets/icons/` → แก้ `PRECACHE` ใน `sw.js` และ **เพิ่มเลข `VERSION`** แล้วรัน `npm run check:sw`
 
 ## โครงสร้างไฟล์
@@ -72,6 +78,8 @@ js/doc-system.js      ระบบเอกสาร (context ต่อระบ
 js/doc-shell.js       โครงหน้ากลางของทุกระบบเอกสาร: หัวเรื่อง+แท็บ · สลับแท็บ/ตัวโหลด · ตัวช่วยร่วม (วันที่ไทย/ปีงบ/ไอคอน/ป้ายสถานะ/ฟอนต์พิมพ์) · ตัวช่วยพิมพ์ (docWaitFonts · docPrintWindow) · โครงหน้าตัวอย่าง (docRenderPreview · docPaginate · docFitSheets · docWatchResize) · registerDocUi · renderDocPage(id)
 js/pa-config.js       PA_CONFIG: ค่าคงที่ของระบบ PA ที่เดียว (ชื่อ collection · แท็บ · โครงฟอร์ม PA 1/ส · ช่องบริบท AI · พร้อต์/รุ่น/คีย์ของผู้ช่วย AI) — โหลดหลัง doc-system.js ก่อน pa.js (ท้ายไฟล์ลงทะเบียนเป็นระบบ 'pa')
 js/pa.js              ฟอร์มข้อตกลง PA 1/ส (lazy — โหลดตอนเข้าหน้า PA พร้อม pa-config/badwork-ai/pa-report/pa-rpt ผ่าน LAZY_BUNDLES.pa)
+js/idp-config.js      IDP_CONFIG: ค่าคงที่ของระบบ ID-Plan ที่เดียว (collection · แท็บ · สมรรถนะ 11 ข้อ · บริบท/พร้อต์ AI) — ท้ายไฟล์ลงทะเบียนเป็นระบบ 'idp' (โหลดผ่าน LAZY_BUNDLES.idp / docConfigs)
+js/idp.js             แผนพัฒนาตนเอง ID-Plan: รายการ · ฟอร์ม · ตัวอย่าง/พิมพ์ (iframe) — lazy ผ่าน LAZY_BUNDLES.idp · ท้ายไฟล์ registerDocUi('idp', …)
 js/badwork-ai-config.js  BADWORK_AI_CONFIG: ตั้งค่า AI ที่ใช้ร่วมทุกระบบเอกสาร (คีย์/พร็อกซี · รายชื่อรุ่น · คีย์รุ่นที่เลือก · คีย์ความยินยอม) ที่เดียว
 js/badwork-ai.js      แกนผู้ช่วย AI (ไม่รู้จักชื่อระบบ): เรียก Gemini · โครงพร้อต์ · ยินยอม · ตัวกันกดซ้ำ · หน้าต่างตรวจทาน · เก็บบริบท · ฝังปุ่ม — เรียกผ่าน sys + ตัวต่อ (registerDocAi)
 js/pa-ai.js           ตัวต่อ AI ของ PA: ช่องที่ให้ AI เขียน · ข้อมูลประกอบพร้อต์ · ข้อความของ PA · ตำแหน่งปุ่ม · ที่เก็บบริบท
@@ -86,7 +94,9 @@ js/timetable.js       [lazy] ตารางสอน (แยกภาคเร�
 js/records.js         [lazy] แท็บอบรม/เกียรติบัตร/รางวัล (รูปย่อใน Firestore + ต้นฉบับใน Storage)
 js/vendor/            xlsx.mini.min.js (โหลดเมื่อนำเข้า/ส่งออกไฟล์)
 tools/                check-inline.js · check-css.js · check-sw.js
-tests/                score-logic.test.js · sw.test.js · doc-print.test.js (และอื่นๆ ตามรายการใน package.json)
+tests/                *.test.js ตามสคริปต์ใน package.json (score-logic · sw · timetable-term/-scope · records · pa-config · worker · privacy · nav-history · course-cache · idp-list · idp-ai · doc-print · doc-preview) + pa-golden.json (ค่าอ้างอิงของ pa-config.test.js)
+manifest.json         PWA manifest
+assets/               fonts/ (Sarabun) · icons/ (favicon · PWA · logo-128.webp) · head-cat*.webp
 worker/worker.js      Cloudflare Worker: พร็อกซี Gemini (ตรวจ Firebase token · email_verified · rate limit ต่อ uid) — ไม่ใช่ส่วนของแอปหน้าเว็บ ไม่อยู่ใน PRECACHE
 worker/wrangler.toml  ค่า deploy ของ Worker (ALLOWED_ORIGINS · RATE_LIMITER)
 firestore.rules       กฎความปลอดภัย (Firestore)
@@ -142,13 +152,14 @@ users/{uid}/records/{id}                      อบรม/เกียรติ
 Storage: users/{uid}/records/{id}/{เวลา}/{วันที่พ.ศ.}_{ชื่อเรื่อง}.{นามสกุล}  ไฟล์ต้นฉบับ (รูป/PDF ไม่เกิน 10 MB)
 users/{uid}/pa_agreements/{docId}            Personal Agreement
 users/{uid}/pa_reports/{docId}               แบบรายงานผล Personal Agreement
+users/{uid}/idp_plans/{docId}                แผนพัฒนาตนเอง ID-Plan
 ```
 
 **แก้ฟิลด์ใดๆ ต้อง deploy `firestore.rules` ล่าสุดก่อน** ไม่เช่นนั้นบันทึกแล้วจะขึ้นว่าถูกปฏิเสธสิทธิ์
 
 - **profile**: ฟิลด์ตาม `PROFILE_FIELDS` ใน `js/profile.js` (เพิ่ม/ลบต้องแก้ rules `validTeacherProfile` ด้วย) · ดึงไปใช้ `await loadModule('profile')` แล้ว `loadTeacherProfile()` / `profileSummary(p)` · วุฒิการศึกษา `profileEducationLines(p)` · วันที่ `profileThaiDate(iso)` · `profileAgeText(p)` / `profileServiceText(p)` (อายุ / อายุราชการ)
 - **timetable**: เอกสารละภาคเรียน รหัส `{ปีการศึกษา}-{1|2}` (ปี/ภาคอยู่ที่รหัส ไม่มีฟิลด์เพิ่ม จึงไม่ต้องแก้ rules) · เนื้อหา `{ periods: [{start, end}] (≤14 คาบ), entries: [{ id, kind: "class"|"activity", day: 1-5, period, span, code, title, cls, room, hue, courseId }], updatedAt }` · แก้ฟิลด์ใน entry ที่ `ttCleanEntry` + rules `validTimetable` · ดึงไปใช้ `await loadModule('timetable')` แล้ว `loadTimetable()` (ได้ `{ term, periods, entries }` ของภาคเรียนปัจจุบัน) · ตารางแบบเดิม `main` ใช้เป็นตั้งต้นของภาคเรียนปัจจุบันจนกว่าจะบันทึกครั้งแรก (ไม่ลบ/ไม่แก้ main)
-- **PA**: ฟิลด์ระดับบนต้องไม่เกิน 30 ตาม `validDoc` ใน rules · ข้อมูลผู้จัดทำดึงจากโปรไฟล์ ชั่วโมงสอนดึงจากตารางสอน
+- **PA / ID-Plan**: `pa_agreements` · `pa_reports` · `idp_plans` ใช้ `validDoc(30)` ใน rules = ฟิลด์ระดับบนต้องไม่เกิน 30 ต่อเอกสาร (ระบบใหม่ที่ฟิลด์เยอะกว่านี้ต้องปรับตัวเลขของ collection นั้น) · ข้อมูลผู้จัดทำดึงจากโปรไฟล์ ชั่วโมงสอนดึงจากตารางสอน
 - ส่งออก/ลบข้อมูลของฉัน (`js/privacy.js`) ครอบคลุม profile ตารางสอน อบรม/เกียรติบัตร วิชา **และเอกสารของทุกระบบเอกสาร (PA ฯลฯ)** — ชื่อ collection อ่านจาก `config.collections` ผ่าน `docSystem()` (โหลดเฉพาะ `LAZY_BUNDLES.docConfigs`) ไม่เขียนชื่อตรงในไฟล์นี้ · **ระบบเอกสารใหม่ = เพิ่มไฟล์ config ของตัวเองใน `LAZY_BUNDLES.docConfigs`** ไม่งั้นข้อมูลของระบบนั้นจะไม่ถูกส่งออก/ลบ · โหลด config ไม่ได้ = หยุดก่อนลบ ไม่ลบบางส่วน · ถ้าเพิ่ม collection ใหม่ที่ไม่ใช่ระบบเอกสาร ต้องเพิ่มที่ไฟล์นี้ + `tests/privacy.test.js`
 
 ### ตารางสอนและวิดเจ็ตหน้าแรก
@@ -174,7 +185,9 @@ users/{uid}/pa_reports/{docId}               แบบรายงานผล P
   - โค้ดในไฟล์ PA เขียน `const sys = docSystem();` **ครั้งเดียวที่บรรทัดแรกของฟังก์ชัน** แล้วใช้ `sys.state.xxx` · `sys.config.xxx` · `sys.col('agreements', uid)` — ห้ามเรียก `docSystem()` ซ้ำหลัง `await` (ให้ถือ `sys` ตัวเดิม ไม่งั้นงานที่ค้างอยู่จะไปเขียน state ของอีกระบบถ้าผู้ใช้สลับหน้ากลางคัน) · ส่ง `sys` ต่อให้ `docStale(view, seq, sys)`
   - จุดเข้าของหน้าเรียก `docActivate('pa')` · โค้ดนอกกลุ่มไฟล์ (เช่น `app.js`) อ้างด้วย id: `docSystem('pa')`
   - ชื่อ collection อยู่ที่ `PA_CONFIG.collections` ที่เดียว (ต้องตรง `firestore.rules`) · `tests/pa-config.test.js` ตรวจว่าไม่มี `PAState`/`PARptState`/`PA_CONFIG`/ชื่อ `pa_*` ตรงๆ หลุดออกนอก `pa-config.js`
-  - ยังเป็นของ PA เฉพาะ (รอขั้นตอนถัดไป): รหัสแท็บ `'agreement'/'report'/'rpt'/'rptprev'` ใน `docRenderTab` · id ช่องฟอร์มและ HTML ของฟอร์ม · การอ่าน `records` ใน `parptLoadRecordsForYear`
+  - **ตัวเรนเดอร์ของแท็บไม่ได้ผูกกับ PA แล้ว**: `docRenderTab()` ใน `doc-shell.js` เลือกจาก `ui.tabs[รหัสแท็บ]` (หรือ `ui.tabs.default`) ที่แต่ละระบบลงทะเบียนเองด้วย `registerDocUi` — PA ลงทะเบียน `report` · `rpt` · `rptprev` + default, ID-Plan ลงทะเบียน `preview` + default
+  - ที่ยังเป็นของ PA เฉพาะ (ระบบใหม่ไม่ต้องแตะ): id ช่องฟอร์มและ HTML ของฟอร์ม PA · การอ่าน `records` ใน `parptLoadRecordsForYear` (`js/pa-rpt.js`)
+  - ความคิดเห็นหัวไฟล์ `js/doc-system.js` ยังอ้างชื่อ `PAState` / `PA_CONFIG` เป็นตัวอย่างประวัติ — ไม่กระทบการทำงาน
 - `js/pa.js` ฟอร์มตามแบบ PA 1/ส ของ สพฐ. (ส่วนที่ 1: ภาระงาน + งานตามมาตรฐานตำแหน่ง 15 ข้อ · ส่วนที่ 2: ประเด็นท้าทาย) · `js/pa-report.js` ตัวอย่างและพิมพ์/บันทึก PDF
 - **ผู้ช่วย AI แยกเป็น 3 ชั้น**: `js/badwork-ai-config.js` (ค่าร่วมทุกระบบ) · `js/badwork-ai.js` (แกน — ไม่รู้จัก PA ใช้ได้กับทุกระบบเอกสาร อ่านผ่าน `sys` ที่ถือไว้ + ตัวต่อที่ลงทะเบียนด้วย `registerDocAi('<id>', adapter)`) · `js/pa-ai.js` (ตัวต่อของ PA) · สัญญาของตัวต่อ (เมธอด/ข้อความที่ต้องมี) เขียนไว้ที่หัว `js/badwork-ai.js` และ `registerDocAi` ตรวจความครบให้ · `tests/pa-config.test.js` มีระบบจำลองที่สองยืนยันว่าใช้แกนเดียวกันโดยไม่ปนกับ PA และตรวจว่าแกนไม่มีชื่อ/ข้อความของ PA
   - **ชื่อของผู้ช่วย AI เป็นชื่อกลาง**: class/id/data-attribute ขึ้นต้น `doc-ai-` (เช่น `.doc-ai-top` · `.doc-ai-row` · `#doc-ai-model` · `data-doc-ai="<act>"`) สไตล์อยู่ที่หมวด "ผู้ช่วย AI" ใน `css/style.css` · ช่องติ๊กใช้ `.doc-check` / `.doc-checks` ร่วมกับฟอร์ม PA — ระบบใหม่ใช้ชุดเดียวกัน ไม่ต้องเขียน CSS เพิ่ม · คีย์ localStorage ร่วมทุกระบบคือ `doc-ai-model-v1` · `doc-ai-consent-v2` (ตั้งที่ `js/badwork-ai-config.js`) — ชื่อเดิม `pa-ai-model-v1` · `pa-ai-consent-v2` อยู่ใน `legacyStorageKeys` แกนย้ายค่าให้ผู้ใช้เดิมเองครั้งแรกที่อ่าน (ไม่ลบคีย์เดิม) · ห้ามเปลี่ยนชื่อคีย์โดยไม่ใส่คู่ชื่อเดิมใน `legacyStorageKeys` เพราะผู้ใช้เดิมจะเสียรุ่นที่เลือก/ความยินยอม · คีย์สำรองบริบทเป็นของแต่ละระบบ (PA ใช้ `pa-ai-ctx-v1` ที่ `PA_CONFIG.ai.storageKeys.ctx`) · `tests/pa-config.test.js` ตรวจว่าไม่มี `pa-ai-*` เหลือในแกน/ตัวต่อ/CSS, class ในโค้ดตรงกับ selector ใน CSS ทั้งสองทิศ และตัวย้ายคีย์ทำงาน
@@ -205,12 +218,13 @@ users/{uid}/pa_reports/{docId}               แบบรายงานผล P
 - id ของปุ่ม/ช่องเลือกเปลี่ยนเป็นคลาสกลาง: `.doc-preview-select` · `.doc-preview-edit` · `.doc-preview-print` · `.doc-preview-goto` (เดิม `#parp-select` · `.parp-print` · `#idp-prev-select` · `#idp-print-btn` …) — โค้ด/เทสต์ที่อ้างชื่อเดิมต้องแก้
 - **golden ของ PA เปลี่ยนโดยตั้งใจ 3 จุด** (`ui.reportTab` · `ui.rptPreview` · `ui.tabs` ใน `tests/pa-golden.json`) เพราะกระดาษของแท็บตัวอย่างเปลี่ยนจาก HTML แทรกในหน้า (`.doc-paper`) เป็น iframe `srcdoc` — ตรวจด้วย `PA_DUMP` เทียบก่อน/หลังแล้ว: เอกสารใน `#doc-src` เหมือนเดิมทุกตัวอักษร (ต่างแค่การ serialize `<rect/>` ของกล่องติ๊กใน `srcdoc`) · แถบ/ข้อความแนะนำ/กล่อง "ข้อมูลแบบเดิม" เหมือนเดิม
 
-### เพิ่มระบบเอกสารใหม่ (เช่น ID-Plan)
+### เพิ่มระบบเอกสารใหม่ (ตัวอย่างจริง: ID-Plan = ระบบที่สอง · ระบบแรกคือ PA)
+ไฟล์ที่ต้องสร้าง/แก้ (ลอกรูปแบบจาก `idp-*.js`): `js/<id>-config.js` · `js/<id>.js` · `js/<id>-ai.js` (ไม่บังคับ) · `utils.js` · `app.js` · `index.html` · `sw.js` · `firestore.rules` · `tests/`
 ส่วนกลาง (ไม่ต้องแก้): `js/doc-system.js` (ทะเบียนระบบ · state · collection) และ `js/doc-shell.js` (โครงหน้า · แท็บ · ตัวช่วยร่วม)
 1. สร้าง `js/<id>-config.js` — config (`id` · `title` · `collections` · `tabs` · …) แล้วท้ายไฟล์เรียก `registerDocSystem(CONFIG)`
 2. สร้างไฟล์ UI ของระบบ (ฟอร์ม/รายการ/พิมพ์) แล้วท้ายไฟล์เรียก `registerDocUi('<id>', { tabs: { <แท็บ>: sys => …, default: sys => … }, beforeLeave(sys) {…} })` (ดูตัวอย่างท้าย `js/pa.js`) · ปุ่มพิมพ์เรียก `docPrintWindow(...)` (ดูหัวข้อ "พิมพ์ / บันทึกเป็น PDF" ด้านบน) — ไม่เขียน `window.open`/รอฟอนต์เอง · แท็บตัวอย่างเรียก `docRenderPreview(...)` (ดูหัวข้อ "หน้า ตัวอย่าง / พิมพ์") — ไม่เขียนแถบเลือก/ปุ่ม/สถานะว่างเอง
 3. `js/utils.js`: เพิ่มไฟล์ใน `LAZY_MODULES` + กลุ่มใหม่ใน `LAZY_BUNDLES` (ลำดับ `doc-system` → `doc-shell` → config → UI) และใส่ config ใน `docConfigs` (ให้ privacy.js ส่งออก/ลบข้อมูลของระบบนี้)
-4. `app.js`: เพิ่ม route → `renderDocPage('<id>')` และ `ROUTE_MODULES` · `index.html`: ปุ่มเมนู
+4. `app.js`: เพิ่ม `ROUTE_MODULES['<id>-page'] = LAZY_BUNDLES.<id>` และ `renderRoute` → `return renderDocPage('<id>')` (ต้อง `return`) · `index.html`: ปุ่มเมนู `<button class="nav-item" data-route="<id>-page" data-tip="…">` (ดู `idp-page`) — ต้องวางไว้ในกลุ่มเมนูเดียวกับ `pa-page` / `idp-page`
 5. `sw.js`: เพิ่มไฟล์ใน PRECACHE + เลข VERSION (รัน `npm run check:sw`) · `firestore.rules`: เพิ่ม collection ใหม่ใต้ `users/{uid}/`
 6. ผู้ช่วย AI (ไม่บังคับ): ไม่ต้องแก้ `js/badwork-ai.js` / `js/badwork-ai-config.js` — สร้าง `js/<id>-ai.js` ท้ายไฟล์เรียก `registerDocAi('<id>', { systemPrompt, task, context, scope, guide, itemHeading, copy, ctxBody, ctxStorageKey, docRef, slots, resolve })` (ดูตัวอย่าง `js/pa-ai.js`) · ธรรมเนียมเฉพาะระบบในหน้าต่างตรวจทานใส่ที่ `copy.reviewNote` (หมายเหตุสั้นๆ) และ `copy.placeholder = { mark, toast }` (ถ้าพร้อต์ให้ AI ใส่เครื่องหมายแทนค่าที่ผู้ใช้ต้องกรอกเอง) — ไม่บังคับ ไม่ใส่ = แกนไม่แสดง/ไม่ตรวจ · ใน config ของระบบต้องมี `aiCtx = { fields, maxLen, idPrefix }` (idPrefix ไม่ซ้ำระบบอื่น) และ `ai.storageKeys.ctx` ไม่ซ้ำระบบอื่น · ฟังก์ชันบันทึกเอกสารต้องตัดคีย์ที่ขึ้นต้น `_` · ใส่ไฟล์ใน `LAZY_MODULES`/`LAZY_BUNDLES` หลัง `badwork-ai` และ `sw.js` PRECACHE · ฟอร์มเรียก `badworkAiMount(view, form, sys)` ท้ายการวาด
 7. เทสต์: ดูตัวอย่างระบบจำลอง `idp` และ `mock` ใน `tests/pa-config.test.js` (ทะเบียน/state แยกกัน · แกน AI ร่วม)
@@ -253,7 +267,7 @@ users/{uid}/pa_reports/{docId}               แบบรายงานผล P
 
 ## โหลดสคริปต์แบบ lazy
 
-`report.js`, `privacy.js`, `tools.js`, `profile.js`, `timetable.js` **ไม่อยู่ใน `index.html`** — โหลดครั้งแรกที่ใช้ผ่าน `loadModule(name)` (`LAZY_MODULES` ใน `js/utils.js`) เป็น `<script>` ธรรมดา จึงใช้ฟังก์ชัน global ร่วมกับไฟล์อื่นได้
+ไฟล์ lazy ทั้งหมดอยู่ใน `LAZY_MODULES` (`js/utils.js`) — **ไม่อยู่ใน `index.html`** (ใน `index.html` โหลดแค่: firebase-config · island · nav-history · utils · auth · dashboard · courses · students · structure · scores · picker-pages · report-page · app · pwa) ได้แก่ `report.js`, `privacy.js`, `tools.js`, `profile.js`, `timetable.js`, `records.js` และกลุ่มระบบเอกสาร (`LAZY_BUNDLES.pa` · `LAZY_BUNDLES.idp` · `LAZY_BUNDLES.docConfigs`) — โหลดครั้งแรกที่ใช้ผ่าน `loadModule(name)` (`LAZY_MODULES` ใน `js/utils.js`) เป็น `<script>` ธรรมดา จึงใช้ฟังก์ชัน global ร่วมกับไฟล์อื่นได้
 
 | ไฟล์ | โหลดเมื่อ |
 | --- | --- |
@@ -262,9 +276,13 @@ users/{uid}/pa_reports/{docId}               แบบรายงานผล P
 | `privacy.js` | กดส่งออก/ลบข้อมูลในหน้าตั้งค่า |
 | `profile.js` | กดไอคอนบัญชีมุมซ้ายล่าง |
 | `timetable.js` | เปิดแท็บตารางสอน หรือเปิดหน้าแรก (วิดเจ็ต) |
+| `records.js` | เปิดแท็บอบรม/เกียรติบัตร/รางวัล |
+| กลุ่ม `pa` | เข้าหน้า Personal Agreement (`ROUTE_MODULES['pa-page']` = `LAZY_BUNDLES.pa`) |
+| กลุ่ม `idp` | เข้าหน้า ID-Plan (`ROUTE_MODULES['idp-page']` = `LAZY_BUNDLES.idp`) |
+| กลุ่ม `docConfigs` | ส่งออก/ลบข้อมูลของฉัน (`privacy.js` อ่านชื่อ collection ของทุกระบบเอกสาร) |
 
 - ไฟล์อื่นเรียกฟังก์ชันในนี้ต้อง `await loadModule('ชื่อ')` ก่อนเสมอ (เรียกซ้ำปลอดภัย)
-- เพิ่มไฟล์ lazy ใหม่ = ใส่ใน `LAZY_MODULES` ห้ามใส่ `<script>` ใน `index.html`
+- เพิ่มไฟล์ lazy ใหม่ = ใส่ใน `LAZY_MODULES` ห้ามใส่ `<script>` ใน `index.html` · ไฟล์ที่ต้องโหลดเป็นชุด (ระบบเอกสาร) ใส่ลำดับใน `LAZY_BUNDLES` แล้วโหลดด้วย `loadModules()`
 - `navigate()` เช็ก `AppState.currentRoute` หลังโหลด ผู้ใช้ไปหน้าอื่นระหว่างรอจะไม่ถูกวาดทับ
 
 ## แคชข้อมูลรายวิชา
@@ -290,3 +308,10 @@ users/{uid}/pa_reports/{docId}               แบบรายงานผล P
 - โลโก้ในหน้าแอปใช้ `assets/icons/logo-128.webp` (PNG 192/512 ยังอยู่สำหรับ manifest / iOS)
 - `css/style.min.css` ถูกสร้างใหม่ด้วยสคริปต์ชั่วคราว (ผลเทียบกับ `style.css` ทีละ declaration ตรงกันทุกค่า) แต่ไม่ได้ผ่าน csso — **รัน `./build-css.sh` หนึ่งครั้งเพื่อให้ `--check` ผ่านและ commit ไฟล์ .min ที่ได้**
 - (เดิม `badwork-ai.js` โหลด Firebase AI Logic SDK ด้วย `import()` — เลิกใช้แล้ว ตอนนี้เรียกผ่านพร็อกซีด้วย `fetch`)
+
+## บันทึกการตรวจโครงสร้าง (2026-10-10)
+
+- ตรวจแล้ว: `node tools/check-sw.js` ผ่าน (PRECACHE ครอบคลุม 51 ไฟล์ + 3 ไฟล์ข้ามโดเมน · `VERSION` = `2026-10-10.24`) · `node tools/check-inline.js` ผ่าน
+- **ยังไม่ได้ตรวจ** (ต้องมี `node_modules` — รัน `npm install` ก่อน): `check-css.js` · `./build-css.sh --check` (ยืนยันว่า `style.min.css` ตรงกับ `style.css` และผ่าน csso จริง ตามที่ค้างไว้ในบันทึก 2026-10-08) · ชุดเทสต์ที่ใช้ jsdom ทั้งหมด
+- แก้ README ให้ตรงกับของจริง: เพิ่ม `js/idp.js` · `js/idp-config.js` · `users/{uid}/idp_plans` · คำสั่งเทสต์ที่ขาด · ตาราง lazy (records + กลุ่ม pa/idp/docConfigs) · ข้อความ `docRenderTab` ที่ล้าสมัย · เรื่อง `.githooks/` ที่ไม่มีใน repo
+- ข้อสังเกต: `.DS_Store` อยู่ใน `.gitignore` แล้ว (ไม่ถูก track) · `apiKey` ของ AI ว่างตามกติกา
