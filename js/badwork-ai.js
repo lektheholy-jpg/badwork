@@ -19,6 +19,8 @@
 //     itemHeading(spec)               → string   บรรทัดหัวของกลุ่มช่อง (ใช้กับช่องที่มี spec.item)
 //   ข้อความที่ผู้ใช้เห็น (copy)
 //     consent · saveLabel · topPoints[] · topWarn · topButton · ctxTitle · ctxNote   (string)
+//     reviewNote?                     (string) หมายเหตุสั้นๆ เฉพาะระบบ ต่อหน้า "AI อาจผิดพลาด โปรดตรวจทาน" ในหน้าต่างตรวจทาน — ไม่ใส่ = ไม่แสดง
+//     placeholder?                    { mark, toast }  ถ้าพร้อต์ของระบบให้ AI ใส่เครื่องหมาย (mark) แทนค่าที่ผู้ใช้ต้องกรอกเอง: หลังกด "ใช้ที่เลือก" ถ้ามี mark ในข้อความที่ใส่ จะต่อ toast ท้ายข้อความแจ้ง — ไม่ใส่ = ไม่ตรวจ
 //     reviewGroup(spec)               → { id, title }  หัวกลุ่มในหน้าต่างตรวจทาน
 //   บริบทงาน
 //     ctxBody(sys, c, h)              → string   HTML ช่องกรอกของการ์ดบริบท (h.one(key, placeholder, { numeric }) · h.many(key, placeholder))
@@ -220,6 +222,7 @@ async function badworkAiGuard(btn, fn, sys = docSystem()) {
 // ------------------------------------------------------------------
 function badworkAiReview(items, warn, sys = docSystem()) {
   const copy = docAi(sys).copy;
+  const ph = copy.placeholder; // ไม่บังคับ — ระบบที่ให้ AI ใส่เครื่องหมายแทนค่าที่ผู้ใช้ต้องกรอกเอง
   const prev = document.activeElement;
   let lastGrp = '';
   const body = items.map((it, i) => {
@@ -238,7 +241,7 @@ function badworkAiReview(items, warn, sys = docSystem()) {
     <div class="modal-sub">${items.length} ช่อง · แก้ไขในกล่องได้ก่อนกด “ใช้ที่เลือก” · ข้อความจะยังไม่ถูกบันทึกจนกว่าจะกด “${escapeHtml(copy.saveLabel)}”</div>
     ${warn ? `<div class="doc-ai-warn">${escapeHtml(warn)}</div>` : ''}
     <div class="doc-ai-bar">
-      <span class="u-note-sm">“…” คือตัวเลขที่ครูต้องกรอกเอง · AI อาจผิดพลาด โปรดตรวจทาน</span>
+      <span class="u-note-sm">${copy.reviewNote ? escapeHtml(copy.reviewNote) + ' · ' : ''}AI อาจผิดพลาด โปรดตรวจทาน</span>
       <div class="u-flex u-gap-8">
         <button type="button" class="btn btn-ghost btn-sm" data-x="all">เลือกทั้งหมด</button>
         <button type="button" class="btn btn-ghost btn-sm" data-x="none">ไม่เลือก</button>
@@ -289,12 +292,12 @@ function badworkAiReview(items, warn, sys = docSystem()) {
         it.el.value = v;
         it.el.dispatchEvent(new Event('input', { bubbles: true }));
         it.el.closest('details')?.setAttribute('open', '');
-        if (v.includes('…')) dots = true;
+        if (ph && v.includes(ph.mark)) dots = true;
         n++;
       });
       close();
       showToast(lost ? `ใส่ได้ ${n} ช่อง (${lost} ช่องหายไปเพราะฟอร์มถูกโหลดใหม่ — ลองกดใหม่)`
-        : `ใส่ข้อความ ${n} ช่องแล้ว${dots ? ' · มี “…” ที่ต้องกรอกตัวเลข' : ''} · ตรวจแล้วกด “${copy.saveLabel}”`);
+        : `ใส่ข้อความ ${n} ช่องแล้ว${dots ? ph.toast : ''} · ตรวจแล้วกด “${copy.saveLabel}”`);
     }
   });
   areas[0]?.focus();

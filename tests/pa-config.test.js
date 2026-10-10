@@ -236,6 +236,25 @@ async function aiProbe() {
   modal.querySelector('[data-x="apply"]').click(); await settle();
   out.applied = { value: document.getElementById('mock-a').value, toast: toasts[toasts.length - 1], paSame: JSON.stringify([docSystem('pa').state, docSystem('pa').rptState]) === paDocBefore };
 
+  // ---- copy ที่ไม่บังคับ (reviewNote · placeholder): ไม่ใส่ = แกนไม่แสดง/ไม่ตรวจอะไรของ PA · ใส่ = ใช้ของตัวต่อนั้น ----
+  const reviewOnce = async () => {
+    badworkAiReview([{ key: 'a', el: document.getElementById('mock-a'), label: 'ช่อง A', current: '', proposed: 'x…' }], undefined, mock);
+    const m = document.querySelector('#modal-root .modal'); const text = m.textContent;
+    m.querySelector('[data-x=\"apply\"]').click(); await settle();
+    return { text, toast: toasts[toasts.length - 1] };
+  };
+  out.optNone = await reviewOnce();
+  adapter.copy.reviewNote = 'NOTE-REVIEW-MOCK'; adapter.copy.placeholder = { mark: '…', toast: ' · TOAST-PH-MOCK' };
+  out.optOn = await reviewOnce();
+  adapter.copy.placeholder = { mark: '~~', toast: ' · TOAST-PH-MOCK' }; // mark ไม่อยู่ในข้อความที่ใส่ → ไม่ต่อ toast
+  out.optOtherMark = await reviewOnce();
+  delete adapter.copy.reviewNote; delete adapter.copy.placeholder;
+  // ข้อความของ PA เองต้องเหมือนเดิมทุกตัวอักษร (ย้ายจากแกนมาอยู่ที่ตัวต่อ PA)
+  badworkAiReview([{ key: 'a', el: document.getElementById('mock-a'), label: 'ช่อง A', current: '', proposed: 'x…' }], undefined, docSystem('pa'));
+  const pm = document.querySelector('#modal-root .modal'); const paText = pm.textContent;
+  pm.querySelector('[data-x=\"apply\"]').click(); await settle();
+  out.paReviewCopy = { note: paText.replace(/\s+/g, ' ').includes('“…” คือตัวเลขที่ครูต้องกรอกเอง · AI อาจผิดพลาด โปรดตรวจทาน'), toast: toasts[toasts.length - 1] };
+
   // ---- ยินยอมแล้ว กดอีกรอบจาก mock และถามจาก PA ต้องไม่ถามซ้ำ · เลือกรุ่นครั้งเดียวมีผลทุกระบบ ----
   docActivate('mock');
   const sel = form.querySelector('#doc-ai-model'); sel.value = sel.options[sel.options.length - 1].value; sel.dispatchEvent(new Event('change'));
@@ -393,7 +412,7 @@ globalThis.__probes = {
     const colLit = jsFiles.filter(f => f !== 'js/pa-config.js' && /pa_(agreements|reports)/.test(code(f)));
     ok(colLit.length === 0, 'ชื่อ collection ไม่ถูกเขียนตรงในโค้ดนอก pa-config.js — อ่านผ่าน sys.col(kind, uid)', colLit.join(', '));
     // แกน AI ต้องไม่รู้จัก PA — ตัดคอมเมนต์แล้วห้ามมีชื่อ/โครง/ข้อความของ PA หลงเหลือในโค้ด (ชื่อ class/id doc-ai-* เป็นชื่อกลางอยู่แล้ว ไม่ผูกกับระบบใด)
-    const coreBad = [/PA_CONFIG/, /\bpa[A-Z]\w*\s*\(/, /\bpart2\b/, /workItems|classroomTypes|loadLists/, /pa-wi-|pa-witem|data-wi\b|pa-ctx-|pa-form/, /Personal Agreement|PA 1|\bPA\b/, /ประเด็นท้าทาย|ส่วนที่ 2|ช่วยครู/, /docSystem\(\s*['"`]/, /docActivate/, /'agreements'|"agreements"/, /teacherProfile/]
+    const coreBad = [/PA_CONFIG/, /\bpa[A-Z]\w*\s*\(/, /\bpart2\b/, /workItems|classroomTypes|loadLists/, /pa-wi-|pa-witem|data-wi\b|pa-ctx-|pa-form/, /Personal Agreement|PA 1|\bPA\b/, /ประเด็นท้าทาย|ส่วนที่ 2|ช่วยครู|ครู(?!่)|ตัวเลขที่/, /docSystem\(\s*['"`]/, /docActivate/, /'agreements'|"agreements"/, /teacherProfile/]
       .filter(re => re.test(code('js/badwork-ai.js')));
     ok(coreBad.length === 0, 'js/badwork-ai.js (แกน) ไม่มีชื่อ/โครง/ข้อความของ PA ในโค้ด', coreBad.join(' '));
     // ชื่อ class/id/data-attribute ของ UI ผู้ช่วย AI เป็นชื่อกลาง doc-ai-* — ห้ามมี pa-ai-* หลงเหลือ (ยกเว้นคีย์ localStorage ใน js/badwork-ai-config.js และ js/pa-config.js ที่ต้องคงค่าเดิม)
@@ -479,7 +498,7 @@ globalThis.__probes = {
   let A;
   try { A = JSON.parse(await vm.runInContext('(' + aiProbe.toString() + ')()', env4)); } catch (e) { ok(false, 'รันจุดตรวจแกน AI ไม่ผ่าน', e && e.stack || e); }
   if (A) {
-    const notPa = h => !/Personal Agreement|ประเด็นท้าทาย|pa-ctx-|\bPA\b|สพฐ|ครูไทย/.test(h);
+    const notPa = h => !/Personal Agreement|ประเด็นท้าทาย|pa-ctx-|\bPA\b|สพฐ|ครูไทย|ครู(?!่)/.test(h);
     ok(A.mount.tops === 1 && A.mount.rows === 1, 'mount ติดการ์ดบนสุด 1 ใบ + แถวปุ่ม 1 แถวตามที่ตัวต่อของ mock บอก (เรียกซ้ำไม่ติดซ้ำ)', JSON.stringify([A.mount.tops, A.mount.rows]));
     ok(['WARN-MOCK', 'NOTE-MOCK', 'จุดที่ 2 ของ mock', 'ร่างของ mock', 'บริบท mock', 'id="mock-ctx-topic"', 'ph-topic'].every(t => A.mount.html.includes(t)) && notPa(A.mount.html), 'การ์ดของ mock ใช้ข้อความ/ช่องบริบท/id ของตัวต่อ mock — ไม่มีข้อความหรือ id ของ PA ปน', A.mount.html.slice(0, 200));
     ok(A.bareMounted === 0, 'ระบบที่ไม่มีตัวต่อ: mount ไม่ติดอะไร (ฟอร์มทำงานตามเดิม)');
@@ -489,6 +508,10 @@ globalThis.__probes = {
     ok(/^https:\/\//.test(r.url) && r.url === JSON.parse(vm.runInContext('JSON.stringify(BADWORK_AI_CONFIG.proxyUrl)', env4)) && r.model === 'gemini-3.8-flash', 'ปลายทาง/รุ่นเริ่มต้นมาจาก config กลาง');
     ok(r.confirms.length === 1 && r.confirms[0] === 'CONSENT-MOCK', 'ครั้งแรกถามยินยอมด้วยข้อความของระบบที่กด');
     ok(A.review.open && A.review.area === 'ข้อเสนอของ mock' && A.review.text.includes('กลุ่มของ mock') && A.review.text.includes('บันทึกMock') && notPa(A.review.text), 'หน้าต่างตรวจทาน: หัวกลุ่ม/ชื่อปุ่มบันทึกมาจากตัวต่อของ mock');
+    ok(!/ครู(?!่)|ตัวเลข/.test(A.optNone.text) && !/…|ตัวเลข|TOAST/.test(A.optNone.toast) && /บันทึกMock/.test(A.optNone.toast) && /AI อาจผิดพลาด โปรดตรวจทาน/.test(A.optNone.text), 'ตัวต่อที่ไม่ใส่ reviewNote/placeholder: หน้าต่างตรวจทานและ toast ไม่มีข้อความของครู/PA และไม่ตรวจเครื่องหมายแทนค่า (แม้ข้อความที่ใส่มี “…”)', JSON.stringify(A.optNone));
+    ok(A.paReviewCopy.note && A.paReviewCopy.toast === 'ใส่ข้อความ 1 ช่องแล้ว · มี “…” ที่ต้องกรอกตัวเลข · ตรวจแล้วกด “บันทึกPersonal Agreement”', 'PA: หมายเหตุในหน้าต่างตรวจทานและ toast หลังใช้ข้อความ เหมือนเดิมทุกตัวอักษร', JSON.stringify(A.paReviewCopy));
+    ok(A.optOn.text.includes('NOTE-REVIEW-MOCK · AI อาจผิดพลาด โปรดตรวจทาน') && A.optOn.toast.includes('TOAST-PH-MOCK') && /บันทึกMock/.test(A.optOn.toast), 'ตัวต่อที่ใส่ reviewNote/placeholder: แสดงหมายเหตุของตัวต่อ และต่อ toast เมื่อข้อความที่ใส่มีเครื่องหมายแทนค่าของตัวต่อ', JSON.stringify(A.optOn));
+    ok(A.optOtherMark.text.includes('NOTE-REVIEW-MOCK') && !A.optOtherMark.toast.includes('TOAST-PH-MOCK'), 'เครื่องหมายแทนค่าใช้ของตัวต่อเท่านั้น (mark อื่นไม่ต่อ toast)', JSON.stringify(A.optOtherMark));
     ok(A.review.active === 'pa' && A.applied.value === 'ข้อเสนอของ mock' && /บันทึกMock/.test(A.applied.toast) && A.applied.paSame, 'สลับไป PA ระหว่างที่คำขอของ mock ค้าง: ผลลงช่องของ mock · state ของ PA ไม่ถูกแตะ');
     ok(A.shared.confirmsAfter === 1 && A.shared.paConsent === true && A.shared.confirmsAfterPa === 1 && A.shared.busy === false, 'ยินยอมครั้งเดียวมีผลทุกระบบ (กดซ้ำจาก mock และถามจาก PA ไม่ขึ้นหน้าต่างอีก) · ตัวกันกดซ้ำคืนค่า');
     ok(A.shared.model2 === 'gemini-3.1-flash-lite' && A.shared.modelId === 'gemini-3.1-flash-lite', 'เลือกรุ่นครั้งเดียวมีผลทุกระบบ (คำขอใช้รุ่นที่เลือก)', A.shared.model2);
