@@ -2230,6 +2230,9 @@ table.tt tr.is-today td.tt-cell { background: color-mix(in srgb, var(--hue-orang
 .doc-ai-ctx-grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
 
 .doc-ai-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; }
+/* หัวกล่องมาตรฐานที่มีแถวปุ่ม AI อยู่ขวา (ชื่อซ้าย · ปุ่มขวา · แคบแล้วตกบรรทัด) — ฟอร์มเอกสารระบบใหม่ ๆ ใช้คลาสนี้เป็น host ของ slots */
+.doc-item-h { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; margin-bottom: 6px; }
+.doc-item-h .doc-ai-row { margin-top: 0; }
 .doc-ai-tag { display: inline-grid; place-items: center; flex: none; width: 32px; height: 32px; margin-right: 2px; border-radius: 50%; background: var(--primary-tint); color: var(--primary-dark); cursor: help; }
 .doc-ai-tag .ico { width: 18px; height: 18px; }
 .btn.doc-ai-ico { display: inline-grid; place-items: center; width: 40px; height: 40px; min-height: 40px; padding: 0; }
@@ -2340,7 +2343,6 @@ table.tt tr.is-today td.tt-cell { background: color-mix(in srgb, var(--hue-orang
     margin-bottom: 4px;
   }
   .idp-sum-rank { text-align: left; }
-  .idp-ai-anchor { margin-bottom: 4px; }
 }
 
 .doc-preview-bar { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; margin-bottom: 12px; }

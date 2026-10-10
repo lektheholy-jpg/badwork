@@ -336,7 +336,7 @@ async function idpRenderFormView() {
     const c = doc.comps?.[cid] || {};
     compsHtml += `
     <tr>
-      <td data-label="สมรรถนะที่จะพัฒนา"><div class="idp-ai-anchor"></div><div class="idp-comp-name">${escapeHtml(fullName)}</div>${(subs || []).map(([no, nm]) => `<div class="idp-comp-sub">${no} ${escapeHtml(nm)}</div>`).join('')}</td>
+      <td data-label="สมรรถนะที่จะพัฒนา"><div class="doc-item-h"><div class="idp-comp-name">${escapeHtml(fullName)}</div></div>${(subs || []).map(([no, nm]) => `<div class="idp-comp-sub">${no} ${escapeHtml(nm)}</div>`).join('')}</td>
       <td data-label="อันดับความสำคัญ"><input class="input-sm" type="number" min="1" max="${comps.length}" placeholder="1–${comps.length}"
             data-comp-id="${cid}" data-comp-field="priority" value="${escapeHtml(c.priority || '')}"></td>
       <td data-label="วิธีการ / รูปแบบการพัฒนา"><textarea class="idp-ta" id="idp-${cid}-method"
@@ -496,6 +496,7 @@ async function idpRenderFormView() {
   // Auto-expand textareas: แสดงข้อความทั้งหมดโดยไม่ซ่อน
   (function () {
     function idpExpandTa(ta) {
+      if (!ta.offsetParent) return; // ซ่อนอยู่/ยังไม่ได้วางเลย์เอาต์ → วัดความสูงไม่ได้ (ได้ 0) ข้ามไปก่อน
       ta.style.height = 'auto';
       ta.style.height = ta.scrollHeight + 'px';
     }
@@ -507,6 +508,15 @@ async function idpRenderFormView() {
     });
     // รองรับการที่ AI เติมข้อความ (fires input event บน textarea)
     window._idpExpandTa = idpExpandTa;
+    // คำนวณความสูงใหม่เมื่อเลย์เอาต์เปลี่ยน (ย่อ/ขยายหน้าต่าง · สลับตาราง↔การ์ด · ฟอนต์โหลดเสร็จ) — ไม่งั้นช่องที่วัดไว้ตอนกว้างต่างกันจะตัดข้อความ
+    const form = document.getElementById('idp-form');
+    const reflow = () => form?.querySelectorAll('textarea.idp-ta').forEach(idpExpandTa);
+    requestAnimationFrame(reflow);
+    document.fonts?.ready.then(reflow);
+    if (form && typeof ResizeObserver === 'function') {
+      let w = form.clientWidth;
+      new ResizeObserver(() => { if (form.clientWidth !== w) { w = form.clientWidth; reflow(); } }).observe(form);
+    }
   })();
 
   // Wire events

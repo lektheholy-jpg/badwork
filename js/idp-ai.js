@@ -83,10 +83,10 @@ function idpAiHeading(spec) {
 // ------------------------------------------------------------------
 function idpAiSlots(sys, form) {
   const out = [];
-  // แถวปุ่มอยู่ใต้ชื่อสมรรถนะ (คอลัมน์แรกของแต่ละแถว) — ปุ่มใช้กับทั้ง 3 ช่องของแถวนั้น
+  // แถวปุ่มอยู่ที่หัวกล่องของสมรรถนะ (ขวามือของชื่อ — เหมือน PA) — ปุ่มใช้กับทั้ง 3 ช่องของแถวนั้น
   form.querySelectorAll('#idp-comps-body tr').forEach(tr => {
     const cid = tr.querySelector('[data-comp-id]')?.dataset.compId;
-    const host = tr.querySelector('.idp-ai-anchor') || tr.querySelector('td');
+    const host = tr.querySelector('.doc-item-h') || tr.querySelector('td'); // หัวกล่อง: ชื่อซ้าย · แถวปุ่มขวา (เหมือน .pa-witem-h ของ PA)
     if (!cid || !host) return;
     out.push({ host, buttons: [
       { act: 'c-write', label: 'เขียนช่องที่ว่างของสมรรถนะนี้', icon: 'write', data: { cid } },
