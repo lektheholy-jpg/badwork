@@ -483,7 +483,7 @@ document.getElementById('sidebar-toggle')?.addEventListener('click', () => {
   };
 
   // กลุ่ม 1: เมนูเนื้อหา
-  ['pa-page', 'idp-page', 'tra-page', 'structure-page', 'archive-page', 'tools'].forEach(addTile);
+  ['pa-page', 'idp-page', 'structure-page', 'archive-page', 'tools'].forEach(addTile);
   addDivider();
   // กลุ่ม 2: บัญชีและตั้งค่า
   ['profile', 'settings'].forEach(addTile);
