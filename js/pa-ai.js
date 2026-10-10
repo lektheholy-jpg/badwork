@@ -102,8 +102,8 @@ function paAiSlots(sys, form) {
     const id = w.querySelector('[data-wi]')?.dataset.wi;
     if (!id) return;
     out.push({ host: w, buttons: [
-      { act: 'i-write', label: 'เขียนช่องที่ว่าง', data: { item: id } },
-      { act: 'i-polish', label: 'ปรับสำนวนทั้งข้อ', quiet: true, data: { item: id } },
+      { act: 'i-write', label: 'เขียนช่องที่ว่าง', icon: 'write', data: { item: id } },
+      { act: 'i-polish', label: 'ปรับสำนวนทั้งข้อ', icon: 'polish', quiet: true, data: { item: id } },
     ] });
   });
   return out;

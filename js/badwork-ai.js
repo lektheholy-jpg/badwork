@@ -392,11 +392,26 @@ function badworkAiCtxHtml(c, sys = docSystem()) {
 const BADWORK_AI_ICON = `<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M19 15l.7 1.8 1.8.7-1.8.7L19 20l-.7-1.8-1.8-.7 1.8-.7z"/></svg>`;
 
 // แถวปุ่ม "ผู้ช่วย AI" ใต้ช่อง/ใต้กลุ่มช่อง — buttons = [{ act, label, quiet?, data? }]
+// buttons[i].icon (ไม่บังคับ) = ชื่อใน BADWORK_AI_BTN_ICONS → ปุ่มไอคอนล้วน · label ยังใช้เป็น tooltip (title) + aria-label เสมอ · ไม่ใส่ icon = ปุ่มข้อความเหมือนเดิม
+const BADWORK_AI_BTN_ICONS = {
+  write: '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>', // ปากกา = เขียน/เติมข้อความที่ว่าง
+  polish: '<path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72"/><path d="m14 7 3 3"/><path d="M5 6v4"/><path d="M19 14v4"/><path d="M10 2v2"/><path d="M7 8H3"/><path d="M21 16h-4"/><path d="M11 3H9"/>', // ไม้กายสิทธิ์ = ขัดเกลาสำนวน
+};
+function badworkAiBtnIcon(name) {
+  return `<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${BADWORK_AI_BTN_ICONS[name] || ''}</svg>`;
+}
+
 function badworkAiRowHtml(buttons) {
   const attrs = d => Object.entries(d || {}).map(([k, v]) => ` data-${k}="${escapeHtml(v)}"`).join('');
+  const btn = b => {
+    const ico = b.icon && BADWORK_AI_BTN_ICONS[b.icon];
+    const cls = `btn ${b.quiet ? 'btn-sm doc-ai-quiet' : 'btn-ghost btn-sm'}${ico ? ' doc-ai-ico' : ''}`;
+    const tip = ico ? ` title="${escapeHtml(b.label)}" aria-label="${escapeHtml(b.label)}"` : '';
+    return `<button type="button" class="${cls}" data-doc-ai="${b.act}"${attrs(b.data)}${tip}>${ico ? badworkAiBtnIcon(b.icon) : b.label}</button>`;
+  };
   return `<div class="doc-ai-row">
       <span class="doc-ai-tag" role="img" aria-label="ผู้ช่วย AI" title="ผู้ช่วย AI">${BADWORK_AI_ICON}</span>
-      ${buttons.map(b => `<button type="button" class="btn ${b.quiet ? 'btn-sm doc-ai-quiet' : 'btn-ghost btn-sm'}" data-doc-ai="${b.act}"${attrs(b.data)}>${b.label}</button>`).join('\n      ')}
+      ${buttons.map(btn).join('\n      ')}
     </div>`;
 }
 

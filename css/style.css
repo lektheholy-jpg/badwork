@@ -2228,6 +2228,8 @@ table.tt tr.is-today td.tt-cell { background: color-mix(in srgb, var(--hue-orang
 .doc-ai-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; }
 .doc-ai-tag { display: inline-grid; place-items: center; flex: none; width: 32px; height: 32px; margin-right: 2px; border-radius: 50%; background: var(--primary-tint); color: var(--primary-dark); cursor: help; }
 .doc-ai-tag .ico { width: 18px; height: 18px; }
+.btn.doc-ai-ico { display: inline-grid; place-items: center; width: 40px; height: 40px; min-height: 40px; padding: 0; }
+.doc-ai-ico .ico { width: 20px; height: 20px; }
 .doc-ai-quiet { background: transparent; color: var(--ink-soft); }
 .doc-ai-quiet:hover { background: var(--hover-wash); color: var(--ink); }
 
