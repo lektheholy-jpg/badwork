@@ -325,8 +325,7 @@ async function renderPARptPreviewView() {
     selectLabel: 'เลือกแบบรายงานผล',
     empty: { icon: PA_ICO_PA, title: 'ยังไม่มีแบบรายงานผล', sub: 'สร้างแบบรายงานผลก่อน แล้วดูตัวอย่างและพิมพ์ที่นี่', gotoLabel: 'ไปที่แบบฟอร์มรายงานผล', gotoTab: 'rpt' },
     hint: () => 'ตัวอย่างแบบรายงานผลข้อตกลงในการพัฒนางาน (PA) — กดพิมพ์แล้วเลือก "บันทึกเป็น PDF" ในหน้าต่างพิมพ์ได้ · ช่องลงนามและความเห็น ผอ. เว้นไว้ให้เซ็นบนกระดาษ',
-    paperHtml: ctx => `<style>${docFontCss()}${PA1_CSS}</style>${parptBuildDocHtml(ctx.d, ctx.owner, ctx.appendix)}`,
-    fitPage: '.pa1',
+    sheets: ctx => paSheets(parptBuildDocHtml(ctx.d, ctx.owner, ctx.appendix)),
     onPick: id => { sys.rptState.previewId = id; renderPARptPreviewView(); },
     onPrint: ctx => parptPrint(ctx.d, ctx.owner),
     onEdit: ctx => {

@@ -662,28 +662,6 @@ const IDP1_CSS = `
 `;
 
 // ------------------------------------------------------------------
-// PAPER CSS — ตัวอย่างบนจอแสดงเป็นแผ่น A4 แยกหน้า (หน้าแรกแนวตั้ง · ส่วนที่ 2–3 แนวนอน) ขอบกระดาษเท่าตอนพิมพ์
-//   #idp-src   = เอกสารต้นฉบับ (ใช้พิมพ์จริง — เบราว์เซอร์แบ่งหน้าเองด้วย named page) · ซ่อนบนจอเมื่อวาดแผ่นกระดาษเสร็จ (html.paper-on)
-//   #idp-paper = แผ่นกระดาษที่ idpPaginate() ตัดแบ่งจาก #idp-src · ซ่อนตอนพิมพ์ · ย่อให้พอดีความกว้างด้วย --idp-zoom
-// ------------------------------------------------------------------
-const IDP_PAPER_CSS = `
-@media screen{
-  html{background:#dfe2e8}
-  html.paper-on #idp-src{display:none}
-  #idp-paper{display:none;zoom:var(--idp-zoom,1);padding:14px 0 2px}
-  html.paper-on #idp-paper{display:block}
-  .idp-pgwrap{margin:0 0 16px}
-  .idp-sheet{box-sizing:border-box;margin:0 auto;overflow:hidden;background:#fff;box-shadow:0 0 0 1px rgba(0,0,0,.08),0 2px 6px rgba(0,0,0,.18),0 10px 24px rgba(0,0,0,.10)}
-  .idp-sheet.is-port{width:210mm;height:297mm;padding:20mm 20mm 20mm 25mm}
-  .idp-sheet.is-land{width:297mm;height:210mm;padding:15mm}
-  .idp-sheet-body{height:100%}
-  .idp-sheet-body>:first-child{margin-top:0}
-  .idp-pgno{margin-top:7px;font:calc(12px / var(--idp-zoom,1))/1 Tahoma,sans-serif;color:#5b6270;text-align:center}
-}
-@media print{#idp-paper{display:none}}
-`;
-
-// ------------------------------------------------------------------
 // Build preview HTML
 //   หน้า 1 (แนวตั้ง): ข้อมูลส่วนบุคคล + ภาระงาน (ชั่วโมงสอน) — ไม่มีบันทึกข้อความนำส่ง
 //   หน้า 2+ (แนวนอน): ส่วนที่ 2 ตารางสมรรถนะ · ส่วนที่ 3 ตารางสรุป + ลงชื่อผู้จัดทำ
@@ -740,13 +718,7 @@ function idpBuildPreviewHtml(d, profile) {
     </tr>`;
   }).join('');
 
-  return `<!DOCTYPE html>
-<html lang="th">
-<head><meta charset="UTF-8"><style>
-body{margin:0;padding:0}
-${docFontCss()}${IDP1_CSS}${IDP_PAPER_CSS}
-</style></head>
-<body><div id="idp-src"><div class="idp1">
+  return docSheetsHtml(IDP1_CSS, `<div class="idp1">
 
 <!-- หน้า 1 · แนวตั้ง · ข้อมูลส่วนบุคคล + ภาระงาน -->
 <section class="pg-port">
@@ -818,11 +790,11 @@ ${docFontCss()}${IDP1_CSS}${IDP_PAPER_CSS}
   </div>
 </section>
 
-</div></div><div id="idp-paper"></div></body></html>`;
+</div>`);
 }
 
 // ------------------------------------------------------------------
-// PREVIEW VIEW — แสดงเป็นแผ่นกระดาษ A4 เหมือนตอนพิมพ์ (รูปแบบเดียวกับตัวอย่าง/พิมพ์ของ PA)
+// PREVIEW VIEW — แสดงเป็นแผ่นกระดาษ A4 เหมือนตอนพิมพ์ (ชุดเดียวกับ PA/รายงานผล — docRenderPreview({ sheets }))
 //   อ่านจากแผนที่เปิดอยู่ (รวมฉบับที่ยังไม่บันทึก) · เลือกดูแผนอื่นที่บันทึกไว้ได้จากรายการด้านบน
 // ------------------------------------------------------------------
 const IDP_SHEET = {
@@ -830,109 +802,9 @@ const IDP_SHEET = {
   land: { w: 297, h: 210, pad: [15, 15, 15, 15], label: 'A4 แนวนอน' },   // ต้องตรงกับ @page idp-land
 };
 
-// ตัด #idp-src ในเอกสารตัวอย่าง (doc) เป็นแผ่นกระดาษทีละหน้า วางลง #idp-paper → คืนจำนวนแผ่น
-//   บล็อกยาวเกินหน้า = ขึ้นแผ่นใหม่ · ตารางแบ่งทีละแถว (ซ้ำหัวตารางทุกแผ่น) · หัวข้อ (.i1-h/.i1-keep) ไม่ถูกทิ้งไว้ท้ายแผ่นตามลำพัง
-//   ต้องเรียกตอนฟอนต์โหลดแล้ว และตอน --idp-zoom ยังเป็น 1 (วัดความสูงจริง)
-function idpPaginate(doc) {
-  const src = doc.getElementById('idp-src'), paper = doc.getElementById('idp-paper');
-  if (!src || !paper) return 0;
-  paper.style.removeProperty('--idp-zoom');
-  paper.textContent = '';
-  doc.documentElement.classList.add('paper-on');
-
-  const sheets = [];
-  let cur = null;
-  const newSheet = kind => {
-    const spec = IDP_SHEET[kind];
-    const wrap = doc.createElement('div');
-    wrap.className = 'idp-pgwrap';
-    const sheet = doc.createElement('section');
-    sheet.className = 'idp-sheet is-' + kind;
-    const body = doc.createElement('div');
-    body.className = 'idp1 idp-sheet-body';
-    sheet.appendChild(body);
-    const no = doc.createElement('div');
-    no.className = 'idp-pgno';
-    wrap.append(sheet, no);
-    paper.appendChild(wrap);
-    cur = { kind, spec, body, no };
-    sheets.push(cur);
-  };
-  const over = () => cur.body.scrollHeight > cur.body.clientHeight + 1;
-  const isKeep = el => el.classList.contains('i1-h') || el.classList.contains('i1-keep');
-  // หัวข้อที่อยู่ท้ายแผ่นปัจจุบัน → เอาออกเพื่อพาไปแผ่นใหม่พร้อมเนื้อหาที่ตามมา
-  const takeKeep = () => {
-    const out = [];
-    while (cur.body.childElementCount > 1 && isKeep(cur.body.lastElementChild)) out.unshift(cur.body.removeChild(cur.body.lastElementChild));
-    return out;
-  };
-  const moveToNewSheet = (...els) => {
-    const kind = cur.kind, carry = takeKeep();
-    newSheet(kind);
-    [...carry, ...els].forEach(e => cur.body.appendChild(e));
-  };
-  const placeBlock = node => {
-    const el = node.cloneNode(true);
-    cur.body.appendChild(el);
-    if (over() && cur.body.childElementCount > 1) { cur.body.removeChild(el); moveToNewSheet(el); }
-  };
-  const placeTable = tbl => {
-    const mk = () => {
-      const t = tbl.cloneNode(false);
-      if (tbl.tHead) t.appendChild(tbl.tHead.cloneNode(true));
-      const tb = doc.createElement('tbody');
-      t.appendChild(tb);
-      return { t, tb };
-    };
-    let { t, tb } = mk();
-    cur.body.appendChild(t);
-    for (const r of [...tbl.tBodies[0].rows]) {
-      const row = r.cloneNode(true);
-      tb.appendChild(row);
-      if (!over()) continue;
-      if (tb.rows.length > 1) {                      // แถวนี้ไม่พอที่ → ตารางต่อบนแผ่นใหม่ (หัวตารางซ้ำ)
-        tb.removeChild(row);
-        moveToNewSheet();
-        ({ t, tb } = mk());
-        cur.body.appendChild(t);
-        tb.appendChild(row);
-      } else if (cur.body.childElementCount > 1) {   // แถวแรกยังไม่พอที่ → ย้ายทั้งตาราง (พร้อมหัวข้อ) ไปแผ่นใหม่
-        cur.body.removeChild(t);
-        moveToNewSheet();
-        ({ t, tb } = mk());
-        cur.body.appendChild(t);
-        tb.appendChild(row);
-      }
-    }
-  };
-
-  src.querySelectorAll('section').forEach(section => {
-    newSheet(section.classList.contains('pg-land') ? 'land' : 'port');
-    [...section.children].forEach(node => {
-      if (node.classList.contains('i1-break')) { if (cur.body.childElementCount) newSheet(cur.kind); return; }
-      if (node.tagName === 'TABLE') placeTable(node); else placeBlock(node);
-    });
-  });
-  sheets.forEach((s, i) => { s.no.textContent = `หน้า ${i + 1} / ${sheets.length} · ${s.spec.label}`; });
-  return sheets.length;
-}
-
-// ย่อแผ่นกระดาษให้พอดีความกว้างกรอบ (ไม่ขยายเกินขนาดจริง) แล้วปรับความสูง iframe ให้เท่าเนื้อหา — เลื่อนดูด้วยหน้าเพจ ไม่มีแถบเลื่อนซ้อน
-function idpFitPaper(frame) {
-  const doc = frame.contentDocument;
-  const paper = doc && doc.getElementById('idp-paper');
-  if (!paper || !doc.documentElement.classList.contains('paper-on')) return;
-  paper.style.removeProperty('--idp-zoom');
-  const widest = Math.max(0, ...[...paper.querySelectorAll('.idp-sheet')].map(s => s.offsetWidth));
-  const zoom = widest ? Math.min(1, (frame.clientWidth - 16) / widest) : 1;
-  paper.style.setProperty('--idp-zoom', zoom.toFixed(4));
-  frame.style.setProperty('--fit-h', '100px');            // ลดก่อน เพื่อให้ scrollHeight = ความสูงเนื้อหาจริง
-  frame.style.setProperty('--fit-h', doc.documentElement.scrollHeight + 'px');
-}
-
 async function idpRenderPreviewView(pickId) {
   const sys = docSystem();
-  return docRenderPreview({ // โครงกลางใน js/doc-shell.js (แถบเลือก · ปุ่ม · สถานะว่าง) — กระดาษเป็น iframe + ตัดหน้าเองด้านล่าง
+  return docRenderPreview({ // โครงกลางใน js/doc-shell.js (แถบเลือก · ปุ่ม · สถานะว่าง · แผ่นกระดาษตัดหน้า)
     sys, tab: 'preview',
     load: async () => {
       const open = sys.state.doc && sys.state.view === 'form' ? sys.state.doc : null;
@@ -952,7 +824,12 @@ async function idpRenderPreviewView(pickId) {
     selectLabel: 'เลือกแผน',
     empty: { icon: IDP_ICO_DOC, title: 'ยังไม่มี ID-Plan', sub: 'สร้างแผนพัฒนาตนเองก่อน แล้วดูตัวอย่างและพิมพ์ที่นี่', gotoLabel: 'ไปที่แบบฟอร์ม', gotoTab: 'form' },
     hint: () => 'ตัวอย่างตามแบบ ID-Plan ของ สพฐ. — หน้าแรกแนวตั้ง ส่วนที่ 2–3 แนวนอน (A4) · กดพิมพ์แล้วเลือก "บันทึกเป็น PDF" ในหน้าต่างพิมพ์ได้ · ใช้ Chrome/Edge จะแบ่งหน้าแนวตั้ง/แนวนอนได้ถูกต้องที่สุด',
-    paperHtml: () => `<div class="doc-preview-frame-wrap"><iframe id="idp-preview-frame" class="doc-preview-frame is-fit" title="ตัวอย่าง ID-Plan"></iframe></div>`,
+    sheets: ctx => ({ // แผ่นกระดาษตัดโดยโครงกลาง (docPaginate) — หน้าแรกแนวตั้ง ส่วนที่ 2–3 แนวนอน
+      html: () => idpBuildPreviewHtml(ctx.d, ctx.profile),
+      specs: IDP_SHEET, bodyClass: 'idp1', keep: '.i1-h,.i1-keep', breakSel: '.i1-break',
+      kindOf: section => section.classList.contains('pg-land') ? 'land' : 'port',
+      fonts: [...DOC_FONT_SPECS, "13pt 'PA Sarabun'"],
+    }),
     onPick: id => idpRenderPreviewView(id),
     onEdit: ctx => {
       if (ctx.pickId !== ctx.openKey) { // เปิดแผนอื่นมาแก้ → แทนที่แผนที่เปิดอยู่ (ส่วนที่ยังไม่บันทึกจะหาย)
@@ -964,25 +841,9 @@ async function idpRenderPreviewView(pickId) {
       docSwitchTab('form');
     },
     onPrint: (ctx, view) => {
-      const frame = view.querySelector('#idp-preview-frame');
+      const frame = view.querySelector('.doc-preview-frame');
       frame?.contentWindow?.focus();
       frame?.contentWindow?.print();
-    },
-    mount: async (view, ctx) => {
-      const frame = view.querySelector('#idp-preview-frame');
-      const loaded = new Promise(res => frame.addEventListener('load', res, { once: true }));
-      frame.srcdoc = idpBuildPreviewHtml(ctx.d, ctx.profile);
-
-      // รอเอกสารตัวอย่างโหลด + ฟอนต์พร้อม (ความสูงแถวขึ้นกับฟอนต์) แล้วค่อยตัดหน้า — ไม่งั้นจำนวนหน้าเพี้ยน
-      await loaded;
-      const fdoc = frame.contentDocument;
-      if (await docWaitFonts(fdoc, [...DOC_FONT_SPECS, "13pt 'PA Sarabun'"])) { // ตัวช่วยกลางใน js/doc-shell.js
-        try { await fdoc.fonts.ready; } catch (e) { /* ไปต่อด้วยฟอนต์ที่มี */ }
-      }
-      if (!frame.isConnected) return;
-      idpPaginate(fdoc);
-      idpFitPaper(frame);
-      docWatchResize(sys, 'preview', frame, () => idpFitPaper(frame));
     },
   });
 }

@@ -299,7 +299,7 @@ async function docPrintWindow({ title, css = '', html, fonts, page = DOC_PAGE_A4
 
 // ------------------------------------------------------------------
 // หน้า "ตัวอย่าง / พิมพ์" — โครงกลาง (เดิม PA · รายงานผล · ID-Plan เขียนแถบเลือก/ปุ่ม/สถานะว่าง/ย่อกระดาษซ้ำกันคนละชุด)
-//   docRenderPreview({ sys, tab, load, shown?, hint, selectLabel, empty, paperHtml, fitPage?, afterHtml?, mount?, onPick, onEdit, onPrint })
+//   docRenderPreview({ sys, tab, load, shown?, hint, selectLabel, empty, sheets, afterHtml?, mount?, onPick, onEdit, onPrint })
 //     sys         ถือจากบรรทัดแรกของฟังก์ชันผู้เรียก (docSystem()) — ห้ามเรียก docSystem() ใหม่หลัง await (ดู js/doc-system.js)
 //     tab         รหัสแท็บของหน้านี้ — สลับแท็บ/ออกจากหน้าระหว่างรอข้อมูลแล้วจะไม่วาดทับ
 //     load()      โหลดข้อมูล → คืน ctx = { items: [{ id, label }], pickId, ...อะไรก็ได้ที่ตัววาดต้องใช้ }
@@ -307,11 +307,12 @@ async function docPrintWindow({ title, css = '', html, fonts, page = DOC_PAGE_A4
 //                 ห้ามเขียน state ใน load (อาจล้าสมัยก่อนวาด) — ใช้ shown(ctx) ซึ่งเรียกหลังตรวจแล้วว่ายังอยู่หน้านี้
 //     hint(ctx)   ข้อความแนะนำใต้แถบ (ข้อความล้วน — โครงกลางหนี HTML ให้)
 //     empty       { icon, title, sub, gotoLabel, gotoTab } — ปุ่มพาไปแท็บฟอร์ม
-//     paperHtml(ctx)  HTML ของกระดาษ · fitPage = selector ของหน้ากระดาษ (เช่น '.pa1') → โครงกลางห่อด้วย .doc-paper
-//                 แล้วย่อให้พอดีความกว้างจอ (docFitPaper) + ย่อซ้ำเมื่อปรับขนาดหน้าต่าง · ไม่ใส่ = ผู้เรียกจัดการเอง (เช่น iframe ของ ID-Plan)
-//     afterHtml(ctx)  HTML ต่อท้ายกระดาษ (ไม่บังคับ) · mount(view, ctx) งานหลังวาด (async ได้ — เช่นตัดหน้า)
+//     sheets(ctx) กระดาษตัวอย่าง = แผ่น A4 แยกหน้าบนพื้นเทา (ทุกระบบหน้าตาเหมือนกัน) — คืนค่าตั้งของแผ่น ดูที่ docRenderSheets
+//                 { html() → เอกสารเต็มสำหรับ srcdoc (ใช้ docSheetsHtml ห่อ), specs, bodyClass, keep, breakSel, kindOf?, fonts? }
+//     afterHtml(ctx)  HTML ต่อท้ายกระดาษ (ไม่บังคับ) · mount(view, ctx) งานหลังวาด (async ได้)
 //     onPick(id) · onEdit(ctx) · onPrint(ctx, view)  ตัวจัดการแถบ (เลือก · แก้ไข · พิมพ์)
-//   พิมพ์: PA ใช้ docPrintWindow · ID-Plan พิมพ์ผ่าน iframe — โครงกลางไม่ผูกวิธีพิมพ์ (onPrint ของแต่ละระบบ)
+//   พิมพ์: PA ใช้ docPrintWindow · ID-Plan พิมพ์ผ่าน iframe (view.querySelector('.doc-preview-frame')) — โครงกลางไม่ผูกวิธีพิมพ์
+//   การตัดหน้าทำหลังวาดและไม่ถูกรอ (iframe โหลด/ฟอนต์/รูปใช้เวลา) — ผู้ใช้เห็นแถบทันที กระดาษตามมา
 // ------------------------------------------------------------------
 async function docRenderPreview(o) {
   const sys = o.sys;
@@ -349,7 +350,6 @@ async function docRenderPreview(o) {
     return;
   }
 
-  const paper = o.paperHtml(ctx);
   view.innerHTML = `
     <div class="doc-preview-bar">
       <select class="doc-preview-select" aria-label="${escapeHtml(o.selectLabel)}">
@@ -361,30 +361,187 @@ async function docRenderPreview(o) {
       </div>
     </div>
     <div class="u-note doc-preview-hint">${escapeHtml(o.hint(ctx))}</div>
-    ${o.fitPage ? `<div class="doc-paper">${paper}</div>` : paper}
+    <div class="doc-preview-frame-wrap"><iframe class="doc-preview-frame is-fit" title="${escapeHtml(o.selectLabel)}"></iframe></div>
     ${o.afterHtml ? o.afterHtml(ctx) : ''}`;
 
   view.querySelector('.doc-preview-select').addEventListener('change', e => o.onPick(e.target.value));
   view.querySelector('.doc-preview-edit').addEventListener('click', () => o.onEdit(ctx));
   view.querySelector('.doc-preview-print').addEventListener('click', () => o.onPrint(ctx, view));
 
-  if (o.fitPage) { // แสดงเป็นหน้า A4 ขนาดจริง แล้วย่อให้พอดีความกว้างจอ — พิมพ์ออกมาเหมือนที่เห็น
-    const box = view.querySelector('.doc-paper');
-    const fit = () => docFitPaper(box, o.fitPage);
-    requestAnimationFrame(fit);
-    docWatchResize(sys, o.tab, view, fit);
-  }
   docSwapIn(view);
+  docRenderSheets(sys, o.tab, view, ctx, typeof o.sheets === 'function' ? o.sheets(ctx) : o.sheets).catch(err => console.error('docRenderSheets:', err)); // ไม่รอ — แถบแสดงไปก่อน
   if (o.mount) await o.mount(view, ctx);
 }
 
-// ย่อกระดาษให้พอดีความกว้างกรอบ (ไม่ขยายเกินขนาดจริง) — ตั้งตัวแปร --fit-zoom ที่ .doc-paper แล้วให้ CSS เป็นคนใช้ (zoom: var(--fit-zoom))
-function docFitPaper(box, pageSel) {
-  const pg = box && box.querySelector(pageSel);
-  if (!pg) return;
-  box.style.setProperty('--fit-zoom', '1'); // วัดที่ขนาดจริงก่อน
-  const z = box.clientWidth / pg.offsetWidth;
-  if (Number.isFinite(z) && z > 0) box.style.setProperty('--fit-zoom', String(Math.min(1, z))); // ยังไม่มีขนาด (แท็บซ่อน/ยังไม่วาง) → คงขนาดจริง ไม่ใส่ NaN/0
+// ------------------------------------------------------------------
+// แผ่นกระดาษตัวอย่าง — ทุกระบบใช้ชุดเดียวกัน: iframe พื้นเทา + แผ่น A4 แยกหน้า (เงา · ป้าย "หน้า n / N · ขนาด") ย่อพอดีความกว้างจอ
+//   ตัวอย่างบนจอเป็นแผ่นที่ docPaginate ตัดจากเอกสารต้นฉบับ (#doc-src) · ตอนพิมพ์ใช้ต้นฉบับ (@page ของแต่ละระบบ) — ตัวพิมพ์ยังเป็นตัวตัดสินสุดท้าย
+//   sheets = {
+//     html()       เอกสารเต็มสำหรับ srcdoc — docSheetsHtml(css, bodyHtml) ห่อต้นฉบับใน #doc-src ให้
+//     specs        { ชนิดแผ่น: { w, h, pad:[บน,ขวา,ล่าง,ซ้าย], label } } หน่วยมม. — ต้องตรงกับ @page ตอนพิมพ์ของระบบนั้น
+//     bodyClass    คลาสของเนื้อในแผ่น (เช่น 'pa1' · 'idp1') เพื่อให้สไตล์ของแบบใช้ได้ในทุกแผ่น
+//     keep         selector ของบล็อกที่ห้ามถูกทิ้งไว้ท้ายแผ่นตามลำพัง (หัวข้อ — ตามไปกับเนื้อหาถัดไป)
+//     breakSel     selector ของตัวบังคับขึ้นหน้าใหม่ (เช่น '.p1-break')
+//     kindOf(section)  ชนิดแผ่นของแต่ละ <section> (ไม่ใส่ = ชนิดแรกของ specs) · ต้นฉบับไม่มี <section> = ลูกตัวแรกของ #doc-src เป็นหน้าเดียว
+//     fonts        รายการฟอนต์ที่ต้องรอก่อนวัดความสูง (ไม่ใส่ = DOC_FONT_SPECS)
+//   }
+// ------------------------------------------------------------------
+const DOC_SHEET_A4 = { w: 210, h: 297, pad: [16, 14, 16, 14], label: 'A4 แนวตั้ง' }; // ต้องตรงกับ DOC_PAGE_A4 (ขอบ 16/14 มม.)
+
+const DOC_PAPER_CSS = `
+@media screen{
+  html{background:#dfe2e8}
+  html.paper-on #doc-src{display:none}
+  #doc-paper{display:none;zoom:var(--doc-zoom,1);padding:14px 0 2px}
+  html.paper-on #doc-paper{display:block}
+  .doc-pgwrap{margin:0 0 16px}
+  .doc-sheet{box-sizing:border-box;margin:0 auto;overflow:hidden;background:#fff;box-shadow:0 0 0 1px rgba(0,0,0,.08),0 2px 6px rgba(0,0,0,.18),0 10px 24px rgba(0,0,0,.10)}
+  .doc-sheet-body{height:100%}
+  .doc-sheet-body>:first-child{margin-top:0}
+  .doc-pgno{margin-top:7px;font:calc(12px / var(--doc-zoom,1))/1 Tahoma,sans-serif;color:#5b6270;text-align:center}
+}
+@media print{#doc-paper{display:none}}
+`;
+
+// เอกสารสำหรับ srcdoc ของ iframe ตัวอย่าง: ต้นฉบับ (#doc-src) + ที่ว่างให้แผ่นกระดาษ (#doc-paper)
+function docSheetsHtml(css, bodyHtml) {
+  return `<!doctype html><html lang="th"><head><meta charset="utf-8"><style>body{margin:0;padding:0}${docFontCss()}${css}${DOC_PAPER_CSS}</style></head><body><div id="doc-src">${bodyHtml}</div><div id="doc-paper"></div></body></html>`;
+}
+
+// รอรูปในเอกสาร doc โหลดเสร็จ (ไม่เกิน maxMs · ไม่ reject) — ความสูงแถวตารางขึ้นกับรูป ต้องรอก่อนตัดหน้า
+function docWaitImages(doc, maxMs = 2500) {
+  const imgs = [...((doc && doc.images) || [])].filter(i => !i.complete);
+  if (!imgs.length) return Promise.resolve();
+  const all = Promise.all(imgs.map(i => new Promise(r => { i.addEventListener('load', r, { once: true }); i.addEventListener('error', r, { once: true }); })));
+  return Promise.race([all, new Promise(r => setTimeout(r, maxMs))]);
+}
+
+async function docRenderSheets(sys, tab, view, ctx, s) { // ctx ไม่ใช้ในนี้ — ผู้เรียกผูกข้อมูลไว้ใน s.html แล้ว
+  const frame = view.querySelector('.doc-preview-frame');
+  const loaded = new Promise(res => frame.addEventListener('load', res, { once: true }));
+  frame.srcdoc = s.html();
+  await loaded;
+  const fdoc = frame.contentDocument;
+  // รอฟอนต์ (ความสูงแถวขึ้นกับฟอนต์) และรูป แล้วค่อยตัดหน้า — ไม่งั้นจำนวนหน้าเพี้ยน
+  if (await docWaitFonts(fdoc, s.fonts || DOC_FONT_SPECS)) {
+    try { await fdoc.fonts.ready; } catch (e) { /* ไปต่อด้วยฟอนต์ที่มี */ }
+  }
+  await docWaitImages(fdoc);
+  if (!frame.isConnected) return;
+  docPaginate(fdoc, s);
+  docFitSheets(frame);
+  docWatchResize(sys, tab, frame, () => docFitSheets(frame));
+}
+
+// ตัด #doc-src ในเอกสารตัวอย่าง (doc) เป็นแผ่นกระดาษทีละหน้า วางลง #doc-paper → คืนจำนวนแผ่น
+//   บล็อกยาวเกินหน้า = ขึ้นแผ่นใหม่ · ตารางแบ่งทีละแถว (ซ้ำ colgroup/หัวตารางทุกแผ่น · แถวหัวกลุ่ม tr.grp ไม่ถูกทิ้งท้ายแผ่น)
+//   หัวข้อ (o.keep) ไม่ถูกทิ้งไว้ท้ายแผ่นตามลำพัง · <style>/<script> ในต้นฉบับไม่ถูกคัดลอก (ยังใช้ได้เพราะต้นฉบับอยู่ในเอกสารเดียวกัน)
+//   ต้องเรียกตอนฟอนต์/รูปโหลดแล้ว และตอน --doc-zoom ยังเป็น 1 (วัดความสูงจริง)
+function docPaginate(doc, o) {
+  const src = doc.getElementById('doc-src'), paper = doc.getElementById('doc-paper');
+  if (!src || !paper) return 0;
+  paper.style.removeProperty('--doc-zoom');
+  paper.textContent = '';
+  doc.documentElement.classList.add('paper-on');
+
+  const firstKind = Object.keys(o.specs)[0];
+  const kindOf = o.kindOf || (() => firstKind);
+  const sheets = [];
+  let cur = null;
+  const newSheet = kind => {
+    const spec = o.specs[kind];
+    const wrap = doc.createElement('div');
+    wrap.className = 'doc-pgwrap';
+    const sheet = doc.createElement('section');
+    sheet.className = 'doc-sheet is-' + kind;
+    sheet.style.cssText = `width:${spec.w}mm;height:${spec.h}mm;padding:${spec.pad.map(n => n + 'mm').join(' ')}`;
+    const body = doc.createElement('div');
+    body.className = (o.bodyClass ? o.bodyClass + ' ' : '') + 'doc-sheet-body';
+    sheet.appendChild(body);
+    const no = doc.createElement('div');
+    no.className = 'doc-pgno';
+    wrap.append(sheet, no);
+    paper.appendChild(wrap);
+    cur = { kind, spec, body, no };
+    sheets.push(cur);
+  };
+  const over = () => cur.body.scrollHeight > cur.body.clientHeight + 1;
+  const isKeep = el => !!o.keep && el.matches(o.keep);
+  // หัวข้อที่อยู่ท้ายแผ่นปัจจุบัน → เอาออกเพื่อพาไปแผ่นใหม่พร้อมเนื้อหาที่ตามมา
+  const takeKeep = () => {
+    const out = [];
+    while (cur.body.childElementCount > 1 && isKeep(cur.body.lastElementChild)) out.unshift(cur.body.removeChild(cur.body.lastElementChild));
+    return out;
+  };
+  const moveToNewSheet = (...els) => {
+    const kind = cur.kind, carry = takeKeep();
+    newSheet(kind);
+    [...carry, ...els].forEach(e => cur.body.appendChild(e));
+  };
+  const placeBlock = node => {
+    const el = node.cloneNode(true);
+    cur.body.appendChild(el);
+    if (over() && cur.body.childElementCount > 1) { cur.body.removeChild(el); moveToNewSheet(el); }
+  };
+  const placeTable = tbl => {
+    const cg = [...tbl.children].find(c => c.tagName === 'COLGROUP');
+    const mk = () => {
+      const t = tbl.cloneNode(false);
+      if (cg) t.appendChild(cg.cloneNode(true));
+      if (tbl.tHead) t.appendChild(tbl.tHead.cloneNode(true));
+      const tb = doc.createElement('tbody');
+      t.appendChild(tb);
+      return { t, tb };
+    };
+    let { t, tb } = mk();
+    cur.body.appendChild(t);
+    for (const r of [...tbl.tBodies[0].rows]) {
+      const row = r.cloneNode(true);
+      tb.appendChild(row);
+      if (!over()) continue;
+      if (tb.rows.length > 1) {                      // แถวนี้ไม่พอที่ → ตารางต่อบนแผ่นใหม่ (หัวตารางซ้ำ)
+        tb.removeChild(row);
+        const carryRows = [];                         // แถวหัวกลุ่มที่อยู่ท้ายแผ่น ไปต่อแผ่นใหม่พร้อมแถวถัดไป
+        while (tb.rows.length > 1 && tb.rows[tb.rows.length - 1].classList.contains('grp')) carryRows.unshift(tb.removeChild(tb.rows[tb.rows.length - 1]));
+        moveToNewSheet();
+        ({ t, tb } = mk());
+        cur.body.appendChild(t);
+        carryRows.forEach(x => tb.appendChild(x));
+        tb.appendChild(row);
+      } else if (cur.body.childElementCount > 1) {   // แถวแรกยังไม่พอที่ → ย้ายทั้งตาราง (พร้อมหัวข้อ) ไปแผ่นใหม่
+        cur.body.removeChild(t);
+        moveToNewSheet();
+        ({ t, tb } = mk());
+        cur.body.appendChild(t);
+        tb.appendChild(row);
+      }
+    }
+  };
+
+  const sections = [...src.querySelectorAll('section')];
+  (sections.length ? sections : [src.firstElementChild].filter(Boolean)).forEach(section => {
+    newSheet(kindOf(section));
+    [...section.children].forEach(node => {
+      if (node.tagName === 'STYLE' || node.tagName === 'SCRIPT') return;
+      if (o.breakSel && node.matches(o.breakSel)) { if (cur.body.childElementCount) newSheet(cur.kind); return; }
+      if (node.tagName === 'TABLE' && node.tBodies[0]) placeTable(node); else placeBlock(node);
+    });
+  });
+  sheets.forEach((x, i) => { x.no.textContent = `หน้า ${i + 1} / ${sheets.length} · ${x.spec.label}`; });
+  return sheets.length;
+}
+
+// ย่อแผ่นกระดาษให้พอดีความกว้างกรอบ (ไม่ขยายเกินขนาดจริง) แล้วปรับความสูง iframe ให้เท่าเนื้อหา — เลื่อนดูด้วยหน้าเพจ ไม่มีแถบเลื่อนซ้อน
+function docFitSheets(frame) {
+  const doc = frame.contentDocument;
+  const paper = doc && doc.getElementById('doc-paper');
+  if (!paper || !doc.documentElement.classList.contains('paper-on')) return;
+  paper.style.removeProperty('--doc-zoom');
+  const widest = Math.max(0, ...[...paper.querySelectorAll('.doc-sheet')].map(s => s.offsetWidth));
+  const zoom = widest ? Math.min(1, (frame.clientWidth - 16) / widest) : 1;
+  paper.style.setProperty('--doc-zoom', Number.isFinite(zoom) && zoom > 0 ? zoom.toFixed(4) : '1'); // ยังไม่มีขนาด (แท็บซ่อน) → คงขนาดจริง ไม่ใส่ NaN/0
+  frame.style.setProperty('--fit-h', '100px');            // ลดก่อน เพื่อให้ scrollHeight = ความสูงเนื้อหาจริง
+  frame.style.setProperty('--fit-h', doc.documentElement.scrollHeight + 'px');
 }
 
 // เรียก fn ทุกครั้งที่ปรับขนาดหน้าต่าง — เลิกฟังเองเมื่อ el หลุดจากหน้า หรือสลับไปแท็บอื่น (ไม่ทิ้ง listener ค้าง)

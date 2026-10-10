@@ -334,6 +334,13 @@ function paBuildDocHtml(d, o) {
   </div>`;
 }
 
+// แผ่นกระดาษตัวอย่างบนจอของ PA 1/ส และแบบรายงานผล (ใช้กับ docRenderPreview({ sheets }) — ตัวพิมพ์จริงยังเป็น paPrint/parptPrint)
+//   ขอบแผ่น = DOC_SHEET_A4 = @page ตอนพิมพ์ · หัวข้อ (.p1-h/.p1-hd/.keep-next) ตามไปกับเนื้อหา · .p1-break = ขึ้นหน้าใหม่
+const PA1_FONTS = [...DOC_FONT_SPECS, "italic 16pt 'PA Sarabun'"]; // ข้อตกลงมีตัวเอียง
+function paSheets(bodyHtml) {
+  return { html: () => docSheetsHtml(PA1_CSS, bodyHtml), specs: { port: DOC_SHEET_A4 }, bodyClass: 'pa1', keep: '.p1-h,.p1-hd,.keep-next', breakSel: '.p1-break', fonts: PA1_FONTS };
+}
+
 // เปิดหน้าต่างใหม่แล้วสั่งพิมพ์ (ผู้ใช้เลือก "บันทึกเป็น PDF" ได้จากหน้าต่างพิมพ์ของเบราว์เซอร์)
 // ฟอนต์: ใช้ TH Sarabun PSK ของเครื่องก่อน (ตัวเดียวกับแบบราชการ) ไม่มีก็ใช้ Sarabun ที่แนบมากับแอป (ทำงานออฟไลน์ได้)
 function paPrint(d, o) {
@@ -342,7 +349,7 @@ function paPrint(d, o) {
     title,
     css: PA1_CSS,
     html: () => paBuildDocHtml(d, o),
-    fonts: [...DOC_FONT_SPECS, "italic 16pt 'PA Sarabun'"], // ข้อตกลงมีตัวเอียง
+    fonts: PA1_FONTS,
   });
 }
 

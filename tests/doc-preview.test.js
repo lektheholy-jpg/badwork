@@ -1,8 +1,9 @@
-// ทดสอบโครงหน้า "ตัวอย่าง / พิมพ์" กลางใน js/doc-shell.js (docRenderPreview · docFitPaper · docWatchResize) ด้วย jsdom
+// ทดสอบโครงหน้า "ตัวอย่าง / พิมพ์" กลางใน js/doc-shell.js (docRenderPreview · docPaginate · docFitSheets · docWatchResize) ด้วย jsdom
 // วิธีรัน: node tests/doc-preview.test.js   (หรือ npm run test:docprev)
-// ตอน A  โครงกลางเดี่ยวๆ: สถานะว่าง · โหลดพัง · ล้าสมัย (สลับแท็บ/รอบ) · แถบเลือก/แก้ไข/พิมพ์ · fitPage · mount · ย่อกระดาษ · listener resize
+// ตอน A  โครงกลางเดี่ยวๆ: สถานะว่าง · โหลดพัง · ล้าสมัย (สลับแท็บ/รอบ) · แถบเลือก/แก้ไข/พิมพ์ · iframe กระดาษ · mount · listener resize
+// ตอน A2 ตัวตัดหน้ากลาง docPaginate (เลย์เอาต์ปลอม — jsdom วัดความสูงจริงไม่ได้) · docFitSheets · ขอบแผ่นตรงกับ @page
 // ตอน B  หน้าตัวอย่าง ID-Plan จริง (idpRenderPreviewView) ผ่านโครงกลาง
-// ตอน C  กันสำเนากลับมา: ไฟล์ระบบเอกสารไม่ฟัง resize / ตั้ง zoom เอง · ไม่มี CSS .parp-* ใน JS
+// ตอน C  กันสำเนากลับมา: ไฟล์ระบบเอกสารไม่ฟัง resize / ตั้ง zoom / ตัดหน้าเอง · ไม่มี CSS .parp-* ใน JS
 // (หน้าตัวอย่าง PA และรายงานผลถูกเทียบกับ golden ใน tests/pa-config.test.js อยู่แล้ว)
 const fs = require('fs'), vm = require('vm'), path = require('path'); const { JSDOM } = require('jsdom');
 const ROOT = process.env.PA_ROOT ? path.resolve(process.env.PA_ROOT) : path.join(__dirname, '..');
@@ -23,12 +24,13 @@ const escapeHtml = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<':
   };
   vm.createContext(ctx);
   for (const f of ['js/doc-system.js', 'js/doc-shell.js']) vm.runInContext(read(f), ctx, { filename: f });
+  const SHEET_A4 = vm.runInContext('DOC_SHEET_A4', ctx), PAGE_A4 = vm.runInContext('DOC_PAGE_A4', ctx); // const ระดับบนสุดไม่โผล่เป็น property ของ ctx
   // ตัดส่วนที่ผูกกับหน้าจริงออก (โครงหน้า/ตัวโหลด/สลับแท็บ) — ทดสอบเฉพาะตัวโครงตัวอย่าง
   ctx.docMount = () => body(); ctx.docShowLoading = () => {}; ctx.docSwapIn = () => { ctx.__swapped = (ctx.__swapped || 0) + 1; };
   ctx.docSwitchTab = t => { switched.push(t); };
   const sys = vm.runInContext(`registerDocSystem({ id: 't', title: 'T', collections: { a: 'ta' }, tabs: [['prev', 'ตัวอย่าง'], ['form', 'ฟอร์ม']] })`, ctx);
   sys.state.tab = 'prev';
-  const render = o => ctx.docRenderPreview(Object.assign({ sys, tab: 'prev', selectLabel: 'เลือก', hint: () => 'คำแนะนำ', paperHtml: () => '<p>กระดาษ</p>', onPick() {}, onEdit() {}, onPrint() {}, empty: { icon: '<i>I</i>', title: 'ว่างจ้า', sub: 'ยังไม่มี', gotoLabel: 'ไปฟอร์ม', gotoTab: 'form' } }, o));
+  const render = o => ctx.docRenderPreview(Object.assign({ sys, tab: 'prev', selectLabel: 'เลือก', hint: () => 'คำแนะนำ', sheets: () => ({ html: () => '<p>กระดาษ</p>', specs: { port: SHEET_A4 } }), onPick() {}, onEdit() {}, onPrint() {}, empty: { icon: '<i>I</i>', title: 'ว่างจ้า', sub: 'ยังไม่มี', gotoLabel: 'ไปฟอร์ม', gotoTab: 'form' } }, o));
   const mk = (items, pickId, extra) => () => Promise.resolve(Object.assign({ items, pickId }, extra));
 
   { // สถานะว่าง
@@ -69,34 +71,116 @@ const escapeHtml = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<':
     ok(body().querySelector('.doc-preview-select').getAttribute('aria-label') === 'เลือก', 'aria-label ของตัวเลือก');
     ok(body().querySelector('.doc-preview-hint').textContent === 'ต้องใช้ "PDF" <b> 7' && !body().querySelector('.doc-preview-hint b'), 'ข้อความแนะนำเป็นข้อความล้วน (ไม่ตีความเป็น HTML)');
     ok(calls[0][0] === 'shown' && calls[0][1] === true && calls[0][2] === true, 'shown(ctx) ถูกเรียกก่อนวาด');
-    ok(body().querySelector('#after') && body().querySelector('p') && !body().querySelector('.doc-paper'), 'ไม่ใส่ fitPage → กระดาษแทรกตรงๆ ไม่ห่อ .doc-paper · afterHtml ต่อท้าย');
+    const fr = body().querySelector('.doc-preview-frame-wrap > iframe.doc-preview-frame');
+    ok(fr && fr.getAttribute('srcdoc') === '<p>กระดาษ</p>' && body().querySelector('#after') && !body().querySelector('.doc-paper'), 'กระดาษเป็น iframe (.doc-preview-frame) ที่ได้ srcdoc จาก sheets(ctx).html() · afterHtml ต่อท้าย');
     const sel = body().querySelector('.doc-preview-select'); sel.value = 'a'; sel.dispatchEvent(new w.Event('change', { bubbles: true }));
     body().querySelector('.doc-preview-edit').click(); body().querySelector('.doc-preview-print').click();
     ok(JSON.stringify(calls.slice(1)) === JSON.stringify([['pick', 'a'], ['edit', true], ['print', true, true]]), 'เลือก/แก้ไข/พิมพ์ → เรียกตัวจัดการด้วยค่าที่ถูก');
   }
-  { // fitPage + mount
+  { // mount
     const order = [];
     await render({
-      load: mk([{ id: 'a', label: 'A' }], 'a'), fitPage: '.pg', paperHtml: () => '<div class="pg" id="pgx">หน้า</div>',
+      load: mk([{ id: 'a', label: 'A' }], 'a'),
       mount: async (v, c) => { order.push(['mount-start', !!v.querySelector('.doc-preview-bar'), c.pickId]); await sleep(20); order.push('mount-end'); },
     });
-    ok(body().querySelector('.doc-paper > #pgx'), 'ใส่ fitPage → ห่อกระดาษด้วย .doc-paper');
     ok(JSON.stringify(order) === JSON.stringify([['mount-start', true, 'a'], 'mount-end']), 'mount ถูกเรียกหลังวาด และ docRenderPreview รอ mount จบ');
   }
+  { // sheets เป็นออบเจ็กต์ตรงๆ ก็ได้ · การตัดหน้าไม่ถูกรอ (jsdom ไม่ยิง load ของ srcdoc — ถ้ารอ การ await นี้จะค้าง)
+    let done = false;
+    render({ load: mk([{ id: 'a', label: 'A' }], 'a'), sheets: { html: () => '<i>x</i>', specs: { port: SHEET_A4 } } }).then(() => { done = true; });
+    await sleep(30);
+    ok(done && body().querySelector('iframe.doc-preview-frame')?.getAttribute('srcdoc') === '<i>x</i>', 'sheets เป็นออบเจ็กต์ได้ · docRenderPreview ไม่รอ iframe โหลด/ตัดหน้า (แถบแสดงทันที)');
+  }
 
-  console.log('A · docFitPaper');
+  console.log('A2 · docPaginate (เลย์เอาต์ปลอม: แต่ละบล็อกบอกความสูงเองด้วย data-h · ความสูงแผ่น = 100)');
   {
-    const mkBox = (cw, ow, withPage = true) => {
-      const box = w.document.createElement('div'); const pg = w.document.createElement('div'); pg.className = 'pg';
-      Object.defineProperty(box, 'clientWidth', { value: cw }); Object.defineProperty(pg, 'offsetWidth', { value: ow });
-      if (withPage) box.appendChild(pg); return box;
+    const dp = new JSDOM('<!doctype html><body></body>', { url: 'http://localhost/' }); const pw = dp.window;
+    const H = el => Number(el.dataset && el.dataset.h) || 0;
+    const hOf = el => el.tagName === 'TABLE' ? [...el.querySelectorAll('tr')].reduce((a, r) => a + H(r), 0) : H(el);
+    Object.defineProperty(pw.HTMLElement.prototype, 'scrollHeight', { get() { return this.classList.contains('doc-sheet-body') ? [...this.children].reduce((a, c) => a + hOf(c), 0) : 0; } });
+    Object.defineProperty(pw.HTMLElement.prototype, 'clientHeight', { get() { return this.classList.contains('doc-sheet-body') ? 100 : 0; } });
+    const SPECS = { port: { w: 210, h: 297, pad: [16, 14, 16, 14], label: 'A4 แนวตั้ง' }, land: { w: 297, h: 210, pad: [15, 15, 15, 15], label: 'A4 แนวนอน' } };
+    const OPT = { specs: SPECS, bodyClass: 'pa1', keep: '.h,.k', breakSel: '.brk' };
+    const run = (srcHtml, opt = {}) => {
+      pw.document.documentElement.className = ''; pw.document.body.innerHTML = `<div id="doc-src">${srcHtml}</div><div id="doc-paper"></div>`;
+      const n = ctx.docPaginate(pw.document, Object.assign({}, OPT, opt));
+      const sheets = [...pw.document.querySelectorAll('.doc-sheet-body')];
+      return { n, sheets, kids: sheets.map(b => [...b.children].map(c => c.className || c.tagName.toLowerCase()).join(',')) };
     };
-    const z = b => b.style.getPropertyValue('--fit-zoom');
-    let b = mkBox(397, 794); ctx.docFitPaper(b, '.pg'); ok(Math.abs(z(b) - 0.5) < 1e-6, 'กล่องแคบกว่ากระดาษ → ย่อตามสัดส่วน (0.5)');
-    b = mkBox(1200, 794); ctx.docFitPaper(b, '.pg'); ok(z(b) === '1', 'กล่องกว้างกว่ากระดาษ → ไม่ขยายเกินขนาดจริง (1)');
-    b = mkBox(0, 0); ctx.docFitPaper(b, '.pg'); ok(z(b) === '1', 'ยังไม่มีขนาด (0/0 = NaN) → คง 1 ไม่ใส่ NaN');
-    b = mkBox(0, 794); ctx.docFitPaper(b, '.pg'); ok(z(b) === '1', 'กล่องกว้าง 0 → คง 1 (ไม่ย่อจนหาย)');
-    let threw = false; try { ctx.docFitPaper(mkBox(1, 1, false), '.pg'); ctx.docFitPaper(null, '.pg'); } catch (e) { threw = true; } ok(!threw, 'ไม่มีหน้ากระดาษ/ไม่มีกล่อง → ไม่ error');
+    const blk = (h, cls = '') => `<div class="${cls}" data-h="${h}"></div>`;
+
+    let r = run(`<div class="root">${blk(40, 'a')}${blk(40, 'b')}${blk(40, 'c')}</div>`);
+    ok(r.n === 2 && r.kids[0] === 'a,b' && r.kids[1] === 'c', 'บล็อกเกินแผ่น → ขึ้นแผ่นใหม่ (40+40 | 40)');
+    ok(pw.document.documentElement.classList.contains('paper-on'), 'ตัดเสร็จ → html.paper-on (ซ่อนต้นฉบับบนจอ)');
+    ok([...pw.document.querySelectorAll('.doc-pgno')].map(x => x.textContent).join('|') === 'หน้า 1 / 2 · A4 แนวตั้ง|หน้า 2 / 2 · A4 แนวตั้ง', 'ป้ายใต้แผ่น "หน้า n / N · ขนาด"');
+    const sh = pw.document.querySelector('.doc-sheet');
+    ok(sh.style.width === '210mm' && sh.style.height === '297mm' && [sh.style.paddingTop, sh.style.paddingRight, sh.style.paddingBottom, sh.style.paddingLeft].join(' ') === '16mm 14mm 16mm 14mm' && sh.classList.contains('is-port'), 'ขนาดและขอบแผ่นมาจาก specs (มม.)');
+    ok(r.sheets.every(b => b.classList.contains('pa1')), 'เนื้อในทุกแผ่นมี bodyClass (สไตล์ของแบบใช้ได้ทุกแผ่น)');
+
+    r = run(`<div class="root">${blk(10, 'a')}<div class="brk"></div>${blk(10, 'b')}</div>`);
+    ok(r.n === 2 && r.kids[0] === 'a' && r.kids[1] === 'b', 'ตัวบังคับขึ้นหน้าใหม่ (breakSel) → แผ่นใหม่ · ตัวมันเองไม่ถูกคัดลอก');
+    r = run(`<div class="root"><div class="brk"></div>${blk(10, 'a')}</div>`);
+    ok(r.n === 1 && r.kids[0] === 'a', 'breakSel ที่หัวแผ่นว่าง → ไม่เกิดแผ่นว่าง');
+
+    r = run(`<div class="root">${blk(60, 'a')}${blk(30, 'h')}${blk(30, 'b')}</div>`);
+    ok(r.n === 2 && r.kids[0] === 'a' && r.kids[1] === 'h,b', 'หัวข้อ (keep) ไม่ถูกทิ้งท้ายแผ่น → ตามเนื้อหาถัดไปไปแผ่นใหม่');
+    r = run(`<div class="root">${blk(40, 'a')}${blk(30, 'h')}${blk(30, 'k')}${blk(30, 'b')}</div>`);
+    ok(r.n === 2 && r.kids[0] === 'a' && r.kids[1] === 'h,k,b', 'หัวข้อซ้อนกันหลายชั้น (keep ติดกัน) ไปด้วยกันทั้งชุด');
+
+    r = run(`<div class="root">${blk(20, 'a')}<style>.x{}</style><script>1</script>${blk(20, 'b')}</div>`);
+    ok(r.kids[0] === 'a,b', '<style>/<script> ในต้นฉบับไม่ถูกคัดลอกลงแผ่น');
+
+    const tbl = `<table class="t"><colgroup><col class="c1"><col class="c2"></colgroup><thead><tr data-h="10"><th>h</th></tr></thead><tbody>
+      <tr data-h="30" id="r1"></tr><tr data-h="30" id="r2"></tr><tr class="grp" data-h="10" id="g"></tr><tr data-h="30" id="r3"></tr></tbody></table>`;
+    r = run(`<div class="root">${blk(20, 'a')}${tbl}</div>`);
+    const tabs = [...pw.document.querySelectorAll('.doc-sheet-body table')];
+    const rowIds = t => [...t.tBodies[0].rows].map(x => x.id).join(',');
+    ok(r.n === 2 && tabs.length === 2 && rowIds(tabs[0]) === 'r1,r2' && rowIds(tabs[1]) === 'g,r3', 'ตารางแบ่งทีละแถว · แถวหัวกลุ่ม (tr.grp) ท้ายแผ่นตามไปแผ่นใหม่ ไม่ถูกทิ้งตามลำพัง');
+    ok(tabs.every(t => t.querySelector(':scope > colgroup col.c2') && t.tHead && t.tHead.rows.length === 1), 'ตารางต่อบนแผ่นใหม่ซ้ำทั้ง colgroup (ความกว้างคอลัมน์) และหัวตาราง');
+    ok(tabs[1].classList.contains('t') && pw.document.querySelector('#doc-src table').tBodies[0].rows.length === 4, 'ตารางต่อคงคลาสเดิม · ต้นฉบับไม่ถูกแก้');
+
+    r = run(`<div class="root">${blk(95, 'a')}${tbl.replace(/data-h="30"/g, 'data-h="10"')}</div>`); // ตารางเตี้ยพอดีแผ่นเดียว แต่แถวแรกไม่พอที่ท้ายแผ่นแรก
+    const t2 = [...pw.document.querySelectorAll('.doc-sheet-body table')];
+    ok(r.n === 2 && t2.length === 1 && r.kids[1] === 't' && rowIds(t2[0]) === 'r1,r2,g,r3', 'แถวแรกยังไม่พอที่ → ย้ายทั้งตารางไปแผ่นใหม่');
+
+    r = run(`<div class="root"><section class="pg-port">${blk(10, 'a')}</section><section class="pg-land">${blk(10, 'b')}</section></div>`, { kindOf: s2 => s2.classList.contains('pg-land') ? 'land' : 'port' });
+    const kinds = [...pw.document.querySelectorAll('.doc-sheet')].map(x => x.classList.contains('is-land') ? 'land' : 'port').join();
+    ok(r.n === 2 && kinds === 'port,land' && pw.document.querySelectorAll('.doc-sheet')[1].style.width === '297mm', 'ต้นฉบับมี <section> → แต่ละ section เริ่มแผ่นใหม่ ชนิดตาม kindOf (แนวตั้ง/แนวนอน)');
+    ok(ctx.docPaginate(pw.document.implementation.createHTMLDocument(''), OPT) === 0, 'ไม่มี #doc-src/#doc-paper → คืน 0 ไม่ error');
+    r = run(`<div class="root"></div>`);
+    ok(r.n === 1, 'ต้นฉบับว่าง → แผ่นเดียว (ไม่ error)');
+  }
+
+  console.log('A2 · docFitSheets');
+  {
+    const df = new JSDOM('<!doctype html><body></body>', { url: 'http://localhost/' }); const fw = df.window;
+    const mkFrame = (frameW, sheetW, scrollH, paperOn = true) => {
+      const frame = fw.document.createElement('iframe'); fw.document.body.appendChild(frame);
+      const d = frame.contentDocument; d.body.innerHTML = '<div id="doc-paper"><section class="doc-sheet"></section></div>';
+      if (paperOn) d.documentElement.classList.add('paper-on');
+      Object.defineProperty(frame, 'clientWidth', { value: frameW });
+      Object.defineProperty(d.querySelector('.doc-sheet'), 'offsetWidth', { value: sheetW });
+      Object.defineProperty(d.documentElement, 'scrollHeight', { value: scrollH });
+      return { frame, paper: d.getElementById('doc-paper') };
+    };
+    const zoom = f => f.paper.style.getPropertyValue('--doc-zoom');
+    let f = mkFrame(416, 794, 1500); ctx.docFitSheets(f.frame);
+    ok(Math.abs(zoom(f) - (416 - 16) / 794) < 1e-3 && f.frame.style.getPropertyValue('--fit-h') === '1500px', 'กรอบแคบกว่าแผ่น → ย่อ (เผื่อขอบ 16px) และตั้งความสูง iframe = ความสูงเนื้อหา');
+    f = mkFrame(1400, 794, 900); ctx.docFitSheets(f.frame);
+    ok(zoom(f) === '1.0000', 'กรอบกว้างกว่าแผ่น → ไม่ขยายเกินขนาดจริง');
+    f = mkFrame(0, 0, 100); ctx.docFitSheets(f.frame);
+    ok(Number(zoom(f)) === 1, 'ยังไม่มีขนาด (แท็บซ่อน) → คง 1 ไม่ใส่ NaN');
+    f = mkFrame(0, 794, 100); ctx.docFitSheets(f.frame);
+    ok(Number.isFinite(Number(zoom(f))) && Number(zoom(f)) > 0 && zoom(f) !== '0.0000', 'กรอบกว้าง 0 → ไม่ใส่ NaN/0');
+    f = mkFrame(400, 794, 900, false); ctx.docFitSheets(f.frame);
+    ok(zoom(f) === '' && f.frame.style.getPropertyValue('--fit-h') === '', 'ยังไม่ตัดหน้า (ไม่มี paper-on) → ไม่แตะอะไร');
+    let threw = false; try { ctx.docFitSheets({ contentDocument: null }); } catch (e) { threw = true; } ok(!threw, 'iframe ยังไม่มีเอกสาร → ไม่ error');
+  }
+
+  console.log('A2 · ขอบแผ่นบนจอตรงกับ @page ตอนพิมพ์');
+  {
+    const m = /@page\{size:A4;margin:(\d+)mm (\d+)mm\}/.exec(PAGE_A4);
+    ok(m && JSON.stringify(SHEET_A4.pad) === JSON.stringify([+m[1], +m[2], +m[1], +m[2]]) && SHEET_A4.w === 210 && SHEET_A4.h === 297, 'DOC_SHEET_A4 = DOC_PAGE_A4 (A4 ขอบ 16/14 มม. — PA ทั้งตัวอย่างและตัวพิมพ์)');
   }
 
   console.log('A · docWatchResize');
@@ -142,14 +226,14 @@ const escapeHtml = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<':
     await fireView();
     const opts = [...tb().querySelectorAll('.doc-preview-select option')];
     ok(opts.length === 2 && opts[0].textContent.includes('ภาคเรียนที่ 1 ปีการศึกษา 2569'), 'ตัวเลือก = แผนที่บันทึกไว้ (2 แผน)');
-    ok(tb().querySelector('#idp-preview-frame')?.classList.contains('doc-preview-frame'), 'มี iframe ตัวอย่าง (#idp-preview-frame) ในกรอบ doc-preview-frame-wrap');
-    ok(!tb().querySelector('.doc-paper'), 'ID-Plan ไม่ห่อ .doc-paper (กระดาษเป็น iframe ตัดหน้าเอง)');
-    ok(/idp1/.test(tb().querySelector('#idp-preview-frame').getAttribute('srcdoc') || ''), 'ใส่ srcdoc ของแผนที่เลือก (ตัวสร้างเอกสาร idpBuildPreviewHtml)');
-    ok(/ค21101/.test(tb().querySelector('#idp-preview-frame').getAttribute('srcdoc') || ''), 'srcdoc เป็นข้อมูลของแผนแรก (มี ค21101)');
+    ok(tb().querySelector('.doc-preview-frame-wrap > iframe.doc-preview-frame'), 'มี iframe ตัวอย่าง (.doc-preview-frame) ในกรอบ doc-preview-frame-wrap');
+    ok(/id="doc-src"/.test(tb().querySelector('.doc-preview-frame').getAttribute('srcdoc')) && /id="doc-paper"/.test(tb().querySelector('.doc-preview-frame').getAttribute('srcdoc')), 'srcdoc ใช้โครงกลาง docSheetsHtml (#doc-src ต้นฉบับ + #doc-paper แผ่นกระดาษ)');
+    ok(/idp1/.test(tb().querySelector('.doc-preview-frame').getAttribute('srcdoc') || ''), 'ใส่ srcdoc ของแผนที่เลือก (ตัวสร้างเอกสาร idpBuildPreviewHtml)');
+    ok(/ค21101/.test(tb().querySelector('.doc-preview-frame').getAttribute('srcdoc') || ''), 'srcdoc เป็นข้อมูลของแผนแรก (มี ค21101)');
 
     // 2) เลือกแผนอื่น
     const sel = tb().querySelector('.doc-preview-select'); sel.value = 'p2'; sel.dispatchEvent(new w2.Event('change', { bubbles: true })); await sleep(40);
-    ok(tb().querySelector('.doc-preview-select').value === 'p2' && !/ค21101/.test(tb().querySelector('#idp-preview-frame').getAttribute('srcdoc')), 'เลือกแผน 2 → วาดใหม่ด้วยแผน 2');
+    ok(tb().querySelector('.doc-preview-select').value === 'p2' && !/ค21101/.test(tb().querySelector('.doc-preview-frame').getAttribute('srcdoc')), 'เลือกแผน 2 → วาดใหม่ด้วยแผน 2');
 
     // 3) แก้ไข: แผนอื่น (ไม่มีแผนเปิดอยู่) → เข้าฟอร์มด้วยแผนนั้น
     sw.length = 0; tb().querySelector('.doc-preview-edit').click();
@@ -171,7 +255,7 @@ const escapeHtml = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<':
     ok(/ฉบับที่ยังไม่บันทึก/.test(tb().querySelector('.doc-preview-select option').textContent), 'ฉบับที่ยังไม่บันทึกดูได้');
 
     // 6) พิมพ์ → iframe.print()
-    const frame = tb().querySelector('#idp-preview-frame');
+    const frame = tb().querySelector('.doc-preview-frame');
     Object.defineProperty(frame, 'contentWindow', { value: { focus() {}, print() { printed++; } } });
     tb().querySelector('.doc-preview-print').click(); ok(printed === 1, 'ปุ่มพิมพ์ → สั่ง print() ของ iframe');
 
@@ -190,11 +274,14 @@ const escapeHtml = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<':
     const bad1 = sysFiles.filter(f => /addEventListener\(\s*['"]resize['"]/.test(strip(read(f))));
     ok(bad1.length === 0, 'ไฟล์ระบบเอกสารไม่ฟัง resize เอง (ใช้ docWatchResize)' + (bad1.length ? ' — พบที่: ' + bad1.join(', ') : ''));
     const bad2 = sysFiles.filter(f => /\.style\.zoom\s*=/.test(strip(read(f))));
-    ok(bad2.length === 0, 'ไม่ตั้ง el.style.zoom เอง (ใช้ docFitPaper → --fit-zoom ใน CSS)' + (bad2.length ? ' — พบที่: ' + bad2.join(', ') : ''));
+    ok(bad2.length === 0, 'ไม่ตั้ง el.style.zoom เอง (โครงกลาง docFitSheets ตั้ง --doc-zoom ให้)' + (bad2.length ? ' — พบที่: ' + bad2.join(', ') : ''));
     const bad3 = sysFiles.filter(f => /\.parp-(bar|paper|actions|hint|select)\b/.test(read(f)) || /parp-(bar|paper|actions|hint)/.test(strip(read(f))));
     ok(bad3.length === 0, 'ไม่มีคลาสแถบ/กระดาษชุดเก่า (.parp-bar/.parp-paper/…) ในโค้ด' + (bad3.length ? ' — พบที่: ' + bad3.join(', ') : ''));
     const css = read('css/style.css');
-    ok(/\.doc-paper\s*\{/.test(css) && /\.doc-paper \.pa1\s*\{[^}]*zoom:\s*var\(--fit-zoom/.test(css), 'css/style.css มี .doc-paper และ .pa1 ใช้ zoom: var(--fit-zoom)');
+    ok(!/\.doc-paper\b|--fit-zoom/.test(css), 'css/style.css ไม่มีกระดาษแทรกในหน้าชุดเก่า (.doc-paper · --fit-zoom) แล้ว — ทุกหน้าใช้แผ่นใน iframe');
+    const bad4 = sysFiles.filter(f => /function\s+\w*(Paginate|FitPaper)\b/.test(strip(read(f))) || /id=["']\w*-(src|paper)["']/.test(strip(read(f))));
+    ok(bad4.length === 0, 'ไฟล์ระบบเอกสารไม่เขียนตัวตัดหน้า/ย่อกระดาษเอง (ใช้ docPaginate/docFitSheets) และไม่ตั้ง id แผ่นกระดาษเอง' + (bad4.length ? ' — พบที่: ' + bad4.join(', ') : ''));
+    ok(!/docFitPaper|fitPage/.test(strip(read('js/doc-shell.js'))), 'doc-shell.js ไม่เหลือ docFitPaper/fitPage');
     ok(/\.parp-legacy\s*\{/.test(css) && /\.parp-legacy-text\s*\{/.test(css), 'สไตล์กล่อง "ข้อมูลแบบเดิม" ย้ายมาอยู่ใน css/style.css แล้ว');
     const fs2 = read('js/doc-shell.js');
     ok(/docRenderPreview/.test(read('js/pa-report.js')) && /docRenderPreview/.test(read('js/pa-rpt.js')) && /docRenderPreview/.test(read('js/idp.js')), 'ทั้งสามหน้าตัวอย่างเรียก docRenderPreview');

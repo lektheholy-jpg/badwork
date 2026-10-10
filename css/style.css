@@ -2365,9 +2365,6 @@ table.tt tr.is-today td.tt-cell { background: color-mix(in srgb, var(--hue-orang
 .doc-preview-frame-wrap { overflow: hidden; border-radius: var(--radius-m); background: var(--surface-sunken); }
 .doc-preview-frame { display: block; width: 100%; height: 80vh; border: 0; background: var(--white); }
 .doc-preview-frame.is-fit { height: var(--fit-h, 80vh); }
-/* กระดาษตัวอย่างแบบแทรกในหน้า (PA · รายงานผล) — docRenderPreview({ fitPage }) ตั้ง --fit-zoom ให้ย่อพอดีจอ · แบบใหม่ที่ใช้คลาสหน้ากระดาษอื่นให้เพิ่ม selector ต่อจาก .pa1 */
-.doc-paper { width: fit-content; max-width: 100%; margin: 0 auto; background: var(--white); border-radius: var(--radius-s); box-shadow: 0 0 0 1px var(--border); overflow-x: auto; }
-.doc-paper .pa1 { box-sizing: border-box; width: 210mm; padding: 16mm 14mm; zoom: var(--fit-zoom, 1); }
 .parp-legacy { margin-top: 14px; }
 .parp-legacy > summary { cursor: pointer; font-weight: 600; font-size: 13.5px; color: var(--ink-soft); }
 .parp-legacy-text { white-space: pre-wrap; margin-top: 8px; font-size: 13.5px; padding: 10px 12px; border-radius: var(--radius-s); background: var(--surface-sunken); }

@@ -117,7 +117,8 @@ const run = code => vm.runInContext(code, ctx);
     vm.createContext(c2);
     // pa.js / pa-rpt.js ท้ายไฟล์ลงทะเบียน UI ซึ่งต้องพึ่งไฟล์อื่น — ตัดมาเฉพาะฟังก์ชันพิมพ์เพื่อทดสอบการเรียกตัวช่วย
     const grab = (f, name) => { const s = read(f), a = s.indexOf(name), b = s.indexOf('\n}\n', a) + 3; return s.slice(a, b); };
-    vm.runInContext(grab('js/pa.js', 'function paPrint(') + grab('js/pa-rpt.js', 'async function parptPrint('), c2);
+    const fontsDecl = /const PA1_FONTS = [^\n]*;/.exec(read('js/pa.js'))[0]; // รายการฟอนต์ของ PA ใช้ร่วมกับตัวอย่างบนจอ — ดึงของจริงจาก pa.js
+    vm.runInContext(fontsDecl + '\n' + grab('js/pa.js', 'function paPrint(') + grab('js/pa-rpt.js', 'async function parptPrint('), c2);
     await vm.runInContext("paPrint({ fiscalYear: 2569 }, { name: 'สมชาย ใจดี' })", c2);
     const a = calls[0];
     ok(a.title === 'PA1_สมชาย_ใจดี_2569', 'paPrint: ชื่อไฟล์ PA1_<ชื่อ>_<ปี> (เว้นวรรคเป็น _)');

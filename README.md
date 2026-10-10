@@ -39,7 +39,7 @@ npm run test:pa          # กลุ่มหน้า Personal Agreement: โ�
 npm run test:worker      # พร็อกซี Gemini (worker/worker.js): ตรวจ token/email_verified · rate limit ต่อ uid · คีย์อยู่ใน header
 npm run test:priv        # ส่งออก/ลบบัญชีครอบคลุมเอกสารทุกระบบ (pa_*) และหยุดก่อนลบถ้าโหลด config ไม่ได้
 npm run test:docprint    # ตัวช่วยพิมพ์กลาง (docWaitFonts · docPrintWindow ใน doc-shell.js) + กันไม่ให้ window.open/โค้ดรอฟอนต์หลุดนอก doc-shell.js
-npm run test:docprev     # โครงหน้าตัวอย่างกลาง (docRenderPreview · docFitPaper · docWatchResize) + หน้าตัวอย่าง ID-Plan จริง + กันโค้ด resize/zoom/CSS แถบตัวอย่างหลุดเข้าไฟล์ระบบ
+npm run test:docprev     # โครงหน้าตัวอย่างกลาง (docRenderPreview · docPaginate · docFitSheets · docWatchResize) + หน้าตัวอย่าง ID-Plan จริง + กันโค้ด resize/zoom/ตัดหน้า/CSS แถบตัวอย่างหลุดเข้าไฟล์ระบบ
 ```
 
 - หน้าเว็บโหลด `css/style.min.css` · commit `.min` และ `package-lock.json` ด้วย
@@ -69,7 +69,7 @@ js/picker-pages.js    หน้าเลือกวิชา/ห้อง
 js/report-page.js     หน้ารายงาน
 js/nav-history.js     ปุ่ม/ท่าย้อนกลับของระบบ (History API): entry ต่อหน้า/รายวิชา + "ชั้น" ของป๊อปอัป · record · patch · layer · backTo · applyScroll
 js/doc-system.js      ระบบเอกสาร (context ต่อระบบ): config + state (sys.state · sys.rptState) + sys.col(kind, uid) · แทน global PAState/PARptState — โหลดก่อน pa-config.js
-js/doc-shell.js       โครงหน้ากลางของทุกระบบเอกสาร: หัวเรื่อง+แท็บ · สลับแท็บ/ตัวโหลด · ตัวช่วยร่วม (วันที่ไทย/ปีงบ/ไอคอน/ป้ายสถานะ/ฟอนต์พิมพ์) · ตัวช่วยพิมพ์ (docWaitFonts · docPrintWindow) · โครงหน้าตัวอย่าง (docRenderPreview · docFitPaper · docWatchResize) · registerDocUi · renderDocPage(id)
+js/doc-shell.js       โครงหน้ากลางของทุกระบบเอกสาร: หัวเรื่อง+แท็บ · สลับแท็บ/ตัวโหลด · ตัวช่วยร่วม (วันที่ไทย/ปีงบ/ไอคอน/ป้ายสถานะ/ฟอนต์พิมพ์) · ตัวช่วยพิมพ์ (docWaitFonts · docPrintWindow) · โครงหน้าตัวอย่าง (docRenderPreview · docPaginate · docFitSheets · docWatchResize) · registerDocUi · renderDocPage(id)
 js/pa-config.js       PA_CONFIG: ค่าคงที่ของระบบ PA ที่เดียว (ชื่อ collection · แท็บ · โครงฟอร์ม PA 1/ส · ช่องบริบท AI · พร้อต์/รุ่น/คีย์ของผู้ช่วย AI) — โหลดหลัง doc-system.js ก่อน pa.js (ท้ายไฟล์ลงทะเบียนเป็นระบบ 'pa')
 js/pa.js              ฟอร์มข้อตกลง PA 1/ส (lazy — โหลดตอนเข้าหน้า PA พร้อม pa-config/badwork-ai/pa-report/pa-rpt ผ่าน LAZY_BUNDLES.pa)
 js/badwork-ai-config.js  BADWORK_AI_CONFIG: ตั้งค่า AI ที่ใช้ร่วมทุกระบบเอกสาร (คีย์/พร็อกซี · รายชื่อรุ่น · คีย์รุ่นที่เลือก · คีย์ความยินยอม) ที่เดียว
@@ -191,18 +191,19 @@ users/{uid}/pa_reports/{docId}               แบบรายงานผล P
   - `css` = สไตล์ของแบบ (เช่น `PA1_CSS`) · `page` = กฎ `@page` (ค่าเริ่มต้น `DOC_PAGE_A4` = A4 ขอบ 16/14 มม. แบบ PA) · `fonts` = รายการฟอนต์ที่ต้องรอ (ค่าเริ่มต้น `DOC_FONT_SPECS` = ปกติ+หนา · PA ข้อตกลงเพิ่มตัวเอียง)
   - ไม่มี `document.fonts` → หน่วง 600 มิลลิวินาทีแทน · pop-up ถูกบล็อก → แจ้งผู้ใช้และคืน `null`
 - `docWaitFonts(doc, specs?, maxMs?)` — รอฟอนต์ของเอกสาร `doc` (ไม่เกิน `maxMs` ค่าเริ่มต้น 2.5 วินาที · ไม่ reject) คืน `true` = มี font API และรอแล้ว · ใช้ก่อนวัดความสูง/ตัดหน้า เพราะความสูงแถวขึ้นกับฟอนต์
-- **ID-Plan ไม่ใช้ `docPrintWindow`** — พิมพ์ผ่าน iframe (`frame.contentWindow.print()`) เพราะใช้ named `@page` แนวตั้ง/แนวนอนในไฟล์เดียวและต้องตัดหน้าก่อน (`idpPaginate`) · ใช้ร่วมแค่ `docWaitFonts` · ระบบใหม่ที่เป็นหน้ากระดาษเดียวแนวเดียวใช้ `docPrintWindow` ได้เลย
-- ยังไม่รวม (ขั้นถัดไป): วิธีย่อกระดาษของ ID-Plan (`idpFitPaper` — iframe + ตัดหน้า + ปรับความสูง) กับของ PA (`docFitPaper` — ตัวแปร `--fit-zoom`) ยังเป็นคนละวิธี
+- **ID-Plan ไม่ใช้ `docPrintWindow`** — พิมพ์ผ่าน iframe (`frame.contentWindow.print()`) เพราะใช้ named `@page` แนวตั้ง/แนวนอนในไฟล์เดียว · ใช้ร่วมกับระบบอื่นแค่ `docWaitFonts` และตัวตัดหน้า/ย่อกระดาษกลาง (`docPaginate` · `docFitSheets` ด้านล่าง) · ระบบใหม่ที่เป็นหน้ากระดาษเดียวแนวเดียวใช้ `docPrintWindow` ได้เลย
+- วิธีตัดหน้า/ย่อกระดาษรวมเป็นแบบเดียวแล้ว (ดู "แผ่นกระดาษตัวอย่าง" ด้านล่าง) — `idpPaginate` · `idpFitPaper` · `docFitPaper` (`--fit-zoom`) ถูกยกเลิกหมด
 
 ### หน้า "ตัวอย่าง / พิมพ์" (โครงกลางใน `js/doc-shell.js`)
 
 - **ทุกระบบวาดหน้าตัวอย่างด้วย `docRenderPreview({...})`** — แถบเลือกเอกสาร · ปุ่มแก้ไข/พิมพ์ · ข้อความแนะนำ · สถานะว่าง · การ์ดโหลดไม่สำเร็จ · ตรวจ "สลับแท็บแล้วไม่วาดทับ" อยู่ที่เดียว (เดิม PA · รายงานผล · ID-Plan เขียนซ้ำคนละชุด) · ผู้เรียกบอกแค่ข้อมูลและตัวจัดการ — ดูรายการตัวเลือกที่หัวฟังก์ชัน · ตัวอย่างการใช้: ท้าย `renderPAReportView` (`js/pa-report.js`) และ `idpRenderPreviewView` (`js/idp.js`)
   - `load()` คืน `{ items: [{id, label}], pickId, …}` (ต้องไม่เขียน state — ใช้ `shown(ctx)` ที่โครงกลางเรียกหลังตรวจแล้วว่ายังอยู่หน้านี้) · `items` ว่าง = สถานะว่าง · `load` โยน error = การ์ดแจ้ง
-  - `fitPage: '.pa1'` → โครงกลางห่อกระดาษด้วย `.doc-paper` แล้วย่อให้พอดีจอ (`docFitPaper` ตั้ง `--fit-zoom` ที่ `.doc-paper` → `css/style.css` ใช้ `zoom: var(--fit-zoom)` ที่ `.pa1`) และย่อซ้ำตอนปรับขนาดหน้าต่าง (`docWatchResize` ถอด listener เองเมื่อสลับแท็บ/ออกจากหน้า) · แบบเอกสารใหม่ที่ใช้คลาสหน้ากระดาษอื่นให้เพิ่ม selector ต่อจาก `.doc-paper .pa1` ใน CSS
-  - ไม่ใส่ `fitPage` = ผู้เรียกจัดการกระดาษเอง (ID-Plan: iframe + `mount()` ตัดหน้า) · `mount(view, ctx)` เรียกหลังวาด (async ได้ และโครงกลางรอจนจบ)
-  - **สไตล์แถบ/กระดาษตัวอย่างอยู่ที่ `css/style.css` (`.doc-preview-*` · `.doc-paper`) — ห้ามฝัง `<style>` ในไฟล์ JS** · `tests/doc-preview.test.js` ตรวจ · ห้ามตั้ง `el.style.zoom` / ฟัง `resize` เองในไฟล์ระบบ (ใช้ `docFitPaper` / `docWatchResize`)
+  - **`sheets(ctx)` = กระดาษตัวอย่าง ทุกระบบหน้าตาเหมือนกัน**: iframe พื้นเทา + แผ่น A4 แยกหน้า (เงา · ป้าย "หน้า n / N · ขนาด") ย่อพอดีความกว้างจอ · คืน `{ html(), specs, bodyClass, keep, breakSel, kindOf?, fonts? }` — `html()` คืนเอกสารเต็มสำหรับ `srcdoc` (ห่อด้วย `docSheetsHtml(css, bodyHtml)` ที่ใส่ `#doc-src` ต้นฉบับ + `#doc-paper` แผ่นกระดาษ + CSS แผ่นกลาง `DOC_PAPER_CSS`) · `specs` = `{ ชนิดแผ่น: { w, h, pad:[บน,ขวา,ล่าง,ซ้าย], label } }` หน่วยมม. **ต้องตรงกับ `@page` ตอนพิมพ์ของระบบนั้น** (PA ใช้ `DOC_SHEET_A4` = `DOC_PAGE_A4` · ID-Plan ใช้ `IDP_SHEET`; เทสต์ตรวจ) · `keep` = selector หัวข้อที่ห้ามถูกทิ้งท้ายแผ่น · `breakSel` = ตัวบังคับขึ้นหน้าใหม่ (`.p1-break`) · `kindOf(section)` เลือกแนวตั้ง/แนวนอนต่อ `<section>`
+  - `docPaginate` ตัดต้นฉบับทีละบล็อก · ตารางแบ่งทีละแถว ซ้ำ `colgroup` + หัวตาราง ทุกแผ่น · แถวหัวกลุ่ม `tr.grp` ไม่ถูกทิ้งท้ายแผ่น · `<style>` ในต้นฉบับไม่ถูกคัดลอก · ต้องเรียกหลังฟอนต์/รูปโหลด (โครงกลางรอให้เอง: `docWaitFonts` + `docWaitImages`) · `docFitSheets` ย่อด้วย `--doc-zoom` และปรับความสูง iframe — ตัดหน้า/ย่อซ้ำตอนปรับขนาดหน้าต่าง (`docWatchResize` ถอด listener เองเมื่อสลับแท็บ/ออกจากหน้า) · **ตัวพิมพ์จริงยังเป็นตัวตัดสิน** ตัวอย่างบนจอคือการประมาณจากเลย์เอาต์ของเบราว์เซอร์ที่เปิดอยู่
+  - `docRenderPreview` ไม่รอการตัดหน้า (iframe/ฟอนต์/รูปใช้เวลา) — แถบแสดงทันที กระดาษตามมา · `mount(view, ctx)` เรียกหลังวาดแถบ (async ได้ และโครงกลางรอจนจบ) · ปุ่มพิมพ์ของ ID-Plan ใช้ `view.querySelector('.doc-preview-frame')`
+  - **สไตล์แถบตัวอย่างอยู่ที่ `css/style.css` (`.doc-preview-*`) · สไตล์แผ่นกระดาษอยู่ใน iframe (`DOC_PAPER_CSS` ใน `js/doc-shell.js`) — ห้ามฝัง `<style>` สไตล์แถบ/กระดาษในไฟล์ระบบ** · `tests/doc-preview.test.js` ตรวจ · ห้ามตั้ง `el.style.zoom` / ฟัง `resize` / เขียนตัวตัดหน้าเองในไฟล์ระบบ (ใช้ `docPaginate` · `docFitSheets` · `docWatchResize`)
 - id ของปุ่ม/ช่องเลือกเปลี่ยนเป็นคลาสกลาง: `.doc-preview-select` · `.doc-preview-edit` · `.doc-preview-print` · `.doc-preview-goto` (เดิม `#parp-select` · `.parp-print` · `#idp-prev-select` · `#idp-print-btn` …) — โค้ด/เทสต์ที่อ้างชื่อเดิมต้องแก้
-- **golden ของ PA เปลี่ยนโดยตั้งใจ 3 จุด** (`ui.reportTab` · `ui.rptPreview` · `ui.tabs` ใน `tests/pa-golden.json`) เพราะ HTML ของแท็บตัวอย่างเปลี่ยนจากคลาส `.parp-*` + `<style>` ฝัง เป็นคลาสกลาง — ตรวจด้วย `PA_DUMP` เทียบก่อน/หลังแล้วว่าต่างกันเฉพาะชื่อคลาส/การย้าย `<style>` ออก (เนื้อหาเอกสาร ข้อความ ตัวเลือก ภาคผนวก เหมือนเดิมทุกตัวอักษร)
+- **golden ของ PA เปลี่ยนโดยตั้งใจ 3 จุด** (`ui.reportTab` · `ui.rptPreview` · `ui.tabs` ใน `tests/pa-golden.json`) เพราะกระดาษของแท็บตัวอย่างเปลี่ยนจาก HTML แทรกในหน้า (`.doc-paper`) เป็น iframe `srcdoc` — ตรวจด้วย `PA_DUMP` เทียบก่อน/หลังแล้ว: เอกสารใน `#doc-src` เหมือนเดิมทุกตัวอักษร (ต่างแค่การ serialize `<rect/>` ของกล่องติ๊กใน `srcdoc`) · แถบ/ข้อความแนะนำ/กล่อง "ข้อมูลแบบเดิม" เหมือนเดิม
 
 ### เพิ่มระบบเอกสารใหม่ (เช่น ID-Plan)
 ส่วนกลาง (ไม่ต้องแก้): `js/doc-system.js` (ทะเบียนระบบ · state · collection) และ `js/doc-shell.js` (โครงหน้า · แท็บ · ตัวช่วยร่วม)
