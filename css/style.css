@@ -2295,7 +2295,7 @@ table.tt tr.is-today td.tt-cell { background: color-mix(in srgb, var(--hue-orang
   outline: none; border-color: var(--primary); box-shadow: 0 0 0 4px var(--primary-tint); background: var(--card);
 }
 
-.idp-table-wrap { overflow-x: auto; }
+.idp-table-wrap { overflow-x: auto; container: idp-wrap / inline-size; }
 .idp-comp-table, .idp-sum-table { width: 100%; min-width: 880px; border-collapse: collapse; }
 .idp-comp-table th, .idp-sum-table th { padding: 8px 6px; text-align: left; font-size: 12.5px; font-weight: 600; color: var(--ink-soft); border-bottom: 1.5px solid var(--border); }
 .idp-comp-table td, .idp-sum-table td { padding: 6px; vertical-align: top; border-bottom: 1px solid var(--border); }
@@ -2312,9 +2312,8 @@ table.tt tr.is-today td.tt-cell { background: color-mix(in srgb, var(--hue-orang
 }
 .idp-sum-table select::picker-icon { display: none; }
 
-/* --- IDP: Responsive stacked layout (≤ 900 px — ตารางกว้างขั้นต่ำ 880px จึงไม่ต้องเลื่อนซ้าย-ขวาในจอที่แคบกว่านี้) --- */
-@media (max-width: 900px) {
-  .idp-table-wrap { overflow-x: visible; }
+/* --- IDP: Responsive stacked layout — วัดจากความกว้างของกรอบตารางเอง (ไม่ใช่หน้าจอ) เพราะมีแถบเมนูข้าง/ขอบกินที่ไว้ · ตารางกว้างขั้นต่ำ 880px จึงสลับเป็นการ์ดเมื่อกรอบแคบกว่า 900px --- */
+@container idp-wrap (max-width: 900px) {
   .idp-comp-table, .idp-sum-table { min-width: 0; border-collapse: separate; border-spacing: 0; }
   .idp-comp-table thead, .idp-sum-table thead { display: none; }
   .idp-comp-table tbody tr, .idp-sum-table tbody tr {

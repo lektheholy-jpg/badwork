@@ -356,6 +356,13 @@ async function idpRenderFormView() {
   const sumCompOptions = comps.map(([cid, shortName]) =>
     `<option value="${cid}">${escapeHtml(shortName)}</option>`).join('');
 
+  // ส่วนที่ 3: แถวที่เลือกสมรรถนะไว้แล้วแต่ช่องยังว่าง → เติมจากส่วนที่ 2 ให้ (ไม่ทับข้อความที่พิมพ์ไว้แล้ว)
+  (doc.summary || []).forEach(sm => {
+    const src = sm.compId && doc.comps?.[sm.compId];
+    if (!src) return;
+    ['method', 'startDate', 'endDate', 'benefit'].forEach(f => { if (!sm[f] && src[f]) sm[f] = src[f]; });
+  });
+
   let summaryHtml = '';
   for (let i = 0; i < 3; i++) {
     const s = doc.summary?.[i] || {};
