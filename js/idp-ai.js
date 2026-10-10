@@ -86,7 +86,7 @@ function idpAiSlots(sys, form) {
   // แถวปุ่มอยู่ใต้ชื่อสมรรถนะ (คอลัมน์แรกของแต่ละแถว) — ปุ่มใช้กับทั้ง 3 ช่องของแถวนั้น
   form.querySelectorAll('#idp-comps-body tr').forEach(tr => {
     const cid = tr.querySelector('[data-comp-id]')?.dataset.compId;
-    const host = tr.querySelector('td');
+    const host = tr.querySelector('.idp-ai-anchor') || tr.querySelector('td');
     if (!cid || !host) return;
     out.push({ host, buttons: [
       { act: 'c-write', label: 'เขียนช่องที่ว่างของสมรรถนะนี้', icon: 'write', data: { cid } },

@@ -183,6 +183,7 @@ function idpCollect() {
   doc.semester  = get('idp-semester');
   doc.year      = get('idp-year');
   doc.signDate  = get('idp-signDate');
+  if (document.getElementById('idp-status')) doc.status = document.getElementById('idp-status').value || 'draft';
 
   // รายการส่วนที่ 1 — อ่านจากโครงกลางของ doc-shell.js (หน้าไม่มีบล็อกนั้น = คงค่าเดิม)
   doc.subjects   = docLRows('subjects')   || doc.subjects;
@@ -335,18 +336,18 @@ async function idpRenderFormView() {
     const c = doc.comps?.[cid] || {};
     compsHtml += `
     <tr>
-      <td><div class="idp-comp-name">${escapeHtml(fullName)}</div>${(subs || []).map(([no, nm]) => `<div class="idp-comp-sub">${no} ${escapeHtml(nm)}</div>`).join('')}</td>
+      <td><div class="idp-ai-anchor"></div><div class="idp-comp-name">${escapeHtml(fullName)}</div>${(subs || []).map(([no, nm]) => `<div class="idp-comp-sub">${no} ${escapeHtml(nm)}</div>`).join('')}</td>
       <td><input class="input-sm" type="number" min="1" max="${comps.length}" placeholder="1–${comps.length}"
             data-comp-id="${cid}" data-comp-field="priority" value="${escapeHtml(c.priority || '')}"></td>
-      <td><textarea class="idp-ta" rows="6" id="idp-${cid}-method"
+      <td><textarea class="idp-ta" id="idp-${cid}-method"
             data-comp-id="${cid}" data-comp-field="method">${escapeHtml(c.method || '')}</textarea></td>
       <td><input class="input-sm" type="text" placeholder="เช่น ต.ค. 68"
             data-comp-id="${cid}" data-comp-field="startDate" value="${escapeHtml(c.startDate || '')}"></td>
       <td><input class="input-sm" type="text" placeholder="เช่น มี.ค. 69"
             data-comp-id="${cid}" data-comp-field="endDate" value="${escapeHtml(c.endDate || '')}"></td>
-      <td><textarea class="idp-ta" rows="3" id="idp-${cid}-goal"
+      <td><textarea class="idp-ta" id="idp-${cid}-goal"
             data-comp-id="${cid}" data-comp-field="goal">${escapeHtml(c.goal || '')}</textarea></td>
-      <td><textarea class="idp-ta" rows="3" id="idp-${cid}-benefit"
+      <td><textarea class="idp-ta" id="idp-${cid}-benefit"
             data-comp-id="${cid}" data-comp-field="benefit">${escapeHtml(c.benefit || '')}</textarea></td>
     </tr>`;
   });
@@ -367,9 +368,9 @@ async function idpRenderFormView() {
           `<option value="${cid}"${s.compId === cid ? ' selected' : ''}>${escapeHtml(shortName)}</option>`
         ).join('')}
       </select></td>
-      <td><textarea class="idp-ta" rows="2" data-sum="${i}" data-sf="method">${escapeHtml(s.method || '')}</textarea></td>
+      <td><textarea class="idp-ta" data-sum="${i}" data-sf="method">${escapeHtml(s.method || '')}</textarea></td>
       <td><input class="input-sm" type="text" placeholder="เช่น ต.ค. 68" data-sum="${i}" data-sf="startDate" value="${escapeHtml(s.startDate || '')}">–<input class="input-sm" type="text" placeholder="มี.ค. 69" data-sum="${i}" data-sf="endDate" value="${escapeHtml(s.endDate || '')}"></td>
-      <td><textarea class="idp-ta" rows="2" data-sum="${i}" data-sf="benefit">${escapeHtml(s.benefit || '')}</textarea></td>
+      <td><textarea class="idp-ta" data-sum="${i}" data-sf="benefit">${escapeHtml(s.benefit || '')}</textarea></td>
     </tr>`;
   }
 
@@ -397,6 +398,12 @@ async function idpRenderFormView() {
         </label>
         <label>วันที่ลงนาม
           <input id="idp-signDate" type="text" placeholder="เช่น 8 มิ.ย. 2569" value="${escapeHtml(doc.signDate)}">
+        </label>
+        <label>สถานะ
+          <select id="idp-status">
+            <option value="draft"${(doc.status || 'draft') === 'draft' ? ' selected' : ''}>ร่าง</option>
+            <option value="submitted"${doc.status === 'submitted' ? ' selected' : ''}>ส่งแล้ว</option>
+          </select>
         </label>
       </div>
     </div>
@@ -478,6 +485,22 @@ async function idpRenderFormView() {
   </form>`;
   docSwapIn(root);
   if (typeof badworkAiMount === 'function') badworkAiMount(root, document.getElementById('idp-form'), sys); // ปุ่มผู้ช่วย AI (js/badwork-ai.js + ตัวต่อ js/idp-ai.js) — ไม่มีไฟล์นี้ฟอร์มก็ทำงานตามเดิม
+
+  // Auto-expand textareas: แสดงข้อความทั้งหมดโดยไม่ซ่อน
+  (function () {
+    function idpExpandTa(ta) {
+      ta.style.height = 'auto';
+      ta.style.height = ta.scrollHeight + 'px';
+    }
+    document.getElementById('idp-form')?.querySelectorAll('textarea.idp-ta').forEach(ta => {
+      ta.style.overflow = 'hidden';
+      ta.style.resize = 'none';
+      idpExpandTa(ta);
+      ta.addEventListener('input', () => idpExpandTa(ta));
+    });
+    // รองรับการที่ AI เติมข้อความ (fires input event บน textarea)
+    window._idpExpandTa = idpExpandTa;
+  })();
 
   // Wire events
   docLBind(document.getElementById('idp-form'), { totalKeys: ['subjects', 'activities'], totalEl: '#idp-total-hours' });
