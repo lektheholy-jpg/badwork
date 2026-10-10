@@ -278,16 +278,16 @@ a { color: inherit; }
 
 .field { margin-bottom: 14px; }
 .field label { display: block; margin-bottom: 5px; color: var(--ink-soft); font-weight: 600; font-size: 13.5px; }
-.field input, .field textarea, .pa-l-name, .pa-l-hours {
+.field input, .field textarea, .doc-l-name, .doc-l-hours {
   width: 100%; min-width: 0; resize: vertical;
   font-size: 14px; line-height: 1.6; border: 1.5px solid transparent; border-radius: var(--radius-s); font-family: var(--font); padding: 12px 14px; background: var(--surface-sunken); color: var(--ink);
   transition: border-color .15s ease, background-color .15s ease, box-shadow .15s ease;
 }
-.field input:hover, .field textarea:hover, .pa-l-name:hover, .pa-l-hours:hover { border-color: var(--border); }
-.field input:focus, .field textarea:focus, .pa-l-name:focus, .pa-l-hours:focus {
+.field input:hover, .field textarea:hover, .doc-l-name:hover, .doc-l-hours:hover { border-color: var(--border); }
+.field input:focus, .field textarea:focus, .doc-l-name:focus, .doc-l-hours:focus {
   outline: none; border-color: var(--primary); box-shadow: 0 0 0 4px var(--primary-tint); background: var(--card); color: var(--ink);
 }
-.field input::placeholder, .field textarea::placeholder, .pa-l-name::placeholder, .pa-l-hours::placeholder { color: var(--ink-soft); opacity: .65; }
+.field input::placeholder, .field textarea::placeholder, .doc-l-name::placeholder, .doc-l-hours::placeholder { color: var(--ink-soft); opacity: .65; }
 .field select { width: 100%; }
 .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .field-hint { font-size: 11.5px; color: var(--ink-soft); margin-top: 6px; }
@@ -2158,22 +2158,23 @@ table.tt tr.is-today td.tt-cell { background: color-mix(in srgb, var(--hue-orang
 .doc-checks .doc-check:has(input:focus-visible) { box-shadow: 0 0 0 4px var(--primary-tint); }
 .pa-field-date { max-width: 260px; margin-top: 14px; }
 
-/* ฟอร์ม PA: ภาระงาน 1.1–1.4 (แถว = ชื่อรายการ · ชั่วโมง · ปุ่มลบ) — เดิมเป็น \3c style> ใน js/pa.js */
-.pa-lblock { --pa-cols: minmax(0, 1fr) 92px 44px; margin-top: 22px; }
-.pa-lhead { display: grid; grid-template-columns: var(--pa-cols); gap: 8px; margin: 0 0 6px; padding: 0 2px; font-size: 12px; font-weight: 600; color: var(--ink-soft); }
-.pa-lhead span:nth-child(2) { text-align: center; white-space: nowrap; }
-.pa-lblock:has(.pa-lrows:empty) .pa-lhead { display: none; }
-.pa-lrows { display: grid; gap: 8px; }
-.pa-lrow { display: grid; grid-template-columns: var(--pa-cols); gap: 8px; align-items: center; }
-.pa-lrow .pa-l-hours { text-align: center; font-weight: 600; font-variant-numeric: tabular-nums; }
-.pa-l-del { width: 44px; min-height: 44px; padding: 0; justify-content: center; }
-.pa-l-add { margin-top: 10px; }
-.pa-lrows:empty + .pa-l-add { margin-top: 0; }
-.pa-total {
+/* บล็อกรายการในฟอร์มเอกสาร (PA · ID-Plan ใช้ร่วมกัน — สร้างจาก docLBlockHtml ใน js/doc-shell.js): แถว = ชื่อรายการ · ชั่วโมง · ปุ่มลบ */
+.doc-lblock { --doc-cols: minmax(0, 1fr) 92px 44px; margin-top: 22px; }
+.doc-lblock.no-hours { --doc-cols: minmax(0, 1fr) 44px; }
+.doc-lhead { display: grid; grid-template-columns: var(--doc-cols); gap: 8px; margin: 0 0 6px; padding: 0 2px; font-size: 12px; font-weight: 600; color: var(--ink-soft); }
+.doc-lhead span:nth-child(2) { text-align: center; white-space: nowrap; }
+.doc-lblock:has(.doc-lrows:empty) .doc-lhead { display: none; }
+.doc-lrows { display: grid; gap: 8px; }
+.doc-lrow { display: grid; grid-template-columns: var(--doc-cols); gap: 8px; align-items: center; }
+.doc-lrow .doc-l-hours { text-align: center; font-weight: 600; font-variant-numeric: tabular-nums; }
+.doc-l-del { width: 44px; min-height: 44px; padding: 0; justify-content: center; }
+.doc-l-add { margin-top: 10px; }
+.doc-lrows:empty + .doc-l-add { margin-top: 0; }
+.doc-total {
   display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px; margin: 20px 0 0; padding: 12px 16px;
   border-radius: var(--radius-s); background: var(--primary-tint); color: var(--primary-dark); font-size: 14px; font-weight: 600;
 }
-.pa-total b { font-family: var(--font-head); font-size: 22px; line-height: 1.2; font-variant-numeric: tabular-nums; }
+.doc-total b { font-family: var(--font-head); font-size: 22px; line-height: 1.2; font-variant-numeric: tabular-nums; }
 .pa-legacy { margin-bottom: 14px; }
 .pa-legacy-text { white-space: pre-wrap; font-size: 13.5px; padding: 10px 12px; border-radius: var(--radius-s); background: var(--surface-sunken); color: var(--ink-soft); }
 
@@ -2202,7 +2203,8 @@ table.tt tr.is-today td.tt-cell { background: color-mix(in srgb, var(--hue-orang
   .pa-pf { grid-template-columns: 1fr; }
   .pa-form-footer { flex-direction: column-reverse; }
   .doc-checks { grid-template-columns: 1fr; }
-  .pa-lblock { --pa-cols: minmax(0, 1fr) 80px 44px; }
+  .doc-lblock { --doc-cols: minmax(0, 1fr) 80px 44px; }
+  .doc-lblock.no-hours { --doc-cols: minmax(0, 1fr) 44px; }
 }
 .empty-title { margin-bottom: 8px; font-size: 17px; font-weight: 600; }
 .empty-sub { margin-bottom: 20px; color: var(--ink-soft); }
@@ -2280,27 +2282,16 @@ table.tt tr.is-today td.tt-cell { background: color-mix(in srgb, var(--hue-orang
 .doc-subsec { margin-bottom: 16px; }
 .doc-subsec-hd { margin-bottom: 8px; font-weight: 600; font-size: 14px; color: var(--ink); }
 
-.doc-lrows { display: flex; flex-direction: column; gap: 8px; }
-.doc-lrow { display: flex; align-items: center; gap: 8px; }
-.doc-lrow-header { display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 600; color: var(--ink-soft); }
-.doc-lrow input.doc-l-name, .doc-lrow-header .doc-l-name { flex: 1 1 0; width: auto; min-width: 0; }
-.doc-lrow input.doc-l-hours, .doc-lrow-header .doc-l-hours { flex: none; width: 96px; }
-.doc-lrow .btn-icon, .doc-lrow-header .doc-l-act { flex: none; width: 40px; }
 .doc-sec-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
 .doc-sec-head .doc-sec-title { margin: 0; }
-.doc-add-row { margin-top: 8px; }
-.btn-icon { display: inline-grid; place-items: center; flex: none; width: 40px; height: 40px; padding: 0; border: none; border-radius: var(--radius-s); background: transparent; color: var(--ink-soft); cursor: pointer; transition: background .15s ease, color .15s ease; }
-.btn-icon:hover { background: var(--danger-tint); color: var(--danger); }
-.btn-text { display: inline-flex; align-items: center; gap: 6px; padding: 8px 4px; border: none; background: transparent; color: var(--primary); font-family: var(--font); font-size: 14px; font-weight: 600; cursor: pointer; }
-.btn-text:hover { color: var(--primary-dark); }
 
-.doc-form-meta input, input.doc-l-name, input.doc-l-hours, .input-sm, .idp-ta {
+.doc-form-meta input, .input-sm, .idp-ta {
   width: 100%; min-width: 0; font-size: 14px; line-height: 1.6; font-family: var(--font); padding: 9px 10px; resize: vertical;
   border: 1.5px solid transparent; border-radius: var(--radius-s); background: var(--surface-sunken); color: var(--ink);
   transition: border-color .15s ease, background-color .15s ease, box-shadow .15s ease;
 }
-.doc-form-meta input:hover, input.doc-l-name:hover, input.doc-l-hours:hover, .input-sm:hover, .idp-ta:hover { border-color: var(--border); }
-.doc-form-meta input:focus, input.doc-l-name:focus, input.doc-l-hours:focus, .input-sm:focus, .idp-ta:focus {
+.doc-form-meta input:hover, .input-sm:hover, .idp-ta:hover { border-color: var(--border); }
+.doc-form-meta input:focus, .input-sm:focus, .idp-ta:focus {
   outline: none; border-color: var(--primary); box-shadow: 0 0 0 4px var(--primary-tint); background: var(--card);
 }
 
@@ -2317,6 +2308,5 @@ table.tt tr.is-today td.tt-cell { background: color-mix(in srgb, var(--hue-orang
 .doc-preview-frame-wrap { overflow: hidden; border-radius: var(--radius-m); background: var(--surface-sunken); }
 .doc-preview-frame { display: block; width: 100%; height: 80vh; border: 0; background: var(--white); }
 @media (max-width: 540px) {
-  .doc-lrow input.doc-l-hours, .doc-lrow-header .doc-l-hours { width: 72px; }
   .doc-form-header { align-items: stretch; }
 }

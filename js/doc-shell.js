@@ -2,6 +2,7 @@
 // DocShell — ส่วนกลางของหน้า "ระบบเอกสาร" (ใช้ร่วมกันทุกระบบ: PA · ต่อไปคือ ID-Plan)
 //   • โครงหน้า: หัวเรื่อง + แท็บ (จาก config.tabs ของระบบ) + พื้นที่เนื้อหา #doc-tab-body
 //   • สลับแท็บ / ตัวโหลด / ตรวจเรนเดอร์ล้าสมัย (docStale) / จางเข้า (docSwapIn)
+//   • บล็อกรายการในฟอร์ม (docLBlockHtml · docLBind · docLRows) + รายการในหน้ารายการ (docListHtml)
 //   • ตัวช่วยร่วม: ปีงบประมาณ · วันที่ไทย · ตัวเลข/ชั่วโมง · ไอคอน · ป้ายสถานะ · ฟอนต์พิมพ์
 //
 // สิ่งที่ระบบหนึ่งต้องทำเพื่อใช้โครงนี้ (ดู js/pa.js ท้ายไฟล์เป็นตัวอย่าง)
@@ -132,6 +133,70 @@ function docBindList(root, h) {
     try { await h.del(id); }
     catch (err) { b.disabled = false; alert('ลบไม่สำเร็จ: ' + err.message); }
   }));
+}
+
+// ------------------------------------------------------------------
+// บล็อกรายการในฟอร์ม (หัวข้อ + หัวคอลัมน์ + แถว + ปุ่มเพิ่มแถว + ยอดรวม) — PA · ID-Plan ใช้ร่วมกัน · สไตล์อยู่ที่ .doc-lblock / .doc-lrow ใน css/style.css
+//   docLBlockHtml({ key, title, rows, ph, hours = true, addLabel = 'เพิ่มแถว', head })  → หัวข้อ + หัวคอลัมน์ + แถว + ปุ่มเพิ่ม
+//        hours:false = แถวมีแต่ชื่อ (ไม่มีช่องชั่วโมง/หัวคอลัมน์) · head = [ชื่อคอลัมน์1, ชื่อคอลัมน์2] (ค่าเริ่มต้น รายการ / ชม./สัปดาห์)
+//   docLRowHtml(row, { ph, hours })                                                    → แถวเดียว (ใช้ตอนกดเพิ่มแถว)
+//   docLTotalHtml({ label, id, value })                                                → กล่องยอดรวมชั่วโมง
+//   docLBind(form, { totalKeys, totalEl })                                             → ผูกเพิ่ม/ลบแถว + คำนวณยอดรวมสด (ไม่ส่ง totalKeys = ไม่มียอดรวม)
+//   docLRows(key, hours = true)                                                        → อ่านค่ากลับ: hours → [{name, hours}] · ไม่ใช่ → [ชื่อ…] · ไม่มีบล็อกนี้ในหน้า = null
+//   ตัวอ่านค่า (docLRows) กับตัวสร้างแถวอยู่ที่นี่ที่เดียว — ทุกฟอร์มจึงอ่านจากโครงเดียวกัน (.doc-lrows[data-list] > .doc-lrow > .doc-l-name / .doc-l-hours)
+// ------------------------------------------------------------------
+function docLRowHtml(r = {}, o = {}) {
+  const hours = o.hours !== false;
+  const nm = typeof r === 'string' ? r : (r.name || '');
+  return `<div class="doc-lrow">
+    <input class="doc-l-name" type="text" maxlength="150" placeholder="${escapeHtml(o.ph || '')}" value="${escapeHtml(nm)}" aria-label="ชื่อรายการ">
+    ${hours ? `<input class="doc-l-hours" type="text" inputmode="decimal" maxlength="5" placeholder="ชม." value="${r.hours ? escapeHtml(docFmtH(r.hours)) : ''}" aria-label="ชั่วโมงต่อสัปดาห์">` : ''}
+    <button type="button" class="btn btn-danger-ghost btn-sm doc-l-del" title="ลบแถว" aria-label="ลบแถว">${DOC_ICO_DEL}</button>
+  </div>`;
+}
+function docLBlockHtml(o) {
+  const hours = o.hours !== false;
+  const head = o.head || ['รายการ', 'ชม./สัปดาห์'];
+  const rows = o.rows || [];
+  return `<div class="doc-lblock${hours ? '' : ' no-hours'}">
+    <div class="doc-subsec-hd">${o.title}</div>
+    ${hours ? `<div class="doc-lhead" aria-hidden="true"><span>${head[0]}</span><span>${head[1]}</span></div>` : ''}
+    <div class="doc-lrows" data-list="${o.key}">${rows.map(r => docLRowHtml(r, o)).join('')}</div>
+    <button type="button" class="btn btn-ghost btn-sm doc-l-add" data-list="${o.key}" data-ph="${escapeHtml(o.ph || '')}"${hours ? '' : ' data-hours="0"'}>${DOC_ICO_ADD} ${escapeHtml(o.addLabel || 'เพิ่มแถว')}</button>
+  </div>`;
+}
+function docLTotalHtml(o) {
+  return `<div class="doc-total">${o.label} <b id="${o.id}">${docFmtH(o.value)}</b> ชั่วโมง/สัปดาห์</div>`;
+}
+function docLRows(key, hours = true) {
+  const box = document.querySelector(`.doc-lrows[data-list="${key}"]`);
+  if (!box) return null;
+  const rows = [...box.querySelectorAll('.doc-lrow')].map(r => ({
+    name: r.querySelector('.doc-l-name').value.trim(),
+    hours: hours ? docNum(r.querySelector('.doc-l-hours')?.value) : 0,
+  }));
+  return hours ? rows.filter(r => r.name || r.hours) : rows.map(r => r.name).filter(Boolean);
+}
+function docLBind(form, o = {}) {
+  const upd = () => {
+    if (!o.totalKeys) return;
+    let t = 0;
+    o.totalKeys.forEach(k => form.querySelectorAll(`.doc-lrows[data-list="${k}"] .doc-l-hours`).forEach(i => { t += docNum(i.value); }));
+    const el = form.querySelector(o.totalEl);
+    if (el) el.textContent = docFmtH(t);
+  };
+  form.addEventListener('click', e => {
+    const add = e.target.closest('.doc-l-add');
+    if (add) {
+      const box = form.querySelector(`.doc-lrows[data-list="${add.dataset.list}"]`);
+      box.insertAdjacentHTML('beforeend', docLRowHtml({}, { ph: add.dataset.ph, hours: add.dataset.hours !== '0' }));
+      box.lastElementChild.querySelector('input').focus();
+      return;
+    }
+    const del = e.target.closest('.doc-l-del');
+    if (del) { del.closest('.doc-lrow').remove(); upd(); }
+  });
+  form.addEventListener('input', e => { if (e.target.classList.contains('doc-l-hours')) upd(); });
 }
 
 // ------------------------------------------------------------------

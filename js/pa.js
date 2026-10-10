@@ -432,22 +432,8 @@ async function renderPAListView() {
 // ------------------------------------------------------------------
 // หน้าฟอร์ม PA (อยู่ในแท็บแบบฟอร์มข้อตกลง)
 // ------------------------------------------------------------------
-function paRowHtml(r = {}, ph = '') {
-  return `<div class="pa-lrow">
-    <input class="pa-l-name" type="text" maxlength="150" placeholder="${escapeHtml(ph)}" value="${escapeHtml(r.name || '')}" aria-label="ชื่อรายการ">
-    <input class="pa-l-hours" type="text" inputmode="decimal" maxlength="5" placeholder="ชม." value="${r.hours ? escapeHtml(docFmtH(r.hours)) : ''}" aria-label="ชั่วโมงต่อสัปดาห์">
-    <button type="button" class="btn btn-danger-ghost btn-sm pa-l-del" title="ลบแถว" aria-label="ลบแถว">${DOC_ICO_DEL}</button>
-  </div>`;
-}
-
-function paLoadBlock(key, title, rows, ph) {
-  return `<div class="pa-lblock">
-    <div class="doc-subsec-hd">${title}</div>
-    <div class="pa-lhead" aria-hidden="true"><span>รายการ</span><span>ชม./สัปดาห์</span></div>
-    <div class="pa-lrows" data-list="${key}">${rows.map(r => paRowHtml(r, ph)).join('')}</div>
-    <button type="button" class="btn btn-ghost btn-sm pa-l-add" data-list="${key}" data-ph="${escapeHtml(ph)}">${DOC_ICO_ADD} เพิ่มแถว</button>
-  </div>`;
-}
+// บล็อกภาระงาน 1.1–1.4 ใช้ตัวสร้างกลางใน js/doc-shell.js (docLBlockHtml) ร่วมกับ ID-Plan
+const paLoadBlock = (key, title, rows, ph) => docLBlockHtml({ key, title, rows, ph });
 
 async function renderPAFormView() {
   const sys = docSystem();
@@ -543,7 +529,7 @@ async function renderPAFormView() {
         <div class="field"><label for="pa-load-group">กลุ่มสาระการเรียนรู้</label><input id="pa-load-group" type="text" maxlength="100" value="${escapeHtml(d.load.group)}" placeholder="เช่น วิทยาศาสตร์และเทคโนโลยี"></div>
         ${paLoadBlock('subjects', '1.1 รายวิชาที่สอน', d.load.subjects, 'เช่น ว32105 วิทยาการคำนวณ')}
         ${paLoadBlock('activities', '1.1 กิจกรรมพัฒนาผู้เรียน', d.load.activities, 'เช่น กิจกรรมชุมนุม')}
-        <div class="pa-total">รวมชั่วโมงสอน (1.1): <b id="pa-load-total">${docFmtH(docSum(d.load.subjects) + docSum(d.load.activities))}</b> ชั่วโมง/สัปดาห์</div>
+        ${docLTotalHtml({ label: 'รวมชั่วโมงสอน (1.1):', id: 'pa-load-total', value: docSum(d.load.subjects) + docSum(d.load.activities) })}
         ${paLoadBlock('support', '1.2 งานส่งเสริมและสนับสนุนการจัดการเรียนรู้', d.load.support, 'เช่น การมีส่วนร่วมชุมชนการเรียนรู้ทางวิชาชีพ')}
         ${paLoadBlock('quality', '1.3 งานพัฒนาคุณภาพการจัดการศึกษาของสถานศึกษา', d.load.quality, 'เช่น เจ้าหน้าที่ตามโครงสร้างฝ่าย')}
         ${paLoadBlock('policy', '1.4 งานตอบสนองนโยบายและจุดเน้น', d.load.policy, 'ระบุงาน (ถ้ามี)')}
@@ -594,24 +580,8 @@ async function renderPAFormView() {
     view.querySelector('#pa-period').textContent = paPeriodText(e.target.value);
   });
 
-  // เพิ่ม/ลบแถวภาระงาน + รวมชั่วโมง 1.1 แบบสด
-  const updTotal = () => {
-    let t = 0;
-    ['subjects', 'activities'].forEach(k => form.querySelectorAll(`.pa-lrows[data-list="${k}"] .pa-l-hours`).forEach(i => { t += docNum(i.value); }));
-    form.querySelector('#pa-load-total').textContent = docFmtH(t);
-  };
-  form.addEventListener('click', e => {
-    const add = e.target.closest('.pa-l-add');
-    if (add) {
-      const box = form.querySelector(`.pa-lrows[data-list="${add.dataset.list}"]`);
-      box.insertAdjacentHTML('beforeend', paRowHtml({}, add.dataset.ph));
-      box.lastElementChild.querySelector('input').focus();
-      return;
-    }
-    const del = e.target.closest('.pa-l-del');
-    if (del) { del.closest('.pa-lrow').remove(); updTotal(); }
-  });
-  form.addEventListener('input', e => { if (e.target.classList.contains('pa-l-hours')) updTotal(); });
+  // เพิ่ม/ลบแถวภาระงาน + รวมชั่วโมง 1.1 แบบสด (ตัวผูกกลางใน doc-shell.js)
+  docLBind(form, { totalKeys: ['subjects', 'activities'], totalEl: '#pa-load-total' });
 
   view.querySelector('#pa-tt-pull').addEventListener('click', () => {
     paCollectFormData();
@@ -677,10 +647,7 @@ function paCollectFormData() {
 
   const load = { group: get('pa-load-group') };
   sys.config.loadLists.forEach(k => {
-    const box = document.querySelector(`.pa-lrows[data-list="${k}"]`);
-    load[k] = box ? [...box.querySelectorAll('.pa-lrow')]
-      .map(r => ({ name: r.querySelector('.pa-l-name').value.trim(), hours: docNum(r.querySelector('.pa-l-hours').value) }))
-      .filter(r => r.name || r.hours) : (sys.state.doc.load?.[k] || []);
+    load[k] = docLRows(k) || (sys.state.doc.load?.[k] || []); // ไม่มีบล็อกนี้ในหน้า → คงค่าเดิม
   });
 
   const workItems = {};

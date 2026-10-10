@@ -175,23 +175,11 @@ function idpCollect() {
   doc.year      = get('idp-year');
   doc.signDate  = get('idp-signDate');
 
-  // subjects
-  doc.subjects = [...document.querySelectorAll('.idp-subject-row')].map(r => ({
-    name:  r.querySelector('.idp-sub-name')?.value.trim() || '',
-    hours: Number(r.querySelector('.idp-sub-hours')?.value) || 0,
-  })).filter(r => r.name || r.hours);
-
-  // activities
-  doc.activities = [...document.querySelectorAll('.idp-activity-row')].map(r => ({
-    name:  r.querySelector('.idp-act-name')?.value.trim() || '',
-    hours: Number(r.querySelector('.idp-act-hours')?.value) || 0,
-  })).filter(r => r.name || r.hours);
-
-  // education
-  doc.education = [...document.querySelectorAll('.idp-edu-row input')].map(r => r.value.trim()).filter(Boolean);
-
-  // specials
-  doc.specials = [...document.querySelectorAll('.idp-special-row input')].map(r => r.value.trim()).filter(Boolean);
+  // รายการส่วนที่ 1 — อ่านจากโครงกลางของ doc-shell.js (หน้าไม่มีบล็อกนั้น = คงค่าเดิม)
+  doc.subjects   = docLRows('subjects')   || doc.subjects;
+  doc.activities = docLRows('activities') || doc.activities;
+  doc.education  = docLRows('education', false) || doc.education;
+  doc.specials   = docLRows('specials', false)  || doc.specials;
 
   // competencies
   doc.comps = doc.comps || {};
@@ -283,55 +271,7 @@ async function idpRenderListView() {
   }
 }
 
-// ------------------------------------------------------------------
-// Helper: row builders for part 1
-// ------------------------------------------------------------------
-function idpSubjectRowHtml(r) {
-  return `<div class="idp-subject-row doc-lrow">
-    <input class="idp-sub-name doc-l-name" type="text" placeholder="วิชา / ระดับชั้น" value="${escapeHtml(r?.name || '')}">
-    <input class="idp-sub-hours doc-l-hours" type="number" min="0" max="99" placeholder="ชม./สป." value="${r?.hours || ''}">
-    <button type="button" class="btn-icon doc-lrow-del" title="ลบ" aria-label="ลบ">${DOC_ICO_DEL}</button>
-  </div>`;
-}
-
-function idpActivityRowHtml(r) {
-  return `<div class="idp-activity-row doc-lrow">
-    <input class="idp-act-name doc-l-name" type="text" placeholder="กิจกรรม / ระดับชั้น" value="${escapeHtml(r?.name || '')}">
-    <input class="idp-act-hours doc-l-hours" type="number" min="0" max="99" placeholder="ชม./สป." value="${r?.hours || ''}">
-    <button type="button" class="btn-icon doc-lrow-del" title="ลบ" aria-label="ลบ">${DOC_ICO_DEL}</button>
-  </div>`;
-}
-
-function idpSpecialRowHtml(name) {
-  return `<div class="idp-special-row doc-lrow">
-    <input type="text" class="doc-l-name" placeholder="งาน / หน้าที่" value="${escapeHtml(name || '')}">
-    <button type="button" class="btn-icon doc-lrow-del" title="ลบ" aria-label="ลบ">${DOC_ICO_DEL}</button>
-  </div>`;
-}
-
-function idpEducationRowHtml(name) {
-  return `<div class="idp-edu-row doc-lrow">
-    <input type="text" class="doc-l-name" placeholder="เช่น ปริญญาตรี สาขาวิชาคณิตศาสตร์ มหาวิทยาลัย..." value="${escapeHtml(name || '')}">
-    <button type="button" class="btn-icon doc-lrow-del" title="ลบ" aria-label="ลบ">${DOC_ICO_DEL}</button>
-  </div>`;
-}
-
-// รวมชั่วโมงสอน/สัปดาห์ = รายวิชา + กิจกรรม (ตัวเลขที่พิมพ์ในส่วนที่ 1 ของแผน)
-function idpUpdateTotal() {
-  const el = document.getElementById('idp-total-hours');
-  if (!el) return;
-  const sum = sel => [...document.querySelectorAll(sel)].reduce((t, i) => t + (Number(i.value) || 0), 0);
-  el.textContent = `รวม ${sum('.idp-sub-hours') + sum('.idp-act-hours')} ชั่วโมง/สัปดาห์`;
-}
-
-function idpAddRowHandler(container, buildFn) {
-  container.addEventListener('click', e => {
-    if (e.target.closest('.doc-lrow-del')) {
-      e.target.closest('.doc-lrow').remove();
-      idpUpdateTotal();
-    }
-  });
-}
+// แถว/บล็อกรายการของส่วนที่ 1 ใช้ตัวสร้างกลางใน js/doc-shell.js (docLBlockHtml · docLBind · docLRows) ร่วมกับ PA
 
 // ------------------------------------------------------------------
 // FORM VIEW
@@ -457,48 +397,11 @@ async function idpRenderFormView() {
         : `<div class="u-note">ยังไม่ได้กรอกข้อมูลส่วนตัว — กรอกที่ไอคอนบัญชี (มุมซ้ายล่าง) → ข้อมูลส่วนตัว แล้วกลับมาเปิดแผนนี้ใหม่ ชื่อ/ตำแหน่ง/โรงเรียนจะขึ้นเองและพิมพ์ลงแผนให้</div>`}
       </div>
 
-      <div class="doc-subsec">
-        <div class="doc-subsec-hd">ระดับการศึกษา</div>
-        <div id="idp-education-box" class="doc-lrows">
-          ${(doc.education.length ? doc.education : ['']).map(idpEducationRowHtml).join('')}
-        </div>
-        <button type="button" class="btn-text doc-add-row" id="idp-add-education">${DOC_ICO_ADD} เพิ่มวุฒิการศึกษา</button>
-      </div>
-
-      <div class="doc-subsec">
-        <div class="doc-subsec-hd">1.1 รายวิชาที่รับผิดชอบ</div>
-        <div class="doc-lrow-header">
-          <span class="doc-l-name">วิชา / ระดับชั้น</span>
-          <span class="doc-l-hours">ชม./สป.</span>
-          <span class="doc-l-act"></span>
-        </div>
-        <div id="idp-subjects-box" class="doc-lrows">
-          ${(doc.subjects.length ? doc.subjects : [{}]).map(idpSubjectRowHtml).join('')}
-        </div>
-        <button type="button" class="btn-text doc-add-row" id="idp-add-subject">${DOC_ICO_ADD} เพิ่มรายวิชา</button>
-      </div>
-
-      <div class="doc-subsec">
-        <div class="doc-subsec-hd">1.2 กิจกรรมพัฒนาผู้เรียน</div>
-        <div class="doc-lrow-header">
-          <span class="doc-l-name">กิจกรรม / ระดับชั้น</span>
-          <span class="doc-l-hours">ชม./สป.</span>
-          <span class="doc-l-act"></span>
-        </div>
-        <div id="idp-activities-box" class="doc-lrows">
-          ${(doc.activities.length ? doc.activities : [{}]).map(idpActivityRowHtml).join('')}
-        </div>
-        <button type="button" class="btn-text doc-add-row" id="idp-add-activity">${DOC_ICO_ADD} เพิ่มกิจกรรม</button>
-        <div class="u-semibold u-mt-4" id="idp-total-hours">รวม ${idpTotalHours(doc)} ชั่วโมง/สัปดาห์</div>
-      </div>
-
-      <div class="doc-subsec">
-        <div class="doc-subsec-hd">1.3 งานมอบหมายพิเศษ / ภาระงานอื่น</div>
-        <div id="idp-specials-box" class="doc-lrows">
-          ${(doc.specials.length ? doc.specials : ['']).map(idpSpecialRowHtml).join('')}
-        </div>
-        <button type="button" class="btn-text doc-add-row" id="idp-add-special">${DOC_ICO_ADD} เพิ่มงาน</button>
-      </div>
+      ${docLBlockHtml({ key: 'education', title: 'ระดับการศึกษา', rows: doc.education.length ? doc.education : [''], hours: false, ph: 'เช่น ปริญญาตรี สาขาวิชาคณิตศาสตร์ มหาวิทยาลัย...', addLabel: 'เพิ่มวุฒิการศึกษา' })}
+      ${docLBlockHtml({ key: 'subjects', title: '1.1 รายวิชาที่รับผิดชอบ', rows: doc.subjects.length ? doc.subjects : [{}], ph: 'วิชา / ระดับชั้น', addLabel: 'เพิ่มรายวิชา' })}
+      ${docLBlockHtml({ key: 'activities', title: '1.2 กิจกรรมพัฒนาผู้เรียน', rows: doc.activities.length ? doc.activities : [{}], ph: 'กิจกรรม / ระดับชั้น', addLabel: 'เพิ่มกิจกรรม' })}
+      ${docLTotalHtml({ label: 'รวมชั่วโมงสอน:', id: 'idp-total-hours', value: idpTotalHours(doc) })}
+      ${docLBlockHtml({ key: 'specials', title: '1.3 งานมอบหมายพิเศษ / ภาระงานอื่น', rows: doc.specials.length ? doc.specials : [''], hours: false, ph: 'งาน / หน้าที่', addLabel: 'เพิ่มงาน' })}
     </section>
 
     <!-- ส่วนที่ 2: รายละเอียดการพัฒนาตนเอง -->
@@ -547,30 +450,7 @@ async function idpRenderFormView() {
   docSwapIn(root);
 
   // Wire events
-  const subBox = document.getElementById('idp-subjects-box');
-  const actBox = document.getElementById('idp-activities-box');
-  const spcBox = document.getElementById('idp-specials-box');
-  const eduBox = document.getElementById('idp-education-box');
-  idpAddRowHandler(eduBox);
-  idpAddRowHandler(subBox);
-  idpAddRowHandler(actBox);
-  idpAddRowHandler(spcBox);
-
-  document.getElementById('idp-add-education')?.addEventListener('click', () => {
-    eduBox.insertAdjacentHTML('beforeend', idpEducationRowHtml(''));
-  });
-  document.getElementById('idp-form')?.addEventListener('input', e => {
-    if (e.target.matches('.idp-sub-hours, .idp-act-hours')) idpUpdateTotal();
-  });
-  document.getElementById('idp-add-subject')?.addEventListener('click', () => {
-    subBox.insertAdjacentHTML('beforeend', idpSubjectRowHtml({}));
-  });
-  document.getElementById('idp-add-activity')?.addEventListener('click', () => {
-    actBox.insertAdjacentHTML('beforeend', idpActivityRowHtml({}));
-  });
-  document.getElementById('idp-add-special')?.addEventListener('click', () => {
-    spcBox.insertAdjacentHTML('beforeend', idpSpecialRowHtml(''));
-  });
+  docLBind(document.getElementById('idp-form'), { totalKeys: ['subjects', 'activities'], totalEl: '#idp-total-hours' });
 
   document.getElementById('idp-tt-pull')?.addEventListener('click', () => {
     idpCollect();

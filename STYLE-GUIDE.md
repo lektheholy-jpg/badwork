@@ -63,7 +63,7 @@
 - ช่องกรอกในฟอร์ม: `<div class="field"><label>…</label><input|textarea|select></div>` ไม่ต้องตั้งสไตล์เอง (พื้น `--surface-sunken`, โฟกัสขอบ `--primary`)
 - `<select>` ทุกตัวได้สไตล์จากกฎกลาง `select` ใน `style.css` อัตโนมัติ ถ้าต้องการขนาดต่าง ให้ตั้งแค่ `font-size` / `min-height` / `padding-block` ที่คลาสของตัวเอง **ห้ามประกาศ border / background / padding ด้านขวาซ้ำ** (ลูกศรอยู่ที่ padding ขวา)
 - เบราว์เซอร์ที่รองรับ `appearance: base-select` (Chrome/Edge 135+) ได้ลิสต์ตัวเลือกแบบปรับแต่งเอง ที่เหลือใช้ลิสต์ของระบบ
-- แถวรายการ + ตัวเลข (ฟอร์ม PA): `.pa-lblock > .pa-lhead + .pa-lrows > .pa-lrow` ดู `paLoadBlock()` ใน `js/pa.js`
+- บล็อกรายการ + ตัวเลขในฟอร์มเอกสาร (PA · ID-Plan ใช้ตัวเดียวกัน): `.doc-lblock > .doc-lhead + .doc-lrows > .doc-lrow` สร้างด้วย `docLBlockHtml()` · ผูกด้วย `docLBind()` · อ่านค่าด้วย `docLRows()` ใน `js/doc-shell.js` (หน้าตาแบบ PA: ปุ่มลบ 44px · ช่องชั่วโมงกลางตัวหนา · ปุ่ม "เพิ่มแถว" พื้นฟ้า) — ห้ามสร้างชุดคลาสแถวของตัวเองในแต่ละหน้า
 
 ## 5. ตาราง
 
