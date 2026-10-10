@@ -541,10 +541,11 @@ const LAZY_MODULES = {
   // กลุ่ม ID-Plan (แผนพัฒนาตนเอง) — ใช้ doc-system/doc-shell ร่วมกับ PA · ใช้ loadModules(LAZY_BUNDLES.idp)
   'idp-config': 'js/idp-config.js',
   idp: 'js/idp.js',
+  'idp-ai': 'js/idp-ai.js', // ตัวต่อผู้ช่วย AI ของ ID-Plan (registerDocAi) — แกน AI ใช้ร่วมกับ PA
 };
 const LAZY_BUNDLES = {
   pa: ['doc-system', 'doc-shell', 'pa-config', 'pa', 'badwork-ai-config', 'badwork-ai', 'pa-ai', 'pa-report', 'pa-rpt'],
-  idp: ['doc-system', 'doc-shell', 'idp-config', 'idp'],
+  idp: ['doc-system', 'doc-shell', 'idp-config', 'idp', 'badwork-ai-config', 'badwork-ai', 'idp-ai'],
   // เฉพาะ config ของทุกระบบเอกสาร (เบา · ไม่มี UI) — privacy.js ใช้รู้ชื่อ collection · ระบบเอกสารใหม่ต้องเพิ่มไฟล์ config ของตัวเองที่นี่
   docConfigs: ['doc-system', 'pa-config', 'idp-config'],
 };

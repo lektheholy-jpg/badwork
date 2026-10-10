@@ -152,6 +152,10 @@ function idpNormalize(d) {
     endDate:   String(s?.endDate   || ''),
     benefit:   String(s?.benefit   || ''),
   }));
+  // บริบทงานของผู้ช่วย AI (js/idp-ai.js) — ตัดความยาวตาม IDP_CONFIG.aiCtx.maxLen · 1 ฟิลด์ระดับบน (ไม่เกิน validDoc(30))
+  const ac = d.aiCtx && typeof d.aiCtx === 'object' ? d.aiCtx : {};
+  d.aiCtx = {};
+  Object.entries(sys.config.aiCtx.maxLen).forEach(([k, n]) => { d.aiCtx[k] = String(ac[k] || '').slice(0, n); });
   return d;
 }
 
@@ -206,6 +210,13 @@ function idpCollect() {
     endDate:   (document.querySelector(`[data-sum="${i}"][data-sf="endDate"]`)?.value || '').trim(),
     benefit:   (document.querySelector(`[data-sum="${i}"][data-sf="benefit"]`)?.value || '').trim(),
   }));
+
+  // บริบทงานของผู้ช่วย AI — ช่องอยู่ในการ์ดที่ badwork-ai.js ติดให้ · ถ้าไม่มีช่อง (ไม่ได้โหลดไฟล์ AI) คงค่าเดิมไว้
+  const ax = sys.config.aiCtx, aiCtx = {};
+  Object.entries(ax.maxLen).forEach(([k, n]) => {
+    aiCtx[k] = document.getElementById(ax.idPrefix + k) ? get(ax.idPrefix + k).slice(0, n) : (doc.aiCtx?.[k] || '');
+  });
+  doc.aiCtx = aiCtx;
 }
 
 // ------------------------------------------------------------------
@@ -329,15 +340,15 @@ async function idpRenderFormView() {
       <td><div class="idp-comp-name">${escapeHtml(fullName)}</div>${(subs || []).map(([no, nm]) => `<div class="idp-comp-sub">${no} ${escapeHtml(nm)}</div>`).join('')}</td>
       <td><input class="input-sm" type="number" min="1" max="${comps.length}" placeholder="1–${comps.length}"
             data-comp-id="${cid}" data-comp-field="priority" value="${escapeHtml(c.priority || '')}"></td>
-      <td><textarea class="idp-ta" rows="6"
+      <td><textarea class="idp-ta" rows="6" id="idp-${cid}-method"
             data-comp-id="${cid}" data-comp-field="method">${escapeHtml(c.method || '')}</textarea></td>
       <td><input class="input-sm" type="text" placeholder="เช่น ต.ค. 68"
             data-comp-id="${cid}" data-comp-field="startDate" value="${escapeHtml(c.startDate || '')}"></td>
       <td><input class="input-sm" type="text" placeholder="เช่น มี.ค. 69"
             data-comp-id="${cid}" data-comp-field="endDate" value="${escapeHtml(c.endDate || '')}"></td>
-      <td><textarea class="idp-ta" rows="3"
+      <td><textarea class="idp-ta" rows="3" id="idp-${cid}-goal"
             data-comp-id="${cid}" data-comp-field="goal">${escapeHtml(c.goal || '')}</textarea></td>
-      <td><textarea class="idp-ta" rows="3"
+      <td><textarea class="idp-ta" rows="3" id="idp-${cid}-benefit"
             data-comp-id="${cid}" data-comp-field="benefit">${escapeHtml(c.benefit || '')}</textarea></td>
     </tr>`;
   });
@@ -460,6 +471,7 @@ async function idpRenderFormView() {
 
   </form>`;
   docSwapIn(root);
+  if (typeof badworkAiMount === 'function') badworkAiMount(root, document.getElementById('idp-form'), sys); // ปุ่มผู้ช่วย AI (js/badwork-ai.js + ตัวต่อ js/idp-ai.js) — ไม่มีไฟล์นี้ฟอร์มก็ทำงานตามเดิม
 
   // Wire events
   docLBind(document.getElementById('idp-form'), { totalKeys: ['subjects', 'activities'], totalEl: '#idp-total-hours' });
