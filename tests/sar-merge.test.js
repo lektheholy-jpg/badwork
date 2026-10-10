@@ -33,6 +33,19 @@ console.log('C · การจับคู่ห้อง/วิชา');
   r = merge([course({ rooms: [{ room: 'ม.4/1', n: 20 }, { room: 'ม.4/2', n: 20 }] })], [ent({ cls: '', span: 4 })]);
   ok(r.teaching.map(x => x.hours).join() === '2,2', 'ตารางไม่ระบุห้อง → หารเฉลี่ยตามจำนวนห้อง');
 }
+console.log('E · ห้อง "1" ของวิชา ม.2 = คาบ "ม.2/1" (ห้องเดียวกัน แสดง ม.2/1 แถวเดียว)');
+{
+  const label = vm.runInContext('sarRoomLabel', ctx);
+  ok(label({ level: 'ม.2' }, '1') === 'ม.2/1' && label({ level: 'ม.2' }, 'ม.2/1') === 'ม.2/1' && label({ level: '' }, '1') === '1', 'sarRoomLabel: ม.2 + 1 → ม.2/1 · ห้องที่เขียนเต็มแล้วไม่ต่อซ้ำ · ไม่มีระดับชั้นใช้เลขห้องตามเดิม');
+  const c = course({ code: 'ว22103', name: 'วิทยาศาสตร์', title: 'ว22103 วิทยาศาสตร์', rooms: [{ room: '1', label: 'ม.2/1', n: 36 }] });
+  let r = merge([c], [ent({ code: 'ว22103', cls: 'ม.2/1', span: 1 })]);
+  ok(r.teaching.length === 1 && r.teaching[0].room === 'ม.2/1' && r.teaching[0].hours === '1' && r.teaching[0].n === '36' && r.noHours === 0, 'ว22103 ห้อง 1 + คาบ ม.2/1 → แถวเดียว ม.2/1 · 1 ชม. · 36 คน: ' + JSON.stringify(r.teaching));
+  const c3 = course({ code: 'ว22103', title: 'ว22103 วิทยาศาสตร์', rooms: [{ room: '1', label: 'ม.2/1', n: 36 }, { room: '2', label: 'ม.2/2', n: 34 }, { room: '11', label: 'ม.2/11', n: 30 }] });
+  r = merge([c3], [ent({ code: 'ว22103', cls: 'ม.2/1', span: 2 }), ent({ code: 'ว22103', cls: 'ม.2/2', span: 1 }), ent({ code: 'ว22103', cls: 'ม.2/11', span: 3 })]);
+  ok(r.teaching.length === 3 && r.teaching.map(x => x.room + ':' + x.hours).join() === 'ม.2/1:2,ม.2/2:1,ม.2/11:3', 'หลายห้อง ห้อง 1 ไม่ปนกับ 11: ' + r.teaching.map(x => x.room + ':' + x.hours));
+  r = merge([c], [ent({ code: 'ว22103', cls: 'ห้องเรียนรวม', span: 2 })]);
+  ok(r.teaching.length === 1 && r.teaching[0].hours === '2', 'วิชามีห้องเดียว ชื่อห้องในตารางเขียนต่างไป → ถือเป็นห้องนั้น ไม่เกิดแถวซ้ำ');
+}
 console.log('D · ไม่มีตารางสอน / มีแต่ตารางสอน');
 {
   let r = merge([course({ credit: 1.5, rooms: [{ room: 'ม.4/1', n: 30 }] })], []);

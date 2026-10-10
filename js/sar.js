@@ -191,12 +191,18 @@ function sarCalc() {
 // วิชาที่เป็นกิจกรรมพัฒนาผู้เรียน (ไม่ใช่รายวิชา): รหัสขึ้นต้น ก หรือชื่อเข้าข่าย — ผิดก็แก้ย้ายเองในฟอร์มได้
 const sarIsActivity = c => /^ก/.test(String(c.code || '').trim()) || /ชุมนุม|กิจกรรม|ลูกเสือ|เนตรนารี|แนะแนว|โฮมรูม|ผู้บำเพ็ญ|สวดมนต์/.test(c.name || '');
 // รวมรายวิชา/กิจกรรมจาก "บันทึกคะแนน" (ห้อง · จำนวนนักเรียน) เข้ากับ "ตารางสอน" (จำนวนคาบ = ชม./สัปดาห์) เป็นแถวเดียวต่อวิชา+ห้อง
-//   list    = [{ id, code, name, credit, act, title, rooms: [{ room, n }] }] (รายวิชาของภาคเรียนนั้น)
+//   list    = [{ id, code, name, credit, act, title, rooms: [{ room, label, n }] }] (รายวิชาของภาคเรียนนั้น · room = เลขห้องในบันทึกคะแนน เช่น "1" · label = ชื่อห้องเต็ม "ม.2/1" = ระดับชั้นของวิชา/ห้อง ตรงกับที่ตารางสอนใช้)
 //   entries = คาบที่วางในตารางสอน (idpPullTimetableEntries) — จับคู่กับวิชาด้วย courseId (ถ้าผูกไว้) หรือรหัส/ชื่อ · จับคู่ห้องด้วย cls
+//   ห้อง "1" ของวิชาระดับ ม.2 กับคาบ "ม.2/1" ในตารางสอน = ห้องเดียวกัน → แสดง "ม.2/1" แถวเดียว · วิชามีห้องเดียวแต่ชื่อห้องในตารางเขียนต่างไป → ถือเป็นห้องนั้น
 //   ชั่วโมงรายห้อง = ผลรวมคาบของห้องนั้น · ตารางไม่ระบุห้อง = หารเฉลี่ยตามจำนวนห้อง · วิชาไม่อยู่ในตารางเลย = หน่วยกิต × 2 (0.5 หน่วยกิต = 1 ชม./สัปดาห์)
 //   คาบในตารางที่ไม่มีวิชา/ห้องตรงกัน (เช่น กิจกรรมที่ไม่มีรายวิชา) ยังเข้าตาราง โดยเว้นจำนวนนักเรียนให้กรอกเอง
 const sarRoomKey = s => String(s ?? '').replace(/\s+/g, '').replace(/^ม\.?/, '').toLowerCase();
 const sarNameKey = s => String(s ?? '').replace(/\s+/g, '').toLowerCase();
+// ชื่อห้องเต็ม = ระดับชั้นของวิชา + "/" + เลขห้อง (เช่น ม.2 + 1 → ม.2/1 — สูตรเดียวกับ ttFindSection ในตารางสอน) · ห้องที่เขียนเต็มมาแล้ว (มี / หรือขึ้นต้น ม.) ใช้ตามนั้น
+function sarRoomLabel(c, room) {
+  const r = String(room ?? '').trim(), lv = String(c.level || '').trim();
+  return !r || !lv || /\/|^ม\.?\s*\d/.test(r) ? r : `${lv}/${r}`;
+}
 function sarMergeCourseRows(list, entries) {
   entries = entries || [];
   const used = new Set(), out = { teaching: [], activities: [], noHours: 0, noN: 0 };
@@ -206,8 +212,10 @@ function sarMergeCourseRows(list, entries) {
   (list || []).forEach(c => {
     const es = entries.filter(e => same(c, e));
     c.rooms.forEach(rm => {
-      const rk = sarRoomKey(rm.room);
-      const mine = es.filter(e => e.cls && sarRoomKey(e.cls) === rk);
+      const lab = rm.label || rm.room || '';
+      const lk = sarRoomKey(lab), rk = sarRoomKey(rm.room);
+      let mine = es.filter(e => e.cls && !used.has(e) && (sarRoomKey(e.cls) === lk || (rk && sarRoomKey(e.cls).endsWith('/' + rk))));
+      if (!mine.length && c.rooms.length === 1) mine = es.filter(e => e.cls && !used.has(e)); // วิชามีห้องเดียว (เหมือน ttFindSection)
       let hours = null;
       if (mine.length) { mine.forEach(e => used.add(e)); hours = span(mine); }
       else {
@@ -217,7 +225,7 @@ function sarMergeCourseRows(list, entries) {
       }
       if (hours == null) out.noHours++;
       if (!rm.n) out.noN++;
-      (c.act ? out.activities : out.teaching).push({ name: c.title, room: rm.room || '', n: String(rm.n ?? ''), hours: hours == null ? '' : String(hours) });
+      (c.act ? out.activities : out.teaching).push({ name: c.title, room: lab, n: String(rm.n ?? ''), hours: hours == null ? '' : String(hours) });
     });
   });
   const grp = new Map();
@@ -242,7 +250,7 @@ async function sarPullCourses(d) {
   if (!mine.length && !entries.length) return { found: 0 };
   const list = mine.map(c => ({
     id: c.id, code: c.code || '', name: c.name || '', credit: c.credit, act: sarIsActivity(c), title: [c.code, c.name].filter(Boolean).join(' '),
-    rooms: (c.roomsData || []).map(rm => ({ room: rm.room || '', n: gradeSummaryCounts(rm.students).N })),
+    rooms: (c.roomsData || []).map(rm => ({ room: rm.room || '', label: sarRoomLabel(c, rm.room), n: gradeSummaryCounts(rm.students).N })),
   }));
   const m = sarMergeCourseRows(list, entries);
   const rows = { teaching: m.teaching, activities: m.activities, grades: [] };
@@ -251,7 +259,7 @@ async function sarPullCourses(d) {
     if (sarIsActivity(c)) return;
     (c.roomsData || []).forEach(rm => {
       const g = gradeSummaryCounts(rm.students); // N + จำนวนตามเกรด (นับเฉพาะคนที่มีคะแนนแล้ว)
-      const gr = { name: [c.code, c.name].filter(Boolean).join(' '), room: rm.room || '', n: String(g.N) };
+      const gr = { name: [c.code, c.name].filter(Boolean).join(' '), room: sarRoomLabel(c, rm.room), n: String(g.N) };
       ['g4', 'g35', 'g3', 'g25', 'g2', 'g15', 'g1', 'g0'].forEach((k, i) => { gr[k] = g.counts[i] ? String(g.counts[i]) : ''; });
       rows.grades.push(gr);
       if (!g.n) noScore++;
