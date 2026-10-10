@@ -54,6 +54,7 @@ function structureRowHtml(c) {
         </div>
       </div>
       <div class="struct-row-actions">
+        <button class="btn btn-ghost btn-sm struct-info-btn" data-course-id="${c.id}">แก้ไขข้อมูลวิชา</button>
         <button class="btn btn-ghost btn-sm struct-edit-btn" data-course-id="${c.id}">แก้ไขโครงสร้าง</button>
         <button class="btn btn-danger-ghost btn-sm struct-del-btn" data-course-id="${c.id}">ลบ</button>
       </div>
@@ -106,6 +107,14 @@ async function renderStructureList(view) {
     });
   });
 
+  view.querySelectorAll('.struct-info-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation(); // ไม่ให้เด้งเข้าหน้าแก้โครงสร้างของแถวนั้น
+      const course = courses.find(c => c.id === btn.dataset.courseId);
+      openEditCourseInfoModal(course, () => renderStructureList(view));
+    });
+  });
+
   view.querySelectorAll('.struct-edit-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -148,7 +157,7 @@ async function renderStructureEditor(view, courseId) {
       title: (course.code ? course.code + ' • ' : '') + course.name,
       badge: course.archived ? '<span class="badge badge-neutral u-badge-inline">ปิดใช้งาน</span>' : '<span class="badge badge-success u-badge-inline">กำลังใช้งาน</span>',
       sub: `${course.level || 'ไม่ระบุระดับชั้น'} • ภาคเรียน ${course.semester || '-'}/${course.year || '-'}`,
-      actions: '<button class="btn btn-danger-ghost btn-sm" id="struct-del-course-btn">ลบวิชานี้</button>',
+      actions: '<button class="btn btn-ghost btn-sm" id="struct-edit-info-btn">แก้ไขข้อมูลวิชา</button> <button class="btn btn-danger-ghost btn-sm" id="struct-del-course-btn">ลบวิชานี้</button>',
     })}
     <div class="card card-pad u-mb-16">
       <div class="u-flex u-items-center u-between u-mb-10 u-wrap u-gap-8">
@@ -173,6 +182,10 @@ async function renderStructureEditor(view, courseId) {
     e.preventDefault();
     AppState.structureEditingCourseId = null;
     renderStructurePage();
+  });
+
+  document.getElementById('struct-edit-info-btn').addEventListener('click', () => {
+    openEditCourseInfoModal(course, () => renderStructureEditor(view, courseId));
   });
 
   document.getElementById('struct-del-course-btn').addEventListener('click', () => {

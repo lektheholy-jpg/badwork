@@ -143,6 +143,64 @@ function openCreateCourseModal(onCreated, sourceCourse = null) {
   });
 }
 
+// แก้ไขข้อมูลพื้นฐานของรายวิชาที่สร้างไว้แล้ว (รหัส/ชื่อ/ระดับชั้น/ภาคเรียน/ปีการศึกษา/หน่วยกิต)
+// ไม่แตะห้อง นักเรียน หรือคะแนน — อัปเดตเฉพาะเอกสารรายวิชา แล้วเรียก onDone ให้หน้าเดิมวาดใหม่
+function openEditCourseInfoModal(course, onDone) {
+  openModal(`
+    <h2>แก้ไขข้อมูลรายวิชา</h2>
+    <div class="modal-sub">แก้ได้เฉพาะข้อมูลพื้นฐานของวิชา — ห้อง นักเรียน และคะแนนที่บันทึกไว้จะไม่เปลี่ยน</div>
+    <div class="field-row">
+      <div class="field"><label>รหัสวิชา</label><input id="f-code" placeholder="เช่น ว33101" value="${escapeHtml(course.code || '')}"></div>
+      <div class="field"><label>ชื่อวิชา</label><input id="f-name" placeholder="เช่น วิทยาการคำนวณ" value="${escapeHtml(course.name || '')}"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>ระดับชั้น</label>
+        <select id="f-level">${levelSelectOptionsHtml(course.level || '')}</select>
+      </div>
+      <div class="field"><label>ภาคเรียน</label><input id="f-semester" placeholder="1" value="${escapeHtml(course.semester || '')}"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>ปีการศึกษา</label><input id="f-year" placeholder="2569" value="${escapeHtml(course.year || '')}"></div>
+      <div class="field"><label>หน่วยกิต</label><input id="f-credit" placeholder="1.0" value="${escapeHtml(course.credit || '')}"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="cancel-edit-course">ยกเลิก</button>
+      <button class="btn btn-primary" id="submit-edit-course">บันทึก</button>
+    </div>
+  `);
+
+  document.getElementById('cancel-edit-course').addEventListener('click', closeModal);
+  document.getElementById('submit-edit-course').addEventListener('click', async () => {
+    const name = document.getElementById('f-name').value.trim();
+    if (!name) { showToast('กรุณากรอกชื่อวิชา'); return; }
+
+    const submitBtn = document.getElementById('submit-edit-course');
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'กำลังบันทึก...';
+
+    const patch = {
+      code: document.getElementById('f-code').value.trim(),
+      name,
+      level: document.getElementById('f-level').value.trim(),
+      semester: document.getElementById('f-semester').value.trim(),
+      year: document.getElementById('f-year').value.trim(),
+      credit: document.getElementById('f-credit').value.trim(),
+    };
+    try {
+      await db.collection('users').doc(AppState.user.uid).collection('courses').doc(course.id).update(patch);
+    } catch (err) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'บันทึก';
+      showToast('บันทึกไม่สำเร็จ ลองใหม่อีกครั้ง');
+      return;
+    }
+    invalidateCourseData();
+    closeModal();
+    showToast('บันทึกข้อมูลวิชาแล้ว');
+    if (onDone) onDone();
+  });
+}
+
 // จัดกลุ่มรายวิชาตามระดับชั้นแบบเดียวกับหน้า "ตั้งค่าโครงสร้างวิชา" (สีอ่อนประจำระดับชั้น
 // ช่วยแยกสายตาเมื่อมีหลายวิชา) แต่ในหน้านี้แต่ละแถวกดแล้วเปิดเข้ารายวิชาได้เลย ไม่มีปุ่มแก้ไข/ลบ
 function courseListGroupsHtml(courses) {
@@ -307,9 +365,9 @@ async function renderCourseShellInner() {
       title: (course.code ? course.code + ' • ' : '') + course.name,
       badge: course.archived ? '<span class="badge badge-neutral u-badge-inline">อยู่ในคลัง</span>' : '',
       sub: `${course.level || ''} • ภาคเรียน ${course.semester || '-'}/${course.year || '-'} • ${sections.length} ห้อง`,
-      actions: course.archived
+      actions: '<button class="btn btn-ghost btn-sm" id="edit-course-info-btn">แก้ไขข้อมูลวิชา</button> ' + (course.archived
         ? '<button class="btn btn-ghost btn-sm" id="unarchive-course-btn">นำกลับมาใช้งาน</button>'
-        : '<button class="btn btn-ghost btn-sm" id="archive-course-btn">จบเทอมนี้แล้ว เก็บเข้าคลัง</button>',
+        : '<button class="btn btn-ghost btn-sm" id="archive-course-btn">จบเทอมนี้แล้ว เก็บเข้าคลัง</button>'),
     })}
 
     ${sections.length > 0 ? `
@@ -333,6 +391,9 @@ async function renderCourseShellInner() {
   if (AppState.enterNext) { AppState.enterNext = false; playViewEnter(); } // มาจากการเปิดรายวิชา (ไม่ใช่สลับแท็บ/ห้อง) → เฟดเข้า
 
   document.getElementById('back-to-courses').addEventListener('click', (e) => { e.preventDefault(); if (!NavHistory.backTo('courses')) navigate('courses'); });
+  document.getElementById('edit-course-info-btn').addEventListener('click', () => {
+    openEditCourseInfoModal(course, () => renderCourseShell());
+  });
   document.getElementById('archive-course-btn')?.addEventListener('click', () => {
     openConfirmModal({
       title: 'เก็บวิชานี้เข้าคลัง?',
