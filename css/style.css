@@ -2168,6 +2168,9 @@ table.tt tr.is-today td.tt-cell { background: color-mix(in srgb, var(--hue-orang
 }
 .doc-checks .doc-check:hover { border-color: var(--border); }
 .doc-checks .doc-check:has(input:checked) { border-color: var(--primary); background: var(--primary-tint); color: var(--primary-dark); font-weight: 600; }
+/* ชิปเลือกหลายข้อแบบกริดยืดตามความกว้าง (SAR 1.2.5 · ตัวเลือกเยอะกว่า 2 คอลัมน์) */
+.doc-checks-auto { grid-template-columns: repeat(auto-fill, minmax(min(100%, 210px), 1fr)); }
+@media (max-width: 540px) { .doc-checks-auto { grid-template-columns: 1fr 1fr; } .doc-checks-auto .doc-check { padding: 10px 12px; font-size: 13.5px; } }
 .doc-checks .doc-check:has(input:focus-visible) { box-shadow: 0 0 0 4px var(--primary-tint); }
 .pa-field-date { max-width: 260px; margin-top: 14px; }
 
@@ -2358,6 +2361,30 @@ table.tt tr.is-today td.tt-cell { background: color-mix(in srgb, var(--hue-orang
     margin-bottom: 4px;
   }
   .idp-sum-rank { text-align: left; }
+}
+
+/* SAR: ตารางเลือกระดับ (1.2.6 · 1.2.7 · 1.6 · ส่วนที่ 3) — ช่องตัวเลือกกึ่งกลาง กดได้ทั้งช่อง · จอแคบ (กรอบ ≤900px) เปลี่ยนเป็นการ์ด: ข้อความบนสุด ตัวเลือกเรียงเป็นแคปซูลใต้ข้อความ */
+.sar-matrix { min-width: 0; table-layout: fixed; }
+.sar-matrix th { text-align: center; white-space: nowrap; }
+.sar-matrix th:first-child { text-align: left; }
+.sar-matrix th:not(:first-child), .sar-matrix td:not(.sar-mx-item) { width: 96px; padding: 2px; }
+.sar-matrix td { vertical-align: middle; }
+.sar-matrix .sar-mx-item { padding: 10px 12px 10px 6px; font-size: 14px; line-height: 1.5; color: var(--ink); }
+.sar-matrix tbody tr { transition: background-color .15s ease; }
+.sar-matrix tbody tr:hover { background: var(--surface-sunken); }
+.sar-mx-cell { display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px; border-radius: var(--radius-xs); cursor: pointer; font-size: 13px; color: var(--ink-soft); transition: background-color .15s ease, color .15s ease; }
+.sar-mx-cell input { width: 20px; height: 20px; margin: 0; accent-color: var(--primary-solid); cursor: pointer; }
+.sar-mx-cell:hover { background: var(--primary-tint); }
+.sar-mx-cell:has(input:checked) { background: var(--primary-tint); color: var(--primary-dark); font-weight: 600; }
+.sar-mx-txt { display: none; }
+@container idp-wrap (max-width: 900px) {
+  .sar-matrix tbody tr { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 12px; }
+  .sar-matrix td { padding: 0; border-bottom: 0; }
+  .sar-matrix .sar-mx-item { flex: 0 0 100%; width: 100%; padding: 0 0 2px; font-weight: 600; }
+  .sar-matrix td:not(.sar-mx-item) { flex: 1 1 28%; width: auto; min-width: 0; padding: 0; }
+  .sar-mx-cell { min-height: 40px; padding: 0 10px; border: 1.5px solid var(--border); border-radius: var(--radius-pill); }
+  .sar-mx-cell:has(input:checked) { border-color: var(--primary); }
+  .sar-mx-txt { display: inline; }
 }
 
 .doc-preview-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }

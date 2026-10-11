@@ -193,8 +193,8 @@ function sarTable(key, title, addLabel, extraHead = '') {
 }
 function sarMatrix(group, items, levels, heads) {
   const cur = SAR.doc.lv[group] || [];
-  return `<div class="idp-table-wrap"><table class="idp-comp-table"><thead><tr><th>รายการ</th>${heads.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>
-    ${items.map((t, i) => `<tr><td data-label="รายการ">${sarEsc(t)}</td>${levels.map((lv, j) => `<td data-label="${heads[j]}"><input type="radio" name="lv-${group}-${i}" data-lv="${group}" data-i="${i}" value="${lv}"${cur[i] === lv ? ' checked' : ''}></td>`).join('')}</tr>`).join('')}
+  return `<div class="idp-table-wrap"><table class="idp-comp-table sar-matrix"><thead><tr><th>รายการ</th>${heads.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>
+    ${items.map((t, i) => `<tr><td class="sar-mx-item">${sarEsc(t)}</td>${levels.map((lv, j) => `<td><label class="sar-mx-cell"><input type="radio" name="lv-${group}-${i}" data-lv="${group}" data-i="${i}" value="${lv}" aria-label="${sarEsc(t)}: ${heads[j]}"${cur[i] === lv ? ' checked' : ''}><span class="sar-mx-txt">${heads[j]}</span></label></td>`).join('')}</tr>`).join('')}
     </tbody></table></div>`;
 }
 
@@ -389,8 +389,10 @@ async function sarRenderFormView() {
       ${sarTable('grades', `${SAR_H.acad} <span class="doc-sec-note">(จำนวนนักเรียนตามระดับผลการเรียน)</span>`, 'เพิ่มรายวิชา', '<th>เฉลี่ย / ตรวจสอบ</th>')}<div class="u-note" id="sar-g-res"></div>
       ${sarTable('traits', `${SAR_H.trait} <span class="doc-sec-note">(จำนวนคนตามผลการประเมิน)</span>`, 'เพิ่มห้อง')}<div class="u-note" id="sar-tr-n"></div>
       <div class="doc-subsec"><div class="doc-subsec-hd">${SAR_H.meth}</div>
-        ${SAR_METHODS.map((m, i) => `<label class="u-mt-4"><input type="checkbox" data-f="m.${i}"${f.m?.[i] ? ' checked' : ''}> ${m}</label>`).join(' ')}
-        <div class="field u-mt-4"><label for="sar-mo">อื่น ๆ (ระบุ)</label>${sarIn('mOther', f.mOther).replace('class="input-sm"', 'class="input-sm" id="sar-mo"')}</div><div class="u-note" id="sar-m-n"></div></div>
+        <div class="doc-checks doc-checks-auto">
+          ${SAR_METHODS.map((m, i) => `<label class="doc-check"><input type="checkbox" data-f="m.${i}"${f.m?.[i] ? ' checked' : ''}> ${m}</label>`).join('')}
+        </div>
+        <div class="field u-mt-12"><label for="sar-mo">อื่น ๆ (ระบุ)</label>${sarIn('mOther', f.mOther, 'ระบุรูปแบบ/วิธีอื่น ๆ (ถ้ามี)').replace('class="input-sm"', 'class="input-sm" id="sar-mo"')}</div><div class="u-note" id="sar-m-n"></div></div>
       <div class="doc-subsec"><div class="doc-subsec-hd">${SAR_H.cond}</div>${sarMatrix('cond', SAR_COND, lv5, ['มากที่สุด', 'มาก', 'ปานกลาง', 'น้อย', 'น้อยที่สุด'])}</div>
       <div class="doc-subsec"><div class="doc-subsec-hd">${SAR_H.survey}</div>${sarMatrix('survey', SAR_SURVEY, lv5, ['มากที่สุด', 'มาก', 'ปานกลาง', 'น้อย', 'น้อยที่สุด'])}<div class="u-note" id="sar-sv-res"></div></div>
       <div class="doc-subsec"><div class="doc-subsec-hd">${SAR_H.plan} <span class="doc-sec-note">(ระดับ 4 = ดีมาก … 1 = ปรับปรุง)</span></div>${sarMatrix('plan', SAR_PLAN, [4, 3, 2, 1], ['4', '3', '2', '1'])}<div class="u-note" id="sar-pl-res"></div></div>
