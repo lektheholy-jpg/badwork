@@ -187,7 +187,7 @@ function sarRowHtml(key, row = {}) {
 function sarTable(key, title, addLabel, extraHead = '') {
   const rows = SAR.doc.rows[key]?.length ? SAR.doc.rows[key] : [{}];
   return `<div class="doc-subsec"><div class="doc-subsec-hd">${title}</div>
-    <div class="idp-table-wrap"><table class="idp-comp-table"><thead><tr>${sarCols(key).map(c => `<th>${sarEsc(c[1])}</th>`).join('')}${extraHead}<th></th></tr></thead>
+    <div class="idp-table-wrap"><table class="idp-comp-table${key === 'grades' ? ' sar-grades' : ''}"><thead><tr>${sarCols(key).map(c => `<th>${sarEsc(c[1])}</th>`).join('')}${extraHead}<th></th></tr></thead>
     <tbody data-rows="${key}">${rows.map(r => sarRowHtml(key, r)).join('')}</tbody></table></div>
     <div class="u-mt-4"><button type="button" class="btn btn-ghost btn-sm" data-add="${key}">${DOC_ICO_ADD} ${addLabel}</button></div></div>`;
 }
@@ -363,21 +363,23 @@ async function sarRenderFormView() {
 
     ${sec('ส่วนที่ 1  ข้อมูลพื้นฐาน', `
       <div class="doc-subsec"><div class="doc-subsec-hd">${SAR_H.s11} <span class="doc-sec-note">(ทั้งหมดในส่วนนี้ดึงจากข้อมูลส่วนตัว — แก้ที่นั่นครั้งเดียว)</span></div>
-        <div class="u-mt-4"><span class="u-muted">ชื่อ</span> <span class="u-semibold">${sarEsc(pi.name || '—')}</span> <span class="u-muted">ตำแหน่ง</span> <span class="u-semibold">${sarEsc(pi.position || '—')}</span> <span class="u-muted">กลุ่มสาระฯ</span> <span class="u-semibold">${sarEsc(pi.subjectGroup || '—')}</span></div>
-        <div class="u-mt-4"><span class="u-muted">สถานศึกษา</span> <span class="u-semibold">${sarEsc(pi.school || '—')}</span></div>
-        <div class="u-mt-4">${[['อายุ', ps.age && ps.age + ' ปี'], ['อายุราชการ', ps.svcY !== '' && `${ps.svcY} ปี ${ps.svcM || 0} เดือน`], ['คุณวุฒิสูงสุด', ps.degree], ['วิชาเอก', ps.major], ['จากสถาบัน', ps.inst], ['วิทยฐานะ', ps.rank], ['ตำแหน่งเลขที่', ps.posNo]]
-          .map(([l, v]) => `<span class="u-muted">${l}</span> <span class="u-semibold">${sarEsc(v || '—')}</span>`).join(' ')}</div>
-        ${miss.length ? `<div class="u-note u-mt-4">ยังไม่มีในข้อมูลส่วนตัว: ${miss.join(' · ')} — <button type="button" class="btn btn-ghost btn-sm" id="sar-goto-profile">ไปเพิ่มในข้อมูลส่วนตัว</button></div>` : ''}
-        </div>
-            <div class="u-mt-4"><button type="button" class="btn btn-primary btn-sm" id="sar-cs-pull">ดึงจากรายวิชา · คะแนน · ตารางสอน (ภาคเรียนนี้)</button></div>
-      <div class="u-note">รวมสองแหล่งในปุ่มเดียว: ห้องและจำนวนนักเรียนมาจากบันทึกคะแนน · ชั่วโมง/สัปดาห์นับจากคาบของห้องนั้นในตารางสอน (ทั้งรายวิชาและกิจกรรมพัฒนาผู้เรียน) · ตารางผลการเรียน (1.2.4.1) มาจากเกรดของแต่ละห้อง · ช่องไหนไม่พบข้อมูลจะเว้นว่างให้กรอกเอง แก้ไขต่อในช่องได้</div>
-      <div class="doc-subsec-hd u-mt-4">${SAR_H.s12}</div>
+        <dl class="pa-pf pa-pf-auto">
+          ${[['ชื่อ', pi.name], ['ตำแหน่ง', pi.position], ['กลุ่มสาระฯ', pi.subjectGroup], ['สถานศึกษา', pi.school], ['อายุ', ps.age && ps.age + ' ปี'], ['อายุราชการ', ps.svcY !== '' && `${ps.svcY} ปี ${ps.svcM || 0} เดือน`], ['คุณวุฒิสูงสุด', ps.degree], ['วิชาเอก', ps.major], ['จากสถาบัน', ps.inst], ['วิทยฐานะ', ps.rank], ['ตำแหน่งเลขที่', ps.posNo]]
+            .map(([l, v]) => `<div class="pa-pf-item"><dt>${l}</dt><dd>${sarEsc(v || '—')}</dd></div>`).join('')}
+        </dl>
+        ${miss.length ? `<div class="pa-pf-note"><span>ยังไม่มีในข้อมูลส่วนตัว: ${miss.join(' · ')}</span><button type="button" class="btn btn-ghost btn-sm" id="sar-goto-profile">ไปเพิ่มในข้อมูลส่วนตัว</button></div>` : ''}
+      </div>
+      <div class="doc-subsec">
+        <button type="button" class="btn btn-primary btn-sm" id="sar-cs-pull">ดึงจากรายวิชา · คะแนน · ตารางสอน (ภาคเรียนนี้)</button>
+        <div class="u-note u-mt-12">รวมสองแหล่งในปุ่มเดียว: ห้องและจำนวนนักเรียนมาจากบันทึกคะแนน · ชั่วโมง/สัปดาห์นับจากคาบของห้องนั้นในตารางสอน (ทั้งรายวิชาและกิจกรรมพัฒนาผู้เรียน) · ตารางผลการเรียน (1.2.4.1) มาจากเกรดของแต่ละห้อง · ช่องไหนไม่พบข้อมูลจะเว้นว่างให้กรอกเอง แก้ไขต่อในช่องได้</div>
+      </div>
+      <h3 class="sar-sub-title">${SAR_H.s12}</h3>
       ${sarTable('teaching', SAR_H.teach, 'เพิ่มรายวิชา')}<div class="u-note" id="sar-t-sum"></div>
       ${sarTable('activities', SAR_H.act, 'เพิ่มกิจกรรม')}
       <div class="doc-subsec"><div class="doc-subsec-hd">${SAR_H.home}</div><div class="doc-form-meta">
         ${sarFld('ชั้น/ห้อง', sarIn('hmCls', f.hmCls, 'เช่น ม.1/1'))}${num('ชาย (คน)', 'hmM')}${num('หญิง (คน)', 'hmF')}</div><div class="u-note" id="sar-hm-n"></div></div>
-      <div class="doc-subsec"><div class="doc-subsec-hd">${SAR_H.attend} <span class="doc-sec-note">(ครั้ง / วัน — เว้นว่างถ้าไม่มี)</span></div><div class="doc-form-meta">
-        ${[['late', 'มาสาย'], ['sick', 'ลาป่วย'], ['biz', 'ลากิจ'], ['ord', 'ลาอุปสมบท'], ['mat', 'ลาคลอด']].map(([k, l]) => `${num(l + ' (ครั้ง)', 'at.' + k + 'T')}${num(l + ' (วัน)', 'at.' + k + 'D')}`).join('')}</div></div>`)}
+      <div class="doc-subsec"><div class="doc-subsec-hd">${SAR_H.attend} <span class="doc-sec-note">(ครั้ง / วัน — เว้นว่างถ้าไม่มี)</span></div><div class="sar-att">
+        ${[['late', 'มาสาย'], ['sick', 'ลาป่วย'], ['biz', 'ลากิจ'], ['ord', 'ลาอุปสมบท'], ['mat', 'ลาคลอด']].map(([k, l]) => `<div class="sar-att-item"><div class="sar-att-t">${l}</div><div class="sar-att-in">${num('ครั้ง', 'at.' + k + 'T')}${num('วัน', 'at.' + k + 'D')}</div></div>`).join('')}</div></div>`)}
 
     ${sec('ส่วนที่ 2  ผลงานที่เกิดจากการปฏิบัติหน้าที่', `
       ${grp(SAR_H.g1, SAR_H.g1note)}

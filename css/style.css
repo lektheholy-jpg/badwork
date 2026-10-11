@@ -2157,6 +2157,26 @@ table.tt tr.is-today td.tt-cell { background: color-mix(in srgb, var(--hue-orang
 .pa-pf-item dt { font-size: 12px; font-weight: 600; color: var(--ink-soft); }
 .pa-pf-item dd { margin: 2px 0 0; font-weight: 600; overflow-wrap: anywhere; }
 .pa-pf-note { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 12px; margin-bottom: 16px; font-size: 13px; color: var(--ink-soft); }
+/* SAR ส่วนที่ 1: การ์ดข้อมูลพื้นฐานแบบกริดยืดตามความกว้าง · หัวข้อ 1.2 · ช่องเวลามาปฏิบัติหน้าที่แยกเป็นการ์ดต่อประเภทการลา (ครั้ง/วัน คู่กัน) */
+.pa-pf-auto { grid-template-columns: repeat(auto-fill, minmax(min(100%, 210px), 1fr)); }
+@media (max-width: 540px) { .pa-pf.pa-pf-auto { grid-template-columns: 1fr 1fr; gap: 8px; } .pa-pf.pa-pf-auto .pa-pf-item { padding: 8px 10px; } }
+.doc-subsec + .u-note { margin-bottom: 16px; }
+.sar-sub-title { margin: 20px 0 10px; font-size: 15px; font-weight: 700; color: var(--ink); }
+/* ตารางผลการเรียน (1.2.4.1) 15 คอลัมน์: ชื่อวิชากว้าง · ช่องตัวเลขแคบเท่ากัน กึ่งกลาง */
+.sar-grades { table-layout: fixed; }
+.sar-grades th:nth-child(1) { width: 18%; }
+.sar-grades th:nth-child(2) { width: 8%; }
+.sar-grades th:nth-child(14) { width: 13%; }
+.sar-grades th:nth-child(15) { width: 52px; }
+.sar-grades th:nth-child(n+3):nth-child(-n+13) { text-align: center; }
+.sar-grades td:nth-child(n+3):nth-child(-n+13) .input-sm { padding-inline: 4px; text-align: center; }
+.sar-att { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 170px), 1fr)); gap: 10px 12px; }
+.sar-att-item { padding: 10px 12px; border-radius: var(--radius-s); background: var(--surface-sunken); }
+.sar-att-t { margin-bottom: 6px; font-size: 13px; font-weight: 600; color: var(--ink); }
+.sar-att-in { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.sar-att-in .field { margin-bottom: 0; }
+.sar-att-in .field span { display: block; margin-bottom: 3px; font-size: 12px; font-weight: 600; color: var(--ink-soft); }
+.sar-att-item .input-sm { background: var(--card); }
 .doc-check { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 500; }
 .doc-check input { width: 18px; height: 18px; accent-color: var(--primary-solid); }
 
@@ -2385,6 +2405,9 @@ table.tt tr.is-today td.tt-cell { background: color-mix(in srgb, var(--hue-orang
   .sar-mx-cell { min-height: 40px; padding: 0 10px; border: 1.5px solid var(--border); border-radius: var(--radius-pill); }
   .sar-mx-cell:has(input:checked) { border-color: var(--primary); }
   .sar-mx-txt { display: inline; }
+}
+@container idp-wrap (max-width: 900px) {
+  .sar-grades { table-layout: auto; }
 }
 
 .doc-preview-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
