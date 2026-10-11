@@ -30,7 +30,38 @@ const SAR_STD = [
     '3.1 จัดการเรียนรู้ผ่านกระบวนการคิดและปฏิบัติจริง และสามารถนำไปประยุกต์ใช้ในชีวิตได้', '3.2 ใช้สื่อ เทคโนโลยีสารสนเทศ และแหล่งเรียนรู้ที่เอื้อต่อการเรียนรู้', '3.3 มีการบริหารจัดการชั้นเรียนเชิงบวก', '3.4 ตรวจสอบและประเมินผู้เรียนอย่างเป็นระบบ และนำผลมาพัฒนาผู้เรียน', '3.5 มีการแลกเปลี่ยนเรียนรู้และให้ข้อมูลสะท้อนกลับ เพื่อพัฒนาและปรับปรุงการจัดการเรียนรู้']],
 ];
 const SAR_DUTY = ['5.1 กลุ่มบริหารวิชาการ', '5.2 กลุ่มบริหารงานพัฒนานักเรียน', '5.3 กลุ่มบริหารทั่วไป', '5.4 กลุ่มบริหารบุคคล', '5.5 กลุ่มบริหารงบประมาณ'];
-const SAR_NARR = [['n11', '1.1 การสร้างและ/หรือพัฒนาหลักสูตร'], ['n12', '1.2 การจัดการเรียนรู้ (ออกแบบหน่วยการเรียนรู้ · แผนการจัดการเรียนรู้ · กลยุทธ์)'], ['n13', '1.3 การสร้างและ/หรือพัฒนาสื่อ นวัตกรรม เทคโนโลยี และแหล่งเรียนรู้'], ['n14', '1.4 การวัดและประเมินผลการเรียนรู้'], ['n15', '1.5 ศึกษา วิเคราะห์ สังเคราะห์ และ/หรือวิจัย เพื่อแก้ปัญหาหรือพัฒนาการเรียนรู้'], ['n21', '2.1 การบริหารจัดการชั้นเรียน และการจัดทำข้อมูลสารสนเทศ'], ['n22', '2.2 การจัดระบบดูแลช่วยเหลือนักเรียน'], ['guide', '6. แนวทางการพัฒนาคุณภาพผู้เรียน (ในภาคเรียนต่อไป)']];
+// หัวข้อกลางของเอกสาร — ใช้ร่วมกันทั้งฟอร์มและตอนพิมพ์ (ถ้อยคำตามตัวอย่าง SAR-2-2568) · แก้ที่นี่ที่เดียว
+const SAR_H = {
+  p1: 'ส่วนที่ 1 ข้อมูลพื้นฐาน',
+  s11: '1.1 ข้อมูลพื้นฐาน',
+  s12: '1.2 ข้อมูลการปฏิบัติหน้าที่',
+  teach: '1.2.1 ปฏิบัติการสอน',                         // + ภาคเรียนที่ … ปีการศึกษา … (ตอนพิมพ์)
+  act: '1.2.2 กิจกรรมพัฒนาผู้เรียน ที่ปฏิบัติการพัฒนาผู้เรียน', // + ภาคเรียนที่ … ปีการศึกษา … (ตอนพิมพ์)
+  home: '1.2.3 ปฏิบัติหน้าที่ครูที่ปรึกษา',
+  attend: '1.2.4 ข้อมูลเกี่ยวกับเวลาการมาปฏิบัติหน้าที่ราชการ', // + (ช่วงเวลาที่รายงาน) ถ้ากรอกไว้
+  p2: 'ส่วนที่ 2 ผลงานที่เกิดจากการปฏิบัติหน้าที่',
+  g1: '1. ด้านการจัดการเรียนการสอน',
+  g1note: '(ให้ครูผู้สอนรายงานผลการปฏิบัติงานตามมาตรฐานตามตัวชี้วัด หลักเกณฑ์และวิธีการประเมินผลการปฏิบัติงานของข้าราชการครู สายครูผู้สอน)',
+  l12: '1.2 การจัดการเรียนรู้',
+  q124: '1.2.4 คุณภาพผู้เรียน',
+  acad: '1.2.4.1 ผลสัมฤทธิ์ทางวิชาการของผู้เรียน',
+  trait: '1.2.4.2 คุณลักษณะที่พึงประสงค์ของผู้เรียน',
+  meth: '1.2.5 รูปแบบ/วิธีการจัดกิจกรรมการเรียนการสอนที่ครูใช้ คือ ข้อใดบ้าง (ตอบได้มากกว่า 1 ข้อ)',
+  cond: '1.2.6 สภาพการปฏิบัติงานสอน',
+  survey: '1.2.7 ผลการประเมินการสอนของครูโดยนักเรียน',
+  plan: '1.6 การประเมินตนเองเกี่ยวกับการจัดทำแผนการจัดการเรียนรู้ที่เน้นผู้เรียนเป็นสำคัญ',
+  g2: '2. ด้านการบริหารจัดการชั้นเรียน',
+  g3: '3. ด้านการพัฒนาตนเองและพัฒนาวิชาชีพ',            // + (ช่วงเวลาที่รายงาน) ถ้ากรอกไว้
+  s31: '3.1 การพัฒนาตนเอง',
+  s32: '3.2 การพัฒนาวิชาชีพ',
+  g4: '4. การได้รับรางวัล / ประกาศเกียรติคุณ / ผลงานดีเด่น / เกียรติประวัติที่ปรากฏต่อสาธารณชนด้านสถานศึกษา / ครู / นักเรียน',
+  g5: '5. งานอื่นๆ ที่ได้รับมอบหมาย',
+  p3: 'ส่วนที่ 3 ผลการดำเนินงานตามมาตรฐานการศึกษาขั้นพื้นฐาน เพื่อการประกันคุณภาพภายในของสถานศึกษา',
+};
+// ช่องบรรยายส่วนที่ 2 · [รหัสช่อง = id ของ textarea ต่อท้าย sar-, หัวข้อ, ระดับหัวข้อตอนพิมพ์ (1 = หัวข้อใหญ่ · 2 = x.y · 3 = x.y.z)]
+//   เรียงตามลำดับในเอกสาร · n121–n123 แยกจาก n12 เดิม (ข้อมูลเก่าย้ายเข้า n121 ใน sarNormalize) · รหัสต้องตรงกับ IDP_CONFIG.sarAi (js/idp-config.js)
+const SAR_NARR = [['n11', '1.1 การสร้างและหรือพัฒนาหลักสูตร', 2], ['n121', '1.2.1 การออกแบบหน่วยการเรียนรู้', 3], ['n122', '1.2.2 การจัดทำแผนการจัดการเรียนรู้/แผนการจัดการศึกษาเฉพาะบุคคล/แผนการสอนรายบุคคล/แผนการจัดประสบการณ์', 3], ['n123', '1.2.3 กลยุทธ์ในการจัดการเรียนรู้', 3], ['n13', '1.3 การสร้างและหรือพัฒนาสื่อ นวัตกรรม เทคโนโลยีทางการศึกษา และแหล่งเรียนรู้', 2], ['n14', '1.4 การวัดและประเมินผลการเรียนรู้', 2], ['n15', '1.5 ศึกษา วิเคราะห์ สังเคราะห์ และหรือวิจัย เพื่อแก้ปัญหาหรือพัฒนาการเรียนรู้ที่ส่งผลต่อคุณภาพผู้เรียน', 2], ['n21', '2.1 การบริหารจัดการชั้นเรียน และการจัดทำข้อมูลสารสนเทศ', 2], ['n22', '2.2 การจัดระบบดูแลช่วยเหลือนักเรียน', 2], ['guide', '6. แนวทางการพัฒนาคุณภาพผู้เรียน (ในภาคเรียนต่อไป)', 1]];
+const sarNarr = k => (SAR_NARR.find(n => n[0] === k) || [])[1] || k;
 
 // ตารางแถวซ้ำ: [รหัสช่อง, หัวคอลัมน์]
 const SAR_ROWS = {
@@ -78,6 +109,11 @@ function sarNormalize(d) {
   d.f = d.f && typeof d.f === 'object' ? d.f : {};
   d.rows = d.rows && typeof d.rows === 'object' ? d.rows : {};
   d.lv = d.lv && typeof d.lv === 'object' ? d.lv : {};
+  // ช่อง 1.2 เดิม (n12 = ออกแบบหน่วย · แผน · กลยุทธ์ รวมช่องเดียว) แยกเป็น n121–n123 แล้ว — ข้อความเดิมย้ายเข้า n121 ทั้งก้อน (ไม่ทิ้ง) · _n12 = ธงให้ฟอร์มแจ้งครู (ขึ้นต้น _ ไม่ถูกเก็บลง Firestore)
+  if ('n12' in d.f) {
+    if (d.f.n12 && !d.f.n121 && !d.f.n122 && !d.f.n123) { d.f.n121 = d.f.n12; d._n12 = true; }
+    delete d.f.n12;
+  }
   // บริบทงานของผู้ช่วย AI (js/sar-ai.js) — ตัดความยาวตาม IDP_CONFIG.sarAi.aiCtx.maxLen · 1 ฟิลด์ระดับบน (ไม่เกิน validDoc(30)) · ไม่มี config (ไม่ได้โหลดระบบ ID-Plan) = คงค่าเดิม
   const mx = typeof IDP_CONFIG !== 'undefined' && IDP_CONFIG.sarAi ? IDP_CONFIG.sarAi.aiCtx.maxLen : null;
   if (mx) {
@@ -307,6 +343,9 @@ async function sarRenderFormView() {
   const sec = (t, body) => `<section class="doc-section"><h2 class="doc-sec-title">${t}</h2>${body}</section>`;
   const num = (label, path) => sarFld(label, sarIn(path, sarGet(d.f, path), '', 'inputmode="decimal"'));
   const lv5 = [5, 4, 3, 2, 1];
+  // ช่องบรรยายส่วนที่ 2 (textarea id = sar-<รหัส>) และหัวข้อกลุ่มในฟอร์ม (หัวข้อใหญ่ 1. 2. 3. … ไม่มีช่องกรอกของตัวเอง)
+  const narr = (k, rows = 3) => `<div class="field u-mt-4"><div class="doc-item-h"><label for="sar-${k}">${sarEsc(sarNarr(k))}</label></div><textarea class="idp-ta" id="sar-${k}" data-f="${k}" rows="${rows}">${sarEsc(f[k])}</textarea></div>`;
+  const grp = (t, note = '') => `<div class="doc-subsec-hd u-mt-4">${sarEsc(t)}${note ? ` <span class="doc-sec-note">${sarEsc(note)}</span>` : ''}</div>`;
 
   root.innerHTML = `
   <div class="pa-form-head">
@@ -323,7 +362,7 @@ async function sarRenderFormView() {
     </div></div>
 
     ${sec('ส่วนที่ 1  ข้อมูลพื้นฐาน', `
-      <div class="doc-subsec"><div class="doc-subsec-hd">1.1 ข้อมูลพื้นฐาน <span class="doc-sec-note">(ทั้งหมดในส่วนนี้ดึงจากข้อมูลส่วนตัว — แก้ที่นั่นครั้งเดียว)</span></div>
+      <div class="doc-subsec"><div class="doc-subsec-hd">${SAR_H.s11} <span class="doc-sec-note">(ทั้งหมดในส่วนนี้ดึงจากข้อมูลส่วนตัว — แก้ที่นั่นครั้งเดียว)</span></div>
         <div class="u-mt-4"><span class="u-muted">ชื่อ</span> <span class="u-semibold">${sarEsc(pi.name || '—')}</span> <span class="u-muted">ตำแหน่ง</span> <span class="u-semibold">${sarEsc(pi.position || '—')}</span> <span class="u-muted">กลุ่มสาระฯ</span> <span class="u-semibold">${sarEsc(pi.subjectGroup || '—')}</span></div>
         <div class="u-mt-4"><span class="u-muted">สถานศึกษา</span> <span class="u-semibold">${sarEsc(pi.school || '—')}</span></div>
         <div class="u-mt-4">${[['อายุ', ps.age && ps.age + ' ปี'], ['อายุราชการ', ps.svcY !== '' && `${ps.svcY} ปี ${ps.svcM || 0} เดือน`], ['คุณวุฒิสูงสุด', ps.degree], ['วิชาเอก', ps.major], ['จากสถาบัน', ps.inst], ['วิทยฐานะ', ps.rank], ['ตำแหน่งเลขที่', ps.posNo]]
@@ -332,34 +371,45 @@ async function sarRenderFormView() {
         </div>
             <div class="u-mt-4"><button type="button" class="btn btn-primary btn-sm" id="sar-cs-pull">ดึงจากรายวิชา · คะแนน · ตารางสอน (ภาคเรียนนี้)</button></div>
       <div class="u-note">รวมสองแหล่งในปุ่มเดียว: ห้องและจำนวนนักเรียนมาจากบันทึกคะแนน · ชั่วโมง/สัปดาห์นับจากคาบของห้องนั้นในตารางสอน (ทั้งรายวิชาและกิจกรรมพัฒนาผู้เรียน) · ตารางผลการเรียน (1.2.4.1) มาจากเกรดของแต่ละห้อง · ช่องไหนไม่พบข้อมูลจะเว้นว่างให้กรอกเอง แก้ไขต่อในช่องได้</div>
-      ${sarTable('teaching', '1.2.1 ปฏิบัติการสอน', 'เพิ่มรายวิชา')}<div class="u-note" id="sar-t-sum"></div>
-      ${sarTable('activities', '1.2.2 กิจกรรมพัฒนาผู้เรียน', 'เพิ่มกิจกรรม')}
-      <div class="doc-subsec"><div class="doc-subsec-hd">1.2.3 ครูที่ปรึกษา</div><div class="doc-form-meta">
+      <div class="doc-subsec-hd u-mt-4">${SAR_H.s12}</div>
+      ${sarTable('teaching', SAR_H.teach, 'เพิ่มรายวิชา')}<div class="u-note" id="sar-t-sum"></div>
+      ${sarTable('activities', SAR_H.act, 'เพิ่มกิจกรรม')}
+      <div class="doc-subsec"><div class="doc-subsec-hd">${SAR_H.home}</div><div class="doc-form-meta">
         ${sarFld('ชั้น/ห้อง', sarIn('hmCls', f.hmCls, 'เช่น ม.1/1'))}${num('ชาย (คน)', 'hmM')}${num('หญิง (คน)', 'hmF')}</div><div class="u-note" id="sar-hm-n"></div></div>
-      <div class="doc-subsec"><div class="doc-subsec-hd">1.2.4 เวลาการมาปฏิบัติหน้าที่ราชการ <span class="doc-sec-note">(ครั้ง / วัน — เว้นว่างถ้าไม่มี)</span></div><div class="doc-form-meta">
+      <div class="doc-subsec"><div class="doc-subsec-hd">${SAR_H.attend} <span class="doc-sec-note">(ครั้ง / วัน — เว้นว่างถ้าไม่มี)</span></div><div class="doc-form-meta">
         ${[['late', 'มาสาย'], ['sick', 'ลาป่วย'], ['biz', 'ลากิจ'], ['ord', 'ลาอุปสมบท'], ['mat', 'ลาคลอด']].map(([k, l]) => `${num(l + ' (ครั้ง)', 'at.' + k + 'T')}${num(l + ' (วัน)', 'at.' + k + 'D')}`).join('')}</div></div>`)}
 
     ${sec('ส่วนที่ 2  ผลงานที่เกิดจากการปฏิบัติหน้าที่', `
-      ${SAR_NARR.slice(0, 7).map(([k, l]) => `<div class="field u-mt-4"><div class="doc-item-h"><label for="sar-${k}">${sarEsc(l)}</label></div><textarea class="idp-ta" id="sar-${k}" data-f="${k}" rows="3">${sarEsc(f[k])}</textarea></div>`).join('')}
-      ${sarTable('grades', '1.2.4.1 ผลสัมฤทธิ์ทางวิชาการของผู้เรียน (จำนวนนักเรียนตามระดับผลการเรียน)', 'เพิ่มรายวิชา', '<th>เฉลี่ย / ตรวจสอบ</th>')}<div class="u-note" id="sar-g-res"></div>
-      ${sarTable('traits', '1.2.4.2 คุณลักษณะอันพึงประสงค์ของผู้เรียน (จำนวนคนตามผลการประเมิน)', 'เพิ่มห้อง')}<div class="u-note" id="sar-tr-n"></div>
-      <div class="doc-subsec"><div class="doc-subsec-hd">1.2.5 รูปแบบ/วิธีการจัดกิจกรรมการเรียนการสอนที่ใช้</div>
+      ${grp(SAR_H.g1, SAR_H.g1note)}
+      ${narr('n11')}
+      ${grp(SAR_H.l12)}
+      ${d._n12 ? '<div class="u-note u-mt-4">ข้อความเดิมของหัวข้อ 1.2 (ฉบับที่บันทึกไว้ก่อนแยกช่อง) อยู่ในช่อง 1.2.1 ทั้งก้อน — แบ่งไปช่อง 1.2.2 และ 1.2.3 เองได้</div>' : ''}
+      ${narr('n121')}${narr('n122')}${narr('n123')}
+      ${grp(SAR_H.q124)}
+      ${sarTable('grades', `${SAR_H.acad} <span class="doc-sec-note">(จำนวนนักเรียนตามระดับผลการเรียน)</span>`, 'เพิ่มรายวิชา', '<th>เฉลี่ย / ตรวจสอบ</th>')}<div class="u-note" id="sar-g-res"></div>
+      ${sarTable('traits', `${SAR_H.trait} <span class="doc-sec-note">(จำนวนคนตามผลการประเมิน)</span>`, 'เพิ่มห้อง')}<div class="u-note" id="sar-tr-n"></div>
+      <div class="doc-subsec"><div class="doc-subsec-hd">${SAR_H.meth}</div>
         ${SAR_METHODS.map((m, i) => `<label class="u-mt-4"><input type="checkbox" data-f="m.${i}"${f.m?.[i] ? ' checked' : ''}> ${m}</label>`).join(' ')}
         <div class="field u-mt-4"><label for="sar-mo">อื่น ๆ (ระบุ)</label>${sarIn('mOther', f.mOther).replace('class="input-sm"', 'class="input-sm" id="sar-mo"')}</div><div class="u-note" id="sar-m-n"></div></div>
-      <div class="doc-subsec"><div class="doc-subsec-hd">1.2.6 สภาพการปฏิบัติงานสอน</div>${sarMatrix('cond', SAR_COND, lv5, ['มากที่สุด', 'มาก', 'ปานกลาง', 'น้อย', 'น้อยที่สุด'])}</div>
-      <div class="doc-subsec"><div class="doc-subsec-hd">1.2.7 ผลการประเมินการสอนของครูโดยนักเรียน</div>${sarMatrix('survey', SAR_SURVEY, lv5, ['มากที่สุด', 'มาก', 'ปานกลาง', 'น้อย', 'น้อยที่สุด'])}<div class="u-note" id="sar-sv-res"></div></div>
-      <div class="doc-subsec"><div class="doc-subsec-hd">1.6 การประเมินตนเองเกี่ยวกับการจัดทำแผนการจัดการเรียนรู้ที่เน้นผู้เรียนเป็นสำคัญ <span class="doc-sec-note">(ระดับ 4 = ดีมาก … 1 = ปรับปรุง)</span></div>${sarMatrix('plan', SAR_PLAN, [4, 3, 2, 1], ['4', '3', '2', '1'])}<div class="u-note" id="sar-pl-res"></div></div>
+      <div class="doc-subsec"><div class="doc-subsec-hd">${SAR_H.cond}</div>${sarMatrix('cond', SAR_COND, lv5, ['มากที่สุด', 'มาก', 'ปานกลาง', 'น้อย', 'น้อยที่สุด'])}</div>
+      <div class="doc-subsec"><div class="doc-subsec-hd">${SAR_H.survey}</div>${sarMatrix('survey', SAR_SURVEY, lv5, ['มากที่สุด', 'มาก', 'ปานกลาง', 'น้อย', 'น้อยที่สุด'])}<div class="u-note" id="sar-sv-res"></div></div>
+      <div class="doc-subsec"><div class="doc-subsec-hd">${SAR_H.plan} <span class="doc-sec-note">(ระดับ 4 = ดีมาก … 1 = ปรับปรุง)</span></div>${sarMatrix('plan', SAR_PLAN, [4, 3, 2, 1], ['4', '3', '2', '1'])}<div class="u-note" id="sar-pl-res"></div></div>
+      ${narr('n13')}${narr('n14')}${narr('n15')}
+      ${grp(SAR_H.g2)}
+      ${narr('n21')}${narr('n22')}
+      ${grp(SAR_H.g3)}
       <div class="u-mt-4"><button type="button" class="btn btn-primary btn-sm" id="sar-rec-pull">ดึงอบรม · เกียรติบัตร/รางวัล จากข้อมูลส่วนตัว (ปีการศึกษานี้)</button></div>
       <div class="u-note">ดึงจากแท็บอบรม/เกียรติบัตร/รางวัลในหน้าข้อมูลส่วนตัว ทั้งปีการศึกษา — ใส่ในหัวข้อ 3.1 (อบรม) และ 4 (เกียรติบัตร + รางวัล) · ไม่มีช่องสถานที่ให้เว้นว่าง · ลบแถวที่อยู่นอกช่วงรายงานหรือแก้ต่อในช่องได้</div>
-      ${sarTable('training', '3.1 การพัฒนาตนเอง (อบรม/พัฒนา)', 'เพิ่มการอบรม')}<div class="u-note" id="sar-tn-h"></div>
-      <div class="field u-mt-4"><label for="sar-plc">3.2 การพัฒนาวิชาชีพ (PLC)</label>${sarIn('plc', f.plc, 'เช่น เข้าร่วมกิจกรรม PLC ภาคเรียนที่ 2 จำนวน … ชั่วโมง').replace('class="input-sm"', 'class="input-sm" id="sar-plc"')}</div>
-      ${sarTable('awards', '4. รางวัล / ประกาศเกียรติคุณ / ผลงานดีเด่น', 'เพิ่มรางวัล')}
-      <div class="doc-subsec"><div class="doc-subsec-hd">5. งานอื่น ๆ ที่ได้รับมอบหมาย</div>
-        ${SAR_DUTY.map((t, i) => `${sarTable('duty' + i, t, 'เพิ่มงาน')}<div class="field"><label>ระดับคุณภาพการปฏิบัติงาน
-          <select data-f="dq${i}">${['', 'ดี', 'พอใช้', 'ปรับปรุง'].map(o => `<option value="${o}"${f['dq' + i] === o ? ' selected' : ''}>${o || '— เลือก —'}</option>`).join('')}</select></label></div>`).join('')}</div>
-      ${SAR_NARR.slice(7).map(([k, l]) => `<div class="field u-mt-4"><div class="doc-item-h"><label for="sar-${k}">${sarEsc(l)}</label></div><textarea class="idp-ta" id="sar-${k}" data-f="${k}" rows="4">${sarEsc(f[k])}</textarea></div>`).join('')}`)}
+      ${sarTable('training', SAR_H.s31, 'เพิ่มการอบรม')}<div class="u-note" id="sar-tn-h"></div>
+      <div class="field u-mt-4"><label for="sar-plc">${SAR_H.s32}</label>${sarIn('plc', f.plc, 'เช่น เข้าร่วมกิจกรรม PLC ภาคเรียนที่ 2 จำนวน … ชั่วโมง').replace('class="input-sm"', 'class="input-sm" id="sar-plc"')}</div>
+      ${grp(SAR_H.g4)}
+      ${sarTable('awards', 'รายการรางวัล / เกียรติคุณ', 'เพิ่มรางวัล')}
+      ${grp(SAR_H.g5)}
+      ${SAR_DUTY.map((t, i) => `${sarTable('duty' + i, t, 'เพิ่มงาน')}<div class="field"><label>สรุปได้ว่า ระดับคุณภาพการปฏิบัติงาน
+          <select data-f="dq${i}">${['', 'ดี', 'พอใช้', 'ปรับปรุง'].map(o => `<option value="${o}"${f['dq' + i] === o ? ' selected' : ''}>${o || '— เลือก —'}</option>`).join('')}</select></label></div>`).join('')}
+      ${narr('guide', 4)}`)}
 
-    ${sec('ส่วนที่ 3  ผลการดำเนินงานตามมาตรฐานการศึกษาขั้นพื้นฐาน', `
+    ${sec('ส่วนที่ 3  ผลการดำเนินงานตามมาตรฐานการศึกษาขั้นพื้นฐาน เพื่อการประกันคุณภาพภายในของสถานศึกษา', `
       <div class="u-note">ระดับคุณภาพ 5 = ยอดเยี่ยม · 4 = ดีเลิศ · 3 = ดี · 2 = ปานกลาง · 1 = กำลังพัฒนา — ค่าเฉลี่ยและระดับคุณภาพคำนวณให้</div>
       ${SAR_STD.map(([t, items], i) => `<div class="doc-subsec"><div class="doc-subsec-hd">${sarEsc(t)}</div>${sarMatrix('std' + i, items, lv5, ['5', '4', '3', '2', '1'])}<div class="u-note" id="sar-std-${i}"></div></div>`).join('')}`)}
 
@@ -483,7 +533,7 @@ function sarBeforeLeave() { if (SAR.view === 'form') sarCollect(); }
 const SAR_PRINT_CSS = `
 @page{size:A4 portrait;margin:1.6cm 1.4cm}
 body{font-family:'TH SarabunPSK','TH Sarabun PSK','THSarabunPSK','TH Sarabun New','PA Sarabun','Noto Sans Thai',Tahoma,sans-serif;font-size:14pt;line-height:1.3}
-h1,h2,h3{margin:.6em 0 .2em}h1{font-size:18pt;text-align:center}h2{font-size:15pt}h3{font-size:14pt}
+h1,h2,h3{margin:.6em 0 .2em}h1{font-size:18pt;text-align:center}h2{font-size:15pt}h3{font-size:14pt}h3.l1{font-size:15pt}h3.l3{margin-left:.8cm}h3.l4{margin-left:1.6cm}h3 .nt{font-weight:400}
 table{border-collapse:collapse;width:100%;margin:.3em 0}th,td{border:1px solid #000;padding:2px 5px;vertical-align:top}th{text-align:center}.c{text-align:center}.sg{margin:2em 0 0 auto;width:9cm;text-align:center;break-inside:avoid}p{margin:.2em 0}`;
 
 // สร้าง HTML เนื้อหา SAR (ใช้ทั้งตอนพิมพ์และตอนแสดงตัวอย่างบนจอ)
@@ -492,37 +542,52 @@ function sarBuildBodyHtml(d, prof) {
   const E = sarEsc, cell = v => (v === '' || v == null ? '' : E(v));
   const tbl = (key, extra) => `<table><tr>${sarCols(key).map(c => `<th>${E(c[1])}</th>`).join('')}</tr>${(R[key] || []).filter(r => Object.values(r).some(Boolean)).map(r => `<tr>${sarCols(key).map(([c]) => `<td>${cell(r[c])}</td>`).join('')}</tr>`).join('')}${extra || ''}</table>`;
   const mx = (group, items, levels) => `<table><tr><th>รายการ</th>${levels.map(l => `<th>${l}</th>`).join('')}</tr>${items.map((t, i) => `<tr><td>${E(t)}</td>${levels.map(l => `<td class="c">${(L[group] || [])[i] === l ? '✓' : ''}</td>`).join('')}</tr>`).join('')}</table>`;
-  const para = (k, l) => f[k] ? `<h3>${E(l)}</h3><p>${docNl(f[k])}</p>` : '';
+  // หัวข้อพิมพ์ครบเสมอแม้ช่องว่าง (ตามตัวอย่าง) · lv = ระดับหัวข้อ 1/2/3/4 → <h3 class="lN"> (ขนาด/เยื้องใน SAR_PRINT_CSS)
+  const hd = (lv, t, note = '') => `<h3 class="l${lv}">${E(t)}${note ? ` <span class="nt">${E(note)}</span>` : ''}</h3>`;
+  const narr = k => { const n = SAR_NARR.find(x => x[0] === k); return hd(n[2], n[1]) + (f[k] ? `<p>${docNl(f[k])}</p>` : ''); };
+  const sy = `ภาคเรียนที่ ${d.semester} ปีการศึกษา ${d.year}`, per = f.period ? `(${f.period})` : '';
   const at = ['late', 'sick', 'biz', 'ord', 'mat'].map((k, i) => `<tr><td>${['มาสาย', 'ลาป่วย', 'ลากิจ', 'ลาอุปสมบท', 'ลาคลอด'][i]}</td><td class="c">${cell(f.at?.[k + 'T']) || '-'}</td><td class="c">${cell(f.at?.[k + 'D']) || '-'}</td></tr>`).join('');
   const gr = s.gradeTot, gradeFoot = (R.grades || []).length ? `<tr><th colspan="3">รวม</th>${SAR_G.map(([k]) => `<th>${gr[k]}</th>`).join('')}<th>${gr.r}</th><th>${gr.ms}</th></tr>` : '';
+  // ลำดับตามตัวอย่าง SAR-2-2568: ส่วนที่ 1 → ส่วนที่ 2 (1. การเรียนการสอน [1.1 → 1.2.1–1.2.7 → 1.6 → 1.3–1.5] · 2. ชั้นเรียน · 3. พัฒนาตนเอง · 4. รางวัล · 5. งานอื่น · 6. แนวทาง) → ส่วนที่ 3
   return `
   <h1>รายงานผลการปฏิบัติงานและการประเมินตนเองรายบุคคล<br>Self-Assessment Report : SAR</h1>
-  <p class="c">ภาคเรียนที่ ${E(d.semester)} ปีการศึกษา ${E(d.year)}${f.period ? ` (${E(f.period)})` : ''}</p>
+  <p class="c">${sy}${f.period ? ` (${E(f.period)})` : ''}</p>
   <p class="c">${E(pi.name)} ตำแหน่ง ${E(pi.position)}<br>${E(pi.school)} ${E(pi.affiliation)}</p>
-  <h2>ส่วนที่ 1 ข้อมูลพื้นฐาน</h2>
+  <h2>${E(SAR_H.p1)}</h2>
+  ${hd(2, SAR_H.s11)}
   <p>ชื่อ ${E(pi.name)} กลุ่มสาระการเรียนรู้ ${E(pi.subjectGroup)} อายุ ${E(ps.age)} ปี อายุราชการ ${E(ps.svcY)} ปี ${E(ps.svcM)} เดือน คุณวุฒิสูงสุด ${E(ps.degree)} วิชาเอก ${E(ps.major)} จาก ${E(ps.inst)} ตำแหน่ง ${E(ps.position || pi.position)} วิทยฐานะ ${E(ps.rank)} ตำแหน่งเลขที่ ${E(ps.posNo)} สถานศึกษา ${E(pi.school)}</p>
-  <h3>1.2.1 ปฏิบัติการสอน</h3>${tbl('teaching', `<tr><th colspan="2">รวม</th><th>${s.teachN}</th><th>${sarFmt(s.teachHours, 1)}</th></tr>`)}
-  <h3>1.2.2 กิจกรรมพัฒนาผู้เรียน</h3>${tbl('activities')}
-  <h3>1.2.3 ครูที่ปรึกษา</h3><p>ชั้น ${E(f.hmCls)} ชาย ${E(f.hmM)} คน หญิง ${E(f.hmF)} คน รวม ${s.homeN} คน</p>
-  <h3>1.2.4 เวลาการมาปฏิบัติหน้าที่ราชการ</h3><table><tr><th>ประเภท</th><th>ครั้ง</th><th>วัน</th></tr>${at}</table>
-  <h2>ส่วนที่ 2 ผลงานที่เกิดจากการปฏิบัติหน้าที่</h2>
-  ${SAR_NARR.slice(0, 7).map(([k, l]) => para(k, l)).join('')}
-  <h3>1.2.4.1 ผลสัมฤทธิ์ทางวิชาการของผู้เรียน</h3>
+  ${hd(2, SAR_H.s12)}
+  ${hd(3, `${SAR_H.teach}${sy}`)}${tbl('teaching', `<tr><th colspan="2">รวม</th><th>${s.teachN}</th><th>${sarFmt(s.teachHours, 1)}</th></tr>`)}
+  ${hd(3, `${SAR_H.act}${sy}`)}${tbl('activities')}
+  ${hd(3, SAR_H.home)}<p>ชั้น ${E(f.hmCls)} ชาย ${E(f.hmM)} คน หญิง ${E(f.hmF)} คน รวม ${s.homeN} คน</p>
+  ${hd(3, `${SAR_H.attend}${per}`)}<table><tr><th>ประเภท</th><th>ครั้ง</th><th>วัน</th></tr>${at}</table>
+  <h2>${E(SAR_H.p2)}</h2>
+  ${hd(1, SAR_H.g1, SAR_H.g1note)}
+  ${narr('n11')}
+  ${hd(2, SAR_H.l12)}
+  ${narr('n121')}${narr('n122')}${narr('n123')}
+  ${hd(3, SAR_H.q124)}
+  ${hd(4, SAR_H.acad)}
   <table><tr><th>วิชา</th><th>ห้อง</th><th>N</th>${SAR_G.map(g => `<th>${g[1]}</th>`).join('')}<th>ร</th><th>มส.</th><th>เฉลี่ย</th></tr>
   ${(R.grades || []).map((r, i) => `<tr><td>${cell(r.name)}</td><td>${cell(r.room)}</td><td>${cell(r.n)}</td>${SAR_G.map(([k]) => `<td class="c">${cell(r[k]) || '-'}</td>`).join('')}<td class="c">${cell(r.r) || '-'}</td><td class="c">${cell(r.ms) || '-'}</td><td class="c">${s.rowG[i].all ? sarFmt(s.rowG[i].avg) : ''}</td></tr>`).join('')}${gradeFoot ? gradeFoot.replace('</tr>', `<th>${sarFmt(s.gt.avg)}</th></tr>`) : ''}</table>
   <p>ร้อยละของนักเรียนที่ได้ผลการเรียน 3 ขึ้นไป ${sarFmt(s.pHigh)} · 1–2.5 ${sarFmt(s.pMid)} · 0, ร, มส ${sarFmt(s.pLow)}</p>
-  <h3>1.2.4.2 คุณลักษณะอันพึงประสงค์ของผู้เรียน</h3>${tbl('traits')}
-  <h3>1.2.5 รูปแบบ/วิธีการจัดกิจกรรมการเรียนการสอน</h3><p>${SAR_METHODS.filter((m, i) => f.m?.[i]).map(E).join(', ')}${f.mOther ? ', ' + E(f.mOther) : ''}<br>จำนวน ${s.methodN + (f.mOther ? 1 : 0)} วิธี</p>
-  <h3>1.2.6 สภาพการปฏิบัติงานสอน</h3>${mx('cond', SAR_COND, [5, 4, 3, 2, 1])}
-  <h3>1.2.7 ผลการประเมินการสอนของครูโดยนักเรียน</h3>${mx('survey', SAR_SURVEY, [5, 4, 3, 2, 1])}<p>อยู่ในระดับ ${s.svLabel} (ค่าเฉลี่ย ${s.sv ? sarFmt(s.sv) : '—'})</p>
-  <h3>1.6 การประเมินตนเองเกี่ยวกับการจัดทำแผนการจัดการเรียนรู้ที่เน้นผู้เรียนเป็นสำคัญ</h3>${mx('plan', SAR_PLAN, [4, 3, 2, 1])}<p>อยู่ในระดับคุณภาพ ${s.plLabel}</p>
-  <h3>3.1 การพัฒนาตนเอง</h3>${tbl('training', `<tr><th colspan="4">รวม</th><th>${sarFmt(s.trainHours, 1)}</th></tr>`)}
-  ${f.plc ? `<h3>3.2 การพัฒนาวิชาชีพ</h3><p>${E(f.plc)}</p>` : ''}
-  <h3>4. รางวัล / ประกาศเกียรติคุณ / ผลงานดีเด่น</h3>${tbl('awards')}
-  <h3>5. งานอื่น ๆ ที่ได้รับมอบหมาย</h3>${SAR_DUTY.map((t, i) => `<p><b>${E(t)}</b></p>${(R['duty' + i] || []).filter(r => r.name).map((r, j) => `<p>5.${i + 1}.${j + 1} ${E(r.name)}</p>`).join('')}${f['dq' + i] ? `<p>ระดับคุณภาพการปฏิบัติงาน ${E(f['dq' + i])}</p>` : ''}`).join('')}
-  ${para('guide', '6. แนวทางการพัฒนาคุณภาพผู้เรียน (ในภาคเรียนต่อไป)')}
-  <h2>ส่วนที่ 3 ผลการดำเนินงานตามมาตรฐานการศึกษาขั้นพื้นฐาน</h2>
-  ${SAR_STD.map(([t, items], i) => `<h3>${E(t)}</h3>${mx('std' + i, items, [5, 4, 3, 2, 1])}<p>คะแนนรวม ${s.std[i].sum} ÷ ${s.std[i].total} = ${s.std[i].answered ? sarFmt(s.std[i].avg) : '—'} ระดับคุณภาพ ${s.std[i].label}</p>`).join('')}
+  ${hd(4, SAR_H.trait)}${tbl('traits')}
+  ${hd(3, SAR_H.meth)}<p>${SAR_METHODS.filter((m, i) => f.m?.[i]).map(E).join(', ')}${f.mOther ? ', ' + E(f.mOther) : ''}<br>จำนวน ${s.methodN + (f.mOther ? 1 : 0)} วิธี</p>
+  ${hd(3, SAR_H.cond)}${mx('cond', SAR_COND, [5, 4, 3, 2, 1])}
+  ${hd(3, SAR_H.survey)}${mx('survey', SAR_SURVEY, [5, 4, 3, 2, 1])}<p>อยู่ในระดับ ${s.svLabel} (ค่าเฉลี่ย ${s.sv ? sarFmt(s.sv) : '—'})</p>
+  ${hd(2, SAR_H.plan)}${mx('plan', SAR_PLAN, [4, 3, 2, 1])}<p>อยู่ในระดับคุณภาพ ${s.plLabel}</p>
+  ${narr('n13')}${narr('n14')}${narr('n15')}
+  ${hd(1, SAR_H.g2)}
+  ${narr('n21')}${narr('n22')}
+  ${hd(1, SAR_H.g3, per)}
+  ${hd(2, SAR_H.s31)}${tbl('training', `<tr><th colspan="4">รวม</th><th>${sarFmt(s.trainHours, 1)}</th></tr>`)}
+  ${hd(2, SAR_H.s32)}${f.plc ? `<p>${E(f.plc)}</p>` : ''}
+  ${hd(1, SAR_H.g4)}${tbl('awards')}
+  ${hd(1, SAR_H.g5)}
+  ${SAR_DUTY.map((t, i) => `${hd(2, t)}${(R['duty' + i] || []).filter(r => r.name).map((r, j) => `<p>5.${i + 1}.${j + 1} ${E(r.name)}</p>`).join('')}<p>สรุปได้ว่า ระดับคุณภาพการปฏิบัติงาน ${E(f['dq' + i] || '………………')}</p>`).join('')}
+  ${hd(1, sarNarr('guide'))}${f.guide ? `<p>${docNl(f.guide)}</p>` : ''}
+  <h2>${E(SAR_H.p3)}</h2>
+  ${SAR_STD.map(([t, items], i) => `${hd(2, t)}${mx('std' + i, items, [5, 4, 3, 2, 1])}<p>คะแนนรวม ${s.std[i].sum} ÷ ${s.std[i].total} = ${s.std[i].answered ? sarFmt(s.std[i].avg) : '—'} ระดับคุณภาพ ${s.std[i].label}</p>`).join('')}
   <p>ข้าพเจ้าขอรับรองว่าข้อมูลที่ได้ประเมินตนเองทั้งหมดถูกต้องตรงตามเอกสารหลักฐานที่มีอยู่จริง</p>
   <div class="sg">ลงชื่อ ……………………………… ผู้รายงาน<br>(${E(pi.name)})<br>ตำแหน่ง ${E(pi.position)}</div>
   ${[['หัวหน้ากลุ่มสาระการเรียนรู้', prof?.subjectHead], ['รองผู้อำนวยการฝ่ายวิชาการ', prof?.deputyAcademic], ['ผู้อำนวยการสถานศึกษา', prof?.director]].map(([t, n]) => `<div class="sg">ลงชื่อ ……………………………… ผู้รับรอง<br>(${E(n || '………………………')})<br>ตำแหน่ง ${E(t)}</div>`).join('')}`;

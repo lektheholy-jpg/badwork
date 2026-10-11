@@ -1,6 +1,6 @@
 // ทดสอบผู้ช่วย AI ของ SAR ส่วนที่ 2 (js/sar-ai.js + แกน js/badwork-ai.js) ด้วย jsdom — วาดฟอร์ม SAR จริงแล้วตรวจ
 // วิธีรัน: node tests/sar-ai.test.js   (หรือ npm run test:sarai)
-// ตรวจ: textarea ส่วนที่ 2 ครบ 8 ช่อง + แถวปุ่มที่หัวช่อง (.doc-item-h เหมือน PA/ID-Plan) · การ์ดบนสุด · ปุ่มทำงานถูก (ช่องว่าง/ปรับสำนวน/ย่อ) ·
+// ตรวจ: textarea ส่วนที่ 2 ครบ 10 ช่อง + แถวปุ่มที่หัวช่อง (.doc-item-h เหมือน PA/ID-Plan) · การ์ดบนสุด · ปุ่มทำงานถูก (ช่องว่าง/ปรับสำนวน/ย่อ) ·
 //        พร้อต์ส่งเฉพาะบริบทที่เกี่ยวข้อง ไม่ส่งชื่อครู · เก็บ/ตัด aiCtx · บันทึกไม่เก็บคีย์ _ · ไม่ชนกับตัวต่อ 'idp' · ลงทะเบียนไฟล์ใน utils.js / sw.js ครบ
 const fs=require('fs'),vm=require('vm'),path=require('path');const {JSDOM}=require('jsdom');
 const ROOT=process.env.PA_ROOT?path.resolve(process.env.PA_ROOT):path.join(__dirname,'..');
@@ -36,25 +36,25 @@ const prompt=()=>calls[calls.length-1].body.contents[0].parts[0].text;
    SAR.doc.f.m={0:true,10:true}; SAR.doc.f.hmCls='ม.2/1'; SAR.doc.f.hmM='20'; SAR.doc.f.hmF='20'; sarRenderFormView();`);
  await settle();
  const d=w.document, form=d.getElementById('sar-form');
- const IDS=['n11','n12','n13','n14','n15','n21','n22','guide'];
+ const IDS=['n11','n121','n122','n123','n13','n14','n15','n21','n22','guide'];
  // ---- โครงฟอร์ม ----
- ok(IDS.every(k=>d.getElementById('sar-'+k)&&d.getElementById('sar-'+k).tagName==='TEXTAREA'),'textarea ส่วนที่ 2 ครบ 8 ช่อง (id sar-n11 … sar-guide)');
+ ok(IDS.every(k=>d.getElementById('sar-'+k)&&d.getElementById('sar-'+k).tagName==='TEXTAREA'),'textarea ส่วนที่ 2 ครบ 10 ช่อง (id sar-n11 … sar-guide)');
  ok(!!d.querySelector('#sar-form > .doc-ai-top')&&form.firstElementChild.classList.contains('doc-ai-top')&&d.querySelectorAll('.doc-ai-top').length===1,'การ์ดผู้ช่วย AI อยู่หัวฟอร์ม (เหมือนหน้าอื่น) และมีใบเดียว');
  ok(d.querySelector('.doc-ai-top [data-doc-ai="all"]').textContent.includes('ร่างช่องที่ว่างของส่วนที่ 2'),'ป้ายปุ่มบนสุด');
  ok(IDS.every(k=>{const h=d.getElementById('sar-'+k).closest('.field').querySelector('.doc-item-h');return h&&h.querySelector('label[for="sar-'+k+'"]')&&h.querySelectorAll('.doc-ai-row [data-doc-ai]').length===3}),'ทุกช่อง: แถวปุ่ม 3 ปุ่ม (เขียน/ปรับสำนวน/ย่อ) อยู่ใน .doc-item-h ขวามือของชื่อช่อง');
- ok(d.querySelectorAll('.doc-ai-row').length===8,'ไม่มีแถวปุ่มเกิน (ส่วนอื่นของ SAR ไม่มีปุ่ม)');
+ ok(d.querySelectorAll('.doc-ai-row').length===10,'ไม่มีแถวปุ่มเกิน (ส่วนอื่นของ SAR ไม่มีปุ่ม)');
  ok(['level','did','media','care','problems','prev'].every(k=>d.getElementById('sar-ctx-'+k)),'การ์ดบริบทมีช่อง sar-ctx-* ครบ 6 ช่อง');
  ok(!d.querySelector('[id^="idp-ctx-"],[id^="pa-ctx-"]'),'ไม่มีช่องบริบทของระบบอื่นปนเข้ามา');
  ok(!!form.querySelector('.pa-form-footer #sar-save-btn'),'ปุ่มบันทึกเดิมยังอยู่');
  // ---- ปุ่มทำอะไร ----
  const rs=(act,f)=>R(`docAi(sarAiSys()).resolve(sarAiSys(),${JSON.stringify(act)},{dataset:{field:${JSON.stringify(f||'')}}})`);
  let r=rs('all');
- ok(r.mode==='write'&&r.specs.length===8,'ปุ่มบนสุด (ช่องว่างหมด): ร่างครบ 8 ช่อง');
+ ok(r.mode==='write'&&r.specs.length===10,'ปุ่มบนสุด (ช่องว่างหมด): ร่างครบ 10 ช่อง');
  ok(rs('write','n11').specs.length===1&&rs('polish','n11').toast&&rs('shorten','n11').toast,'ช่องว่าง: เขียนได้ · ปรับสำนวน/ย่อ = แจ้งว่าไม่มีข้อความ');
  d.getElementById('sar-n11').value='ปรับคำอธิบายรายวิชาคณิตศาสตร์';d.getElementById('sar-n11').dispatchEvent(new w.Event('input',{bubbles:true}));
  await settle();
  ok(R('SAR.doc.f.n11')==='ปรับคำอธิบายรายวิชาคณิตศาสตร์','พิมพ์/ใส่ข้อความแล้ว sarCollect เก็บเข้า SAR.doc.f ตามเดิม');
- r=rs('all');ok(r.specs.length===7&&!r.specs.some(s=>s.key==='n11'),'ปุ่มบนสุด ข้ามช่องที่มีข้อความแล้ว (ไม่เขียนทับ): 7 ช่อง');
+ r=rs('all');ok(r.specs.length===9&&!r.specs.some(s=>s.key==='n11'),'ปุ่มบนสุด ข้ามช่องที่มีข้อความแล้ว (ไม่เขียนทับ): 9 ช่อง');
  ok(rs('write','n11').toast&&rs('polish','n11').specs[0].key==='n11'&&rs('shorten','n11').mode==='shorten','ช่องมีข้อความ: เขียนซ้ำ = แจ้ง · ปรับสำนวน/ย่อ ทำได้');
  ok(rs('xyz')===null,'act ที่ไม่รู้จักไม่ทำอะไร');
  // ---- พร้อต์ ----
@@ -68,11 +68,11 @@ const prompt=()=>calls[calls.length-1].body.contents[0].parts[0].text;
  ok(!p.includes('รูปแบบ/วิธีจัดการเรียนการสอนที่ครูเลือกไว้')&&!p.includes('การอบรม/พัฒนาตนเอง'),'ส่งเฉพาะบริบทที่เกี่ยวกับช่องที่กด (n14/n21 ไม่เห็นวิธีสอน/การอบรม)');
  ok(!p.includes('ทดสอบ')&&!p.includes('ตัวอย่าง'),'ไม่ส่งชื่อ-นามสกุลครู');
  ok(calls[calls.length-1].body.systemInstruction.parts[0].text.includes('ห้ามแต่ง')&&calls[calls.length-1].body.systemInstruction.parts[0].text.includes('ได้ดำเนินการแล้ว'),'พร้อต์ระบบ: เขียนเป็นสิ่งที่ทำแล้ว · ห้ามแต่งข้อมูล');
- reply={n12:'x'};
- R(`badworkAiBatch(docAi(sarAiSys()).resolve(sarAiSys(),'all').specs.filter(s=>s.key==='n12'),'write',{},sarAiSys())`);
+ reply={n123:'x'};
+ R(`badworkAiBatch(docAi(sarAiSys()).resolve(sarAiSys(),'all').specs.filter(s=>s.key==='n123'),'write',{},sarAiSys())`);
  await settle();
  p=prompt();
- ok(p.includes('รูปแบบ/วิธีจัดการเรียนการสอนที่ครูเลือกไว้: การอธิบาย, การถามตอบ')&&!p.includes('การอบรม/พัฒนาตนเอง'),'n12: เห็นวิธีสอนที่ติ๊ก แต่ไม่เห็นการอบรม');
+ ok(p.includes('รูปแบบ/วิธีจัดการเรียนการสอนที่ครูเลือกไว้: การอธิบาย, การถามตอบ')&&!p.includes('การอบรม/พัฒนาตนเอง'),'n123 (กลยุทธ์): เห็นวิธีสอนที่ติ๊ก แต่ไม่เห็นการอบรม');
  reply={guide:'x'};
  R(`badworkAiBatch(docAi(sarAiSys()).resolve(sarAiSys(),'all').specs.filter(s=>s.key==='guide'),'write',{},sarAiSys())`);
  await settle();
@@ -124,7 +124,7 @@ const prompt=()=>calls[calls.length-1].body.contents[0].parts[0].text;
  ok(R(`Object.keys(sarNormalize({}).aiCtx).length===6&&sarNormalize({}).aiCtx.did===''`),'SAR เก่าที่ไม่มี aiCtx: ได้ค่าว่างครบ 6 ช่อง');
  // ---- วาดซ้ำ/แยกจากแผน ID-Plan ----
  R(`sarRenderFormView()`);await settle();
- ok(d.querySelectorAll('.doc-ai-top').length===1&&d.querySelectorAll('.doc-ai-row').length===8&&d.getElementById('sar-ctx-did').value==='ทำแผนแบบสืบเสาะ 3 หน่วย','วาดฟอร์มซ้ำ (เช่น หลังกดดึงข้อมูล): ไม่ติดปุ่มซ้ำ · บริบทไม่หาย');
+ ok(d.querySelectorAll('.doc-ai-top').length===1&&d.querySelectorAll('.doc-ai-row').length===10&&d.getElementById('sar-ctx-did').value==='ทำแผนแบบสืบเสาะ 3 หน่วย','วาดฟอร์มซ้ำ (เช่น หลังกดดึงข้อมูล): ไม่ติดปุ่มซ้ำ · บริบทไม่หาย');
  ok(R(`typeof DOC_AI.sar==='object'&&typeof DOC_AI.idp==='object'&&DOC_AI.sar!==DOC_AI.idp`),'ตัวต่อ sar ลงทะเบียนแยกจาก idp');
  ok(R(`sarAiSys().id==='sar'&&sarAiSys().config.aiCtx.idPrefix==='sar-ctx-'&&sarAiSys().config.ai.storageKeys.ctx==='sar-ai-ctx-v1'&&docSystem('idp').config.aiCtx.idPrefix==='idp-ctx-'`),'คีย์ AI (idPrefix · storageKeys) ของ SAR ไม่ซ้ำของแผน ID-Plan');
  ok(R(`docSystem('idp').config.ai.storageKeys.ctx!==docSystem('idp').config.sarAi.ai.storageKeys.ctx`),'คีย์ localStorage ของบริบท SAR ไม่ซ้ำ ID-Plan');
