@@ -71,7 +71,7 @@ function idpProfileInfo(p) {
   p = p || {};
   const name = [(p.prefix || '') + (p.firstName || ''), p.lastName || ''].filter(Boolean).join(' ');
   const position = [p.position, p.academicStanding].filter(Boolean).join(' ');
-  return { name, position, subjectGroup: p.subjectGroup || '', school: p.school || '', affiliation: p.affiliation || '' };
+  return { name, position, subjectGroup: p.subjectGroup || '', school: p.school || '', affiliation: p.affiliation || '', logo: p.logo || '' };
 }
 function idpTotalHours(d) {
   const sum = a => (a || []).reduce((t, r) => t + (Number(r.hours) || 0), 0);

@@ -156,31 +156,21 @@ function sarPrefaceDefault(d, pi) {
     'ข้อมูลที่ได้จากการประเมินตนเอง (Self-Assessment Report : SAR) ในครั้งนี้ ข้าพเจ้าจะได้นำไปใช้เป็นแนวทางในการปรับปรุงเพื่อพัฒนาการปฏิบัติงานที่ได้รับมอบหมาย เพื่อส่งเสริมและพัฒนาศักยภาพของผู้เรียนให้สูงขึ้นในทุก ๆ ด้านต่อไป',
   ].join('\n\n');
 }
-// ตราโรงเรียนบนปก: ย่อด้านยาวไม่เกิน 320px เก็บเป็น data URL ใน f.logo (PNG เพื่อคงพื้นโปร่งใส · ถ้าใหญ่เกิน ~180KB ใช้ WebP) · เปิดรูปไม่ได้ = ''
-function sarLogoResize(file) {
-  return new Promise(resolve => {
-    if (!file || !/^image\//.test(file.type)) { resolve(''); return; }
-    const url = URL.createObjectURL(file), img = new Image();
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-      const k = Math.min(1, 320 / Math.max(img.naturalWidth, img.naturalHeight));
-      const c = document.createElement('canvas');
-      c.width = Math.max(1, Math.round(img.naturalWidth * k));
-      c.height = Math.max(1, Math.round(img.naturalHeight * k));
-      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
-      let out = c.toDataURL('image/png');
-      if (out.length > 180000) { const w = c.toDataURL('image/webp', 0.85); if (w.startsWith('data:image/webp')) out = w; }
-      resolve(out.length <= 400000 ? out : '');
-    };
-    img.onerror = () => { URL.revokeObjectURL(url); resolve(''); };
-    img.src = url;
-  });
-}
-function sarLogoShow(form) {
-  const box = form.querySelector('#sar-logo-thumb');
-  if (box) box.innerHTML = SAR.doc.f.logo ? `<img src="${sarEsc(SAR.doc.f.logo)}" alt="ตราโรงเรียน">` : '<span>ยังไม่มีภาพ</span>';
-  const del = form.querySelector('#sar-logo-del');
-  if (del) del.hidden = !SAR.doc.f.logo;
+// ตราโรงเรียนบนปกดึงจากข้อมูลส่วนตัว (profile.logo · อัปโหลดที่หน้าข้อมูลส่วนตัวครั้งเดียว) · SAR ที่เคยเก็บตราไว้ใน f.logo = ค่าสำรองจนกว่าจะย้ายเข้าข้อมูลส่วนตัว
+// ย้ายตราเดิมใน SAR เข้าข้อมูลส่วนตัวเมื่อโปรไฟล์ยังไม่มีตรา · คืน true เมื่อย้ายสำเร็จ (ผิดพลาด เช่น rules ยังไม่อัปเดต = false และคง f.logo ไว้ ไม่ให้ตราหาย)
+async function sarMoveLogoToProfile(prof, logo) {
+  try {
+    await loadModule('profile');
+    const url = cleanProfileLogo(logo);
+    if (!url) return false;
+    await db.collection('users').doc(AppState.user.uid).update({ 'profile.logo': url });
+    if (prof) prof.logo = url;
+    if (AppState.teacherProfile) AppState.teacherProfile.logo = url;
+    return true;
+  } catch (e) {
+    console.warn('ย้ายตราโรงเรียนเข้าข้อมูลส่วนตัวไม่สำเร็จ', e);
+    return false;
+  }
 }
 
 // ---------------- คำนวณ (ใช้ทั้งหน้าจอและตอนพิมพ์) ----------------
@@ -373,8 +363,13 @@ async function sarRenderFormView() {
   const stillHere = () => !docStale(root, seq, sys) && sys.state.tab === 'sar' && SAR.view === 'form';
   const d = SAR.doc = sarNormalize(SAR.doc);
   const prof = await idpGetProfile(); // อ่านล่าสุดทุกครั้ง — เพิ่มข้อมูลส่วนตัวแล้วกลับมาเห็นทันที
+  if (d.f.logo) { // SAR เก่าที่เก็บตราไว้ในเอกสารเอง → ย้ายเข้าข้อมูลส่วนตัว (โปรไฟล์มีตราแล้ว = ใช้ของโปรไฟล์ ทิ้งของเก่า)
+    const had = !!prof?.logo, moved = !had && await sarMoveLogoToProfile(prof, d.f.logo);
+    if (had || moved) delete d.f.logo;
+    if (moved) showToast('ย้ายตราโรงเรียนไปเก็บในข้อมูลส่วนตัวแล้ว');
+  }
   if (!stillHere()) return;
-  const pi = idpProfileInfo(prof), f = d.f, ps = sarPersonal(prof, f);
+  const pi = idpProfileInfo(prof), f = d.f, ps = sarPersonal(prof, f), logo = pi.logo || f.logo || '';
   const pf = prof || {}; // ตัดสินจากข้อมูลส่วนตัวจริง (ไม่นับค่าสำรองจาก SAR เก่า) — ถ้าว่างให้ชวนไปเพิ่ม
   const miss = [['วันเกิด', pf.birthDate], ['วันที่บรรจุ', pf.startDate], ['วุฒิการศึกษา', (pf.education || []).length], ['วิทยฐานะ', pf.academicStanding], ['เลขที่ตำแหน่ง', pf.positionNo]].filter(m => !m[1]).map(m => m[0]);
   const sec = (t, body) => `<section class="doc-section"><h2 class="doc-sec-title">${t}</h2>${body}</section>`;
@@ -399,13 +394,10 @@ async function sarRenderFormView() {
     </div></div>
 
     ${sec('ปกและคำนำ', `
-      <div class="doc-subsec"><div class="doc-subsec-hd">ตราโรงเรียนบนปก <span class="doc-sec-note">(ไม่บังคับ · ไฟล์ภาพ PNG/JPG)</span></div>
-        <div class="sar-logo-box">
-          <div class="sar-logo-thumb" id="sar-logo-thumb">${f.logo ? `<img src="${sarEsc(f.logo)}" alt="ตราโรงเรียน">` : '<span>ยังไม่มีภาพ</span>'}</div>
-          <div class="sar-logo-act">
-            <label class="btn btn-ghost btn-sm">เลือกภาพ<input type="file" id="sar-logo-file" accept="image/*" hidden></label>
-            <button type="button" class="btn btn-danger-ghost btn-sm" id="sar-logo-del"${f.logo ? '' : ' hidden'}>ลบภาพ</button>
-          </div>
+      <div class="doc-subsec"><div class="doc-subsec-hd">ตราโรงเรียนบนปก <span class="doc-sec-note">(ดึงจากข้อมูลส่วนตัว — แก้ที่นั่นครั้งเดียว)</span></div>
+        <div class="pf-logo-box">
+          <div class="pf-logo-thumb">${logo ? `<img src="${sarEsc(logo)}" alt="ตราโรงเรียน">` : '<span>ยังไม่มีภาพ</span>'}</div>
+          <div class="pf-logo-act"><button type="button" class="btn btn-ghost btn-sm" id="sar-goto-logo">${logo ? 'เปลี่ยนตราในข้อมูลส่วนตัว' : 'ไปเพิ่มตราในข้อมูลส่วนตัว'}</button></div>
         </div>
       </div>
       <div class="doc-subsec"><div class="doc-subsec-hd">คำนำ</div>
@@ -480,14 +472,6 @@ async function sarRenderFormView() {
   const form = document.getElementById('sar-form');
   if (typeof badworkAiMount === 'function' && typeof sarAiSys === 'function') { badworkAiMount(root, form, sarAiSys()); sarAiAttach(form, sarAiSys()); } // ปุ่มผู้ช่วย AI ส่วนที่ 2 (js/badwork-ai.js + ตัวต่อ js/sar-ai.js) — ไม่มีไฟล์นี้ฟอร์มก็ทำงานตามเดิม
   const update = () => { sarCollect(); sarCalc(); };
-  form.querySelector('#sar-logo-file')?.addEventListener('change', async e => {
-    const url = await sarLogoResize(e.target.files[0]);
-    e.target.value = '';
-    if (!url) { showToast('เปิดภาพนี้ไม่ได้ — ลองไฟล์ PNG หรือ JPG'); return; }
-    SAR.doc.f.logo = url;
-    sarLogoShow(form);
-  });
-  form.querySelector('#sar-logo-del')?.addEventListener('click', () => { delete SAR.doc.f.logo; sarLogoShow(form); });
   form.querySelector('#sar-preface-fill')?.addEventListener('click', () => {
     const ta = form.querySelector('#sar-preface');
     if (ta.value.trim() && !confirm('แทนที่คำนำที่พิมพ์ไว้ด้วยข้อความมาตรฐาน?')) return;
@@ -534,6 +518,7 @@ async function sarRenderFormView() {
     finally { btn.disabled = false; }
   });
   document.getElementById('sar-goto-profile')?.addEventListener('click', () => { sarCollect(); navigate('profile'); });
+  document.getElementById('sar-goto-logo')?.addEventListener('click', () => { sarCollect(); navigate('profile'); });
   ['sar-back-btn', 'sar-cancel-btn'].forEach(id => document.getElementById(id)?.addEventListener('click', () => { sarCollect(); SAR.view = 'list'; sarRenderListView(); }));
   document.getElementById('sar-print-btn')?.addEventListener('click', () => { sarCollect(); SAR.previewId = SAR.docId; docSwitchTab('sarprev'); });
   document.getElementById('sar-save-btn')?.addEventListener('click', async () => {
@@ -628,7 +613,7 @@ function sarBuildBodyHtml(d, prof) {
   // ลำดับตามตัวอย่าง SAR-2-2568: ส่วนที่ 1 → ส่วนที่ 2 (1. การเรียนการสอน [1.1 → 1.2.1–1.2.7 → 1.6 → 1.3–1.5] · 2. ชั้นเรียน · 3. พัฒนาตนเอง · 4. รางวัล · 5. งานอื่น · 6. แนวทาง) → ส่วนที่ 3
   return `
   <section>
-    ${f.logo ? `<img class="sar-logo" src="${E(f.logo)}" alt="">` : ''}
+    ${pi.logo || f.logo ? `<img class="sar-logo" src="${E(pi.logo || f.logo)}" alt="">` : ''}
     <div class="sar-cv-t">รายงานผลการปฏิบัติงานและการประเมินตนเองรายบุคคล</div>
     <div class="sar-cv-t">Self - Assessment Report : SAR</div>
     <div class="sar-cv-t">${sy}</div>

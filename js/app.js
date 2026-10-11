@@ -437,6 +437,25 @@ document.querySelectorAll('.nav-item[data-route], .user-chip[data-route]').forEa
 // เมนูตั้งค่า + ออกจากระบบอยู่ท้ายเมนูข้าง (นอก .nav-list) — ให้มีแถบสีเลื่อนของตัวเองเหมือนเมนูอื่น
 initNavPill(document.querySelector('.sidebar-footer'), '.nav-item', 'nav-pill', { global: true });
 
+// ปุ่มย้อนขึ้นบน: โผล่เมื่อเลื่อนลงเกินราว 1 หน้าจอ · คลิกแล้วเลื่อนขึ้นนุ่ม ๆ (ผู้ใช้ปิดอนิเมชันในระบบ = เด้งขึ้นทันที)
+(function initToTop() {
+  const btn = document.getElementById('to-top');
+  if (!btn) return;
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
+  let shown = false;
+  const update = () => {
+    const on = window.scrollY > Math.max(400, window.innerHeight * 0.6);
+    if (on !== shown) { shown = on; btn.classList.toggle('is-show', on); }
+  };
+  window.addEventListener('scroll', update, { passive: true });
+  window.addEventListener('resize', update, { passive: true });
+  btn.addEventListener('click', () => {
+    window.scrollTo({ top: 0, behavior: reduce.matches ? 'auto' : 'smooth' });
+    btn.blur();
+  });
+  update();
+})();
+
 document.getElementById('hamburger-btn')?.addEventListener('click', toggleMobileNav);
 document.getElementById('nav-overlay')?.addEventListener('click', closeMobileNav);
 document.getElementById('sidebar-toggle')?.addEventListener('click', () => {

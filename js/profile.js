@@ -2,6 +2,7 @@
 // ข้อมูลส่วนตัวของครู — เปิดจากไอคอนบัญชี (มุมซ้ายล่าง)
 // เก็บที่ users/{uid}.profile (map) ฟิลด์ต้องตรงกับ validTeacherProfile ใน firestore.rules
 // เก็บไว้ให้เอกสารอื่นดึงไปใช้ได้: await loadModule('profile') แล้วเรียก loadTeacherProfile() / profileSummary(p)
+// ตราโรงเรียน = profile.logo (data URL) อัปโหลดครั้งเดียวที่นี่ · SAR และเอกสารอื่นอ่านจาก loadTeacherProfile().logo
 // ==========================================================================
 
 const PROFILE_FIELDS = [
@@ -24,6 +25,37 @@ const PROFILE_STANDINGS = [
   ['ครูเชี่ยวชาญพิเศษ', 'คศ.5'],
 ];
 const PROFILE_KS_LEVELS = ['คศ.1', 'คศ.2', 'คศ.3', 'คศ.4', 'คศ.5'];
+
+// ตราโรงเรียน: ย่อด้านยาวไม่เกิน PROFILE_LOGO_MAX_PX เก็บเป็น data URL ใน profile.logo (PNG เพื่อคงพื้นโปร่งใส · ถ้าใหญ่เกิน ~180KB ใช้ WebP)
+// PROFILE_LOGO_MAX_LEN (จำนวนตัวอักษรของ data URL) ต้องตรงกับขีดจำกัดใน firestore.rules
+const PROFILE_LOGO_MAX_PX = 320;
+const PROFILE_LOGO_MAX_LEN = 400000;
+function cleanProfileLogo(v) {
+  return typeof v === 'string' && v.length <= PROFILE_LOGO_MAX_LEN && /^data:image\/(png|jpeg|webp);base64,/.test(v) ? v : '';
+}
+// เปิดรูปไม่ได้หรือใหญ่เกิน = ''
+function profileLogoResize(file) {
+  return new Promise(resolve => {
+    if (!file || !/^image\//.test(file.type)) { resolve(''); return; }
+    const url = URL.createObjectURL(file), img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const k = Math.min(1, PROFILE_LOGO_MAX_PX / Math.max(img.naturalWidth, img.naturalHeight));
+      const c = document.createElement('canvas');
+      c.width = Math.max(1, Math.round(img.naturalWidth * k));
+      c.height = Math.max(1, Math.round(img.naturalHeight * k));
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      let out = c.toDataURL('image/png');
+      if (out.length > 180000) { const w = c.toDataURL('image/webp', 0.85); if (w.startsWith('data:image/webp')) out = w; }
+      resolve(cleanProfileLogo(out));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(''); };
+    img.src = url;
+  });
+}
+function pfLogoThumbHtml(logo) {
+  return logo ? `<img src="${escapeHtml(logo)}" alt="ตราโรงเรียน">` : '<span>ยังไม่มีภาพ</span>';
+}
 
 // ข้อความที่พิมพ์หรือคัดลอกมาจากเอกสารอาจใช้ "ํ"+"า" (สระอำแยกตัว) แทน "ำ" — รวมให้เป็นตัวเดียวกันก่อนเก็บ/เทียบ
 function cleanProfileText(v) {
@@ -90,6 +122,7 @@ async function loadTeacherProfile() {
   const p = {};
   PROFILE_FIELDS.forEach(k => { p[k] = raw[k] == null ? '' : raw[k]; });
   p.education = cleanProfileEducation(raw.education);
+  p.logo = cleanProfileLogo(raw.logo);
   AppState.teacherProfile = p;
   return p;
 }
@@ -183,6 +216,18 @@ function profileFormHtml(p) {
         <h2 class="card-title">สถานศึกษา</h2>
         ${pfInput('school', 'สถานศึกษา', p.school, { ph: 'โรงเรียน...' })}
         ${pfInput('affiliation', 'สังกัด', p.affiliation, { ph: 'สำนักงานเขตพื้นที่การศึกษา...' })}
+        <div class="pf-logo">
+          <div class="pf-logo-h">ตราโรงเรียน <span class="profile-opt">(ไม่บังคับ · ไฟล์ภาพ PNG/JPG)</span></div>
+          <div class="pf-logo-box">
+            <div class="pf-logo-thumb" id="pf-logo-thumb">${pfLogoThumbHtml(p.logo)}</div>
+            <div class="pf-logo-act">
+              <label class="btn btn-ghost btn-sm">เลือกภาพ<input type="file" id="pf-logo-file" accept="image/*" hidden></label>
+              <button type="button" class="btn btn-danger-ghost btn-sm" id="pf-logo-del"${p.logo ? '' : ' hidden'}>ลบภาพ</button>
+            </div>
+            <input type="hidden" id="pf-logo" value="${escapeHtml(p.logo || '')}">
+          </div>
+          <div class="field-hint">ใช้บนปก SAR และเอกสารอื่นที่ต้องมีตราโรงเรียน อัปโหลดครั้งเดียวใช้ได้ทุกเอกสาร</div>
+        </div>
       </div>
 
       <div class="card card-pad">
@@ -228,6 +273,7 @@ function readProfileForm(form) {
     row.querySelectorAll('[data-edu]').forEach(el => { r[el.dataset.edu] = el.value; });
     return r;
   }));
+  data.logo = cleanProfileLogo(form.querySelector('#pf-logo')?.value);
   for (const k of ['birthDate', 'startDate']) {
     const v = data[k];
     if (v && (!profileParseIso(v) || v > profileTodayIso())) {
@@ -297,6 +343,24 @@ async function renderProfileInfoTab(body, isActive) {
       if (!eduBox.children.length) eduBox.insertAdjacentHTML('beforeend', pfEduRowHtml({}));
       AppState.profileDirty = true;
     }
+  });
+  const logoIn = form.querySelector('#pf-logo');
+  const logoShow = () => {
+    form.querySelector('#pf-logo-thumb').innerHTML = pfLogoThumbHtml(logoIn.value);
+    form.querySelector('#pf-logo-del').hidden = !logoIn.value;
+  };
+  form.querySelector('#pf-logo-file').addEventListener('change', async e => {
+    const url = await profileLogoResize(e.target.files[0]);
+    e.target.value = '';
+    if (!url) { showToast('เปิดภาพนี้ไม่ได้ — ลองไฟล์ PNG หรือ JPG'); return; }
+    logoIn.value = url;
+    AppState.profileDirty = true;
+    logoShow();
+  });
+  form.querySelector('#pf-logo-del').addEventListener('click', () => {
+    logoIn.value = '';
+    AppState.profileDirty = true;
+    logoShow();
   });
   form.querySelector('#pf-salary').addEventListener('blur', e => {
     const { data } = readProfileForm(form);

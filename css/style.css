@@ -2023,6 +2023,14 @@ table.sheet tbody tr:nth-child(n) td.over-max { background: var(--danger-tint); 
   .profile-wide { grid-column: 1 / -1; }
 }
 @media (max-width: 860px) { .field-row-3 { grid-template-columns: minmax(0, 1fr); } }
+/* ตราโรงเรียน: ช่องอัปโหลดในข้อมูลส่วนตัว · SAR ใช้ชุดเดียวกันแสดงตราที่ดึงมา (อ่านอย่างเดียว) */
+.pf-logo { margin-top: 4px; }
+.pf-logo-h { margin-bottom: 8px; color: var(--ink-soft); font-weight: 600; font-size: 13.5px; }
+.pf-logo-box { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.pf-logo-thumb { display: flex; align-items: center; justify-content: center; width: 84px; height: 84px; border: 1.5px dashed var(--border); border-radius: var(--radius-s); background: var(--surface-sunken); color: var(--ink-soft); font-size: 12px; overflow: hidden; }
+.pf-logo-thumb img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.pf-logo-act { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.pf-logo-act [hidden] { display: none; }
 /* วุฒิการศึกษาในข้อมูลส่วนตัว — วัดจากความกว้างของกล่องเอง (การ์ดอยู่ในกริด จึงแคบกว่าหน้าจอ) */
 .pf-edu { container: pf-edu / inline-size; }
 .pf-edu-rows { display: flex; flex-direction: column; gap: 12px; margin-top: 10px; }
@@ -2177,12 +2185,6 @@ table.tt tr.is-today td.tt-cell { background: color-mix(in srgb, var(--hue-orang
 .sar-att-in .field { margin-bottom: 0; }
 .sar-att-in .field span { display: block; margin-bottom: 3px; font-size: 12px; font-weight: 600; color: var(--ink-soft); }
 .sar-att-item .input-sm { background: var(--card); }
-/* SAR: ตราโรงเรียนบนปก (ช่องอัปโหลด) */
-.sar-logo-box { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
-.sar-logo-thumb { display: flex; align-items: center; justify-content: center; width: 84px; height: 84px; border: 1.5px dashed var(--border); border-radius: var(--radius-s); background: var(--surface-sunken); color: var(--ink-soft); font-size: 12px; overflow: hidden; }
-.sar-logo-thumb img { max-width: 100%; max-height: 100%; object-fit: contain; }
-.sar-logo-act { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.sar-logo-act [hidden] { display: none; }
 .doc-check { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 500; }
 .doc-check input { width: 18px; height: 18px; accent-color: var(--primary-solid); }
 
@@ -2434,3 +2436,21 @@ table.tt tr.is-today td.tt-cell { background: color-mix(in srgb, var(--hue-orang
 @media (max-width: 540px) {
   .doc-form-header { align-items: stretch; }
 }
+
+/* ----- ปุ่มย้อนขึ้นบน: ลอยมุมขวาล่าง โผล่เมื่อเลื่อนลงมา (js/app.js initToTop) · หน้ายาว เช่น SAR · PA · ตารางคะแนน ----- */
+.to-top {
+  position: fixed; right: 24px; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); z-index: 44;
+  display: grid; place-items: center; width: 46px; height: 46px; padding: 0; border: none; border-radius: 50%;
+  color: var(--primary-dark); background: var(--card); box-shadow: var(--shadow), inset 0 0 0 1px var(--border);
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+  opacity: 0; visibility: hidden; transform: translateY(10px);
+  transition: opacity .2s ease, transform .2s ease, visibility .2s ease, background-color .2s ease, color .2s ease;
+}
+.to-top svg { display: block; width: 22px; height: 22px; }
+.to-top.is-show { opacity: 1; visibility: visible; transform: none; }
+.to-top.is-show:active { transform: scale(.94); }
+.to-top:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
+@media (hover: hover) { .to-top:hover { background: var(--primary-solid); color: var(--on-primary); } }
+@media (max-width: 860px) { .to-top { right: 16px; bottom: calc(82px + env(safe-area-inset-bottom, 0px)); } } /* พ้นแถบเมนูล่าง */
+@media (prefers-reduced-motion: reduce) { .to-top { transition: none; } }
+@media print { .to-top { display: none; } }
