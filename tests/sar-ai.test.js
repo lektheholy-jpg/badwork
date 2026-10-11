@@ -19,7 +19,7 @@ const ctx={window:w,document:w.document,console,setTimeout,clearTimeout,setInter
  openModal(){},closeModal(){},confirm:()=>true,requestAnimationFrame:f=>setTimeout(f,0),loadModule:async()=>{},loadModules:async()=>{},loadTeacherProfile:async()=>PROFILE,
  loadTimetable:async()=>({term:1}),ttTermLabel:()=>'ภาคเรียนที่ 1',ttStats:()=>({placed:[]}),navigate(){},getComputedStyle:w.getComputedStyle.bind(w),CSS:{escape:s=>s},Event:w.Event,HTMLElement:w.HTMLElement};
 vm.createContext(ctx);
-for(const f of ['js/doc-system.js','js/doc-shell.js','js/idp-config.js','js/idp.js','js/sar.js','js/badwork-ai-config.js','js/badwork-ai.js','js/idp-ai.js','js/sar-ai.js'])vm.runInContext(read(f),ctx,{filename:f});
+for(const f of ['js/doc-system.js','js/doc-shell.js','js/idp-config.js','js/idp.js','js/sar.js','js/records.js','js/badwork-ai-config.js','js/badwork-ai.js','js/idp-ai.js','js/sar-ai.js'])vm.runInContext(read(f),ctx,{filename:f});
 const settle=()=>new Promise(r=>setTimeout(r,30));
 let fail=0;const ok=(c,m)=>{console.log(c?'  ✓':'  ✗',m);if(!c)fail++};
 
@@ -102,6 +102,19 @@ const prompt=()=>calls[calls.length-1].body.contents[0].parts[0].text;
  ok(calls[calls.length-1].body.systemInstruction.parts[0].text.includes('ไม่ใช่หลักฐานว่าทำแล้ว'),'พร้อต์ระบบ: แผนไม่ใช่หลักฐานว่าทำแล้ว');
  d.getElementById('sar-semester').value='2';p=await gen('n14');ok(!p.includes('ใช้ข้อสอบวิเคราะห์'),'เปลี่ยนภาคเรียนแต่ยังไม่โหลดแผนใหม่: ไม่ส่งแผนของภาคเดิม');
  d.getElementById('sar-semester').value='1';planDocs=[];
+ // ---- ดึงอบรม/รางวัลจากข้อมูลส่วนตัว ----
+ ok(!!d.getElementById('sar-rec-pull'),'มีปุ่มดึงอบรม/รางวัลจากข้อมูลส่วนตัว');
+ R(`recLoadYear=async y=>y===2569?[
+   {type:'award',title:'ครูดีเด่น',org:'สพม.',date:'2026-03-01',file:{name:'a.pdf'}},
+   {type:'certificate',title:'เกียรติบัตรผู้สอน',org:'สพฐ.',date:'2025-11-02',file:null},
+   {type:'training',title:'อบรมการวัดผล',org:'สพท.',date:'2025-07-10',hours:6},
+   {type:'training',title:'อบรม AI',org:'',date:'2025-06-01',hours:0}]:[]`);
+ let rr=await R(`(async()=>{const r=await sarPullRecords(SAR.doc);return JSON.stringify({r,t:SAR.doc.rows.training,a:SAR.doc.rows.awards})})()`);rr=JSON.parse(rr);
+ ok(rr.r.train===2&&rr.r.award===2&&rr.t[0].topic==='อบรม AI'&&rr.t[1].topic==='อบรมการวัดผล'&&rr.t[1].hours==='6'&&rr.t[0].hours===''&&rr.t[1].org==='สพท.'&&rr.t[1].place==='','อบรม: ดึงชื่อ/หน่วยงาน/ชั่วโมง เรียงเก่า→ใหม่ · ไม่มีสถานที่');
+ ok(rr.t[1].date==='10 ก.ค. 2568'&&rr.a.length===2&&rr.a[0].title==='เกียรติบัตรผู้สอน'&&rr.a[1].title==='ครูดีเด่น'&&rr.a[1].evidence==='a.pdf'&&rr.a[0].evidence==='','รางวัล: รวมเกียรติบัตร+รางวัล · วันที่ไทย · หลักฐาน = ชื่อไฟล์แนบ');
+ R(`SAR.doc.year='2570'`);let r2=JSON.parse(await R(`(async()=>{const before=JSON.stringify(SAR.doc.rows.training);const r=await sarPullRecords(SAR.doc);return JSON.stringify({r,same:before===JSON.stringify(SAR.doc.rows.training)})})()`));
+ ok(r2.r.train===0&&r2.r.award===0&&r2.same,'ปีที่ไม่มีข้อมูล: ไม่แตะตารางที่กรอกไว้');
+ R(`SAR.doc.year='2569'`);
  // ---- บันทึก/ตัดค่า ----
  writes.length=0;
  R(`SAR.doc._ctxSeeded=true; sarSave(SAR.doc)`);await settle();

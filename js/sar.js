@@ -277,6 +277,24 @@ async function sarPullCourses(d) {
   return { found: mine.length, teach: rows.teaching.length, act: rows.activities.length, noScore, noHours: m.noHours, noN: m.noN, noTimetable: !entries.length };
 }
 
+// ดึง "การอบรม" (3.1) และ "เกียรติบัตร/รางวัล" (4) จากแท็บอบรม/เกียรติบัตร/รางวัลในหน้าข้อมูลส่วนตัว (js/records.js · เก็บแยกตามปีการศึกษา)
+//   ดึงทั้งปีการศึกษาของ SAR (ไม่แยกภาคเรียน — โรงเรียนเปิดเทอมต่างกัน ถ้าตัดตามเดือนแล้วคลาดจะหายเงียบๆ) · แถวที่เกินช่วงรายงานลบเองในฟอร์มได้
+//   ข้อมูลส่วนตัวไม่มีช่อง "สถานที่" จึงเว้นว่างให้กรอกเอง · หลักฐาน = ชื่อไฟล์ที่แนบไว้ (ถ้ามี) · เรียงเก่า→ใหม่
+async function sarPullRecords(d) {
+  await loadModule('records');
+  const year = Number(String(d.year).trim());
+  if (!year) return { bad: true };
+  const list = (await recLoadYear(year)).slice().reverse();
+  const when = r => (r.date ? recDateTh(r.date) : '');
+  const training = list.filter(r => r.type === 'training')
+    .map(r => ({ date: when(r), topic: r.title, place: '', org: r.org || '', hours: r.hours ? recHoursText(r.hours) : '' }));
+  const awards = list.filter(r => r.type !== 'training')
+    .map(r => ({ date: when(r), title: r.title, org: r.org || '', evidence: r.file ? r.file.name : '' }));
+  if (training.length) d.rows.training = training;
+  if (awards.length) d.rows.awards = awards;
+  return { year, train: training.length, award: awards.length };
+}
+
 async function sarRenderFormView() {
   const sys = docSystem(), root = docMount(), seq = sys.state.seq;
   const stillHere = () => !docStale(root, seq, sys) && sys.state.tab === 'sar' && SAR.view === 'form';
@@ -331,6 +349,8 @@ async function sarRenderFormView() {
       <div class="doc-subsec"><div class="doc-subsec-hd">1.2.6 สภาพการปฏิบัติงานสอน</div>${sarMatrix('cond', SAR_COND, lv5, ['มากที่สุด', 'มาก', 'ปานกลาง', 'น้อย', 'น้อยที่สุด'])}</div>
       <div class="doc-subsec"><div class="doc-subsec-hd">1.2.7 ผลการประเมินการสอนของครูโดยนักเรียน</div>${sarMatrix('survey', SAR_SURVEY, lv5, ['มากที่สุด', 'มาก', 'ปานกลาง', 'น้อย', 'น้อยที่สุด'])}<div class="u-note" id="sar-sv-res"></div></div>
       <div class="doc-subsec"><div class="doc-subsec-hd">1.6 การประเมินตนเองเกี่ยวกับการจัดทำแผนการจัดการเรียนรู้ที่เน้นผู้เรียนเป็นสำคัญ <span class="doc-sec-note">(ระดับ 4 = ดีมาก … 1 = ปรับปรุง)</span></div>${sarMatrix('plan', SAR_PLAN, [4, 3, 2, 1], ['4', '3', '2', '1'])}<div class="u-note" id="sar-pl-res"></div></div>
+      <div class="u-mt-4"><button type="button" class="btn btn-primary btn-sm" id="sar-rec-pull">ดึงอบรม · เกียรติบัตร/รางวัล จากข้อมูลส่วนตัว (ปีการศึกษานี้)</button></div>
+      <div class="u-note">ดึงจากแท็บอบรม/เกียรติบัตร/รางวัลในหน้าข้อมูลส่วนตัว ทั้งปีการศึกษา — ใส่ในหัวข้อ 3.1 (อบรม) และ 4 (เกียรติบัตร + รางวัล) · ไม่มีช่องสถานที่ให้เว้นว่าง · ลบแถวที่อยู่นอกช่วงรายงานหรือแก้ต่อในช่องได้</div>
       ${sarTable('training', '3.1 การพัฒนาตนเอง (อบรม/พัฒนา)', 'เพิ่มการอบรม')}<div class="u-note" id="sar-tn-h"></div>
       <div class="field u-mt-4"><label for="sar-plc">3.2 การพัฒนาวิชาชีพ (PLC)</label>${sarIn('plc', f.plc, 'เช่น เข้าร่วมกิจกรรม PLC ภาคเรียนที่ 2 จำนวน … ชั่วโมง').replace('class="input-sm"', 'class="input-sm" id="sar-plc"')}</div>
       ${sarTable('awards', '4. รางวัล / ประกาศเกียรติคุณ / ผลงานดีเด่น', 'เพิ่มรางวัล')}
@@ -377,6 +397,20 @@ async function sarRenderFormView() {
         showToast(`ดึงแล้ว: สอน ${r.teach} แถว · กิจกรรม ${r.act} แถว${r.noTimetable ? ' · ยังไม่มีตารางสอนภาคนี้ (ชั่วโมงคิดจากหน่วยกิต)' : ''}${r.noHours ? ` · ${r.noHours} แถวยังไม่มีชั่วโมง` : ''}${r.noN ? ` · ${r.noN} แถวยังไม่มีจำนวนนักเรียน` : ''}${r.noScore ? ` · ${r.noScore} ห้องยังไม่มีคะแนน` : ''}`);
       }
     } catch (e) { showToast('ดึงข้อมูลรายวิชาไม่สำเร็จ: ' + e.message, 'error'); }
+    finally { btn.disabled = false; }
+  });
+  document.getElementById('sar-rec-pull')?.addEventListener('click', async () => {
+    sarCollect();
+    const filled = k => (d.rows[k] || []).some(r => Object.values(r).some(Boolean));
+    if ((filled('training') || filled('awards')) && !confirm('แทนที่ตารางการอบรม (3.1) และรางวัล (4) ที่กรอกไว้ ด้วยข้อมูลจากข้อมูลส่วนตัว? (ตารางที่ในข้อมูลส่วนตัวไม่มีรายการ จะไม่ถูกแตะ)')) return;
+    const btn = document.getElementById('sar-rec-pull');
+    btn.disabled = true;
+    try {
+      const r = await sarPullRecords(d);
+      if (r.bad) { showToast('ปีการศึกษาไม่ถูกต้อง — ตรวจช่องปีการศึกษาด้านบน'); return; }
+      if (!r.train && !r.award) { showToast(`ไม่พบอบรม/เกียรติบัตร/รางวัลของปีการศึกษา ${r.year} ในข้อมูลส่วนตัว`); return; }
+      if (stillHere()) { await sarRenderFormView(); showToast(`ดึงแล้ว: อบรม ${r.train} รายการ · เกียรติบัตร/รางวัล ${r.award} รายการ (ปีการศึกษา ${r.year}) · ตรวจว่าอยู่ในช่วงรายงาน`); }
+    } catch (e) { showToast('ดึงข้อมูลไม่สำเร็จ: ' + e.message, 'error'); }
     finally { btn.disabled = false; }
   });
   document.getElementById('sar-goto-profile')?.addEventListener('click', () => { sarCollect(); navigate('profile'); });
