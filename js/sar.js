@@ -146,6 +146,43 @@ function sarPersonal(prof, f) {
 }
 const sarTitle = d => `SAR ภาคเรียนที่ ${d.semester || '—'} ปีการศึกษา ${d.year || '—'}`;
 
+// ---------------- ปกและคำนำ ----------------
+// คำนำมาตรฐาน (ตามตัวอย่าง SAR-2-2568) ดึงชื่อสถานศึกษา · สังกัด · ปีการศึกษา จากข้อมูลส่วนตัว — ช่องคำนำในฟอร์มว่าง = ใช้ข้อความนี้ · ครูแก้เองได้ (เก็บใน f.preface)
+function sarPrefaceDefault(d, pi) {
+  const sc = pi.school || 'สถานศึกษา', af = pi.affiliation ? ' ' + pi.affiliation : '';
+  return [
+    `รายงานการประเมินตนเอง (Self-Assessment Report : SAR) เป็นการประเมินการปฏิบัติหน้าที่ตามพระราชบัญญัติการศึกษาแห่งชาติ พุทธศักราช 2542 และฉบับปรับปรุง พุทธศักราช 2545 รวมทั้งมาตรฐานการศึกษาของสถานศึกษา ข้าพเจ้าได้จัดทำขึ้นเพื่อรายงานผลการจัดการเรียนการสอนและการปฏิบัติหน้าที่ของข้าพเจ้า ตลอดจนกิจกรรมต่าง ๆ ที่ได้ส่งเสริมให้นักเรียนมีคุณลักษณะและคุณภาพตามระดับมาตรฐานคุณภาพการศึกษาของ${sc}${af} ประจำปีการศึกษา ${d.year}`,
+    `รายงานนี้ สถานศึกษาสามารถนำผลการดำเนินงานไปจัดทำการประเมินคุณภาพภายในและสรุปรายงานให้ผู้บังคับบัญชาตามลำดับสายงาน ตลอดจนเผยแพร่ให้กับผู้ปกครอง นักเรียน ชุมชนในสังคมได้ทราบผลการปฏิบัติงานของบุคลากร ${sc}${af}`,
+    'ข้อมูลที่ได้จากการประเมินตนเอง (Self-Assessment Report : SAR) ในครั้งนี้ ข้าพเจ้าจะได้นำไปใช้เป็นแนวทางในการปรับปรุงเพื่อพัฒนาการปฏิบัติงานที่ได้รับมอบหมาย เพื่อส่งเสริมและพัฒนาศักยภาพของผู้เรียนให้สูงขึ้นในทุก ๆ ด้านต่อไป',
+  ].join('\n\n');
+}
+// ตราโรงเรียนบนปก: ย่อด้านยาวไม่เกิน 320px เก็บเป็น data URL ใน f.logo (PNG เพื่อคงพื้นโปร่งใส · ถ้าใหญ่เกิน ~180KB ใช้ WebP) · เปิดรูปไม่ได้ = ''
+function sarLogoResize(file) {
+  return new Promise(resolve => {
+    if (!file || !/^image\//.test(file.type)) { resolve(''); return; }
+    const url = URL.createObjectURL(file), img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const k = Math.min(1, 320 / Math.max(img.naturalWidth, img.naturalHeight));
+      const c = document.createElement('canvas');
+      c.width = Math.max(1, Math.round(img.naturalWidth * k));
+      c.height = Math.max(1, Math.round(img.naturalHeight * k));
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      let out = c.toDataURL('image/png');
+      if (out.length > 180000) { const w = c.toDataURL('image/webp', 0.85); if (w.startsWith('data:image/webp')) out = w; }
+      resolve(out.length <= 400000 ? out : '');
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(''); };
+    img.src = url;
+  });
+}
+function sarLogoShow(form) {
+  const box = form.querySelector('#sar-logo-thumb');
+  if (box) box.innerHTML = SAR.doc.f.logo ? `<img src="${sarEsc(SAR.doc.f.logo)}" alt="ตราโรงเรียน">` : '<span>ยังไม่มีภาพ</span>';
+  const del = form.querySelector('#sar-logo-del');
+  if (del) del.hidden = !SAR.doc.f.logo;
+}
+
 // ---------------- คำนวณ (ใช้ทั้งหน้าจอและตอนพิมพ์) ----------------
 function sarStats(d) {
   const R = d.rows || {}, L = d.lv || {};
@@ -361,6 +398,21 @@ async function sarRenderFormView() {
       <label>สถานะ <select id="sar-status"><option value="draft"${d.status === 'draft' ? ' selected' : ''}>ร่าง</option><option value="submitted"${d.status === 'submitted' ? ' selected' : ''}>ส่งแล้ว</option></select></label>
     </div></div>
 
+    ${sec('ปกและคำนำ', `
+      <div class="doc-subsec"><div class="doc-subsec-hd">ตราโรงเรียนบนปก <span class="doc-sec-note">(ไม่บังคับ · ไฟล์ภาพ PNG/JPG)</span></div>
+        <div class="sar-logo-box">
+          <div class="sar-logo-thumb" id="sar-logo-thumb">${f.logo ? `<img src="${sarEsc(f.logo)}" alt="ตราโรงเรียน">` : '<span>ยังไม่มีภาพ</span>'}</div>
+          <div class="sar-logo-act">
+            <label class="btn btn-ghost btn-sm">เลือกภาพ<input type="file" id="sar-logo-file" accept="image/*" hidden></label>
+            <button type="button" class="btn btn-danger-ghost btn-sm" id="sar-logo-del"${f.logo ? '' : ' hidden'}>ลบภาพ</button>
+          </div>
+        </div>
+      </div>
+      <div class="doc-subsec"><div class="doc-subsec-hd">คำนำ</div>
+        <div class="field"><textarea class="idp-ta" id="sar-preface" data-f="preface" rows="8" placeholder="เว้นว่าง = ใช้คำนำมาตรฐาน (ดึงชื่อสถานศึกษา สังกัด และปีการศึกษาให้อัตโนมัติ)">${sarEsc(f.preface)}</textarea></div>
+        <button type="button" class="btn btn-ghost btn-sm u-mt-12" id="sar-preface-fill">ใส่ข้อความมาตรฐานเพื่อแก้ไข</button>
+      </div>`)}
+
     ${sec('ส่วนที่ 1  ข้อมูลพื้นฐาน', `
       <div class="doc-subsec"><div class="doc-subsec-hd">${SAR_H.s11} <span class="doc-sec-note">(ทั้งหมดในส่วนนี้ดึงจากข้อมูลส่วนตัว — แก้ที่นั่นครั้งเดียว)</span></div>
         <dl class="pa-pf pa-pf-auto">
@@ -428,6 +480,20 @@ async function sarRenderFormView() {
   const form = document.getElementById('sar-form');
   if (typeof badworkAiMount === 'function' && typeof sarAiSys === 'function') { badworkAiMount(root, form, sarAiSys()); sarAiAttach(form, sarAiSys()); } // ปุ่มผู้ช่วย AI ส่วนที่ 2 (js/badwork-ai.js + ตัวต่อ js/sar-ai.js) — ไม่มีไฟล์นี้ฟอร์มก็ทำงานตามเดิม
   const update = () => { sarCollect(); sarCalc(); };
+  form.querySelector('#sar-logo-file')?.addEventListener('change', async e => {
+    const url = await sarLogoResize(e.target.files[0]);
+    e.target.value = '';
+    if (!url) { showToast('เปิดภาพนี้ไม่ได้ — ลองไฟล์ PNG หรือ JPG'); return; }
+    SAR.doc.f.logo = url;
+    sarLogoShow(form);
+  });
+  form.querySelector('#sar-logo-del')?.addEventListener('click', () => { delete SAR.doc.f.logo; sarLogoShow(form); });
+  form.querySelector('#sar-preface-fill')?.addEventListener('click', () => {
+    const ta = form.querySelector('#sar-preface');
+    if (ta.value.trim() && !confirm('แทนที่คำนำที่พิมพ์ไว้ด้วยข้อความมาตรฐาน?')) return;
+    ta.value = sarPrefaceDefault(SAR.doc, pi);
+    sarCollect();
+  });
   form.addEventListener('input', update);
   form.addEventListener('change', update);
   form.addEventListener('click', e => {
@@ -538,7 +604,14 @@ const SAR_PRINT_CSS = `
 @page{size:A4 portrait;margin:1.6cm 1.4cm}
 body{font-family:'TH SarabunPSK','TH Sarabun PSK','THSarabunPSK','TH Sarabun New','PA Sarabun','Noto Sans Thai',Tahoma,sans-serif;font-size:14pt;line-height:1.3}
 h1,h2,h3{margin:.6em 0 .2em}h1{font-size:18pt;text-align:center}h2{font-size:15pt}h3{font-size:14pt}h3.l1{font-size:15pt}h3.l3{margin-left:.8cm}h3.l4{margin-left:1.6cm}h3 .nt{font-weight:400}
-table{border-collapse:collapse;width:100%;margin:.3em 0}th,td{border:1px solid #000;padding:2px 5px;vertical-align:top}th{text-align:center}.c{text-align:center}.sg{margin:2em 0 0 auto;width:9cm;text-align:center;break-inside:avoid}p{margin:.2em 0}`;
+table{border-collapse:collapse;width:100%;margin:.3em 0}th,td{border:1px solid #000;padding:2px 5px;vertical-align:top}th{text-align:center}.c{text-align:center}.sg{margin:2em 0 0 auto;width:9cm;text-align:center;break-inside:avoid}p{margin:.2em 0}
+section{break-after:page}section:last-child{break-after:auto}
+.sar-logo{display:block;width:3.4cm;height:auto;margin:0 auto .6cm}
+.sar-cv-t{text-align:center;font-size:20pt;line-height:1.5}.sar-cv-t:first-child{margin-top:3.2cm}.sar-logo+.sar-cv-t{margin-top:0}
+.sar-cv-by,.sar-cv-sc{text-align:center;font-size:20pt;line-height:1.6}.sar-cv-by{margin-top:6.5cm}.sar-cv-sc{margin-top:5cm}
+.sar-pf-h{text-align:center;font-size:22pt;font-weight:700;margin:1.2cm 0 .8cm}
+.sar-pf-p{text-indent:2cm;text-align:justify;font-size:16pt;line-height:1.5;margin:0 0 .5em}
+.sar-pf-sg{text-align:right;font-size:16pt;margin:1.5cm 1.5cm 0 0}`;
 
 // สร้าง HTML เนื้อหา SAR (ใช้ทั้งตอนพิมพ์และตอนแสดงตัวอย่างบนจอ)
 function sarBuildBodyHtml(d, prof) {
@@ -554,9 +627,20 @@ function sarBuildBodyHtml(d, prof) {
   const gr = s.gradeTot, gradeFoot = (R.grades || []).length ? `<tr><th colspan="3">รวม</th>${SAR_G.map(([k]) => `<th>${gr[k]}</th>`).join('')}<th>${gr.r}</th><th>${gr.ms}</th></tr>` : '';
   // ลำดับตามตัวอย่าง SAR-2-2568: ส่วนที่ 1 → ส่วนที่ 2 (1. การเรียนการสอน [1.1 → 1.2.1–1.2.7 → 1.6 → 1.3–1.5] · 2. ชั้นเรียน · 3. พัฒนาตนเอง · 4. รางวัล · 5. งานอื่น · 6. แนวทาง) → ส่วนที่ 3
   return `
-  <h1>รายงานผลการปฏิบัติงานและการประเมินตนเองรายบุคคล<br>Self-Assessment Report : SAR</h1>
-  <p class="c">${sy}${f.period ? ` (${E(f.period)})` : ''}</p>
-  <p class="c">${E(pi.name)} ตำแหน่ง ${E(pi.position)}<br>${E(pi.school)} ${E(pi.affiliation)}</p>
+  <section>
+    ${f.logo ? `<img class="sar-logo" src="${E(f.logo)}" alt="">` : ''}
+    <div class="sar-cv-t">รายงานผลการปฏิบัติงานและการประเมินตนเองรายบุคคล</div>
+    <div class="sar-cv-t">Self - Assessment Report : SAR</div>
+    <div class="sar-cv-t">${sy}</div>
+    <div class="sar-cv-by">จัดทำโดย<br>${E(pi.name)}<br>ตำแหน่ง ${E(ps.position || pi.position)}</div>
+    <div class="sar-cv-sc">${E(pi.school)}${pi.affiliation ? `<br>${E(pi.affiliation)}` : ''}</div>
+  </section>
+  <section>
+    <div class="sar-pf-h">คำนำ</div>
+    ${(f.preface && f.preface.trim() ? f.preface : sarPrefaceDefault(d, pi)).split(/\n\s*\n/).filter(p => p.trim()).map(p => `<p class="sar-pf-p">${docNl(p.trim())}</p>`).join('')}
+    <div class="sar-pf-sg">${E(pi.name)}</div>
+  </section>
+  <section>
   <h2>${E(SAR_H.p1)}</h2>
   ${hd(2, SAR_H.s11)}
   <p>ชื่อ ${E(pi.name)} กลุ่มสาระการเรียนรู้ ${E(pi.subjectGroup)} อายุ ${E(ps.age)} ปี อายุราชการ ${E(ps.svcY)} ปี ${E(ps.svcM)} เดือน คุณวุฒิสูงสุด ${E(ps.degree)} วิชาเอก ${E(ps.major)} จาก ${E(ps.inst)} ตำแหน่ง ${E(ps.position || pi.position)} วิทยฐานะ ${E(ps.rank)} ตำแหน่งเลขที่ ${E(ps.posNo)} สถานศึกษา ${E(pi.school)}</p>
@@ -594,7 +678,8 @@ function sarBuildBodyHtml(d, prof) {
   ${SAR_STD.map(([t, items], i) => `${hd(2, t)}${mx('std' + i, items, [5, 4, 3, 2, 1])}<p>คะแนนรวม ${s.std[i].sum} ÷ ${s.std[i].total} = ${s.std[i].answered ? sarFmt(s.std[i].avg) : '—'} ระดับคุณภาพ ${s.std[i].label}</p>`).join('')}
   <p>ข้าพเจ้าขอรับรองว่าข้อมูลที่ได้ประเมินตนเองทั้งหมดถูกต้องตรงตามเอกสารหลักฐานที่มีอยู่จริง</p>
   <div class="sg">ลงชื่อ ……………………………… ผู้รายงาน<br>(${E(pi.name)})<br>ตำแหน่ง ${E(pi.position)}</div>
-  ${[['หัวหน้ากลุ่มสาระการเรียนรู้', prof?.subjectHead], ['รองผู้อำนวยการฝ่ายวิชาการ', prof?.deputyAcademic], ['ผู้อำนวยการสถานศึกษา', prof?.director]].map(([t, n]) => `<div class="sg">ลงชื่อ ……………………………… ผู้รับรอง<br>(${E(n || '………………………')})<br>ตำแหน่ง ${E(t)}</div>`).join('')}`;
+  ${[['หัวหน้ากลุ่มสาระการเรียนรู้', prof?.subjectHead], ['รองผู้อำนวยการฝ่ายวิชาการ', prof?.deputyAcademic], ['ผู้อำนวยการสถานศึกษา', prof?.director]].map(([t, n]) => `<div class="sg">ลงชื่อ ……………………………… ผู้รับรอง<br>(${E(n || '………………………')})<br>ตำแหน่ง ${E(t)}</div>`).join('')}
+  </section>`;
 }
 
 async function sarPrint(d) {
