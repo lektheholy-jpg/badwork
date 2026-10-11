@@ -2322,11 +2322,13 @@ table.tt tr.is-today td.tt-cell { background: color-mix(in srgb, var(--hue-orang
 .idp-w22 { width: 22%; } .idp-w24 { width: 24%; } .idp-w28 { width: 28%; }
 .idp-comp-table select { width: 100%; }
 /* ส่วนที่ 3: ใช้ dropdown แบบมาตรฐานของระบบ/มือถือ (ไม่ใช้ลิสต์ปรับแต่งเอง appearance: base-select) — เลือกสมรรถนะได้แน่นอนในทุกเบราว์เซอร์ */
-.idp-sum-table select {
+.idp-sum-table select, #sar-form .field select {
   width: 100%; -webkit-appearance: none; appearance: none; display: block;
   padding: 10px 40px 10px 14px; background-image: var(--chev);
 }
-.idp-sum-table select::picker-icon { display: none; }
+.idp-sum-table select::picker-icon, #sar-form .field select::picker-icon, #sar-form .doc-form-meta select::picker-icon { display: none; }
+/* SAR: dropdown ระดับคุณภาพ (ข้อ 5) · โมเดล AI ใช้แบบมาตรฐานของระบบเหมือนส่วนที่ 3 ของ ID-Plan — กดแล้วลิสต์เปิดแน่นอน ไม่ใช้ลิสต์ปรับแต่งเอง · ภาคเรียน/สถานะที่หัวฟอร์มก็เหมือนกัน (ไม่บังคับ display:block เพราะอยู่แถวเดียวกับป้าย) */
+#sar-form .doc-form-meta select { -webkit-appearance: none; appearance: none; display: inline-block; padding: 10px 40px 10px 14px; background-image: var(--chev); }
 
 /* --- IDP: Responsive stacked layout — วัดจากความกว้างของกรอบตารางเอง (ไม่ใช่หน้าจอ) เพราะมีแถบเมนูข้าง/ขอบกินที่ไว้ · ตารางกว้างขั้นต่ำ 880px จึงสลับเป็นการ์ดเมื่อกรอบแคบกว่า 900px --- */
 @container idp-wrap (max-width: 900px) {
