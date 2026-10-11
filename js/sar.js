@@ -352,7 +352,7 @@ async function sarRenderFormView() {
   </form>`;
   docSwapIn(root);
   const form = document.getElementById('sar-form');
-  if (typeof badworkAiMount === 'function' && typeof sarAiSys === 'function') badworkAiMount(root, form, sarAiSys()); // ปุ่มผู้ช่วย AI ส่วนที่ 2 (js/badwork-ai.js + ตัวต่อ js/sar-ai.js) — ไม่มีไฟล์นี้ฟอร์มก็ทำงานตามเดิม
+  if (typeof badworkAiMount === 'function' && typeof sarAiSys === 'function') { badworkAiMount(root, form, sarAiSys()); sarAiAttach(form, sarAiSys()); } // ปุ่มผู้ช่วย AI ส่วนที่ 2 (js/badwork-ai.js + ตัวต่อ js/sar-ai.js) — ไม่มีไฟล์นี้ฟอร์มก็ทำงานตามเดิม
   const update = () => { sarCollect(); sarCalc(); };
   form.addEventListener('input', update);
   form.addEventListener('change', update);

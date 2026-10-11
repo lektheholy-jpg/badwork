@@ -7,8 +7,8 @@ const ROOT=process.env.PA_ROOT?path.resolve(process.env.PA_ROOT):path.join(__dir
 const read=f=>fs.readFileSync(path.join(ROOT,f),'utf8');
 const dom=new JSDOM('<!doctype html><body><div id="view"></div></body>',{url:'http://localhost/'});const w=dom.window;
 const PROFILE={prefix:'นาย',firstName:'ทดสอบ',lastName:'ตัวอย่าง',position:'ครู',school:'รร.'};
-const q=()=>{const o={where:()=>o,orderBy:()=>o,limit:()=>o,get:async()=>({docs:[]})};return o};
-const writes=[];
+const q=()=>{const o={where:()=>o,orderBy:()=>o,limit:()=>o,get:async()=>({docs:planDocs.map(x=>({id:'p',data:()=>x}))})};return o};
+const writes=[];let planDocs=[];
 const col=()=>({...q(),doc:id=>({id,get:async()=>({exists:false,data:()=>undefined}),set:async()=>{},update:async d=>{writes.push({op:'update',id,d})},delete:async()=>{}}),add:async d=>{writes.push({op:'add',d});return {id:'n'}}});
 const ctx={window:w,document:w.document,console,setTimeout,clearTimeout,setInterval,clearInterval,navigator:{onLine:true},location:{hostname:'x'},
  db:{collection:()=>({doc:()=>({collection:col})})},AppState:{user:{uid:'u1'},teacherProfile:PROFILE},
@@ -86,6 +86,22 @@ const prompt=()=>calls[calls.length-1].body.contents[0].parts[0].text;
  reply={n15:'x'};
  R(`badworkAiBatch(docAi(sarAiSys()).resolve(sarAiSys(),'all').specs.filter(s=>s.key==='n15'),'write',{},sarAiSys())`);await settle();
  ok(prompt().includes('สิ่งที่ครูทำจริงในภาคเรียนนี้: ทำแผนแบบสืบเสาะ 3 หน่วย')&&prompt().includes('ระดับชั้นที่สอน: ม.2'),'บริบทที่ครูกรอกเข้าพร้อต์');
+ // ---- ผูกกับ ID-Plan ----
+ R(`sarAiLoadPlan(sarAiSys())`);await settle();
+ reply={n14:'x'};
+ R(`badworkAiBatch(docAi(sarAiSys()).resolve(sarAiSys(),'all').specs.filter(s=>s.key==='n14'),'write',{},sarAiSys())`);await settle();
+ ok(!prompt().includes('แผน ID-Plan'),'ไม่มีแผนของภาคนี้: ไม่ส่งส่วนแผน (ทำงานเหมือนเดิม)');
+ planDocs=[{semester:'2',year:'2569',comps:{c6:{method:'แผนผิดภาค',goal:'x'}}},{semester:'1',year:'2569',comps:{c1:{method:'1. ใช้ข้อสอบวิเคราะห์',goal:'ร้อยละ … ผ่านเกณฑ์'},c6:{method:'1. ทดลองแผนสืบเสาะ',goal:'ออกแบบแผนได้'},c8:{method:'1. ทำข้อตกลงชั้นเรียน',goal:''}}}];
+ R(`sarAiLoadPlan(sarAiSys())`);await settle();
+ const gen=k=>{reply={[k]:'x'};R(`badworkAiBatch(docAi(sarAiSys()).resolve(sarAiSys(),'all').specs.filter(s=>s.key===${JSON.stringify(k)}),'write',{},sarAiSys())`);return settle().then(prompt)};
+ p=await gen('n14');
+ ok(p.includes('แผน ID-Plan ของภาคเรียนนี้')&&p.includes('ไม่ใช่ผลที่ทำแล้ว')&&p.includes('ใช้ข้อสอบวิเคราะห์')&&p.includes('ทดลองแผนสืบเสาะ'),'n14: เห็นแผน ID-Plan ของสมรรถนะที่เกี่ยวข้อง (c1 · c6) พร้อมคำเตือนว่าเป็นแผน');
+ ok(!p.includes('ข้อตกลงชั้นเรียน')&&!p.includes('แผนผิดภาค'),'n14: ไม่เห็นสมรรถนะที่ไม่เกี่ยว (c8) และไม่ปนแผนของภาคอื่น');
+ p=await gen('n21');ok(p.includes('ทำข้อตกลงชั้นเรียน')&&!p.includes('ใช้ข้อสอบวิเคราะห์'),'n21: เห็นเฉพาะแผนของ c8');
+ p=await gen('guide');ok(p.includes('ใช้ข้อสอบวิเคราะห์')&&p.includes('ทำข้อตกลงชั้นเรียน'),'guide: เห็นแผนทุกสมรรถนะที่มีข้อความ');
+ ok(calls[calls.length-1].body.systemInstruction.parts[0].text.includes('ไม่ใช่หลักฐานว่าทำแล้ว'),'พร้อต์ระบบ: แผนไม่ใช่หลักฐานว่าทำแล้ว');
+ d.getElementById('sar-semester').value='2';p=await gen('n14');ok(!p.includes('ใช้ข้อสอบวิเคราะห์'),'เปลี่ยนภาคเรียนแต่ยังไม่โหลดแผนใหม่: ไม่ส่งแผนของภาคเดิม');
+ d.getElementById('sar-semester').value='1';planDocs=[];
  // ---- บันทึก/ตัดค่า ----
  writes.length=0;
  R(`SAR.doc._ctxSeeded=true; sarSave(SAR.doc)`);await settle();

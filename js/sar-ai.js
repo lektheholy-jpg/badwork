@@ -6,6 +6,7 @@
 //   • ช่องที่ให้ AI เขียน = textarea 8 ช่องของส่วนที่ 2 (id = sar-<รหัส> : n11 n12 n13 n14 n15 n21 n22 guide) — รายการ/พร้อต์/ขอบเขตบริบทอยู่ที่ IDP_CONFIG.sarAi (js/idp-config.js)
 //     ไม่แตะตารางตัวเลข ระดับคุณภาพ และกล่องติ๊ก (ครูกรอก/ระบบคำนวณเอง) — แต่ส่งค่าสรุปจากตารางเหล่านั้นให้ AI เป็นข้อมูลประกอบ เพื่อให้ข้อความตรงกับตัวเลขจริง
 //   • ปุ่ม: แถวปุ่มที่หัวช่อง (ขวามือของชื่อช่อง ใน .doc-item-h เหมือน PA/ID-Plan) act write / polish / shorten + ปุ่มบนสุด "ร่างช่องที่ว่างของส่วนที่ 2" (act all)
+//   • ผูกกับ ID-Plan: โหลดแผนของภาคเรียน/ปีเดียวกัน (วิธีการ · เป้าหมายของสมรรถนะที่เกี่ยวกับช่องนั้น) ส่งให้ AI เป็นกรอบ — แผน = สิ่งที่จะทำ ไม่ใช่หลักฐานว่าทำแล้ว
 //   • ไม่เขียนทับช่องที่กรอกแล้ว · ปุ่มเขียนเติมเฉพาะช่องที่ว่าง · ปุ่มปรับสำนวน/ย่อทำเฉพาะช่องที่มีข้อความ · ผลทุกครั้งผ่านหน้าต่างตรวจทาน ไม่บันทึกให้เอง
 //   • บริบทงานเก็บใน doc.aiCtx ของเอกสารในคอลเลกชัน 'sar' (idp_sar)
 //   โหลดหลัง js/sar.js · js/idp-config.js · js/badwork-ai.js (LAZY_BUNDLES.idp) · ท้ายไฟล์ลงทะเบียน registerDocAi('sar', …)
@@ -30,6 +31,28 @@ function sarAiSys() {
   return _sarAiSys;
 }
 
+// แผน ID-Plan ของภาคเรียน/ปีเดียวกับ SAR — แกนประกอบพร้อต์แบบ sync จึงโหลดล่วงหน้าเก็บไว้ (ตอนวาดฟอร์ม · ตอนเปลี่ยนภาค/ปี) · ไม่พบแผน/โหลดไม่ได้ = ไม่ส่งส่วนนี้ ส่วนอื่นทำงานตามเดิม
+//   ID-Plan = แผนที่ "จะทำ" · SAR = ผลที่ "ทำแล้ว" — พร้อต์บอก AI ว่าแผนไม่ใช่หลักฐานว่าทำแล้ว (IDP_CONFIG.sarAi system ข้อ 8)
+let _sarAiPlan = { key: '', plan: null };
+const sarAiPlanKey = d => `${String(d.semester).trim()}|${String(d.year).trim()}`;
+async function sarAiLoadPlan(sys) {
+  const uid = AppState.user?.uid, d = sys.state.doc;
+  if (!uid || !d) return;
+  const key = sarAiPlanKey(d);
+  _sarAiPlan = { key, plan: null };
+  try {
+    const snap = await docSystem('idp').col('plans', uid).orderBy('createdAt', 'desc').get();
+    const hit = snap.docs.map(x => x.data()).find(x => sarAiPlanKey(x) === key); // เรียงใหม่→เก่า: ใช้ฉบับล่าสุดของภาคนั้น
+    if (_sarAiPlan.key === key) _sarAiPlan = { key, plan: hit || null };
+  } catch (err) { console.error('SAR AI plan:', err); }
+}
+// ฟอร์ม SAR เรียกหลัง badworkAiMount — โหลดแผนทันที และโหลดใหม่เมื่อเปลี่ยนภาคเรียน/ปีการศึกษา
+function sarAiAttach(form, sys) {
+  sarAiLoadPlan(sys);
+  form.addEventListener('change', e => { if (e.target.id === 'sar-semester' || e.target.id === 'sar-year') sarCollect(), sarAiLoadPlan(sys); });
+  form.querySelector('#sar-year')?.addEventListener('input', () => { clearTimeout(sarAiAttach.t); sarAiAttach.t = setTimeout(() => { sarCollect(); sarAiLoadPlan(sys); }, 600); });
+}
+
 // ช่องของส่วนที่ 2 ทั้งหมด · ไม่มีผลข้างเคียง (แกนเรียกซ้ำเพื่อดูตัวอย่างขอบเขตของปุ่ม)
 function sarAiSpecs(sys) {
   return sys.config.ai.prompts.fields.map(([k, label, hint]) => ({
@@ -41,7 +64,11 @@ function sarAiSpecs(sys) {
 // รวมบริบทที่ชุดช่องนี้ต้องใช้ (scope ของ config ใช้รหัสช่องเป็นคีย์)
 function sarAiScope(sys, fields) {
   const set = new Set();
-  fields.forEach(f => (sys.config.ai.prompts.scope[f.field] || []).forEach(k => set.add(k)));
+  const P = sys.config.ai.prompts;
+  fields.forEach(f => {
+    (P.scope[f.field] || []).forEach(k => set.add(k));
+    if (f.field in P.planMap) { set.add('plan'); (P.planMap[f.field] || ['*']).forEach(c => set.add('plan:' + c)); } // null = ทุกสมรรถนะ
+  });
   return set;
 }
 
@@ -59,6 +86,16 @@ function sarAiContext(sys, known = {}, scope = null) {
   const methods = SAR_METHODS.filter((_, i) => f.m?.[i]).concat(f.mOther ? [f.mOther] : []);
   const gradeRows = (R.grades || []).map((r, i) => ({ r, g: s.rowG[i] })).filter(x => x.g && x.g.all);
   const hasHome = f.hmCls || f.hmM || f.hmF;
+  const plan = want('plan') && _sarAiPlan.key === sarAiPlanKey(d) ? _sarAiPlan.plan : null;
+  const planLines = [];
+  if (plan) {
+    const pick = k => !scope || scope.has('plan:*') || scope.has('plan:' + k);
+    docSystem('idp').config.competencies.forEach(([cid, , full]) => {
+      const c = (plan.comps || {})[cid];
+      if (!c || !pick(cid) || !(c.method || c.goal)) return;
+      planLines.push(`  - ${full}: วิธีการ: ${String(c.method || '-').replace(/\s+/g, ' ').slice(0, 300)} | เป้าหมาย: ${String(c.goal || '-').replace(/\s+/g, ' ').slice(0, 200)}`);
+    });
+  }
   const lines = [
     `ภาคเรียนที่ ${d.semester || '-'} ปีการศึกษา ${d.year || '-'}`,
     `ตำแหน่ง: ${p.position || 'ครู'}${p.academicStanding ? ' วิทยฐานะ' + p.academicStanding : ''}`,
@@ -74,6 +111,7 @@ function sarAiContext(sys, known = {}, scope = null) {
     want('develop') && (R.training || []).some(has) && `การอบรม/พัฒนาตนเอง: ${list(R.training, r => r.topic || '-')} (รวม ${sarFmt(s.trainHours, 1)} ชั่วโมง)`,
     want('develop') && f.plc && `PLC: ${f.plc}`,
     want('develop') && (R.awards || []).some(has) && `รางวัล/เกียรติคุณ: ${list(R.awards, r => r.title || '-')}`,
+    planLines.length && `แผน ID-Plan ของภาคเรียนนี้ (เป็นแผนที่วางไว้ ไม่ใช่ผลที่ทำแล้ว):\n${planLines.join('\n')}`,
     want('level') && c.level && `ระดับชั้นที่สอน: ${c.level}`,
     want('did') && c.did && `สิ่งที่ครูทำจริงในภาคเรียนนี้: ${c.did}`,
     want('media') && c.media && `สื่อ นวัตกรรม เทคโนโลยีที่ใช้จริง: ${c.media}`,
