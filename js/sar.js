@@ -74,6 +74,29 @@ const SAR_STD_GRP = { '1.1': '1.1 ผลสัมฤทธิ์ทางวิ�
 const SAR_SIGN = [[pi => 'หัวหน้ากลุ่มสาระการเรียนรู้' + (pi.subjectGroup || ''), (f, p) => p?.subjectHead], [() => 'ผู้ช่วยผู้อำนวยการกลุ่มบริหารงานบุคคล', f => f.sgAsst], [() => 'รองผู้อำนวยการกลุ่มบริหารงานบุคคล', f => f.sgDeputy], [pi => 'ผู้อำนวยการ' + (pi.school || ''), (f, p) => p?.director, true]];
 // หัวคอลัมน์ตอนพิมพ์ที่ต่างจากหัวในฟอร์ม (ถ้อยคำตามตัวอย่าง)
 const SAR_PRINT_HEAD = { teaching: { name: 'รายวิชาที่ปฏิบัติการสอน', n: 'จำนวนนักเรียน(คน)', hours: 'จำนวนชั่วโมง/สัปดาห์' }, activities: { name: 'กิจกรรมพัฒนาผู้เรียนและชุมชน', n: 'จำนวนนักเรียน', hours: 'จำนวนชั่วโมง/สัปดาห์' }, training: { place: 'สถานที่จัดอบรม', hours: 'จำนวนชั่วโมง' } };
+// ข้อความมาตรฐานที่พิมพ์ตามตัวอย่าง SAR-2-2568 — แก้ถ้อยคำที่นี่ที่เดียว
+const SAR_P1_TITLE = 'ความสำคัญของการรายงานผลการปฏิบัติงาน';
+const SAR_P1_INTRO = [
+  'พระราชบัญญัติการศึกษาแห่งชาติ พ.ศ. 2542 และที่แก้ไขเพิ่มเติม (ฉบับที่ 2) พ.ศ. 2545 เป็นกฎหมายการศึกษาของชาติ ซึ่งกระทรวงศึกษาธิการได้กำกับดูแลให้การปฏิรูปการศึกษาดังกล่าวเป็นไปตามเจตนารมณ์แห่งพระราชบัญญัติการศึกษาแห่งชาติ พ.ศ. 2542 และที่แก้ไขเพิ่มเติม (ฉบับที่ 2) พ.ศ. 2545 ดังนั้น สถานศึกษาจึงมีภารกิจในการจัดการศึกษาครอบคลุมทุกด้านการวัดและประเมินผล เป็นภารกิจหนึ่งที่ต้องมีการปรับเปลี่ยนวิธีการดำเนินงาน ขอบเขตและสาระการประเมินอันจะนำไปสู่การพัฒนาการเรียนการสอน',
+  'รายงานผลการปฏิบัติงานในหน้าที่ เพื่อให้สอดคล้องกับภาระหน้าที่และผลการปฏิบัติภาระหน้าที่ ให้เป็นไปตามมาตรฐานคุณภาพที่กำหนดไว้ในมาตรฐานการศึกษาขั้นพื้นฐานหรือมาตรฐานของหลักสูตร การปฏิบัติงานตามภาระหน้าที่ของข้าราชการครูและบุคลากรทางการศึกษาและประเมินผลการปฏิบัติงานว่า มีคุณภาพสูงเพียงใดหรือไม่ ฉะนั้น การเขียนรายงานผลการปฏิบัติงานและการประเมินตนเองฉบับนี้ จึงดำเนินการเพื่อให้สอดคล้องกับแนวทางการประกันคุณภาพของสถานศึกษาดังกล่าว ดังนี้',
+];
+const SAR_AGENCY_DEFAULT = 'สำนักงานคณะกรรมการการศึกษาขั้นพื้นฐาน'; // ส่วนราชการ (1.1) — ช่องว่างใช้ค่านี้
+// เกณฑ์การประเมินรายข้อของ 1.6 (ตามตัวอย่าง) · ลำดับตรงกับ SAR_PLAN
+const SAR_PLAN_CRIT = [
+  ['มีการระบุตัวชี้วัด/ผลการเรียนรู้', 'มีการวิเคราะห์ตัวชี้วัด/ผลการเรียนรู้ แยกออกเป็น 3 ด้านคือ ความรู้ เจตคติ ทักษะ (KPA)', 'มีความเหมาะสม สอดคล้องกับกิจกรรมการเรียนรู้', 'สอดคล้องกับผลการเรียนรู้ที่คาดหวัง', 'ครอบคลุมมาตรฐานการศึกษา'],
+  ['การออกแบบกิจกรรมการเรียนรู้เป็นขั้นตอน', 'แผนการจัดกิจกรรมการเรียนรู้มีองค์ประกอบครบ 4 ด้าน (แลกเปลี่ยนประสบการณ์ การสร้างองค์ความรู้ นำเสนอความรู้ ปฏิบัติ / ประยุกต์ใช้)', 'มีความเหมาะสมกับจุดประสงค์การเรียนรู้', 'มีความสอดคล้องกับจุดประสงค์การเรียนรู้ทั้ง 3 ด้าน (ความรู้ เจตคติ ทักษะ)', 'สามารถปฏิบัติได้จริง'],
+  ['มีการจัดกิจกรรมการเรียนรู้โดยใช้กระบวนการกลุ่ม', 'มีความหลากหลายในการมีส่วนร่วมของผู้เรียน', 'มีการกำหนดบทบาทและกิจกรรมอย่างชัดเจน', 'ปฏิบัติจริง', 'ผู้เรียนสนุกสนาน เกิดการเรียนรู้'],
+  ['มีการประเมินผลการเรียนในแต่ละแผน', 'มีการกำหนดวิธีการประเมินผลหลากหลาย', 'วิธีการประเมินผลสอดคล้องกับจุดประสงค์การเรียนรู้', 'ปฏิบัติจริง', 'นำผลการประเมินมาพัฒนาการเรียนรู้'],
+  ['มีการใช้สื่อ อุปกรณ์หรือแหล่งเรียนรู้', 'มีการกำหนดขั้นตอนหรือวิธีการใช้สื่อ หรือแหล่งเรียนรู้', 'มีการใช้สื่อ อุปกรณ์หรือแหล่งการเรียนรู้เหมาะสมกับกิจกรรมการเรียนรู้', 'มีสื่อ อุปกรณ์ แหล่งเรียนรู้', 'มีการพัฒนาสื่อ อุปกรณ์ แหล่งเรียนรู้'],
+];
+const SAR_PLAN_NOTE = '(ระดับ 4 มี 5 ข้อ · ระดับ 3 มี 4 ข้อ · ระดับ 2 มี 3 ข้อ · ระดับ 1 มี 1-2 ข้อ)';
+const SAR_PLAN_JUDGE = ['4 หมายถึง มีการปฏิบัติอยู่ในระดับดีมาก หรือพอใจมากที่สุด', '3 หมายถึง มีการปฏิบัติอยู่ในระดับดี หรือพอใจมาก', '2 หมายถึง มีการปฏิบัติอยู่ในระดับปานกลาง หรือพอใจพอใช้', '1 หมายถึง มีการปฏิบัติอยู่ในระดับปรับปรุง หรือไม่พอใจ'];
+// คำชี้แจงและเกณฑ์การตัดสินของส่วนที่ 3 — {school} แทนด้วยชื่อสถานศึกษา
+const SAR_P3_GUIDE = ['ศึกษาเกณฑ์มาตรฐานคุณภาพการศึกษาของ{school} มาตรฐานที่ 1-3', 'มาตรฐานที่ 1-3 ประเมินผลแล้วจะได้ผลระดับคุณภาพตัวบ่งชี้/มาตรฐาน แล้วทำเครื่องหมาย ✓ ลงในช่องระดับคุณภาพ'];
+const SAR_P3_JUDGE = ['5 หมายถึง มีผลการปฏิบัติอยู่ในระดับยอดเยี่ยม', '4 หมายถึง มีผลการปฏิบัติอยู่ในระดับดีเลิศ', '3 หมายถึง มีผลการปฏิบัติอยู่ในระดับดี', '2 หมายถึง มีผลการปฏิบัติอยู่ในระดับปานกลาง', '1 หมายถึง มีผลการปฏิบัติอยู่ในระดับกำลังพัฒนา'];
+// อำเภอ/จังหวัด — ผู้ใช้พิมพ์มาพร้อมคำนำหน้าหรือไม่ก็ได้
+const sarStripPre = (v, re) => String(v ?? '').trim().replace(re, '').trim();
+const sarAddr = f => [f.district && `อำเภอ${sarStripPre(f.district, /^(อำเภอ|อ\.)\s*/)}`, f.province && `จังหวัด${sarStripPre(f.province, /^(จังหวัด|จ\.)\s*/)}`].filter(Boolean).join(' ');
 const SAR_ROWS = {
   teaching:   [['name', 'รายวิชาที่สอน'], ['room', 'ห้อง'], ['n', 'จำนวนนักเรียน'], ['hours', 'ชม./สัปดาห์']],
   activities: [['name', 'กิจกรรมพัฒนาผู้เรียน'], ['room', 'ห้อง/กลุ่ม'], ['n', 'จำนวนนักเรียน'], ['hours', 'ชม./สัปดาห์']],
@@ -411,6 +434,9 @@ async function sarRenderFormView() {
           <div class="pf-logo-act"><button type="button" class="btn btn-ghost btn-sm" id="sar-goto-logo">${logo ? 'เปลี่ยนตราในข้อมูลส่วนตัว' : 'ไปเพิ่มตราในข้อมูลส่วนตัว'}</button></div>
         </div>
       </div>
+      <div class="doc-subsec"><div class="doc-subsec-hd">ที่ตั้งสถานศึกษาและส่วนราชการ <span class="doc-sec-note">(พิมพ์บนปก · 1.1 · บันทึกข้อความ)</span></div>
+        <div class="doc-form-meta">${sarFld('อำเภอ', sarIn('district', f.district, 'เช่น หนองกี่'))}${sarFld('จังหวัด', sarIn('province', f.province, 'เช่น บุรีรัมย์'))}${sarFld('ส่วนราชการ', sarIn('agency', f.agency, SAR_AGENCY_DEFAULT))}</div>
+      </div>
       <div class="doc-subsec"><div class="doc-subsec-hd">คำนำ</div>
         <div class="field"><textarea class="idp-ta" id="sar-preface" data-f="preface" rows="8" placeholder="เว้นว่าง = ใช้คำนำมาตรฐาน (ดึงชื่อสถานศึกษา สังกัด และปีการศึกษาให้อัตโนมัติ)">${sarEsc(f.preface)}</textarea></div>
         <button type="button" class="btn btn-ghost btn-sm u-mt-12" id="sar-preface-fill">ใส่ข้อความมาตรฐานเพื่อแก้ไข</button>
@@ -475,6 +501,11 @@ async function sarRenderFormView() {
     ${sec('ผู้ลงนามรับรอง', `
       <div class="u-note">ท้ายรายงานมีผู้รับรอง 4 ระดับ: หัวหน้ากลุ่มสาระฯ (ดึงจากข้อมูลส่วนตัว) → ผู้ช่วยผู้อำนวยการกลุ่มบริหารงานบุคคล → รองผู้อำนวยการกลุ่มบริหารงานบุคคล → ผู้อำนวยการ (ดึงจากข้อมูลส่วนตัว) · เว้นว่างได้ จะพิมพ์เป็นเส้นจุดให้เขียนชื่อเอง</div>
       <div class="doc-form-meta u-mt-12">${sarFld('ผู้ช่วยผู้อำนวยการกลุ่มบริหารงานบุคคล', sarIn('sgAsst', f.sgAsst))}${sarFld('รองผู้อำนวยการกลุ่มบริหารงานบุคคล', sarIn('sgDeputy', f.sgDeputy))}</div>`)}
+
+    ${sec('บันทึกข้อความและภาคผนวก', `
+      <div class="u-note">ท้ายเล่มพิมพ์หน้าภาคผนวก (หัวข้อ เกียรติบัตร · ภาพประกอบกิจกรรม · อื่นๆ — แนบเอกสารเองหลังพิมพ์) และบันทึกข้อความนำส่งรายงาน · ที่/วันที่ เว้นว่าง = เส้นจุดให้เขียนเอง</div>
+      <div class="doc-form-meta u-mt-12">${sarFld('ที่ (เลขหนังสือ)', sarIn('memoNo', f.memoNo, 'เช่น 12/2569'))}${sarFld('วันที่', sarIn('memoDate', f.memoDate, 'เช่น 16 มีนาคม 2569'))}</div>
+      <div class="doc-checks u-mt-12"><label class="doc-check"><input type="checkbox" data-f="noApx"${f.noApx ? ' checked' : ''}> ไม่พิมพ์หน้าภาคผนวก</label><label class="doc-check"><input type="checkbox" data-f="noMemo"${f.noMemo ? ' checked' : ''}> ไม่พิมพ์บันทึกข้อความ</label></div>`)}
 
     <div class="pa-form-footer">
       ${SAR.docId ? `<button type="button" class="btn btn-danger-ghost" id="sar-del-btn">${DOC_ICO_DEL} ลบ</button>` : ''}
@@ -612,6 +643,8 @@ section{break-after:page}section:last-child{break-after:auto}
 .sar-pf-h{text-align:center;font-size:22pt;font-weight:700;margin:1.2cm 0 .8cm}
 .sar-pf-p{text-indent:2cm;text-align:justify;font-size:16pt;line-height:1.5;margin:0 0 .5em}
 .sar-pf-sg{text-align:right;font-size:16pt;margin:1.5cm 1.5cm 0 0}
+.sar-p1h{text-align:center;font-weight:700;font-size:16pt;margin:.5em 0 .3em}.sar-note{margin:.3em 0 .6em}.sar-note p{margin:.1em 0}.sar-small{font-size:12pt}
+.sar-memo-h{text-align:center;font-size:22pt;font-weight:700;margin:.4cm 0 .6cm}.sar-memo p{font-size:16pt;line-height:1.4}.sgm{margin:.9em 0 0 auto;width:9cm;text-align:center;break-inside:avoid;font-size:14pt}.sgm .l{text-align:left}.sgm .dl{border-bottom:1px dotted #000;height:1.15em}.sar-apx p{font-size:16pt;margin:.4em 0 .4em 3cm}
 .bx{display:inline-block;width:.38cm;height:.38cm;border:1px solid #000;text-align:center;line-height:.36cm;font-size:11pt;vertical-align:middle;margin:0 .15cm 0 .3cm}.ck{white-space:nowrap}
 table.nb th,table.nb td{border:0;padding:1px 5px}.sg .l{text-align:left}.sg .dl{border-bottom:1px dotted #000;height:1.15em}`;
 
@@ -629,6 +662,9 @@ function sarBuildBodyHtml(d, prof) {
     const head = o.span ? `<tr>${first}<th colspan="${levels.length}">${E(o.span)}</th></tr><tr>${hs}</tr>` : `<tr>${first}${hs}</tr>`;
     return `<table>${head}${items.map((t, i) => `<tr>${o.seq ? `<td class="c">${i + 1}</td>` : ''}<td>${E(o.num ? `${i + 1}. ${t}` : t)}</td>${levels.map(l => `<td class="c">${cur[i] === l ? '✓' : ''}</td>`).join('')}</tr>`).join('')}</table>`;
   };
+  // 1.6: ดัชนีชี้วัด (พร้อมจำนวนข้อต่อระดับ) · ระดับคุณภาพ 4–1 · เกณฑ์การประเมินรายข้อ (ตามตัวอย่าง)
+  const planTbl = () => `<table><tr><th rowspan="2">ดัชนีชี้วัด</th><th colspan="4">ระดับคุณภาพ</th><th rowspan="2">เกณฑ์การประเมิน</th></tr><tr>${[4, 3, 2, 1].map(l => `<th>${l}</th>`).join('')}</tr>
+  ${SAR_PLAN.map((t, i) => `<tr><td>${i + 1}. ${E(t)}<br><span class="sar-small">${E(SAR_PLAN_NOTE)}</span></td>${[4, 3, 2, 1].map(l => `<td class="c">${(L.plan || [])[i] === l ? '✓' : ''}</td>`).join('')}<td class="sar-small">${SAR_PLAN_CRIT[i].map((c, j) => `${j + 1}. ${E(c)}`).join('<br>')}</td></tr>`).join('')}</table>`;
   const bx = on => `<span class="bx">${on ? '✓' : ''}</span>`;
   const chk = (opts, cur) => opts.map(o => `<span class="ck">${bx(o === cur)}${E(o)}</span>`).join(' ');
   // หัวข้อพิมพ์ครบเสมอแม้ช่องว่าง (ตามตัวอย่าง) · lv = ระดับหัวข้อ 1/2/3/4 → <h3 class="lN"> (ขนาด/เยื้องใน SAR_PRINT_CSS)
@@ -666,6 +702,20 @@ function sarBuildBodyHtml(d, prof) {
     const tot = lv.map(l => { const n = cur.slice(0, items.length).filter(v => v === l).length; return `<th>${n ? n * l : ''}</th>`; }).join('');
     return `${hd(2, t)}<table><tr><th rowspan="2">ตัวบ่งชี้</th><th colspan="5">ระดับคุณภาพตัวบ่งชี้/มาตรฐาน</th></tr><tr>${lv.map(l => `<th>${l}</th>`).join('')}</tr>${body}<tr><th>คะแนนรวม</th>${tot}</tr></table>`;
   };
+  // บันทึกข้อความนำส่งรายงาน (ท้ายเล่มตามตัวอย่าง) · ผู้ให้ความเห็น 4 ระดับใช้ SAR_SIGN ชุดเดียวกับท้ายรายงาน · ที่/วันที่ เว้นว่าง = เส้นจุด
+  const memo = () => {
+    const dots = '………………', pos = ps.position || pi.position;
+    return `<section class="sar-memo"><div class="sar-memo-h">บันทึกข้อความ</div>
+    <p><b>ส่วนราชการ</b> ${E(pi.school)}${sarAddr(f) ? ' ' + E(sarAddr(f)) : ''}</p>
+    <p><b>ที่</b> ${E(f.memoNo || dots)}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>วันที่</b> ${E(f.memoDate || dots)}</p>
+    <p><b>เรื่อง</b> รายงานผลการปฏิบัติงานภาคเรียนที่ ${E(d.semester)} ประจำปีการศึกษา ${E(d.year)}</p>
+    <p><b>เรียน</b> ผู้อำนวยการ${E(pi.school)}</p>
+    <p class="sar-pf-p">ด้วยข้าพเจ้า ${E(pi.name)} ตำแหน่ง ${E(pos)} ${E(pi.school)} ได้รับมอบหมายให้ปฏิบัติงานต่าง ๆ ในภาคเรียนที่ ${E(d.semester)} ประจำปีการศึกษา ${E(d.year)} ซึ่งข้าพเจ้าได้ปฏิบัติหน้าที่ที่ได้รับมอบหมายด้วยความมุ่งมั่น ตั้งใจ มีความรับผิดชอบ เสียสละกำลังกาย กำลังใจ และสติปัญญา ทำให้งานมีประสิทธิภาพและประสิทธิผล ก่อให้เกิดผลดีแก่นักเรียน สถานศึกษา และชุมชน จึงเสนอรายงานผลการปฏิบัติงานตามรายละเอียดแนบท้ายหนังสือนี้</p>
+    <p class="sar-pf-p">จึงเรียนมาเพื่อโปรดทราบ</p>
+    <div class="sgm">ลงชื่อ ……………………………… ผู้รายงาน<br>(${E(pi.name)})<br>ตำแหน่ง ${E(pos)}</div>
+    ${SAR_SIGN.map(([t, who]) => `<div class="sgm"><div class="l">ความเห็นของ${E(t(pi))}</div><div class="dl"></div><div>ลงชื่อ ………………………………</div>(${E(who(f, prof) || '………………………')})</div>`).join('')}
+    </section>`;
+  };
   // ลำดับตามตัวอย่าง SAR-2-2568: ส่วนที่ 1 → ส่วนที่ 2 (1. การเรียนการสอน [1.1 → 1.2.1–1.2.7 → 1.6 → 1.3–1.5] · 2. ชั้นเรียน · 3. พัฒนาตนเอง · 4. รางวัล · 5. งานอื่น · 6. แนวทาง) → ส่วนที่ 3
   return `
   <section>
@@ -674,7 +724,7 @@ function sarBuildBodyHtml(d, prof) {
     <div class="sar-cv-t">Self - Assessment Report : SAR</div>
     <div class="sar-cv-t">${sy}</div>
     <div class="sar-cv-by">จัดทำโดย<br>${E(pi.name)}<br>ตำแหน่ง ${E(ps.position || pi.position)}</div>
-    <div class="sar-cv-sc">${E(pi.school)}${pi.affiliation ? `<br>${E(pi.affiliation)}` : ''}</div>
+    <div class="sar-cv-sc">${E(pi.school)}${sarAddr(f) ? `<br>${E(sarAddr(f))}` : ''}${pi.affiliation ? `<br>${E(pi.affiliation)}` : ''}</div>
   </section>
   <section>
     <div class="sar-pf-h">คำนำ</div>
@@ -683,8 +733,10 @@ function sarBuildBodyHtml(d, prof) {
   </section>
   <section>
   <h2>${E(SAR_H.p1)}</h2>
+  <div class="sar-p1h">${E(SAR_P1_TITLE)}</div>
+  ${SAR_P1_INTRO.map(t => `<p class="sar-pf-p">${E(t)}</p>`).join('')}
   ${hd(2, SAR_H.s11)}
-  <p>ชื่อ ${E(pi.name)} กลุ่มสาระการเรียนรู้ ${E(pi.subjectGroup)} อายุ ${E(ps.age)} ปี อายุราชการ ${E(ps.svcY)} ปี ${E(ps.svcM)} เดือน คุณวุฒิสูงสุด ${E(ps.degree)} วิชาเอก ${E(ps.major)} จาก ${E(ps.inst)} ตำแหน่ง ${E(ps.position || pi.position)} วิทยฐานะ ${E(ps.rank)} ตำแหน่งเลขที่ ${E(ps.posNo)} สถานศึกษา ${E(pi.school)}</p>
+  <p>ชื่อ ${E(pi.name)} กลุ่มสาระการเรียนรู้ ${E(pi.subjectGroup)} อายุ ${E(ps.age)} ปี อายุราชการ ${E(ps.svcY)} ปี ${E(ps.svcM)} เดือน คุณวุฒิสูงสุด ${E(ps.degree)} วิชาเอก ${E(ps.major)} จาก ${E(ps.inst)} ตำแหน่ง ${E(ps.position || pi.position)} วิทยฐานะ ${E(ps.rank)} ตำแหน่งเลขที่ ${E(ps.posNo)} สถานศึกษา ${E(pi.school)}${sarAddr(f) ? ' ' + E(sarAddr(f)) : ''}${pi.affiliation ? ' ' + E(pi.affiliation) : ''} ส่วนราชการ ${E(f.agency || SAR_AGENCY_DEFAULT)}</p>
   ${hd(2, SAR_H.s12)}
   ${hd(3, `${SAR_H.teach}${sy}`)}${tbl('teaching', `<tr><th colspan="3">รวม</th><th>${s.teachN}</th><th>${sarFmt(s.teachHours, 1)}</th></tr>`, 'ที่')}
   ${hd(3, `${SAR_H.act}${sy}`)}${tbl('activities', `<tr><th colspan="3">รวม</th><th></th><th>${sarFmt(s.actHours, 1)}</th></tr>`, 'ที่')}
@@ -706,7 +758,8 @@ function sarBuildBodyHtml(d, prof) {
   <p>อื่น ๆ ระบุ ${E(f.mOther || '……………………………')}<br>สรุป จำนวนรูปแบบ / วิธีการจัดกิจกรรมการเรียนการสอนที่ครูใช้ ${s.methodN + (f.mOther ? 1 : 0)} วิธี</p>
   ${hd(3, SAR_H.cond)}${mx('cond', SAR_COND, [5, 4, 3, 2, 1], SAR_RATE5, { seq: true, first: 'รายการปฏิบัติ' })}
   ${hd(3, SAR_H.survey)}${mx('survey', SAR_SURVEY, [5, 4, 3, 2, 1], SAR_RATE5, { first: 'กิจกรรม', span: 'ระดับการประเมิน', num: true })}<p>จากผลการประเมินการสอนของครูโดยนักเรียน พบว่าอยู่ในระดับ ${chk(SAR_RATE5, s.svLabel)}</p>
-  ${hd(2, SAR_H.plan)}${mx('plan', SAR_PLAN, [4, 3, 2, 1])}<p>อยู่ในระดับคุณภาพ ${s.plLabel}</p>
+  ${hd(2, SAR_H.plan)}${planTbl()}<p>สรุป : การจัดทำแผนการจัดการเรียนรู้นี้ อยู่ในระดับคุณภาพ ${s.plLabel}</p>
+  <div class="sar-note sar-small"><b>เกณฑ์การตัดสิน</b>${SAR_PLAN_JUDGE.map(t => `<p>${E(t)}</p>`).join('')}</div>
   ${narr('n13')}${narr('n14')}${narr('n15')}
   ${hd(1, SAR_H.g2)}
   ${narr('n21')}${narr('n22')}
@@ -718,11 +771,14 @@ function sarBuildBodyHtml(d, prof) {
   ${SAR_DUTY.map((t, i) => `${hd(2, t)}${(R['duty' + i] || []).filter(r => r.name).map((r, j) => `<p>5.${i + 1}.${j + 1} ${E(r.name)}</p>`).join('')}<p>สรุปได้ว่า ระดับคุณภาพการปฏิบัติงาน ${chk(SAR_DQ, f['dq' + i])}</p>`).join('')}
   ${hd(1, sarNarr('guide'))}${f.guide ? `<p>${docNl(f.guide)}</p>` : ''}
   <h2>${E(SAR_H.p3)}</h2>
+  <div class="sar-note"><b>คำชี้แจง</b>${SAR_P3_GUIDE.map((t, i) => `<p>${i + 1}. ${E(t.replace('{school}', pi.school || 'สถานศึกษา'))}</p>`).join('')}<p>${SAR_P3_GUIDE.length + 1}. เกณฑ์การตัดสิน</p>${SAR_P3_JUDGE.map(t => `<p>&nbsp;&nbsp;&nbsp;&nbsp;${E(t)}</p>`).join('')}</div>
   ${SAR_STD.map(([t, items], i) => `${stdTbl(t, items, i)}<p>สรุปผลการประเมินมาตรฐานที่ ${i + 1} (คะแนนรวมทั้งหมด/${s.std[i].total}) ${s.std[i].answered ? sarFmt(s.std[i].avg) : '—'}<br>ระดับคุณภาพ ${s.std[i].label}</p>`).join('')}
   <p>ข้าพเจ้าขอรับรองว่าข้อมูลที่ได้ประเมินตนเองทั้งหมดถูกต้องตรงตามเอกสารหลักฐานที่มีอยู่จริง</p>
   <div class="sg">ลงชื่อ ……………………………… ผู้รายงาน<br>(${E(pi.name)})<br>ตำแหน่ง ${E(pi.position)}</div>
   ${SAR_SIGN.map(([t, who, dir]) => `<div class="sg"><div class="l">${dir ? 'ความเห็น' : 'ได้ตรวจสอบแล้วรับรองข้อมูลถูกต้องและเป็นจริง'}</div><div class="dl"></div><div class="dl"></div><div>ลงชื่อ ……………………………… ผู้รับรอง</div>(${E(who(f, prof) || '………………………')})<br>ตำแหน่ง ${E(t(pi))}</div>`).join('')}
-  </section>`;
+  </section>
+  ${f.noApx ? '' : `<section class="sar-apx"><div class="sar-pf-h">ภาคผนวก</div><p>1. เกียรติบัตร</p><p>2. ภาพประกอบกิจกรรม</p><p>3. อื่นๆ</p></section>`}
+  ${f.noMemo ? '' : memo()}`;
 }
 
 async function sarPrint(d) {
