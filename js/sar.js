@@ -64,6 +64,16 @@ const SAR_NARR = [['n11', '1.1 การสร้างและหรือพ�
 const sarNarr = k => (SAR_NARR.find(n => n[0] === k) || [])[1] || k;
 
 // ตารางแถวซ้ำ: [รหัสช่อง, หัวคอลัมน์]
+const SAR_TRAITS8 = ['รักชาติ ศาสน์ กษัตริย์', 'ซื่อสัตย์สุจริต', 'มีวินัย', 'ใฝ่เรียนรู้', 'อยู่อย่างพอเพียง', 'มุ่งมั่นในการทำงาน', 'รักความเป็นไทย', 'มีจิตสาธารณะ'];
+const SAR_RATE5 = ['มากที่สุด', 'มาก', 'ปานกลาง', 'น้อย', 'น้อยที่สุด']; // หัวคอลัมน์/ตัวเลือกระดับ 5 → 1 (1.2.6 · 1.2.7)
+const SAR_DQ = ['ดี', 'พอใช้', 'ปรับปรุง'];
+// กลุ่มย่อยของมาตรฐานที่ 1 ในส่วนที่ 3 (ข้อที่ขึ้นต้น "1.1 (n)" / "1.2 (n)") — ชื่อกลุ่มตามประเด็นพิจารณาของมาตรฐานการศึกษาขั้นพื้นฐาน · แก้ที่นี่ที่เดียว
+const SAR_STD_GRP = { '1.1': '1.1 ผลสัมฤทธิ์ทางวิชาการของผู้เรียน', '1.2': '1.2 คุณลักษณะที่พึงประสงค์ของผู้เรียน' };
+// ผู้รับรองท้ายเอกสาร (ลำดับตามตัวอย่าง SAR-2-2568) · [ตำแหน่ง, ที่มาของชื่อ] — ชื่อ 2 ระดับกลางกรอกในฟอร์ม (f.sgAsst / f.sgDeputy) ส่วนอีก 2 ระดับดึงจากข้อมูลส่วนตัว
+// [ตำแหน่ง(pi → ข้อความ), ชื่อ, เป็นผู้อำนวยการ?] — 3 ระดับแรกขึ้น "ได้ตรวจสอบแล้วรับรองข้อมูลถูกต้องและเป็นจริง" · ผู้อำนวยการขึ้น "ความเห็น" (ตามตัวอย่าง SAR-2-2568)
+const SAR_SIGN = [[pi => 'หัวหน้ากลุ่มสาระการเรียนรู้' + (pi.subjectGroup || ''), (f, p) => p?.subjectHead], [() => 'ผู้ช่วยผู้อำนวยการกลุ่มบริหารงานบุคคล', f => f.sgAsst], [() => 'รองผู้อำนวยการกลุ่มบริหารงานบุคคล', f => f.sgDeputy], [pi => 'ผู้อำนวยการ' + (pi.school || ''), (f, p) => p?.director, true]];
+// หัวคอลัมน์ตอนพิมพ์ที่ต่างจากหัวในฟอร์ม (ถ้อยคำตามตัวอย่าง)
+const SAR_PRINT_HEAD = { teaching: { name: 'รายวิชาที่ปฏิบัติการสอน', n: 'จำนวนนักเรียน(คน)', hours: 'จำนวนชั่วโมง/สัปดาห์' }, activities: { name: 'กิจกรรมพัฒนาผู้เรียนและชุมชน', n: 'จำนวนนักเรียน', hours: 'จำนวนชั่วโมง/สัปดาห์' }, training: { place: 'สถานที่จัดอบรม', hours: 'จำนวนชั่วโมง' } };
 const SAR_ROWS = {
   teaching:   [['name', 'รายวิชาที่สอน'], ['room', 'ห้อง'], ['n', 'จำนวนนักเรียน'], ['hours', 'ชม./สัปดาห์']],
   activities: [['name', 'กิจกรรมพัฒนาผู้เรียน'], ['room', 'ห้อง/กลุ่ม'], ['n', 'จำนวนนักเรียน'], ['hours', 'ชม./สัปดาห์']],
@@ -188,7 +198,7 @@ function sarStats(d) {
   const avgOf = a => { const v = (a || []).filter(Boolean); return v.length ? v.reduce((s, x) => s + x, 0) / v.length : 0; };
   const sv = avgOf(L.survey), pl = avgOf(L.plan);
   return {
-    teachHours: sum(R.teaching, 'hours'), teachN: sum(R.teaching, 'n'),
+    teachHours: sum(R.teaching, 'hours'), teachN: sum(R.teaching, 'n'), actHours: sum(R.activities, 'hours'), actN: sum(R.activities, 'n'),
     rowG: (R.grades || []).map(gs), gradeTot: tot, gt,
     pHigh: pct(tot.g4 + tot.g35 + tot.g3), pMid: pct(tot.g25 + tot.g2 + tot.g15 + tot.g1), pLow: pct(tot.g0 + tot.r + tot.ms),
     traitN: sum(R.traits, 'n'), trainHours: sum(R.training, 'hours'),
@@ -245,6 +255,7 @@ function sarCollect() {
 function sarCalc() {
   const d = SAR.doc, s = sarStats(d), $ = (id, t) => { const el = document.getElementById(id); if (el) el.textContent = t; };
   $('sar-t-sum', `รวม ${sarFmt(s.teachHours, 1)} ชม./สัปดาห์ · นักเรียน ${s.teachN} คน (นับซ้ำตามรายวิชา)`);
+  $('sar-a-sum', `รวม ${sarFmt(s.actHours, 1)} ชม./สัปดาห์`);
   $('sar-hm-n', `รวม ${s.homeN} คน`);
   $('sar-m-n', `จำนวนรูปแบบ/วิธีที่ใช้: ${s.methodN} วิธี`);
   $('sar-tr-n', `รวม ${s.traitN} คน`);
@@ -419,7 +430,7 @@ async function sarRenderFormView() {
       </div>
       <h3 class="sar-sub-title">${SAR_H.s12}</h3>
       ${sarTable('teaching', SAR_H.teach, 'เพิ่มรายวิชา')}<div class="u-note" id="sar-t-sum"></div>
-      ${sarTable('activities', SAR_H.act, 'เพิ่มกิจกรรม')}
+      ${sarTable('activities', SAR_H.act, 'เพิ่มกิจกรรม')}<div class="u-note" id="sar-a-sum"></div>
       <div class="doc-subsec"><div class="doc-subsec-hd">${SAR_H.home}</div><div class="doc-form-meta">
         ${sarFld('ชั้น/ห้อง', sarIn('hmCls', f.hmCls, 'เช่น ม.1/1'))}${num('ชาย (คน)', 'hmM')}${num('หญิง (คน)', 'hmF')}</div><div class="u-note" id="sar-hm-n"></div></div>
       <div class="doc-subsec"><div class="doc-subsec-hd">${SAR_H.attend} <span class="doc-sec-note">(ครั้ง / วัน — เว้นว่างถ้าไม่มี)</span></div><div class="sar-att">
@@ -460,6 +471,10 @@ async function sarRenderFormView() {
     ${sec('ส่วนที่ 3  ผลการดำเนินงานตามมาตรฐานการศึกษาขั้นพื้นฐาน เพื่อการประกันคุณภาพภายในของสถานศึกษา', `
       <div class="u-note">ระดับคุณภาพ 5 = ยอดเยี่ยม · 4 = ดีเลิศ · 3 = ดี · 2 = ปานกลาง · 1 = กำลังพัฒนา — ค่าเฉลี่ยและระดับคุณภาพคำนวณให้</div>
       ${SAR_STD.map(([t, items], i) => `<div class="doc-subsec"><div class="doc-subsec-hd">${sarEsc(t)}</div>${sarMatrix('std' + i, items, lv5, ['5', '4', '3', '2', '1'])}<div class="u-note" id="sar-std-${i}"></div></div>`).join('')}`)}
+
+    ${sec('ผู้ลงนามรับรอง', `
+      <div class="u-note">ท้ายรายงานมีผู้รับรอง 4 ระดับ: หัวหน้ากลุ่มสาระฯ (ดึงจากข้อมูลส่วนตัว) → ผู้ช่วยผู้อำนวยการกลุ่มบริหารงานบุคคล → รองผู้อำนวยการกลุ่มบริหารงานบุคคล → ผู้อำนวยการ (ดึงจากข้อมูลส่วนตัว) · เว้นว่างได้ จะพิมพ์เป็นเส้นจุดให้เขียนชื่อเอง</div>
+      <div class="doc-form-meta u-mt-12">${sarFld('ผู้ช่วยผู้อำนวยการกลุ่มบริหารงานบุคคล', sarIn('sgAsst', f.sgAsst))}${sarFld('รองผู้อำนวยการกลุ่มบริหารงานบุคคล', sarIn('sgDeputy', f.sgDeputy))}</div>`)}
 
     <div class="pa-form-footer">
       ${SAR.docId ? `<button type="button" class="btn btn-danger-ghost" id="sar-del-btn">${DOC_ICO_DEL} ลบ</button>` : ''}
@@ -596,20 +611,61 @@ section{break-after:page}section:last-child{break-after:auto}
 .sar-cv-by,.sar-cv-sc{text-align:center;font-size:20pt;line-height:1.6}.sar-cv-by{margin-top:6.5cm}.sar-cv-sc{margin-top:5cm}
 .sar-pf-h{text-align:center;font-size:22pt;font-weight:700;margin:1.2cm 0 .8cm}
 .sar-pf-p{text-indent:2cm;text-align:justify;font-size:16pt;line-height:1.5;margin:0 0 .5em}
-.sar-pf-sg{text-align:right;font-size:16pt;margin:1.5cm 1.5cm 0 0}`;
+.sar-pf-sg{text-align:right;font-size:16pt;margin:1.5cm 1.5cm 0 0}
+.bx{display:inline-block;width:.38cm;height:.38cm;border:1px solid #000;text-align:center;line-height:.36cm;font-size:11pt;vertical-align:middle;margin:0 .15cm 0 .3cm}.ck{white-space:nowrap}
+table.nb th,table.nb td{border:0;padding:1px 5px}.sg .l{text-align:left}.sg .dl{border-bottom:1px dotted #000;height:1.15em}`;
 
 // สร้าง HTML เนื้อหา SAR (ใช้ทั้งตอนพิมพ์และตอนแสดงตัวอย่างบนจอ)
 function sarBuildBodyHtml(d, prof) {
   const pi = idpProfileInfo(prof), s = sarStats(d), f = d.f || {}, R = d.rows || {}, L = d.lv || {}, ps = sarPersonal(prof, f);
   const E = sarEsc, cell = v => (v === '' || v == null ? '' : E(v));
-  const tbl = (key, extra) => `<table><tr>${sarCols(key).map(c => `<th>${E(c[1])}</th>`).join('')}</tr>${(R[key] || []).filter(r => Object.values(r).some(Boolean)).map(r => `<tr>${sarCols(key).map(([c]) => `<td>${cell(r[c])}</td>`).join('')}</tr>`).join('')}${extra || ''}</table>`;
-  const mx = (group, items, levels) => `<table><tr><th>รายการ</th>${levels.map(l => `<th>${l}</th>`).join('')}</tr>${items.map((t, i) => `<tr><td>${E(t)}</td>${levels.map(l => `<td class="c">${(L[group] || [])[i] === l ? '✓' : ''}</td>`).join('')}</tr>`).join('')}</table>`;
+  // seq = หัวคอลัมน์เลขลำดับ ("ที่" / "ครั้งที่") — เติมคอลัมน์แรกให้ตอนพิมพ์เท่านั้น ไม่ได้เก็บในข้อมูล
+  const hh = (key, c) => (SAR_PRINT_HEAD[key] || {})[c[0]] || c[1];
+  const tbl = (key, extra, seq) => `<table><tr>${seq ? `<th>${seq}</th>` : ''}${sarCols(key).map(c => `<th>${E(hh(key, c))}</th>`).join('')}</tr>${(R[key] || []).filter(r => Object.values(r).some(Boolean)).map((r, i) => `<tr>${seq ? `<td class="c">${i + 1}</td>` : ''}${sarCols(key).map(([c]) => `<td>${cell(r[c])}</td>`).join('')}</tr>`).join('')}${extra || ''}</table>`;
+  // ตารางติ๊กระดับ · heads = หัวคอลัมน์ (ค่าเริ่มต้น = ตัวเลขระดับ) · o.first = หัวคอลัมน์แรก · o.span = หัวกลุ่มของคอลัมน์ระดับ · o.seq = คอลัมน์ "ที่" แยก · o.num = ใส่เลขข้อนำหน้า
+  const mx = (group, items, levels, heads, o = {}) => {
+    const cur = L[group] || [], hs = (heads || levels).map(l => `<th>${l}</th>`).join('');
+    const first = o.seq ? `<th>ที่</th><th>${E(o.first || 'รายการ')}</th>` : `<th${o.span ? ' rowspan="2"' : ''}>${E(o.first || 'รายการ')}</th>`;
+    const head = o.span ? `<tr>${first}<th colspan="${levels.length}">${E(o.span)}</th></tr><tr>${hs}</tr>` : `<tr>${first}${hs}</tr>`;
+    return `<table>${head}${items.map((t, i) => `<tr>${o.seq ? `<td class="c">${i + 1}</td>` : ''}<td>${E(o.num ? `${i + 1}. ${t}` : t)}</td>${levels.map(l => `<td class="c">${cur[i] === l ? '✓' : ''}</td>`).join('')}</tr>`).join('')}</table>`;
+  };
+  const bx = on => `<span class="bx">${on ? '✓' : ''}</span>`;
+  const chk = (opts, cur) => opts.map(o => `<span class="ck">${bx(o === cur)}${E(o)}</span>`).join(' ');
   // หัวข้อพิมพ์ครบเสมอแม้ช่องว่าง (ตามตัวอย่าง) · lv = ระดับหัวข้อ 1/2/3/4 → <h3 class="lN"> (ขนาด/เยื้องใน SAR_PRINT_CSS)
   const hd = (lv, t, note = '') => `<h3 class="l${lv}">${E(t)}${note ? ` <span class="nt">${E(note)}</span>` : ''}</h3>`;
   const narr = k => { const n = SAR_NARR.find(x => x[0] === k); return hd(n[2], n[1]) + (f[k] ? `<p>${docNl(f[k])}</p>` : ''); };
   const sy = `ภาคเรียนที่ ${d.semester} ปีการศึกษา ${d.year}`, per = f.period ? `(${f.period})` : '';
-  const at = ['late', 'sick', 'biz', 'ord', 'mat'].map((k, i) => `<tr><td>${['มาสาย', 'ลาป่วย', 'ลากิจ', 'ลาอุปสมบท', 'ลาคลอด'][i]}</td><td class="c">${cell(f.at?.[k + 'T']) || '-'}</td><td class="c">${cell(f.at?.[k + 'D']) || '-'}</td></tr>`).join('');
-  const gr = s.gradeTot, gradeFoot = (R.grades || []).length ? `<tr><th colspan="3">รวม</th>${SAR_G.map(([k]) => `<th>${gr[k]}</th>`).join('')}<th>${gr.r}</th><th>${gr.ms}</th></tr>` : '';
+  const attK = ['late', 'sick', 'biz', 'ord', 'mat'], attT = ['มาสาย', 'ลาป่วย', 'ลากิจ', 'ลาอุปสมบท', 'ลาคลอด'];
+  const dash = v => (v ? String(v) : '-');
+  // กลุ่ม "จำนวน" = ที่กรอกในช่วงเวลารายงาน (แถวช่วงเวลาคั่นก่อน) · กลุ่ม "รวม" = ผลรวม (มีช่วงเดียวจึงเท่ากัน) — ตามตัวอย่างไม่มีแถวรวมท้ายตาราง
+  const at = (f.period ? `<tr><td colspan="5">${E(f.period)}</td></tr>` : '')
+    + attK.map((k, i) => `<tr><td>${attT[i]}</td><td class="c">${cell(f.at?.[k + 'T']) || '-'}</td><td class="c">${cell(f.at?.[k + 'D']) || '-'}</td><td class="c">${dash(sarNum(f.at?.[k + 'T']))}</td><td class="c">${dash(sarNum(f.at?.[k + 'D']))}</td></tr>`).join('');
+  const fxFmt = v => (Number.isInteger(v) ? String(v) : v.toFixed(1)); // fx = จำนวน × ระดับ (3.5 / 2.5 / 1.5 ทำให้มีทศนิยม .5)
+  const gr = s.gradeTot, hasG = (R.grades || []).length > 0;
+  // ตารางผลการเรียน (พิมพ์) ตามตัวอย่าง: ห้อง · N · 4…0 · รวม (n) · ร · มส. · เฉลี่ย · วิชา (ท้ายแถว) · แถว รวม (f) / รวม (fx = จำนวน × ระดับ) / เฉลี่ย
+  const gTable = () => `<table><tr><th rowspan="3">ห้อง</th><th rowspan="3">จำนวนนักเรียนทั้งหมด (N)</th><th colspan="11">จำนวนนักเรียน (คน)</th><th rowspan="3">ผลการเรียนเฉลี่ย</th><th rowspan="3">วิชา</th></tr>
+  <tr><th colspan="7">ผ่านการประเมิน (X)</th><th>ไม่ผ่านการประเมิน</th><th rowspan="2">รวม (n)</th><th rowspan="2">ร</th><th rowspan="2">มส.</th></tr>
+  <tr>${SAR_G.map(g => `<th>${g[1]}</th>`).join('')}</tr>
+  ${(R.grades || []).map((r, i) => `<tr><td>${cell(r.room)}</td><td class="c">${cell(r.n)}</td>${SAR_G.map(([k]) => `<td class="c">${cell(r[k]) || '-'}</td>`).join('')}<td class="c">${s.rowG[i].all || ''}</td><td class="c">${cell(r.r) || '-'}</td><td class="c">${cell(r.ms) || '-'}</td><td class="c">${s.rowG[i].c ? sarFmt(s.rowG[i].avg) : ''}</td><td>${cell(r.name)}</td></tr>`).join('')}
+  ${hasG ? `<tr><th>รวม (f)</th><th>${gr.n}</th>${SAR_G.map(([k]) => `<th>${gr[k]}</th>`).join('')}<th>${s.gt.all}</th><th>${gr.r}</th><th>${gr.ms}</th><th></th><th></th></tr>
+  <tr><th>รวม (fx)</th><th></th>${SAR_G.map(([k, w]) => `<th>${fxFmt(gr[k] * w)}</th>`).join('')}<th>${fxFmt(SAR_G.reduce((a, [k, w]) => a + gr[k] * w, 0))}</th><th></th><th></th><th></th><th></th></tr>
+  <tr><th>เฉลี่ย</th><th colspan="14">${s.gt.c ? sarFmt(s.gt.avg) : ''}</th></tr>` : ''}</table>`;
+  // คุณลักษณะอันพึงประสงค์: คอลัมน์ "คุณลักษณะอันพึงประสงค์" เป็นช่องรวมทุกแถว ใส่ 8 ข้อ · ผลประเมิน 4 ระดับต่อห้อง · แถวรวมท้ายตาราง
+  const trRows = (R.traits || []).filter(r => Object.values(r).some(Boolean)), trSum = k => trRows.reduce((a, r) => a + sarNum(r[k]), 0);
+  const trT = () => `<table><tr><th rowspan="2">ชั้น</th><th rowspan="2">จำนวนนักเรียน</th><th rowspan="2">คุณลักษณะอันพึงประสงค์</th><th colspan="4">ผลการประเมิน (คน/ร้อยละ)</th></tr><tr><th>ดีเยี่ยม 3</th><th>ดี 2</th><th>ผ่าน 1</th><th>ไม่ผ่าน 0</th></tr>
+  ${(trRows.length ? trRows : [{}]).map((r, i) => `<tr><td>${cell(r.room)}</td><td class="c">${cell(r.n)}</td>${i === 0 ? `<td rowspan="${trRows.length || 1}">${SAR_TRAITS8.map((t, j) => `${j + 1}. ${E(t)}`).join('<br>')}</td>` : ''}${['g3', 'g2', 'g1', 'g0'].map(k => `<td class="c">${cell(r[k])}</td>`).join('')}</tr>`).join('')}
+  ${trRows.length ? `<tr><th>รวม</th><th>${s.traitN}</th><th></th>${['g3', 'g2', 'g1', 'g0'].map(k => `<th>${trSum(k) || ''}</th>`).join('')}</tr>` : ''}</table>`;
+  // ส่วนที่ 3: ตารางเดียวต่อมาตรฐาน · มาตรฐานที่ 1 แบ่งกลุ่ม 1.1 / 1.2 (แถวหัวกลุ่ม · ข้อเรียง 1) 2) …) · แถว "คะแนนรวม" ท้ายตารางแยกตามระดับ (ระดับ × จำนวนข้อที่ติ๊ก)
+  const stdTbl = (t, items, i) => {
+    const cur = L['std' + i] || [], lv = [5, 4, 3, 2, 1];
+    const row = (txt, idx) => `<tr><td>${E(txt)}</td>${lv.map(l => `<td class="c">${cur[idx] === l ? '✓' : ''}</td>`).join('')}</tr>`;
+    const grp = items.every(x => /^\d+\.\d+ \(\d+\) /.test(x)) ? items.map(x => x.match(/^(\d+\.\d+) \((\d+)\) (.*)$/)) : null;
+    const body = grp
+      ? [...new Set(grp.map(m => m[1]))].map(k => `<tr><td colspan="6"><b>${E(SAR_STD_GRP[k] || k)}</b></td></tr>${grp.map((m, idx) => (m[1] === k ? row(`${m[2]}) ${m[3]}`, idx) : '')).join('')}`).join('')
+      : items.map((x, idx) => row(x, idx)).join('');
+    const tot = lv.map(l => { const n = cur.slice(0, items.length).filter(v => v === l).length; return `<th>${n ? n * l : ''}</th>`; }).join('');
+    return `${hd(2, t)}<table><tr><th rowspan="2">ตัวบ่งชี้</th><th colspan="5">ระดับคุณภาพตัวบ่งชี้/มาตรฐาน</th></tr><tr>${lv.map(l => `<th>${l}</th>`).join('')}</tr>${body}<tr><th>คะแนนรวม</th>${tot}</tr></table>`;
+  };
   // ลำดับตามตัวอย่าง SAR-2-2568: ส่วนที่ 1 → ส่วนที่ 2 (1. การเรียนการสอน [1.1 → 1.2.1–1.2.7 → 1.6 → 1.3–1.5] · 2. ชั้นเรียน · 3. พัฒนาตนเอง · 4. รางวัล · 5. งานอื่น · 6. แนวทาง) → ส่วนที่ 3
   return `
   <section>
@@ -630,10 +686,10 @@ function sarBuildBodyHtml(d, prof) {
   ${hd(2, SAR_H.s11)}
   <p>ชื่อ ${E(pi.name)} กลุ่มสาระการเรียนรู้ ${E(pi.subjectGroup)} อายุ ${E(ps.age)} ปี อายุราชการ ${E(ps.svcY)} ปี ${E(ps.svcM)} เดือน คุณวุฒิสูงสุด ${E(ps.degree)} วิชาเอก ${E(ps.major)} จาก ${E(ps.inst)} ตำแหน่ง ${E(ps.position || pi.position)} วิทยฐานะ ${E(ps.rank)} ตำแหน่งเลขที่ ${E(ps.posNo)} สถานศึกษา ${E(pi.school)}</p>
   ${hd(2, SAR_H.s12)}
-  ${hd(3, `${SAR_H.teach}${sy}`)}${tbl('teaching', `<tr><th colspan="2">รวม</th><th>${s.teachN}</th><th>${sarFmt(s.teachHours, 1)}</th></tr>`)}
-  ${hd(3, `${SAR_H.act}${sy}`)}${tbl('activities')}
-  ${hd(3, SAR_H.home)}<p>ชั้น ${E(f.hmCls)} ชาย ${E(f.hmM)} คน หญิง ${E(f.hmF)} คน รวม ${s.homeN} คน</p>
-  ${hd(3, `${SAR_H.attend}${per}`)}<table><tr><th>ประเภท</th><th>ครั้ง</th><th>วัน</th></tr>${at}</table>
+  ${hd(3, `${SAR_H.teach}${sy}`)}${tbl('teaching', `<tr><th colspan="3">รวม</th><th>${s.teachN}</th><th>${sarFmt(s.teachHours, 1)}</th></tr>`, 'ที่')}
+  ${hd(3, `${SAR_H.act}${sy}`)}${tbl('activities', `<tr><th colspan="3">รวม</th><th></th><th>${sarFmt(s.actHours, 1)}</th></tr>`, 'ที่')}
+  ${hd(3, SAR_H.home)}<table><tr><th rowspan="2">ชั้น / ห้อง</th><th colspan="2">จำนวนนักเรียน</th><th rowspan="2">รวมทั้งสิ้น (คน)</th></tr><tr><th>ชาย (คน)</th><th>หญิง (คน)</th></tr><tr><td class="c">${E(f.hmCls)}</td><td class="c">${cell(f.hmM) || '-'}</td><td class="c">${cell(f.hmF) || '-'}</td><td class="c">${s.homeN}</td></tr></table>
+  ${hd(3, `${SAR_H.attend}${per}`)}<table><tr><th rowspan="2">ประเภท</th><th colspan="2">จำนวน</th><th colspan="2">รวม</th></tr><tr><th>ครั้ง</th><th>วัน</th><th>ครั้ง</th><th>วัน</th></tr>${at}</table>
   <h2>${E(SAR_H.p2)}</h2>
   ${hd(1, SAR_H.g1, SAR_H.g1note)}
   ${narr('n11')}
@@ -641,29 +697,31 @@ function sarBuildBodyHtml(d, prof) {
   ${narr('n121')}${narr('n122')}${narr('n123')}
   ${hd(3, SAR_H.q124)}
   ${hd(4, SAR_H.acad)}
-  <table><tr><th>วิชา</th><th>ห้อง</th><th>N</th>${SAR_G.map(g => `<th>${g[1]}</th>`).join('')}<th>ร</th><th>มส.</th><th>เฉลี่ย</th></tr>
-  ${(R.grades || []).map((r, i) => `<tr><td>${cell(r.name)}</td><td>${cell(r.room)}</td><td>${cell(r.n)}</td>${SAR_G.map(([k]) => `<td class="c">${cell(r[k]) || '-'}</td>`).join('')}<td class="c">${cell(r.r) || '-'}</td><td class="c">${cell(r.ms) || '-'}</td><td class="c">${s.rowG[i].all ? sarFmt(s.rowG[i].avg) : ''}</td></tr>`).join('')}${gradeFoot ? gradeFoot.replace('</tr>', `<th>${sarFmt(s.gt.avg)}</th></tr>`) : ''}</table>
-  <p>ร้อยละของนักเรียนที่ได้ผลการเรียน 3 ขึ้นไป ${sarFmt(s.pHigh)} · 1–2.5 ${sarFmt(s.pMid)} · 0, ร, มส ${sarFmt(s.pLow)}</p>
-  ${hd(4, SAR_H.trait)}${tbl('traits')}
-  ${hd(3, SAR_H.meth)}<p>${SAR_METHODS.filter((m, i) => f.m?.[i]).map(E).join(', ')}${f.mOther ? ', ' + E(f.mOther) : ''}<br>จำนวน ${s.methodN + (f.mOther ? 1 : 0)} วิธี</p>
-  ${hd(3, SAR_H.cond)}${mx('cond', SAR_COND, [5, 4, 3, 2, 1])}
-  ${hd(3, SAR_H.survey)}${mx('survey', SAR_SURVEY, [5, 4, 3, 2, 1])}<p>อยู่ในระดับ ${s.svLabel} (ค่าเฉลี่ย ${s.sv ? sarFmt(s.sv) : '—'})</p>
+  ${gTable()}
+  <p>ร้อยละของนักเรียนที่ได้รับผลการเรียน 3 ขึ้นไป ${sarFmt(s.pHigh)}</p>
+  <p>ร้อยละของนักเรียนที่ได้รับผลการเรียน 1-2.5 ${sarFmt(s.pMid)}</p>
+  <p>ร้อยละของนักเรียนที่ได้ผลการเรียน 0, ร, มส ${sarFmt(s.pLow)}</p>
+  ${hd(4, SAR_H.trait)}${trT()}
+  ${hd(3, SAR_H.meth)}<table class="nb">${Array.from({ length: Math.ceil(SAR_METHODS.length / 2) }, (_, r) => `<tr>${[2 * r, 2 * r + 1].map(i => (i < SAR_METHODS.length ? `<td>${bx(f.m?.[i])}${E(SAR_METHODS[i])}</td>` : '<td></td>')).join('')}</tr>`).join('')}</table>
+  <p>อื่น ๆ ระบุ ${E(f.mOther || '……………………………')}<br>สรุป จำนวนรูปแบบ / วิธีการจัดกิจกรรมการเรียนการสอนที่ครูใช้ ${s.methodN + (f.mOther ? 1 : 0)} วิธี</p>
+  ${hd(3, SAR_H.cond)}${mx('cond', SAR_COND, [5, 4, 3, 2, 1], SAR_RATE5, { seq: true, first: 'รายการปฏิบัติ' })}
+  ${hd(3, SAR_H.survey)}${mx('survey', SAR_SURVEY, [5, 4, 3, 2, 1], SAR_RATE5, { first: 'กิจกรรม', span: 'ระดับการประเมิน', num: true })}<p>จากผลการประเมินการสอนของครูโดยนักเรียน พบว่าอยู่ในระดับ ${chk(SAR_RATE5, s.svLabel)}</p>
   ${hd(2, SAR_H.plan)}${mx('plan', SAR_PLAN, [4, 3, 2, 1])}<p>อยู่ในระดับคุณภาพ ${s.plLabel}</p>
   ${narr('n13')}${narr('n14')}${narr('n15')}
   ${hd(1, SAR_H.g2)}
   ${narr('n21')}${narr('n22')}
   ${hd(1, SAR_H.g3, per)}
-  ${hd(2, SAR_H.s31)}${tbl('training', `<tr><th colspan="4">รวม</th><th>${sarFmt(s.trainHours, 1)}</th></tr>`)}
+  ${hd(2, SAR_H.s31)}${tbl('training', `<tr><th colspan="5">รวม</th><th>${sarFmt(s.trainHours, 1)}</th></tr>`, 'ครั้งที่')}
   ${hd(2, SAR_H.s32)}${f.plc ? `<p>${E(f.plc)}</p>` : ''}
-  ${hd(1, SAR_H.g4)}${tbl('awards')}
+  ${hd(1, SAR_H.g4)}${tbl('awards', '', 'ที่')}
   ${hd(1, SAR_H.g5)}
-  ${SAR_DUTY.map((t, i) => `${hd(2, t)}${(R['duty' + i] || []).filter(r => r.name).map((r, j) => `<p>5.${i + 1}.${j + 1} ${E(r.name)}</p>`).join('')}<p>สรุปได้ว่า ระดับคุณภาพการปฏิบัติงาน ${E(f['dq' + i] || '………………')}</p>`).join('')}
+  ${SAR_DUTY.map((t, i) => `${hd(2, t)}${(R['duty' + i] || []).filter(r => r.name).map((r, j) => `<p>5.${i + 1}.${j + 1} ${E(r.name)}</p>`).join('')}<p>สรุปได้ว่า ระดับคุณภาพการปฏิบัติงาน ${chk(SAR_DQ, f['dq' + i])}</p>`).join('')}
   ${hd(1, sarNarr('guide'))}${f.guide ? `<p>${docNl(f.guide)}</p>` : ''}
   <h2>${E(SAR_H.p3)}</h2>
-  ${SAR_STD.map(([t, items], i) => `${hd(2, t)}${mx('std' + i, items, [5, 4, 3, 2, 1])}<p>คะแนนรวม ${s.std[i].sum} ÷ ${s.std[i].total} = ${s.std[i].answered ? sarFmt(s.std[i].avg) : '—'} ระดับคุณภาพ ${s.std[i].label}</p>`).join('')}
+  ${SAR_STD.map(([t, items], i) => `${stdTbl(t, items, i)}<p>สรุปผลการประเมินมาตรฐานที่ ${i + 1} (คะแนนรวมทั้งหมด/${s.std[i].total}) ${s.std[i].answered ? sarFmt(s.std[i].avg) : '—'}<br>ระดับคุณภาพ ${s.std[i].label}</p>`).join('')}
   <p>ข้าพเจ้าขอรับรองว่าข้อมูลที่ได้ประเมินตนเองทั้งหมดถูกต้องตรงตามเอกสารหลักฐานที่มีอยู่จริง</p>
   <div class="sg">ลงชื่อ ……………………………… ผู้รายงาน<br>(${E(pi.name)})<br>ตำแหน่ง ${E(pi.position)}</div>
-  ${[['หัวหน้ากลุ่มสาระการเรียนรู้', prof?.subjectHead], ['รองผู้อำนวยการฝ่ายวิชาการ', prof?.deputyAcademic], ['ผู้อำนวยการสถานศึกษา', prof?.director]].map(([t, n]) => `<div class="sg">ลงชื่อ ……………………………… ผู้รับรอง<br>(${E(n || '………………………')})<br>ตำแหน่ง ${E(t)}</div>`).join('')}
+  ${SAR_SIGN.map(([t, who, dir]) => `<div class="sg"><div class="l">${dir ? 'ความเห็น' : 'ได้ตรวจสอบแล้วรับรองข้อมูลถูกต้องและเป็นจริง'}</div><div class="dl"></div><div class="dl"></div><div>ลงชื่อ ……………………………… ผู้รับรอง</div>(${E(who(f, prof) || '………………………')})<br>ตำแหน่ง ${E(t(pi))}</div>`).join('')}
   </section>`;
 }
 
