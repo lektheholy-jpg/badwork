@@ -29,7 +29,7 @@ service cloud.firestore {
         && p.keys().hasOnly(['prefix', 'firstName', 'lastName', 'phone',
                              'position', 'academicStanding', 'ksLevel', 'salary', 'positionNo', 'subjectGroup',
                              'school', 'affiliation',
-                             'director', 'deputyAcademic', 'subjectHead', 'assessmentHead',
+                             'director', 'deputyAcademic', 'subjectHead', 'assessmentHead', 'personnelAsst', 'personnelDeputy',
                              'birthDate', 'startDate', 'licenseNo', 'education', 'logo'])
         && okStr(p.get('prefix', null), 200) && okStr(p.get('firstName', null), 200) && okStr(p.get('lastName', null), 200)
         && okStr(p.get('phone', null), 200) && okStr(p.get('position', null), 200) && okStr(p.get('academicStanding', null), 200)
@@ -37,6 +37,7 @@ service cloud.firestore {
         && okStr(p.get('school', null), 200) && okStr(p.get('affiliation', null), 200)
         && okStr(p.get('director', null), 200) && okStr(p.get('deputyAcademic', null), 200)
         && okStr(p.get('subjectHead', null), 200) && okStr(p.get('assessmentHead', null), 200)
+        && okStr(p.get('personnelAsst', null), 200) && okStr(p.get('personnelDeputy', null), 200)
         && okStr(p.get('birthDate', null), 10) && okStr(p.get('startDate', null), 10) && okStr(p.get('licenseNo', null), 200)
         && okStr(p.get('logo', null), 400000)
         && (p.get('education', null) == null || (p.get('education', null) is list && p.get('education', null).size() <= 10))

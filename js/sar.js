@@ -69,9 +69,9 @@ const SAR_RATE5 = ['มากที่สุด', 'มาก', 'ปานกล�
 const SAR_DQ = ['ดี', 'พอใช้', 'ปรับปรุง'];
 // กลุ่มย่อยของมาตรฐานที่ 1 ในส่วนที่ 3 (ข้อที่ขึ้นต้น "1.1 (n)" / "1.2 (n)") — ชื่อกลุ่มตามประเด็นพิจารณาของมาตรฐานการศึกษาขั้นพื้นฐาน · แก้ที่นี่ที่เดียว
 const SAR_STD_GRP = { '1.1': '1.1 ผลสัมฤทธิ์ทางวิชาการของผู้เรียน', '1.2': '1.2 คุณลักษณะที่พึงประสงค์ของผู้เรียน' };
-// ผู้รับรองท้ายเอกสาร (ลำดับตามตัวอย่าง SAR-2-2568) · [ตำแหน่ง, ที่มาของชื่อ] — ชื่อ 2 ระดับกลางกรอกในฟอร์ม (f.sgAsst / f.sgDeputy) ส่วนอีก 2 ระดับดึงจากข้อมูลส่วนตัว
+// ผู้รับรองท้ายเอกสาร (ลำดับตามตัวอย่าง SAR-2-2568) · [ตำแหน่ง, ที่มาของชื่อ] — ชื่อทั้ง 4 ระดับดึงจากข้อมูลส่วนตัว (subjectHead · personnelAsst · personnelDeputy · director) · SAR เก่าที่เคยกรอก f.sgAsst / f.sgDeputy ในเอกสารใช้เป็นค่าสำรอง
 // [ตำแหน่ง(pi → ข้อความ), ชื่อ, เป็นผู้อำนวยการ?] — 3 ระดับแรกขึ้น "ได้ตรวจสอบแล้วรับรองข้อมูลถูกต้องและเป็นจริง" · ผู้อำนวยการขึ้น "ความเห็น" (ตามตัวอย่าง SAR-2-2568)
-const SAR_SIGN = [[pi => 'หัวหน้ากลุ่มสาระการเรียนรู้' + (pi.subjectGroup || ''), (f, p) => p?.subjectHead], [() => 'ผู้ช่วยผู้อำนวยการกลุ่มบริหารงานบุคคล', f => f.sgAsst], [() => 'รองผู้อำนวยการกลุ่มบริหารงานบุคคล', f => f.sgDeputy], [pi => 'ผู้อำนวยการ' + (pi.school || ''), (f, p) => p?.director, true]];
+const SAR_SIGN = [[pi => 'หัวหน้ากลุ่มสาระการเรียนรู้' + (pi.subjectGroup || ''), (f, p) => p?.subjectHead], [() => 'ผู้ช่วยผู้อำนวยการกลุ่มบริหารงานบุคคล', (f, p) => p?.personnelAsst || f.sgAsst], [() => 'รองผู้อำนวยการกลุ่มบริหารงานบุคคล', (f, p) => p?.personnelDeputy || f.sgDeputy], [pi => 'ผู้อำนวยการ' + (pi.school || ''), (f, p) => p?.director, true]];
 // หัวคอลัมน์ตอนพิมพ์ที่ต่างจากหัวในฟอร์ม (ถ้อยคำตามตัวอย่าง)
 const SAR_PRINT_HEAD = { teaching: { name: 'รายวิชาที่ปฏิบัติการสอน', n: 'จำนวนนักเรียน(คน)', hours: 'จำนวนชั่วโมง/สัปดาห์' }, activities: { name: 'กิจกรรมพัฒนาผู้เรียนและชุมชน', n: 'จำนวนนักเรียน', hours: 'จำนวนชั่วโมง/สัปดาห์' }, training: { place: 'สถานที่จัดอบรม', hours: 'จำนวนชั่วโมง' } };
 // ข้อความมาตรฐานที่พิมพ์ตามตัวอย่าง SAR-2-2568 — แก้ถ้อยคำที่นี่ที่เดียว
@@ -434,7 +434,7 @@ async function sarRenderFormView() {
           <div class="pf-logo-act"><button type="button" class="btn btn-ghost btn-sm" id="sar-goto-logo">${logo ? 'เปลี่ยนตราในข้อมูลส่วนตัว' : 'ไปเพิ่มตราในข้อมูลส่วนตัว'}</button></div>
         </div>
       </div>
-      <div class="doc-subsec"><div class="doc-subsec-hd">ที่ตั้งสถานศึกษาและส่วนราชการ <span class="doc-sec-note">(พิมพ์บนปก · 1.1 · บันทึกข้อความ)</span></div>
+      <div class="doc-subsec"><div class="doc-subsec-hd">ที่ตั้งสถานศึกษาและส่วนราชการ <span class="doc-sec-note">(พิมพ์บนปกและ 1.1)</span></div>
         <div class="doc-form-meta">${sarFld('อำเภอ', sarIn('district', f.district, 'เช่น หนองกี่'))}${sarFld('จังหวัด', sarIn('province', f.province, 'เช่น บุรีรัมย์'))}${sarFld('ส่วนราชการ', sarIn('agency', f.agency, SAR_AGENCY_DEFAULT))}</div>
       </div>
       <div class="doc-subsec"><div class="doc-subsec-hd">คำนำ</div>
@@ -498,14 +498,11 @@ async function sarRenderFormView() {
       <div class="u-note">ระดับคุณภาพ 5 = ยอดเยี่ยม · 4 = ดีเลิศ · 3 = ดี · 2 = ปานกลาง · 1 = กำลังพัฒนา — ค่าเฉลี่ยและระดับคุณภาพคำนวณให้</div>
       ${SAR_STD.map(([t, items], i) => `<div class="doc-subsec"><div class="doc-subsec-hd">${sarEsc(t)}</div>${sarMatrix('std' + i, items, lv5, ['5', '4', '3', '2', '1'])}<div class="u-note" id="sar-std-${i}"></div></div>`).join('')}`)}
 
-    ${sec('ผู้ลงนามรับรอง', `
-      <div class="u-note">ท้ายรายงานมีผู้รับรอง 4 ระดับ: หัวหน้ากลุ่มสาระฯ (ดึงจากข้อมูลส่วนตัว) → ผู้ช่วยผู้อำนวยการกลุ่มบริหารงานบุคคล → รองผู้อำนวยการกลุ่มบริหารงานบุคคล → ผู้อำนวยการ (ดึงจากข้อมูลส่วนตัว) · เว้นว่างได้ จะพิมพ์เป็นเส้นจุดให้เขียนชื่อเอง</div>
-      <div class="doc-form-meta u-mt-12">${sarFld('ผู้ช่วยผู้อำนวยการกลุ่มบริหารงานบุคคล', sarIn('sgAsst', f.sgAsst))}${sarFld('รองผู้อำนวยการกลุ่มบริหารงานบุคคล', sarIn('sgDeputy', f.sgDeputy))}</div>`)}
-
-    ${sec('บันทึกข้อความและภาคผนวก', `
-      <div class="u-note">ท้ายเล่มพิมพ์หน้าภาคผนวก (หัวข้อ เกียรติบัตร · ภาพประกอบกิจกรรม · อื่นๆ — แนบเอกสารเองหลังพิมพ์) และบันทึกข้อความนำส่งรายงาน · ที่/วันที่ เว้นว่าง = เส้นจุดให้เขียนเอง</div>
-      <div class="doc-form-meta u-mt-12">${sarFld('ที่ (เลขหนังสือ)', sarIn('memoNo', f.memoNo, 'เช่น 12/2569'))}${sarFld('วันที่', sarIn('memoDate', f.memoDate, 'เช่น 16 มีนาคม 2569'))}</div>
-      <div class="doc-checks u-mt-12"><label class="doc-check"><input type="checkbox" data-f="noApx"${f.noApx ? ' checked' : ''}> ไม่พิมพ์หน้าภาคผนวก</label><label class="doc-check"><input type="checkbox" data-f="noMemo"${f.noMemo ? ' checked' : ''}> ไม่พิมพ์บันทึกข้อความ</label></div>`)}
+    ${sec('ผู้ลงนามรับรองและภาคผนวก', `
+      <div class="u-note">ผู้รับรองท้ายรายงาน 4 ระดับ (หัวหน้ากลุ่มสาระฯ · ผู้ช่วย ผอ. · รอง ผอ. กลุ่มบริหารงานบุคคล · ผอ.) ดึงจากข้อมูลส่วนตัว — แก้ที่นั่นครั้งเดียว เว้นว่างจะพิมพ์เป็นเส้นจุดให้เขียนชื่อเอง</div>
+      <div class="pa-pf-note"><span>${SAR_SIGN.map(([t, who]) => `${sarEsc(t(pi))}: ${sarEsc(who(f, prof) || '—')}`).join(' · ')}</span><button type="button" class="btn btn-ghost btn-sm" id="sar-goto-sign">ไปแก้ในข้อมูลส่วนตัว</button></div>
+      <div class="u-note u-mt-12">ท้ายเล่มพิมพ์หน้าภาคผนวก (หัวข้อ เกียรติบัตร · ภาพประกอบกิจกรรม · อื่นๆ — แนบเอกสารเองหลังพิมพ์)</div>
+      <div class="doc-checks u-mt-12"><label class="doc-check"><input type="checkbox" data-f="noApx"${f.noApx ? ' checked' : ''}> ไม่พิมพ์หน้าภาคผนวก</label></div>`)}
 
     <div class="pa-form-footer">
       ${SAR.docId ? `<button type="button" class="btn btn-danger-ghost" id="sar-del-btn">${DOC_ICO_DEL} ลบ</button>` : ''}
@@ -564,6 +561,7 @@ async function sarRenderFormView() {
     finally { btn.disabled = false; }
   });
   document.getElementById('sar-goto-profile')?.addEventListener('click', () => { sarCollect(); navigate('profile'); });
+  document.getElementById('sar-goto-sign')?.addEventListener('click', () => { sarCollect(); navigate('profile'); });
   document.getElementById('sar-goto-logo')?.addEventListener('click', () => { sarCollect(); navigate('profile'); });
   ['sar-back-btn', 'sar-cancel-btn'].forEach(id => document.getElementById(id)?.addEventListener('click', () => { sarCollect(); SAR.view = 'list'; sarRenderListView(); }));
   document.getElementById('sar-print-btn')?.addEventListener('click', () => { sarCollect(); SAR.previewId = SAR.docId; docSwitchTab('sarprev'); });
@@ -644,7 +642,7 @@ section{break-after:page}section:last-child{break-after:auto}
 .sar-pf-p{text-indent:2cm;text-align:justify;font-size:16pt;line-height:1.5;margin:0 0 .5em}
 .sar-pf-sg{text-align:right;font-size:16pt;margin:1.5cm 1.5cm 0 0}
 .sar-p1h{text-align:center;font-weight:700;font-size:16pt;margin:.5em 0 .3em}.sar-note{margin:.3em 0 .6em}.sar-note p{margin:.1em 0}.sar-small{font-size:12pt}
-.sar-memo-h{text-align:center;font-size:22pt;font-weight:700;margin:.4cm 0 .6cm}.sar-memo p{font-size:16pt;line-height:1.4}.sgm{margin:.9em 0 0 auto;width:9cm;text-align:center;break-inside:avoid;font-size:14pt}.sgm .l{text-align:left}.sgm .dl{border-bottom:1px dotted #000;height:1.15em}.sar-apx p{font-size:16pt;margin:.4em 0 .4em 3cm}
+.sar-apx p{font-size:16pt;margin:.4em 0 .4em 3cm}
 .bx{display:inline-block;width:.38cm;height:.38cm;border:1px solid #000;text-align:center;line-height:.36cm;font-size:11pt;vertical-align:middle;margin:0 .15cm 0 .3cm}.ck{white-space:nowrap}
 table.nb th,table.nb td{border:0;padding:1px 5px}.sg .l{text-align:left}.sg .dl{border-bottom:1px dotted #000;height:1.15em}`;
 
@@ -701,20 +699,6 @@ function sarBuildBodyHtml(d, prof) {
       : items.map((x, idx) => row(x, idx)).join('');
     const tot = lv.map(l => { const n = cur.slice(0, items.length).filter(v => v === l).length; return `<th>${n ? n * l : ''}</th>`; }).join('');
     return `${hd(2, t)}<table><tr><th rowspan="2">ตัวบ่งชี้</th><th colspan="5">ระดับคุณภาพตัวบ่งชี้/มาตรฐาน</th></tr><tr>${lv.map(l => `<th>${l}</th>`).join('')}</tr>${body}<tr><th>คะแนนรวม</th>${tot}</tr></table>`;
-  };
-  // บันทึกข้อความนำส่งรายงาน (ท้ายเล่มตามตัวอย่าง) · ผู้ให้ความเห็น 4 ระดับใช้ SAR_SIGN ชุดเดียวกับท้ายรายงาน · ที่/วันที่ เว้นว่าง = เส้นจุด
-  const memo = () => {
-    const dots = '………………', pos = ps.position || pi.position;
-    return `<section class="sar-memo"><div class="sar-memo-h">บันทึกข้อความ</div>
-    <p><b>ส่วนราชการ</b> ${E(pi.school)}${sarAddr(f) ? ' ' + E(sarAddr(f)) : ''}</p>
-    <p><b>ที่</b> ${E(f.memoNo || dots)}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>วันที่</b> ${E(f.memoDate || dots)}</p>
-    <p><b>เรื่อง</b> รายงานผลการปฏิบัติงานภาคเรียนที่ ${E(d.semester)} ประจำปีการศึกษา ${E(d.year)}</p>
-    <p><b>เรียน</b> ผู้อำนวยการ${E(pi.school)}</p>
-    <p class="sar-pf-p">ด้วยข้าพเจ้า ${E(pi.name)} ตำแหน่ง ${E(pos)} ${E(pi.school)} ได้รับมอบหมายให้ปฏิบัติงานต่าง ๆ ในภาคเรียนที่ ${E(d.semester)} ประจำปีการศึกษา ${E(d.year)} ซึ่งข้าพเจ้าได้ปฏิบัติหน้าที่ที่ได้รับมอบหมายด้วยความมุ่งมั่น ตั้งใจ มีความรับผิดชอบ เสียสละกำลังกาย กำลังใจ และสติปัญญา ทำให้งานมีประสิทธิภาพและประสิทธิผล ก่อให้เกิดผลดีแก่นักเรียน สถานศึกษา และชุมชน จึงเสนอรายงานผลการปฏิบัติงานตามรายละเอียดแนบท้ายหนังสือนี้</p>
-    <p class="sar-pf-p">จึงเรียนมาเพื่อโปรดทราบ</p>
-    <div class="sgm">ลงชื่อ ……………………………… ผู้รายงาน<br>(${E(pi.name)})<br>ตำแหน่ง ${E(pos)}</div>
-    ${SAR_SIGN.map(([t, who]) => `<div class="sgm"><div class="l">ความเห็นของ${E(t(pi))}</div><div class="dl"></div><div>ลงชื่อ ………………………………</div>(${E(who(f, prof) || '………………………')})</div>`).join('')}
-    </section>`;
   };
   // ลำดับตามตัวอย่าง SAR-2-2568: ส่วนที่ 1 → ส่วนที่ 2 (1. การเรียนการสอน [1.1 → 1.2.1–1.2.7 → 1.6 → 1.3–1.5] · 2. ชั้นเรียน · 3. พัฒนาตนเอง · 4. รางวัล · 5. งานอื่น · 6. แนวทาง) → ส่วนที่ 3
   return `
@@ -777,8 +761,7 @@ function sarBuildBodyHtml(d, prof) {
   <div class="sg">ลงชื่อ ……………………………… ผู้รายงาน<br>(${E(pi.name)})<br>ตำแหน่ง ${E(pi.position)}</div>
   ${SAR_SIGN.map(([t, who, dir]) => `<div class="sg"><div class="l">${dir ? 'ความเห็น' : 'ได้ตรวจสอบแล้วรับรองข้อมูลถูกต้องและเป็นจริง'}</div><div class="dl"></div><div class="dl"></div><div>ลงชื่อ ……………………………… ผู้รับรอง</div>(${E(who(f, prof) || '………………………')})<br>ตำแหน่ง ${E(t(pi))}</div>`).join('')}
   </section>
-  ${f.noApx ? '' : `<section class="sar-apx"><div class="sar-pf-h">ภาคผนวก</div><p>1. เกียรติบัตร</p><p>2. ภาพประกอบกิจกรรม</p><p>3. อื่นๆ</p></section>`}
-  ${f.noMemo ? '' : memo()}`;
+  ${f.noApx ? '' : `<section class="sar-apx"><div class="sar-pf-h">ภาคผนวก</div><p>1. เกียรติบัตร</p><p>2. ภาพประกอบกิจกรรม</p><p>3. อื่นๆ</p></section>`}`;
 }
 
 async function sarPrint(d) {

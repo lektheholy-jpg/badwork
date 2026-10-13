@@ -9,7 +9,7 @@ const PROFILE_FIELDS = [
   'prefix', 'firstName', 'lastName', 'phone',
   'position', 'academicStanding', 'ksLevel', 'salary', 'positionNo', 'subjectGroup',
   'school', 'affiliation',
-  'director', 'deputyAcademic', 'subjectHead', 'assessmentHead',
+  'director', 'deputyAcademic', 'subjectHead', 'assessmentHead', 'personnelAsst', 'personnelDeputy',
   'birthDate', 'startDate', 'licenseNo', // birthDate · startDate = วันที่รูปแบบ YYYY-MM-DD (ค.ศ.) · แสดงเป็น พ.ศ. ด้วย profileThaiDate()
 ];
 // วุฒิการศึกษา (profile.education = [{ level, major, institution, year }] สูงสุด PROFILE_EDU_MAX รายการ · year = พ.ศ.) — เอกสารอื่นดึงด้วย profileEducationLines(p)
@@ -236,6 +236,8 @@ function profileFormHtml(p) {
         ${pfInput('subjectHead', 'หัวหน้ากลุ่มสาระการเรียนรู้', p.subjectHead)}
         ${pfInput('assessmentHead', 'หัวหน้างานวัดผลและประเมินผล', p.assessmentHead)}
         ${pfInput('deputyAcademic', 'รองผู้อำนวยการฝ่ายวิชาการ', p.deputyAcademic)}
+        ${pfInput('personnelAsst', 'ผู้ช่วยผู้อำนวยการกลุ่มบริหารงานบุคคล', p.personnelAsst)}
+        ${pfInput('personnelDeputy', 'รองผู้อำนวยการกลุ่มบริหารงานบุคคล', p.personnelDeputy)}
         ${pfInput('director', 'ผู้อำนวยการสถานศึกษา', p.director)}
       </div>
 
