@@ -209,6 +209,7 @@ async function __ID__RenderFormView() {
     <button type="button" class="btn btn-ghost btn-sm" id="__ID__-back-btn">← กลับ</button>
     <div>
       <h2 class="pa-form-title">__TITLE__ · ${sys.state.docId ? 'แก้ไขเอกสาร' : 'สร้างเอกสารใหม่'}</h2>
+      <div class="u-note">__TITLE__ (ตัวอย่างโครงเอกสาร — แก้หัวข้อให้ตรงกับเอกสารจริง)</div>
     </div>
   </div>
   <form id="__ID__-form" class="doc-form" autocomplete="off" novalidate>

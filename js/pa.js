@@ -483,8 +483,27 @@ async function renderPAFormView() {
       ${isNew ? '' : `<button type="button" class="btn btn-ghost btn-sm pa-dup-btn" title="คัดลอกข้อมูลในฟอร์มนี้เป็นฉบับร่างใหม่">${DOC_ICO_COPY} คัดลอกเป็นฉบับใหม่</button>`}
     </div>
 
-    <form id="pa-form" class="pa-form" novalidate>
-      <div class="doc-section">
+    <form id="pa-form" class="doc-form" novalidate>
+      <!-- แถบบนฟอร์ม (เหมือน ID-Plan / CAR / TRA / SAR) -->
+      <div class="doc-form-header">
+        <div class="doc-form-meta">
+          <label>ปีงบประมาณ พ.ศ.
+            <input id="pa-fiscalYear" type="text" inputmode="numeric" maxlength="4" value="${escapeHtml(d.fiscalYear || '')}" placeholder="${docFiscalYear()}">
+            <span class="field-hint" id="pa-period">${escapeHtml(paPeriodText(d.fiscalYear))}</span>
+          </label>
+          <label>วันที่ลงนาม
+            <input id="pa-signDate" type="date" value="${escapeHtml(d.signDate || '')}">
+          </label>
+          <label>สถานะ
+            <select id="pa-status">
+              <option value="draft"${(d.status || 'draft') === 'draft' ? ' selected' : ''}>ร่าง</option>
+              <option value="submitted"${d.status === 'submitted' ? ' selected' : ''}>ส่งแล้ว</option>
+            </select>
+          </label>
+        </div>
+      </div>
+
+      <section class="doc-section">
         <h2 class="doc-sec-title">ผู้จัดทำข้อตกลง</h2>
         <dl class="pa-pf">
           ${item('ชื่อ-นามสกุล', o.name)}${item('ตำแหน่ง', o.position)}
@@ -495,31 +514,13 @@ async function renderPAFormView() {
           <span>${frozen ? 'เอกสารนี้ส่งแล้ว — ใช้ข้อมูลผู้จัดทำที่บันทึกไว้ตอนส่ง (เปลี่ยนสถานะเป็น "ร่าง" เพื่อดึงข้อมูลล่าสุด)' : `ข้อมูลนี้ดึงจากหน้าข้อมูลส่วนตัว${!o.name || !o.school ? ' — ยังกรอกไม่ครบ' : ''}`}</span>
           <button type="button" class="btn btn-ghost btn-sm pa-goto-profile">ไปแก้ในข้อมูลส่วนตัว</button>
         </div>
-        <div class="field-row">
-          <div class="field">
-            <label for="pa-fiscalYear">ปีงบประมาณ พ.ศ.</label>
-            <input id="pa-fiscalYear" type="text" inputmode="numeric" maxlength="4" value="${escapeHtml(d.fiscalYear || '')}" placeholder="${docFiscalYear()}">
-            <div class="field-hint" id="pa-period">${escapeHtml(paPeriodText(d.fiscalYear))}</div>
-          </div>
-          <div class="field">
-            <label for="pa-status">สถานะ</label>
-            <select id="pa-status">
-              <option value="draft"${(d.status || 'draft') === 'draft' ? ' selected' : ''}>ร่าง</option>
-              <option value="submitted"${d.status === 'submitted' ? ' selected' : ''}>ส่งแล้ว</option>
-            </select>
-          </div>
-        </div>
         <div class="doc-subsec-hd">ประเภทห้องเรียนที่จัดการเรียนรู้ (เลือกได้มากกว่า 1)</div>
         <div class="doc-checks">
           ${sys.config.classroomTypes.map(([k, l]) => `<label class="doc-check"><input type="checkbox" data-ct="${k}"${d.classroomTypes[k] ? ' checked' : ''}> ${l}</label>`).join('')}
         </div>
-        <div class="field pa-field-date">
-          <label for="pa-signDate">วันที่ลงนามของผู้จัดทำ</label>
-          <input id="pa-signDate" type="date" value="${escapeHtml(d.signDate || '')}">
-        </div>
-      </div>
+      </section>
 
-      <div class="doc-section">
+      <section class="doc-section">
         <h2 class="doc-sec-title">ส่วนที่ 1 · 1. ภาระงาน</h2>
         <div class="pa-pf-note u-mb-12">
           <span>1.1 ดึงจากตารางสอน (นับ 1 คาบ = 1 ชั่วโมง) เก็บเป็นสำเนาในเอกสารนี้ — แก้ไขได้ และไม่เปลี่ยนตามตารางสอนภายหลัง · กดปุ่มเพื่อเลือกช่วงเวลาที่จะดึง (ภาคเรียน / ปีการศึกษา / ปีงบประมาณ)</span>
@@ -533,9 +534,9 @@ async function renderPAFormView() {
         ${paLoadBlock('support', '1.2 งานส่งเสริมและสนับสนุนการจัดการเรียนรู้', d.load.support, 'เช่น การมีส่วนร่วมชุมชนการเรียนรู้ทางวิชาชีพ')}
         ${paLoadBlock('quality', '1.3 งานพัฒนาคุณภาพการจัดการศึกษาของสถานศึกษา', d.load.quality, 'เช่น เจ้าหน้าที่ตามโครงสร้างฝ่าย')}
         ${paLoadBlock('policy', '1.4 งานตอบสนองนโยบายและจุดเน้น', d.load.policy, 'ระบุงาน (ถ้ามี)')}
-      </div>
+      </section>
 
-      <div class="doc-section">
+      <section class="doc-section">
         <h2 class="doc-sec-title">ส่วนที่ 1 · 2. งานที่จะปฏิบัติตามมาตรฐานตำแหน่งครู</h2>
         <div class="u-note u-mb-12">กรอกแต่ละข้อ: งานที่จะทำในแต่ละภาคเรียน · ผลลัพธ์ที่คาดหวังกับผู้เรียน · ตัวชี้วัด — ข้อที่เว้นว่างจะแสดงเป็นช่องว่างในเอกสาร</div>
         ${sys.config.workItems.map(([gid, gt, items]) => `
@@ -552,9 +553,9 @@ async function renderPAFormView() {
               </div>`;
             }).join('')}
           </details>`).join('')}
-      </div>
+      </section>
 
-      <div class="doc-section">
+      <section class="doc-section">
         <h2 class="doc-sec-title">ส่วนที่ 2 ข้อตกลงในการพัฒนางานที่เป็นประเด็นท้าทาย</h2>
         ${area('pa-challengeTitle', 'เรื่อง ประเด็นท้าทาย', d.challengeTitle, 3, 'เช่น การพัฒนาทักษะ … ของนักเรียนระดับชั้น … โดยใช้ …')}
         ${area('pa-problem', '1. สภาพปัญหาของผู้เรียนและการจัดการเรียนรู้', d.problem, 5)}
@@ -562,7 +563,7 @@ async function renderPAFormView() {
         ${d.outcome && !d.outcomeQuant && !d.outcomeQual ? `<div class="pa-legacy"><div class="doc-subsec-hd">ผลลัพธ์ที่คาดหวังแบบเดิม (ยังเก็บไว้ — ย้ายไปช่อง 3.1/3.2 ด้านล่างได้)</div><div class="pa-legacy-text">${escapeHtml(d.outcome)}</div></div>` : ''}
         ${area('pa-outcomeQuant', '3.1 ผลลัพธ์การพัฒนาที่คาดหวัง · เชิงปริมาณ', d.outcomeQuant, 4, 'จำนวนห้อง/นักเรียน และร้อยละที่คาดหวัง')}
         ${area('pa-outcomeQual', '3.2 ผลลัพธ์การพัฒนาที่คาดหวัง · เชิงคุณภาพ', d.outcomeQual, 4)}
-      </div>
+      </section>
 
       <div class="pa-form-footer">
         <button type="button" class="btn btn-ghost pa-cancel-btn">ยกเลิก</button>

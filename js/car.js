@@ -623,6 +623,7 @@ async function carRenderFormView() {
     <button type="button" class="btn btn-ghost btn-sm" id="car-back-btn">← กลับ</button>
     <div>
       <h2 class="pa-form-title">วิจัยในชั้นเรียน · ${sys.state.docId ? 'แก้ไขเอกสาร' : 'สร้างเอกสารใหม่'}</h2>
+      <div class="u-note">รายงานการวิจัยในชั้นเรียน (Classroom Action Research) สำหรับครู</div>
     </div>
   </div>
   <form id="car-form" class="doc-form" autocomplete="off" novalidate>

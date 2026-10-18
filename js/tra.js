@@ -209,6 +209,7 @@ async function traRenderFormView() {
     <button type="button" class="btn btn-ghost btn-sm" id="tra-back-btn">← กลับ</button>
     <div>
       <h2 class="pa-form-title">แผนการอบรม · ${sys.state.docId ? 'แก้ไขเอกสาร' : 'สร้างเอกสารใหม่'}</h2>
+      <div class="u-note">แผนการอบรม (ตัวอย่างโครงเอกสาร — แก้หัวข้อให้ตรงกับเอกสารจริง)</div>
     </div>
   </div>
   <form id="tra-form" class="doc-form" autocomplete="off" novalidate>
