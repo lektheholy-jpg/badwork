@@ -482,10 +482,11 @@ function badworkAiRefreshBtns(form, sys = docSystem()) {
 //   ปิดเมื่อ: กดที่อื่น · Esc · เลื่อนหน้า/ย่อขยายจอ · โฟกัสออกจากแถว · เลือกปุ่มในเมนู
 // ------------------------------------------------------------------
 function badworkAiMenuPlace(trig, menu) {
-  const t = trig.getBoundingClientRect(), vw = document.documentElement.clientWidth, vh = window.innerHeight;
-  const gap = 6, edge = 8, w = menu.offsetWidth, h = menu.offsetHeight;
+  const row = trig.closest('.doc-ai-row') || trig;
+  const t = row.getBoundingClientRect(), vw = document.documentElement.clientWidth, vh = window.innerHeight;
+  const edge = 8, w = menu.offsetWidth, h = menu.offsetHeight;
   const x = Math.max(edge, Math.min(t.left, vw - w - edge));
-  const below = t.bottom + gap, above = t.top - gap - h;
+  const below = t.bottom, above = t.top - h;
   const up = below + h > vh - edge && above > edge; // ล่างไม่พอ + บนพอ → เปิดขึ้นบน
   menu.classList.toggle('up', up);
   menu.style.setProperty('--ai-x', Math.round(x) + 'px');
