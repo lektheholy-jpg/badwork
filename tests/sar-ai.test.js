@@ -63,7 +63,7 @@ const prompt=()=>calls[calls.length-1].body.contents[0].parts[0].text;
  const row0=rowOf('n11'),row1=rowOf('n121'),trig0=row0.querySelector('.doc-ai-trigger'),trig1=row1.querySelector('.doc-ai-trigger'),menu0=row0.querySelector('.doc-ai-menu'),menu1=row1.querySelector('.doc-ai-menu');
  const vis=rw=>[...rw.querySelectorAll('.doc-ai-menu [data-doc-ai]')].filter(b=>!b.classList.contains('doc-ai-off')).map(b=>b.dataset.docAi).join(',');
  ok(!!trig0&&trig0.getAttribute('aria-expanded')==='false'&&trig0.getAttribute('aria-haspopup')==='menu'&&!row0.classList.contains('open')&&!d.querySelector('.doc-ai-tag,.doc-ai-ico,.doc-ai-quiet'),'แถวปุ่ม: ปุ่ม ✦ เดียว ปิดอยู่ · ไม่มีชุดไอคอนล้วนแบบเดิม');
- ok(row0.parentElement.classList.contains('doc-item-h')&&!!row0.previousElementSibling&&row0.previousElementSibling.tagName==='LABEL','ปุ่ม ✦ อยู่ต่อท้ายชื่อช่อง (ถัดจาก label ใน .doc-item-h)');
+ ok(row0.parentElement.classList.contains('doc-item-h')&&!row0.previousElementSibling&&!!row0.nextElementSibling&&row0.nextElementSibling.tagName==='LABEL','ปุ่ม ✦ อยู่หน้าสุดของหัวช่อง (นำหน้า label ใน .doc-item-h)');
  ok(row0.querySelectorAll('.doc-ai-item-btn').length===3&&[...row0.querySelectorAll('.doc-ai-item-btn .doc-ai-lbl')].every(x=>x.textContent.trim().length>0)&&row0.querySelector('.doc-ai-menu').getAttribute('role')==='menu','เมนูมีปุ่มข้อความครบ 3 (เขียน/ปรับสำนวน/ย่อ) อยู่ใน DOM เสมอ');
  trig0.click();await settle();
  ok(row0.classList.contains('open')&&trig0.getAttribute('aria-expanded')==='true'&&menu0.classList.contains('show'),'กด ✦ → เมนูเปิด (open · show · aria-expanded=true)');

@@ -1319,7 +1319,7 @@ table.sheet tbody tr:last-child td { border-bottom: none; }
 .nav-item .nav-icon svg { width: 28px; height: 28px; }
 /* ----- ไอคอนทรงสควิร์เคิลจริง (superellipse n=5) แบบ One UI: หน้า = มาสก์ · เงาเรืองสีเฉพาะการ์ดเครื่องมือ (เมนูไม่มีเงาเรือง) ----- */
 .tools-ico::before { content: ''; position: absolute; inset: 5px 2px -4px; z-index: -1; border-radius: 42%; background: var(--w); opacity: .6; filter: blur(6px); transition: opacity .15s ease; }
-.nav-item .nav-icon::after, .tab-ico::after, .more-ico::after, .tools-ico::after { content: ''; position: absolute; inset: 0; z-index: -1; background: linear-gradient(145deg, oklch(from var(--w) calc(l + .06) calc(c * 1.18) h), oklch(from var(--w) calc(l - .05) calc(c * 1.25) h)); -webkit-mask: var(--squircle) center / 100% 100% no-repeat; mask: var(--squircle) center / 100% 100% no-repeat; }
+.nav-item .nav-icon::after, .tab-ico::after, .more-ico::after, .tools-ico::after, .doc-ai-tile::after { content: ''; position: absolute; inset: 0; z-index: -1; background: linear-gradient(145deg, oklch(from var(--w) calc(l + .06) calc(c * 1.18) h), oklch(from var(--w) calc(l - .05) calc(c * 1.25) h)); -webkit-mask: var(--squircle) center / 100% 100% no-repeat; mask: var(--squircle) center / 100% 100% no-repeat; }
 .nav-item.active .nav-icon { transform: scale(1.08); }
 @media (min-width: 861px) {
   #app.sidebar-collapsed .nav-item { padding: 5px; justify-content: center; gap: 0; }
@@ -2272,29 +2272,32 @@ table.tt tr.is-today td.tt-cell { background: color-mix(in srgb, var(--hue-orang
 .doc-ai-ctx-grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
 
 /* แถวผู้ช่วย AI = ปุ่ม ✦ ต่อท้ายชื่อช่อง + เมนูเลื่อนลง (js/badwork-ai.js · badworkAiRowHtml) */
-.doc-ai-row { position: relative; display: inline-flex; align-items: center; gap: 8px; margin-top: 0; }
-.field > .doc-ai-row { margin-top: 8px; }
+.doc-ai-row { --w: var(--hue-violet); position: relative; display: inline-flex; align-items: center; flex: none; margin: 0; padding: 3px; border-radius: var(--radius-pill); background: var(--primary-tint); color: var(--primary-dark); transition: background-color .2s ease, box-shadow .2s ease; }
+.doc-ai-row:hover { background: color-mix(in srgb, var(--primary) 14%, var(--primary-tint)); }
+.field > .doc-ai-row { margin-bottom: 8px; }
 /* หัวกล่องมาตรฐานที่มีแถวผู้ช่วย AI ต่อท้ายชื่อ (ชื่อซ้าย · ปุ่ม ✦ ติดชื่อ · แคบแล้วตกบรรทัด) — ฟอร์มเอกสารระบบใหม่ ๆ ใช้คลาสนี้เป็น host ของ slots */
 .doc-item-h { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-start; gap: 6px 10px; margin-bottom: 6px; }
-.doc-ai-trigger { position: relative; display: inline-grid; place-items: center; flex: none; width: 30px; height: 30px; padding: 0; border: 1px solid transparent; border-radius: 50%; background: var(--primary-tint); color: var(--primary-dark); cursor: pointer; transition: background-color .15s ease, color .15s ease, border-color .15s ease, transform .12s ease; }
-.doc-ai-trigger::after { content: ""; position: absolute; inset: -7px; } /* ขยายพื้นที่แตะเป็น 44px บนมือถือ โดยตัวปุ่มยังเล็ก */
-.doc-ai-trigger:hover { border-color: color-mix(in srgb, var(--primary) 40%, transparent); }
-.doc-ai-trigger:active { transform: scale(.92); }
-.doc-ai-trigger:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+/* ปุ่ม ✦ = แคปซูลเหมือนปุ่มเมนูข้าง (ไอคอนในกรอบ squircle ไล่สี) · พักอยู่เป็นไอคอนล้วน → ยืดออกเป็นแคปซูลยาวมีข้อความตอนเปิดเมนู (.open) หรือตอน AI กำลังคิด (.busy) */
+.doc-ai-trigger { position: relative; display: inline-flex; align-items: center; flex: none; height: 28px; padding: 0; border: 0; border-radius: var(--radius-pill); background: transparent; color: inherit; font: inherit; cursor: pointer; transition: transform .12s ease; }
+.doc-ai-trigger::after { content: ""; position: absolute; inset: -9px -4px; } /* ขยายพื้นที่แตะเป็น 44px บนมือถือ โดยตัวปุ่มยังเล็ก */
+.doc-ai-trigger:active { transform: scale(.94); }
+.doc-ai-trigger:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
 .doc-ai-trigger:disabled { cursor: progress; }
-.doc-ai-trigger .ico { width: 17px; height: 17px; transition: transform .28s ease; }
-.doc-ai-row.open .doc-ai-trigger { background: var(--primary-solid); color: var(--on-primary); }
-.doc-ai-row.open .doc-ai-trigger .ico { transform: rotate(90deg); }
-.doc-ai-state { font-size: 13px; color: var(--ink-soft); }
-.doc-ai-state:empty { display: none; }
-.doc-ai-row.busy .doc-ai-trigger .ico { animation: doc-ai-pulse 1s ease-in-out infinite; }
+.doc-ai-tile { position: relative; isolation: isolate; display: grid; place-items: center; flex: none; width: 28px; height: 28px; color: var(--on-w); }
+.doc-ai-tile .ico { width: 16px; height: 16px; transition: transform .28s ease; }
+.doc-ai-trig-lbl, .doc-ai-state { display: block; max-width: 0; margin: 0; overflow: hidden; white-space: nowrap; font-size: 13px; font-weight: 600; opacity: 0; transition: max-width .3s cubic-bezier(.3, .9, .3, 1), margin .3s cubic-bezier(.3, .9, .3, 1), opacity .2s ease; }
+.doc-ai-row.open { box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 35%, transparent); }
+.doc-ai-row.open .doc-ai-trig-lbl { max-width: 8em; margin: 0 12px 0 8px; opacity: 1; }
+.doc-ai-row.open .doc-ai-tile .ico { transform: rotate(90deg); }
+.doc-ai-row.busy .doc-ai-state { max-width: 14em; margin: 0 12px 0 8px; opacity: 1; }
+.doc-ai-row.busy .doc-ai-tile .ico { animation: doc-ai-pulse 1s ease-in-out infinite; }
 @keyframes doc-ai-pulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(.78); opacity: .55; } }
 /* เมนู: ปิด = จางหาย+เลื่อนขึ้นเล็กน้อย · เปิด (.show) = จางเข้า · เป็น popover (top-layer) แล้ว JS ส่งตำแหน่งมาทาง --ai-x/--ai-y */
-.doc-ai-menu { position: absolute; left: 0; top: calc(100% + 6px); z-index: 20; min-width: 210px; margin: 0; padding: 4px; border: 1px solid var(--border); border-radius: var(--radius-m); background: var(--card); color: var(--ink); font-weight: 400; box-shadow: var(--shadow-ink-md); opacity: 0; visibility: hidden; transform: translateY(-4px) scale(.97); transform-origin: top left; transition: opacity .16s ease, transform .16s ease, visibility 0s linear .16s; }
+.doc-ai-menu { position: absolute; left: 0; top: calc(100% + 6px); z-index: 20; min-width: 210px; margin: 0; padding: 4px; border: 1px solid var(--border); border-radius: var(--radius-m); background: var(--card); color: var(--ink); font-weight: 400; box-shadow: var(--shadow-ink-md); opacity: 0; visibility: hidden; transform: translateY(-6px) scale(.96); transform-origin: top left; transition: opacity .18s ease, transform .2s cubic-bezier(.3, .9, .3, 1), visibility 0s linear .2s; }
 .doc-ai-menu:popover-open { position: fixed; right: auto; bottom: auto; left: var(--ai-x, 0); top: var(--ai-y, 0); overflow: visible; }
-.doc-ai-menu.up { transform: translateY(4px) scale(.97); transform-origin: bottom left; }
+.doc-ai-menu.up { transform: translateY(6px) scale(.96); transform-origin: bottom left; }
 .doc-ai-menu.show { opacity: 1; visibility: visible; transform: none; transition-delay: 0s; }
-.doc-ai-item-btn { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 42px; padding: 8px 12px; border: 0; border-radius: var(--radius-s); background: transparent; color: var(--ink); font: inherit; font-size: 14px; text-align: left; cursor: pointer; transition: background-color .12s ease; }
+.doc-ai-item-btn { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 42px; padding: 8px 14px; border: 0; border-radius: var(--radius-pill); background: transparent; color: var(--ink); font: inherit; font-size: 14px; text-align: left; cursor: pointer; transition: background-color .12s ease; }
 .doc-ai-item-btn:hover, .doc-ai-item-btn:focus-visible { background: var(--hover-wash); }
 .doc-ai-item-btn:active { background: var(--primary-tint); }
 .doc-ai-item-btn .ico { width: 18px; height: 18px; flex: none; color: var(--primary-dark); }
@@ -2305,7 +2308,7 @@ table.tt tr.is-today td.tt-cell { background: color-mix(in srgb, var(--hue-orang
 .doc-ai-all-off .doc-ai-menu .doc-ai-off { display: flex; }
 .doc-ai-item-btn.doc-ai-off { opacity: .45; cursor: not-allowed; }
 .doc-ai-target { outline: 2px solid var(--primary); outline-offset: 4px; border-radius: var(--radius-s); }
-@media (prefers-reduced-motion: reduce) { .doc-ai-row.busy .doc-ai-trigger .ico { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .doc-ai-row.busy .doc-ai-tile .ico { animation: none; } }
 
 .modal.doc-ai-modal { display: flex; flex-direction: column; overflow: hidden; }
 .doc-ai-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; margin-bottom: 10px; }

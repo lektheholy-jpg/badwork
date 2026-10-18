@@ -403,7 +403,7 @@ function badworkAiCtxHtml(c, sys = docSystem()) {
 const BADWORK_AI_ICON = `<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M19 15l.7 1.8 1.8.7-1.8.7L19 20l-.7-1.8-1.8-.7 1.8-.7z"/></svg>`;
 
 // แถว "ผู้ช่วย AI" ที่หัวช่อง — buttons = [{ act, label, icon, quiet?, data? }]
-// หน้าตา: ปุ่ม ✦ วงกลมต่อท้ายชื่อช่อง (.doc-ai-trigger) → กดแล้วเมนูเล็กเลื่อนลง (.doc-ai-menu) แสดงปุ่มที่ใช้ได้ "ไอคอน + ข้อความ"
+// หน้าตา: ปุ่ม ✦ แคปซูลนำหน้าชื่อช่อง (.doc-ai-trigger) → กดแล้วแคปซูลยืดออกและเมนูเลื่อนลง (.doc-ai-menu) แสดงปุ่มที่ใช้ได้ "ไอคอน + ข้อความ"
 // ปุ่มจริงทุกปุ่มอยู่ใน DOM เสมอ (CSS ซ่อนตัวที่ใช้ไม่ได้ตามสถานะช่อง) — ตัวต่อ/เทสต์อ่านปุ่มผ่าน [data-doc-ai] เหมือนเดิม
 // icon ต้องมี (ชื่อใน BADWORK_AI_BTN_ICONS) · quiet ไม่มีผลแล้ว (รับไว้เพื่อให้ตัวต่อเดิมไม่ต้องแก้)
 const BADWORK_AI_BTN_ICONS = {
@@ -423,7 +423,7 @@ function badworkAiRowHtml(buttons) {
     return `<button type="button" class="doc-ai-item-btn" role="menuitem" data-doc-ai="${b.act}" data-ai-label="${escapeHtml(b.label)}"${attrs(b.data)} title="${escapeHtml(b.label)}">${ico ? badworkAiBtnIcon(b.icon) : ''}<span class="doc-ai-lbl">${escapeHtml(b.label)}</span><small class="doc-ai-sub" data-ai-sub></small></button>`;
   };
   return `<div class="doc-ai-row">
-      <button type="button" class="doc-ai-trigger" aria-haspopup="menu" aria-expanded="false" title="ผู้ช่วย AI" aria-label="ผู้ช่วย AI">${BADWORK_AI_ICON}</button>
+      <button type="button" class="doc-ai-trigger" aria-haspopup="menu" aria-expanded="false" title="ผู้ช่วย AI" aria-label="ผู้ช่วย AI"><span class="doc-ai-tile">${BADWORK_AI_ICON}</span><span class="doc-ai-trig-lbl" aria-hidden="true">ผู้ช่วย AI</span></button>
       <span class="doc-ai-state" role="status" aria-live="polite"></span>
       <div class="doc-ai-menu" role="menu" aria-label="ผู้ช่วย AI" popover="manual">
         ${buttons.map(btn).join('\n        ')}
@@ -508,7 +508,7 @@ function badworkAiMenuSet(row, open, refocus = false) {
     menu.classList.add('show');
   } else {
     menu.classList.remove('show');
-    if (pop) menu._aiT = setTimeout(() => { try { menu.hidePopover(); } catch (err) { /* ปิดอยู่แล้ว */ } }, 180);
+    if (pop) menu._aiT = setTimeout(() => { try { menu.hidePopover(); } catch (err) { /* ปิดอยู่แล้ว */ } }, 210);
     if (refocus) trig.focus({ preventScroll: true });
   }
 }
@@ -590,7 +590,7 @@ function badworkAiMount(view, form, sys = docSystem()) {
   ctxBox?.addEventListener('focusout', () => { if (badworkAiCtxTimer) badworkAiCtxSave(saveEl, sys); }); // ออกจากช่อง = บันทึกทันที ไม่รอ
 
   // 2) แถวปุ่มใต้ช่อง/กลุ่มช่อง — ตัวต่อบอกว่าฝังที่ไหน
-  ad.slots(sys, form).forEach(s => s.host.insertAdjacentHTML('beforeend', badworkAiRowHtml(s.buttons)));
+  ad.slots(sys, form).forEach(s => s.host.insertAdjacentHTML('afterbegin', badworkAiRowHtml(s.buttons))); // นำหน้าชื่อช่อง → ปุ่มทุกช่องอยู่แนวตรงกัน
 
   // 2.5) ดูตัวอย่างขอบเขตของปุ่ม (กรอบรอบช่อง) + tooltip/หรี่ปุ่ม — คำนวณใหม่เมื่อพิมพ์หรือเมื่อ AI ใส่ข้อความ (ส่ง input event อยู่แล้ว)
   badworkAiPreviewClear();
