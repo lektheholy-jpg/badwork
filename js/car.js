@@ -410,7 +410,7 @@ function carScoreOutHtml(sel) {
       <td data-label="ผ่านเกณฑ์ (คน)">${f(r.pass)}</td><td data-label="ร้อยละ">${f(r.pPass)}</td></tr>`;
   const miss = sel.rows.reduce((m, r) => Math.max(m, r.missing), 0);
   const when = sel.at ? new Date(sel.at).toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short' }) : '';
-  return `<div class="car-table-wrap"><table class="car-score-table">
+  return `<div class="doc-table-wrap"><table class="doc-table doc-table--center car-score-table">
       <thead><tr><th>หัวข้อ</th><th>คะแนน<br>เต็ม</th><th>มีคะแนน<br>(คน)</th><th>ค่าเฉลี่ย</th><th>ร้อยละ</th><th>S.D.</th><th>ผ่านเกณฑ์<br>(คน)</th><th>ร้อยละ</th></tr></thead>
       <tbody>${sel.rows.map(r => tr(r)).join('')}${sel.combined ? tr(sel.combined, 'car-sc-sum') : ''}</tbody>
     </table></div>
@@ -714,8 +714,8 @@ async function carRenderFormView() {
       </div>
       ${input('statsTitle', 'ชื่อตารางที่ 1 (ต่อจากคำว่า “ตารางที่ 1”)', 'เช่น แสดงการส่งงานผ่านระบบ… ระดับชั้น…', 200)}
       <div class="doc-subsec-hd u-mt-4">จำนวนนักเรียนที่ส่งงาน (กรอกเป็นจำนวนคน — ร้อยละและค่าเฉลี่ยคำนวณให้เอง)</div>
-      <div class="car-table-wrap">
-        <table class="car-stat-table">
+      <div class="doc-table-wrap">
+        <table class="doc-table doc-table--center car-stat-table">
           <thead>
             <tr>
               <th>ชิ้นงานที่</th><th>จำนวน<br>นักเรียน</th>

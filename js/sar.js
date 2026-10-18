@@ -247,13 +247,13 @@ function sarRowHtml(key, row = {}) {
 function sarTable(key, title, addLabel, extraHead = '') {
   const rows = SAR.doc.rows[key]?.length ? SAR.doc.rows[key] : [{}];
   return `<div class="doc-subsec"><div class="doc-subsec-hd">${title}</div>
-    <div class="idp-table-wrap"><table class="idp-comp-table${key === 'grades' ? ' sar-grades' : ''}"><thead><tr>${sarCols(key).map(c => `<th>${sarEsc(c[1])}</th>`).join('')}${extraHead}<th></th></tr></thead>
+    <div class="doc-table-wrap"><table class="doc-table doc-table--wide doc-table--stack idp-comp-table${key === 'grades' ? ' sar-grades' : ''}"><thead><tr>${sarCols(key).map(c => `<th>${sarEsc(c[1])}</th>`).join('')}${extraHead}<th></th></tr></thead>
     <tbody data-rows="${key}">${rows.map(r => sarRowHtml(key, r)).join('')}</tbody></table></div>
     <div class="u-mt-4"><button type="button" class="btn btn-ghost btn-sm" data-add="${key}">${DOC_ICO_ADD} ${addLabel}</button></div></div>`;
 }
 function sarMatrix(group, items, levels, heads) {
   const cur = SAR.doc.lv[group] || [];
-  return `<div class="idp-table-wrap"><table class="idp-comp-table sar-matrix"><thead><tr><th>รายการ</th>${heads.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>
+  return `<div class="doc-table-wrap"><table class="doc-table doc-table--stack idp-comp-table sar-matrix"><thead><tr><th>รายการ</th>${heads.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>
     ${items.map((t, i) => `<tr><td class="sar-mx-item">${sarEsc(t)}</td>${levels.map((lv, j) => `<td><label class="sar-mx-cell"><input type="radio" name="lv-${group}-${i}" data-lv="${group}" data-i="${i}" value="${lv}" aria-label="${sarEsc(t)}: ${heads[j]}"${cur[i] === lv ? ' checked' : ''}><span class="sar-mx-txt">${heads[j]}</span></label></td>`).join('')}</tr>`).join('')}
     </tbody></table></div>`;
 }
@@ -406,7 +406,7 @@ async function sarRenderFormView() {
   const pi = idpProfileInfo(prof), f = d.f, ps = sarPersonal(prof, f), logo = pi.logo || f.logo || '';
   const pf = prof || {}; // ตัดสินจากข้อมูลส่วนตัวจริง (ไม่นับค่าสำรองจาก SAR เก่า) — ถ้าว่างให้ชวนไปเพิ่ม
   const miss = [['วันเกิด', pf.birthDate], ['วันที่บรรจุ', pf.startDate], ['วุฒิการศึกษา', (pf.education || []).length], ['วิทยฐานะ', pf.academicStanding], ['เลขที่ตำแหน่ง', pf.positionNo]].filter(m => !m[1]).map(m => m[0]);
-  const sec = (t, body) => `<section class="doc-section"><h2 class="doc-sec-title">${t}</h2>${body}</section>`;
+  const sec = (t, body) => `<details class="doc-section doc-fold" open><summary class="doc-fold-h"><h2 class="doc-sec-title">${t}</h2></summary>${body}</details>`;
   const num = (label, path) => sarFld(label, sarIn(path, sarGet(d.f, path), '', 'inputmode="decimal"'));
   const lv5 = [5, 4, 3, 2, 1];
   // ช่องบรรยายส่วนที่ 2 (textarea id = sar-<รหัส>) และหัวข้อกลุ่มในฟอร์ม (หัวข้อใหญ่ 1. 2. 3. … ไม่มีช่องกรอกของตัวเอง)

@@ -457,8 +457,8 @@ async function idpRenderFormView() {
     <!-- ส่วนที่ 2: รายละเอียดการพัฒนาตนเอง -->
     <section class="doc-section">
       <h2 class="doc-sec-title">ส่วนที่ 2  รายละเอียดการพัฒนาตนเอง</h2>
-      <div class="idp-table-wrap">
-        <table class="idp-comp-table">
+      <div class="doc-table-wrap">
+        <table class="doc-table doc-table--wide doc-table--stack idp-comp-table">
           <thead>
             <tr>
               <th class="idp-w15">สมรรถนะที่จะพัฒนา</th>
@@ -480,8 +480,8 @@ async function idpRenderFormView() {
     <!-- ส่วนที่ 3: สรุปแผนพัฒนา 3 อันดับแรก -->
     <section class="doc-section">
       <h2 class="doc-sec-title">ส่วนที่ 3  ตารางสรุปแผนพัฒนาตนเอง <span class="doc-sec-note">(3 อันดับแรก)</span></h2>
-      <div class="idp-table-wrap">
-        <table class="idp-sum-table">
+      <div class="doc-table-wrap">
+        <table class="doc-table doc-table--wide doc-table--stack idp-sum-table">
           <thead>
             <tr>
               <th class="idp-w6">อันดับที่</th>

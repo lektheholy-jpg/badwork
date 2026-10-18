@@ -1096,8 +1096,8 @@ table.sheet tbody tr:nth-child(even) td.grp-sub-total { background: var(--col-co
   .page-header h1 { font-size: 28px; }
   .modal { border-radius: var(--radius-l); }
   .card-pad { padding: 14px 12px; }
-  .main .card-pad, .main .doc-section { padding: 14px 12px; }
-  .main .doc-section { --ai-bleed: 12px; }
+  .main .card-pad { padding: 14px 12px; }
+  .main .doc-section { padding: 14px 12px; --ai-bleed: 12px; }
 }
 @media print { body, #app { background: var(--white); } }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } .pa-wgroup > summary::after { transition: none !important; } select::picker-icon, ::picker(select) { transition: none !important; } }
@@ -2366,7 +2366,7 @@ td.doc-ai-target::before { inset: 0; }
 .doc-form-meta .field-hint { margin-top: 0; font-weight: 400; }
 .doc-section { --ai-bleed: 20px; padding: 18px 20px; background: var(--card-glass); border-radius: var(--radius-m); }
 .doc-sec-title { margin: 0 0 12px; font-size: 16px; font-weight: 700; color: var(--ink); }
-/* การ์ดยาวที่ย่อ/ขยายได้ (.doc-section.doc-fold = <details open>) — ใช้เฉพาะหน้าที่การ์ดเยอะและยาว (เช่น CAR) · หน้าสั้นแสดงเต็มไม่ต้องพับ · หัวข้อ h2 อยู่ใน summary เพื่อคงสไตล์ .doc-sec-title */
+/* การ์ดยาวที่ย่อ/ขยายได้ (.doc-section.doc-fold = <details open>) — ใช้เฉพาะหน้าที่การ์ดเยอะและยาว (CAR · SAR) · หน้าสั้นแสดงเต็มไม่ต้องพับ · หัวข้อ h2 อยู่ใน summary เพื่อคงสไตล์ .doc-sec-title */
 .doc-fold-h { display: flex; align-items: center; justify-content: space-between; gap: 12px; list-style: none; cursor: pointer; }
 .doc-fold-h::-webkit-details-marker { display: none; }
 .doc-fold-h::after { content: ""; flex: none; width: 8px; height: 8px; border: solid var(--ink-soft); border-width: 0 2px 2px 0; rotate: 45deg; translate: 0 -2px; }
@@ -2390,10 +2390,17 @@ td.doc-ai-target::before { inset: 0; }
   outline: none; border-color: var(--primary); box-shadow: 0 0 0 4px var(--primary-tint); background: var(--card);
 }
 
-.idp-table-wrap { overflow-x: auto; container: idp-wrap / inline-size; }
-.idp-comp-table, .idp-sum-table { width: 100%; min-width: 880px; border-collapse: collapse; }
-.idp-comp-table th, .idp-sum-table th { padding: 8px 6px; text-align: left; font-size: 12.5px; font-weight: 600; color: var(--ink-soft); border-bottom: 1.5px solid var(--border); }
-.idp-comp-table td, .idp-sum-table td { padding: 6px; vertical-align: top; border-bottom: 1px solid var(--border); }
+/* ตารางในฟอร์มเอกสารทุกหน้า (ID-Plan · SAR · CAR) ใช้ชุดเดียว: .doc-table-wrap > table.doc-table
+   ตัวเสริม: --wide (กว้างขั้นต่ำ 880px) · --center (ตัวเลขกึ่งกลาง แบบ CAR) · --stack (กรอบแคบ ≤900px สลับเป็นการ์ดต่อแถว)
+   คลาสเฉพาะหน้า (idp-comp-table · car-stat-table · sar-matrix …) เหลือไว้เป็นจุดเกาะของ JS/สไตล์เฉพาะช่อง ไม่ได้ประกาศโครงตารางซ้ำ */
+.doc-table-wrap { overflow-x: auto; container: doc-tbl / inline-size; }
+.doc-table { width: 100%; min-width: var(--tbl-min, 0); border-collapse: collapse; }
+.doc-table--wide { --tbl-min: 880px; }
+.doc-table th { padding: 8px 6px; text-align: left; font-size: 12.5px; font-weight: 600; color: var(--ink-soft); border-bottom: 1.5px solid var(--border); }
+.doc-table td { padding: 6px; vertical-align: top; border-bottom: 1px solid var(--border); }
+.doc-table--center { --tbl-min: 620px; }
+.doc-table--center th { text-align: center; line-height: 1.35; }
+.doc-table--center td { padding: 6px 4px; text-align: center; vertical-align: middle; }
 .idp-comp-name { font-weight: 600; font-size: 13.5px; color: var(--ink); }
 .idp-comp-sub { margin-top: 4px; padding-left: 2.2em; text-indent: -2.2em; font-size: 12.5px; line-height: 1.45; color: var(--ink-soft); }
 .idp-sum-rank { text-align: center; font-weight: 700; color: var(--ink); }
@@ -2410,25 +2417,25 @@ td.doc-ai-target::before { inset: 0; }
 #sar-form .doc-form-meta select { -webkit-appearance: none; appearance: none; display: inline-block; padding: 10px 40px 10px 14px; background-image: var(--chev); }
 
 /* --- IDP: Responsive stacked layout — วัดจากความกว้างของกรอบตารางเอง (ไม่ใช่หน้าจอ) เพราะมีแถบเมนูข้าง/ขอบกินที่ไว้ · ตารางกว้างขั้นต่ำ 880px จึงสลับเป็นการ์ดเมื่อกรอบแคบกว่า 900px --- */
-@container idp-wrap (max-width: 900px) {
-  .idp-comp-table, .idp-sum-table { min-width: 0; border-collapse: separate; border-spacing: 0; }
-  .idp-comp-table thead, .idp-sum-table thead { display: none; }
-  .idp-comp-table tbody tr, .idp-sum-table tbody tr {
+@container doc-tbl (max-width: 900px) {
+  .doc-table--stack { min-width: 0; border-collapse: separate; border-spacing: 0; }
+  .doc-table--stack thead { display: none; }
+  .doc-table--stack tbody tr {
     display: block;
     border: 1.5px solid var(--border);
     border-radius: var(--radius-s);
     margin-bottom: 12px;
     background: var(--card-glass);
   }
-  .idp-comp-table td, .idp-sum-table td {
+  .doc-table--stack td {
     display: block;
     width: 100%;
     box-sizing: border-box;
     padding: 8px 10px;
     border-bottom: 1px solid var(--border);
   }
-  .idp-comp-table td:last-child, .idp-sum-table td:last-child { border-bottom: 0; }
-  .idp-comp-table td[data-label]::before, .idp-sum-table td[data-label]::before {
+  .doc-table--stack td:last-child { border-bottom: 0; }
+  .doc-table--stack td[data-label]::before {
     display: block;
     content: attr(data-label);
     font-size: 11.5px;
@@ -2440,10 +2447,6 @@ td.doc-ai-target::before { inset: 0; }
 }
 
 /* CAR (วิจัยในชั้นเรียน): ตารางจำนวนนักเรียนที่ส่งงาน — จอแคบเลื่อนแนวนอนในกรอบ · ร้อยละ/ค่าเฉลี่ยคำนวณสดใน js/car.js (carStatRefresh) */
-.car-table-wrap { overflow-x: auto; }
-.car-stat-table { width: 100%; min-width: 620px; border-collapse: collapse; }
-.car-stat-table th { padding: 8px 6px; text-align: center; font-size: 12.5px; font-weight: 600; line-height: 1.35; color: var(--ink-soft); border-bottom: 1.5px solid var(--border); }
-.car-stat-table td { padding: 6px 4px; text-align: center; vertical-align: middle; border-bottom: 1px solid var(--border); }
 .car-stat-table .car-no { width: 8%; font-weight: 700; color: var(--ink); }
 .car-stat-table .car-act { width: 44px; }
 .car-n { text-align: center; font-variant-numeric: tabular-nums; }
@@ -2461,16 +2464,15 @@ td.doc-ai-target::before { inset: 0; }
 .car-sc-chk { display: inline-flex; align-items: center; gap: 8px; margin: 4px 16px 4px 0; font-size: 14px; cursor: pointer; }
 .car-sc-grp legend .car-sc-chk { margin: 0; }
 .car-sc-chk input { width: 18px; height: 18px; accent-color: var(--primary-solid); }
-.car-score-table { width: 100%; min-width: 560px; margin-top: 12px; border-collapse: collapse; }
-.car-score-table th { padding: 8px 6px; text-align: center; font-size: 12.5px; font-weight: 600; line-height: 1.35; color: var(--ink-soft); border-bottom: 1.5px solid var(--border); }
-.car-score-table td { padding: 6px 4px; text-align: center; font-variant-numeric: tabular-nums; border-bottom: 1px solid var(--border); }
+.car-score-table { --tbl-min: 560px; margin-top: 12px; }
+.car-score-table td { font-variant-numeric: tabular-nums; }
 .car-score-table th:first-child, .car-score-table td:first-child { text-align: left; }
 .car-score-table .car-sc-sum td { font-weight: 700; background: var(--surface-sunken); }
 .car-score-meta { margin: 8px 0 14px; font-size: 13px; color: var(--ink-soft); }
 @media (max-width: 540px) { .car-score-pick { grid-template-columns: minmax(0, 1fr); } }
 
 /* SAR: ตารางเลือกระดับ (1.2.6 · 1.2.7 · 1.6 · ส่วนที่ 3) — ช่องตัวเลือกกึ่งกลาง กดได้ทั้งช่อง · จอแคบ (กรอบ ≤900px) เปลี่ยนเป็นการ์ด: ข้อความบนสุด ตัวเลือกเรียงเป็นแคปซูลใต้ข้อความ */
-.sar-matrix { min-width: 0; table-layout: fixed; }
+.sar-matrix { table-layout: fixed; }
 .sar-matrix th { text-align: center; white-space: nowrap; }
 .sar-matrix th:first-child { text-align: left; }
 .sar-matrix th:not(:first-child), .sar-matrix td:not(.sar-mx-item) { width: 96px; padding: 2px; }
@@ -2483,7 +2485,7 @@ td.doc-ai-target::before { inset: 0; }
 .sar-mx-cell:hover { background: var(--primary-tint); }
 .sar-mx-cell:has(input:checked) { background: var(--primary-tint); color: var(--primary-dark); font-weight: 600; }
 .sar-mx-txt { display: none; }
-@container idp-wrap (max-width: 900px) {
+@container doc-tbl (max-width: 900px) {
   .sar-matrix tbody tr { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 12px; }
   .sar-matrix td { padding: 0; border-bottom: 0; }
   .sar-matrix .sar-mx-item { flex: 0 0 100%; width: 100%; padding: 0 0 2px; font-weight: 600; }
@@ -2492,7 +2494,7 @@ td.doc-ai-target::before { inset: 0; }
   .sar-mx-cell:has(input:checked) { border-color: var(--primary); }
   .sar-mx-txt { display: inline; }
 }
-@container idp-wrap (max-width: 900px) {
+@container doc-tbl (max-width: 900px) {
   .sar-grades { table-layout: auto; }
 }
 
