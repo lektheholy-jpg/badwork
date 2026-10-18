@@ -87,12 +87,15 @@ function makeEnv() {
   const mem = {};
   const localStorage = { getItem: k => { lslog.push('get:' + k); return k in mem ? mem[k] : null; }, setItem: (k, v) => { lslog.push('set:' + k); mem[k] = String(v); }, removeItem: k => { delete mem[k]; } };
   const toasts = [];
+  // ล็อกนาฬิกาในสภาพแวดล้อมจำลอง — docFiscalYear() เปลี่ยนค่าตามวันที่ (ตั้งแต่ 1 ต.ค. ปีงบประมาณ +1) ถ้าใช้เวลาจริง golden จะเพี้ยนทุกครั้งที่ข้ามปีงบประมาณ
+  const FIXED_NOW = Date.UTC(2026, 8, 30, 5);
+  class FixedDate extends Date { constructor(...a) { if (a.length) super(...a); else super(FIXED_NOW); } static now() { return FIXED_NOW; } }
   const ctx = {
     window: w, document: w.document, console: { ...console, error() {}, warn() {} }, db, dblog, lslog, localStorage, toasts, store,
     setTimeout, clearTimeout, setInterval, clearInterval, navigator: { onLine: true }, location: { hostname: 'example.com' },
     AppState: { user: { uid: 'u1' }, teacherProfile: PROFILE },
     firebase: { firestore: { FieldValue: { serverTimestamp: () => 'TS' } }, app: () => ({ options: {} }) },
-    Promise, JSON, Date, Math, Object, Array, Set, Map, String, Number, Error, RegExp, URL, encodeURIComponent,
+    Promise, JSON, Date: FixedDate, Math, Object, Array, Set, Map, String, Number, Error, RegExp, URL, encodeURIComponent,
     escapeHtml: s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])),
     pageHeaderHtml: t => `<h1 class="page-title">${t}</h1>`, initNavPill() {}, clearLoading() {}, loaderHtml: k => `<div class="loader" data-k="${k}"></div>`, _loadTimers: new Map(),
     showToast: m => toasts.push(m), showLoading() {}, islandSave() {}, islandUndo() {}, formatSalary: n => Number(n).toLocaleString('en-US'),
