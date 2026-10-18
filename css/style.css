@@ -1097,6 +1097,7 @@ table.sheet tbody tr:nth-child(even) td.grp-sub-total { background: var(--col-co
   .modal { border-radius: var(--radius-l); }
   .card-pad { padding: 14px 12px; }
   .main .card-pad, .main .doc-section { padding: 14px 12px; }
+  .main .doc-section { --ai-bleed: 12px; }
 }
 @media print { body, #app { background: var(--white); } }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } .pa-wgroup > summary::after { transition: none !important; } select::picker-icon, ::picker(select) { transition: none !important; } }
@@ -2235,10 +2236,10 @@ table.tt tr.is-today td.tt-cell { background: color-mix(in srgb, var(--hue-orang
   border: solid var(--ink-soft); border-width: 0 2px 2px 0; rotate: 45deg; translate: 0 -2px; transition: rotate .2s ease, translate .2s ease;
 }
 .pa-wgroup[open] > summary::after { rotate: 225deg; translate: 0 2px; }
-.pa-witem { padding: 16px; border-top: 1px solid var(--border); border-left: 3px solid var(--primary-tint); }
+.pa-witem { --ai-bleed: 16px; padding: 16px; border-top: 1px solid var(--border); border-left: 3px solid var(--primary-tint); }
 .pa-witem-h { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-start; gap: 8px 10px; margin-bottom: 10px; font-weight: 700; color: var(--ink); }
 .pa-witem .field:last-child { margin-bottom: 0; }
-.pa-aifield { padding-left: 12px; border-left: 3px solid var(--primary-tint); }
+.pa-aifield { --ai-bleed-l: calc(var(--ai-bleed, 0px) + 3px); padding-left: 12px; border-left: 3px solid var(--primary-tint); }
 .pa-field-h { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-start; gap: 6px 10px; margin-bottom: 6px; }
 .pa-form-footer { display: flex; justify-content: flex-end; gap: 10px; padding-bottom: 32px; }
 .pa-form-footer .btn-danger-ghost { margin-right: auto; }
@@ -2316,7 +2317,11 @@ table.tt tr.is-today td.tt-cell { background: color-mix(in srgb, var(--hue-orang
 .doc-ai-all-off .doc-ai-menu .doc-ai-off { display: flex; }
 .doc-ai-item-btn.doc-ai-off { opacity: .45; cursor: not-allowed; }
 @media (max-width: 860px) { .doc-ai-item-btn { min-height: 50px; } }
-.doc-ai-target { border-radius: var(--radius-xs); background: color-mix(in srgb, var(--primary) 13%, var(--card)); box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 13%, var(--card)), 0 0 0 5px color-mix(in srgb, var(--primary) 65%, var(--card)); } /* กรอบรอบช่องที่ AI จะแก้: พื้นอ่อน + เส้นสี ห่างเท่ากันทุกด้าน และไม่กินที่ (box-shadow) จึงไม่ดันเลย์เอาต์ตอนชี้ */
+/* ช่องที่ AI จะแก้ (.doc-ai-target): แถบพื้นอ่อนกึ่งโปร่งยืดชิดขอบ card ซ้าย-ขวา (ทึบกว่าพื้น card เล็กน้อย เห็นพื้นหลังรำไร) + เส้นบางบน-ล่าง + เว้นอากาศบนล่าง 8px
+   ใช้ ::before วางหลังเนื้อหา จึงไม่ดันเลย์เอาต์ตอนชี้ · ระยะถึงขอบ card ส่งมาทาง --ai-bleed (.doc-section 20px / มือถือ 12px · .pa-witem 16px) */
+.doc-ai-target:not(textarea, input) { position: relative; isolation: isolate; }
+.doc-ai-target:not(textarea, input)::before { content: ""; position: absolute; z-index: -1; inset: -8px calc(var(--ai-bleed, 0px) * -1) -8px calc(var(--ai-bleed-l, var(--ai-bleed, 0px)) * -1); background: color-mix(in srgb, color-mix(in srgb, var(--primary) 12%, var(--card)) 72%, transparent); box-shadow: inset 0 1px 0 color-mix(in srgb, var(--primary) 40%, transparent), inset 0 -1px 0 color-mix(in srgb, var(--primary) 40%, transparent); pointer-events: none; }
+.doc-ai-target:is(textarea, input) { border-radius: var(--radius-xs); background: color-mix(in srgb, color-mix(in srgb, var(--primary) 12%, var(--card)) 72%, transparent); box-shadow: 0 0 0 3px color-mix(in srgb, color-mix(in srgb, var(--primary) 12%, var(--card)) 72%, transparent), 0 0 0 5px color-mix(in srgb, var(--primary) 55%, transparent); } /* ช่องที่ไม่มี .field ห่อ (เช่นในตาราง ID-Plan) ใช้กรอบรอบช่องแทน */
 @media (prefers-reduced-motion: reduce) { .doc-ai-row.busy .doc-ai-tile .ico { animation: none; } }
 
 .modal.doc-ai-modal { display: flex; flex-direction: column; overflow: hidden; }
@@ -2356,7 +2361,7 @@ table.tt tr.is-today td.tt-cell { background: color-mix(in srgb, var(--hue-orang
 .doc-form-header { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px; padding: 16px 18px; background: var(--card-glass); border-radius: var(--radius-m); }
 .doc-form-meta { display: flex; flex-wrap: wrap; gap: 12px; }
 .doc-form-meta label { display: flex; flex-direction: column; gap: 5px; color: var(--ink-soft); font-weight: 600; font-size: 13.5px; }
-.doc-section { padding: 18px 20px; background: var(--card-glass); border-radius: var(--radius-m); }
+.doc-section { --ai-bleed: 20px; padding: 18px 20px; background: var(--card-glass); border-radius: var(--radius-m); }
 .doc-sec-title { margin: 0 0 12px; font-size: 16px; font-weight: 700; color: var(--ink); }
 .doc-sec-note { font-size: 12.5px; font-weight: 500; color: var(--ink-soft); }
 .doc-subsec { margin-bottom: 16px; }
