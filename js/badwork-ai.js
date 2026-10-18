@@ -420,7 +420,7 @@ function badworkAiRowHtml(buttons) {
   const btn = b => {
     const ico = b.icon && BADWORK_AI_BTN_ICONS[b.icon];
     if (!ico) console.warn(`ปุ่ม AI "${b.act}" ไม่มี icon (หรือชื่อไม่รู้จัก) — ทุกปุ่มในเมนูใช้ไอคอน + ข้อความ ดู BADWORK_AI_BTN_ICONS`);
-    return `<button type="button" class="doc-ai-item-btn" role="menuitem" data-doc-ai="${b.act}" data-ai-label="${escapeHtml(b.label)}"${attrs(b.data)} title="${escapeHtml(b.label)}">${ico ? badworkAiBtnIcon(b.icon) : ''}<span class="doc-ai-lbl">${escapeHtml(b.label)}</span><small class="doc-ai-sub" data-ai-sub></small></button>`;
+    return `<button type="button" class="doc-ai-item-btn" role="menuitem" data-doc-ai="${b.act}" data-ai-label="${escapeHtml(b.label)}"${ico ? ` data-ai-icon="${b.icon}"` : ''}${attrs(b.data)} title="${escapeHtml(b.label)}">${ico ? `<span class="doc-ai-item-ico">${badworkAiBtnIcon(b.icon)}</span>` : ''}<span class="doc-ai-lbl">${escapeHtml(b.label)}</span><small class="doc-ai-sub" data-ai-sub></small></button>`;
   };
   return `<div class="doc-ai-row">
       <button type="button" class="doc-ai-trigger" aria-haspopup="menu" aria-expanded="false" title="ผู้ช่วย AI" aria-label="ผู้ช่วย AI"><span class="doc-ai-tile">${BADWORK_AI_ICON}</span><span class="doc-ai-trig-lbl" aria-hidden="true">ผู้ช่วย AI</span></button>

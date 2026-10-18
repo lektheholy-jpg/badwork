@@ -1319,7 +1319,7 @@ table.sheet tbody tr:last-child td { border-bottom: none; }
 .nav-item .nav-icon svg { width: 28px; height: 28px; }
 /* ----- ไอคอนทรงสควิร์เคิลจริง (superellipse n=5) แบบ One UI: หน้า = มาสก์ · เงาเรืองสีเฉพาะการ์ดเครื่องมือ (เมนูไม่มีเงาเรือง) ----- */
 .tools-ico::before { content: ''; position: absolute; inset: 5px 2px -4px; z-index: -1; border-radius: 42%; background: var(--w); opacity: .6; filter: blur(6px); transition: opacity .15s ease; }
-.nav-item .nav-icon::after, .tab-ico::after, .more-ico::after, .tools-ico::after, .doc-ai-tile::after { content: ''; position: absolute; inset: 0; z-index: -1; background: linear-gradient(145deg, oklch(from var(--w) calc(l + .06) calc(c * 1.18) h), oklch(from var(--w) calc(l - .05) calc(c * 1.25) h)); -webkit-mask: var(--squircle) center / 100% 100% no-repeat; mask: var(--squircle) center / 100% 100% no-repeat; }
+.nav-item .nav-icon::after, .tab-ico::after, .more-ico::after, .tools-ico::after, .doc-ai-tile::after, .doc-ai-item-ico::after { content: ''; position: absolute; inset: 0; z-index: -1; background: linear-gradient(145deg, oklch(from var(--w) calc(l + .06) calc(c * 1.18) h), oklch(from var(--w) calc(l - .05) calc(c * 1.25) h)); -webkit-mask: var(--squircle) center / 100% 100% no-repeat; mask: var(--squircle) center / 100% 100% no-repeat; }
 .nav-item.active .nav-icon { transform: scale(1.08); }
 @media (min-width: 861px) {
   #app.sidebar-collapsed .nav-item { padding: 5px; justify-content: center; gap: 0; }
@@ -2293,20 +2293,27 @@ table.tt tr.is-today td.tt-cell { background: color-mix(in srgb, var(--hue-orang
 .doc-ai-row.busy .doc-ai-tile .ico { animation: doc-ai-pulse 1s ease-in-out infinite; }
 @keyframes doc-ai-pulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(.78); opacity: .55; } }
 /* เมนู: ปิด = จางหาย+เลื่อนขึ้นเล็กน้อย · เปิด (.show) = จางเข้า · เป็น popover (top-layer) แล้ว JS ส่งตำแหน่งมาทาง --ai-x/--ai-y */
-.doc-ai-menu { position: absolute; left: 0; top: calc(100% + 6px); z-index: 20; min-width: 210px; margin: 0; padding: 4px; border: 1px solid var(--border); border-radius: var(--radius-m); background: var(--card); color: var(--ink); font-weight: 400; box-shadow: var(--shadow-ink-md); opacity: 0; visibility: hidden; transform: translateY(-6px) scale(.96); transform-origin: top left; transition: opacity .18s ease, transform .2s cubic-bezier(.3, .9, .3, 1), visibility 0s linear .2s; }
+.doc-ai-menu { position: absolute; left: 0; top: calc(100% + 6px); z-index: 20; min-width: 220px; margin: 0; padding: 6px; border: 1px solid color-mix(in srgb, var(--w) 24%, var(--border)); border-radius: var(--radius-l); background: color-mix(in srgb, var(--w) 10%, var(--card)); color: var(--ink); font-weight: 400; box-shadow: var(--shadow-ink-md); opacity: 0; visibility: hidden; transform: translateY(-6px) scale(.96); transform-origin: top left; transition: opacity .18s ease, transform .2s cubic-bezier(.3, .9, .3, 1), visibility 0s linear .2s; }
 .doc-ai-menu:popover-open { position: fixed; right: auto; bottom: auto; left: var(--ai-x, 0); top: var(--ai-y, 0); overflow: visible; }
 .doc-ai-menu.up { transform: translateY(6px) scale(.96); transform-origin: bottom left; }
 .doc-ai-menu.show { opacity: 1; visibility: visible; transform: none; transition-delay: 0s; }
-.doc-ai-item-btn { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 42px; padding: 8px 14px; border: 0; border-radius: var(--radius-pill); background: transparent; color: var(--ink); font: inherit; font-size: 14px; text-align: left; cursor: pointer; transition: background-color .12s ease; }
-.doc-ai-item-btn:hover, .doc-ai-item-btn:focus-visible { background: var(--hover-wash); }
-.doc-ai-item-btn:active { background: var(--primary-tint); }
-.doc-ai-item-btn .ico { width: 18px; height: 18px; flex: none; color: var(--primary-dark); }
+.doc-ai-item-btn { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 46px; padding: 6px 14px 6px 6px; border: 0; border-radius: var(--radius-pill); background: transparent; color: var(--ink); font: inherit; font-size: 14px; text-align: left; cursor: pointer; transition: background-color .12s ease; }
+.doc-ai-item-btn:focus-visible { background: color-mix(in srgb, var(--w) 14%, var(--card)); outline: 2px solid var(--w); outline-offset: -2px; }
+.doc-ai-item-btn:active { background: color-mix(in srgb, var(--w) 22%, var(--card)); }
+@media (hover: hover) { .doc-ai-item-btn:hover { background: color-mix(in srgb, var(--w) 14%, var(--card)); } } /* มือถือไม่มี hover — ใช้สีตอนกด (:active) แทน กันค้างสีหลังแตะ */
+/* สีประจำงานของแต่ละรายการ (ยึดตามชื่อไอคอน ไม่ผูกกับระบบใด): เขียน = ฟ้า · ปรับสำนวน = ม่วง · ย่อ = เขียวอมฟ้า */
+.doc-ai-item-btn[data-ai-icon="write"] { --w: var(--hue-blue); }
+.doc-ai-item-btn[data-ai-icon="polish"] { --w: var(--hue-violet); }
+.doc-ai-item-btn[data-ai-icon="shorten"] { --w: var(--hue-teal); }
+.doc-ai-item-ico { position: relative; isolation: isolate; display: grid; place-items: center; flex: none; width: 34px; height: 34px; color: var(--on-w); }
+.doc-ai-item-ico .ico { width: 17px; height: 17px; }
 .doc-ai-lbl { flex: 1; min-width: 0; }
-.doc-ai-sub { margin-left: auto; padding-left: 8px; font-size: 12px; color: var(--ink-soft); white-space: nowrap; }
+.doc-ai-sub { margin-left: auto; padding: 2px 9px; border-radius: var(--radius-pill); background: color-mix(in srgb, var(--w) 14%, var(--card)); color: color-mix(in srgb, var(--w) 70%, var(--ink)); font-size: 12px; font-weight: 600; white-space: nowrap; }
 .doc-ai-sub:empty { display: none; }
 .doc-ai-menu .doc-ai-off { display: none; } /* ใช้ไม่ได้ตามสถานะช่อง (เช่น ช่องว่างจะไม่มี "ปรับสำนวน") = ไม่โชว์ */
 .doc-ai-all-off .doc-ai-menu .doc-ai-off { display: flex; }
 .doc-ai-item-btn.doc-ai-off { opacity: .45; cursor: not-allowed; }
+@media (max-width: 860px) { .doc-ai-item-btn { min-height: 50px; } }
 .doc-ai-target { outline: 2px solid var(--primary); outline-offset: 4px; border-radius: var(--radius-s); }
 @media (prefers-reduced-motion: reduce) { .doc-ai-row.busy .doc-ai-tile .ico { animation: none; } }
 
