@@ -211,13 +211,21 @@ async function badworkAiGuard(btn, fn, sys = docSystem()) {
   if (!badworkAiConsent(sys)) return undefined;
   badworkAiBusy = true;
   // ปิดปุ่ม AI ทุกปุ่มระหว่างรอ ให้เห็นชัดว่ากำลังทำงานอยู่ (ไม่ต้องรอให้กดซ้ำแล้วเจอ toast)
-  const all = [...(btn.closest('form') || document).querySelectorAll('[data-doc-ai]')];
+  // ปุ่มในเมนู ✦: เมนูพับไปแล้ว → โชว์ความคืบหน้าข้างปุ่ม ✦ (.doc-ai-state) แทนการเปลี่ยนข้อความปุ่ม
+  const row = btn.closest?.('.doc-ai-row'), state = row?.querySelector('.doc-ai-state');
+  const all = [...(btn.closest('form') || document).querySelectorAll('[data-doc-ai], .doc-ai-trigger')];
   const old = btn.innerHTML;
   all.forEach(b => { b.disabled = true; });
-  btn.innerHTML = 'กำลังคิด<span class="loader-dots" aria-hidden="true"><i></i><i></i><i></i></span>';
-  try { return await fn(t => { btn.textContent = t; }); }
+  const say = t => { if (state) state.textContent = t; else btn.textContent = t; };
+  if (state) { row.classList.add('busy'); say('กำลังคิด…'); }
+  else btn.innerHTML = 'กำลังคิด<span class="loader-dots" aria-hidden="true"><i></i><i></i><i></i></span>';
+  try { return await fn(say); }
   catch (err) { badworkAiError(err); return undefined; }
-  finally { badworkAiBusy = false; all.forEach(b => { b.disabled = false; }); btn.innerHTML = old; }
+  finally {
+    badworkAiBusy = false;
+    all.forEach(b => { b.disabled = false; });
+    if (state) { row.classList.remove('busy'); state.textContent = ''; } else btn.innerHTML = old;
+  }
 }
 
 // ------------------------------------------------------------------
@@ -394,8 +402,10 @@ function badworkAiCtxHtml(c, sys = docSystem()) {
 // ------------------------------------------------------------------
 const BADWORK_AI_ICON = `<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M19 15l.7 1.8 1.8.7-1.8.7L19 20l-.7-1.8-1.8-.7 1.8-.7z"/></svg>`;
 
-// แถวปุ่ม "ผู้ช่วย AI" ใต้ช่อง/ใต้กลุ่มช่อง — buttons = [{ act, label, quiet?, data? }]
-// buttons[i].icon (ไม่บังคับ) = ชื่อใน BADWORK_AI_BTN_ICONS → ปุ่มไอคอนล้วน · label ยังใช้เป็น tooltip (title) + aria-label เสมอ · ไม่ใส่ icon = ปุ่มข้อความเหมือนเดิม
+// แถว "ผู้ช่วย AI" ที่หัวช่อง — buttons = [{ act, label, icon, quiet?, data? }]
+// หน้าตา: ปุ่ม ✦ วงกลมต่อท้ายชื่อช่อง (.doc-ai-trigger) → กดแล้วเมนูเล็กเลื่อนลง (.doc-ai-menu) แสดงปุ่มที่ใช้ได้ "ไอคอน + ข้อความ"
+// ปุ่มจริงทุกปุ่มอยู่ใน DOM เสมอ (CSS ซ่อนตัวที่ใช้ไม่ได้ตามสถานะช่อง) — ตัวต่อ/เทสต์อ่านปุ่มผ่าน [data-doc-ai] เหมือนเดิม
+// icon ต้องมี (ชื่อใน BADWORK_AI_BTN_ICONS) · quiet ไม่มีผลแล้ว (รับไว้เพื่อให้ตัวต่อเดิมไม่ต้องแก้)
 const BADWORK_AI_BTN_ICONS = {
   write: '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>', // ปากกา = เขียน/เติมข้อความที่ว่าง
   polish: '<path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72"/><path d="m14 7 3 3"/><path d="M5 6v4"/><path d="M19 14v4"/><path d="M10 2v2"/><path d="M7 8H3"/><path d="M21 16h-4"/><path d="M11 3H9"/>', // ไม้กายสิทธิ์ = ขัดเกลาสำนวน
@@ -409,14 +419,15 @@ function badworkAiRowHtml(buttons) {
   const attrs = d => Object.entries(d || {}).map(([k, v]) => ` data-${k}="${escapeHtml(v)}"`).join('');
   const btn = b => {
     const ico = b.icon && BADWORK_AI_BTN_ICONS[b.icon];
-    if (!ico) console.warn(`ปุ่ม AI "${b.act}" ไม่มี icon (หรือชื่อไม่รู้จัก) — ปุ่มใต้ช่องทุกระบบใช้ไอคอนล้วน ดู BADWORK_AI_BTN_ICONS`);
-    const cls = `btn ${b.quiet ? 'btn-sm doc-ai-quiet' : 'btn-ghost btn-sm'}${ico ? ' doc-ai-ico' : ''}`;
-    const tip = ico ? ` title="${escapeHtml(b.label)}" aria-label="${escapeHtml(b.label)}"` : '';
-    return `<button type="button" class="${cls}" data-doc-ai="${b.act}" data-ai-label="${escapeHtml(b.label)}"${attrs(b.data)}${tip}>${ico ? badworkAiBtnIcon(b.icon) : b.label}</button>`;
+    if (!ico) console.warn(`ปุ่ม AI "${b.act}" ไม่มี icon (หรือชื่อไม่รู้จัก) — ทุกปุ่มในเมนูใช้ไอคอน + ข้อความ ดู BADWORK_AI_BTN_ICONS`);
+    return `<button type="button" class="doc-ai-item-btn" role="menuitem" data-doc-ai="${b.act}" data-ai-label="${escapeHtml(b.label)}"${attrs(b.data)} title="${escapeHtml(b.label)}">${ico ? badworkAiBtnIcon(b.icon) : ''}<span class="doc-ai-lbl">${escapeHtml(b.label)}</span><small class="doc-ai-sub" data-ai-sub></small></button>`;
   };
   return `<div class="doc-ai-row">
-      <span class="doc-ai-tag" role="img" aria-label="ผู้ช่วย AI" title="ผู้ช่วย AI">${BADWORK_AI_ICON}</span>
-      ${buttons.map(btn).join('\n      ')}
+      <button type="button" class="doc-ai-trigger" aria-haspopup="menu" aria-expanded="false" title="ผู้ช่วย AI" aria-label="ผู้ช่วย AI">${BADWORK_AI_ICON}</button>
+      <span class="doc-ai-state" role="status" aria-live="polite"></span>
+      <div class="doc-ai-menu" role="menu" aria-label="ผู้ช่วย AI" popover="manual">
+        ${buttons.map(btn).join('\n        ')}
+      </div>
     </div>`;
 }
 
@@ -444,24 +455,96 @@ function badworkAiPreviewShow(btn, sys = docSystem()) {
 function badworkAiRefreshBtns(form, sys = docSystem()) {
   const ad = docAiFind(sys);
   if (!ad || !form) return;
-  form.querySelectorAll('.doc-ai-row [data-doc-ai]').forEach(b => {
-    const label = b.dataset.aiLabel || b.textContent.trim();
-    const r = ad.resolve(sys, b.dataset.docAi, b);
-    const off = !!(r && r.toast);
-    let tip = label;
-    if (off) tip = `${label}: ${r.toast}`;
-    else if (r && r.specs && r.total > 1) tip = `${label} (${r.specs.length} จาก ${r.total} ช่อง)`;
-    b.title = tip;
-    if (b.classList.contains('doc-ai-ico')) b.setAttribute('aria-label', tip);
-    b.classList.toggle('doc-ai-off', off);
-    if (off) b.setAttribute('aria-disabled', 'true'); else b.removeAttribute('aria-disabled');
+  form.querySelectorAll('.doc-ai-row').forEach(row => {
+    const btns = [...row.querySelectorAll('[data-doc-ai]')];
+    let live = 0;
+    btns.forEach(b => {
+      const label = b.dataset.aiLabel || b.textContent.trim();
+      const r = ad.resolve(sys, b.dataset.docAi, b);
+      const off = !!(r && r.toast);
+      let tip = label;
+      if (off) tip = `${label}: ${r.toast}`;
+      else if (r && r.specs && r.total > 1) tip = `${label} (${r.specs.length} จาก ${r.total} ช่อง)`;
+      b.title = tip;
+      b.classList.toggle('doc-ai-off', off); // ใช้ไม่ได้ = ซ่อนจากเมนู (ถ้าทุกปุ่มใช้ไม่ได้ ค่อยโชว์หรี่ให้กดดูเหตุผล — .doc-ai-all-off)
+      if (off) b.setAttribute('aria-disabled', 'true'); else { b.removeAttribute('aria-disabled'); live++; }
+      const sub = b.querySelector('[data-ai-sub]');
+      if (sub) sub.textContent = !off && r && r.specs && r.total > 1 ? `${r.specs.length}/${r.total} ช่อง` : '';
+    });
+    row.classList.toggle('doc-ai-all-off', btns.length > 0 && !live);
   });
+}
+
+// ------------------------------------------------------------------
+// เมนูของปุ่ม ✦ — เปิด/ปิดแบบเลื่อนจาง (CSS transition ที่ .doc-ai-menu / .show)
+//   เมนูอยู่ชั้น top-layer (Popover API) จึงไม่ถูกกล่องที่เลื่อนได้ (เช่นตาราง ID-Plan) ตัดขอบ · ตำแหน่งส่งเป็นตัวแปร CSS --ai-x/--ai-y
+//   เบราว์เซอร์ที่ไม่มี Popover API: เมนูใช้ตำแหน่งปกติใต้ปุ่ม (ยังใช้ได้ แค่ไม่หนีกล่องที่ตัดขอบ)
+//   ปิดเมื่อ: กดที่อื่น · Esc · เลื่อนหน้า/ย่อขยายจอ · โฟกัสออกจากแถว · เลือกปุ่มในเมนู
+// ------------------------------------------------------------------
+function badworkAiMenuPlace(trig, menu) {
+  const t = trig.getBoundingClientRect(), vw = document.documentElement.clientWidth, vh = window.innerHeight;
+  const gap = 6, edge = 8, w = menu.offsetWidth, h = menu.offsetHeight;
+  const x = Math.max(edge, Math.min(t.left, vw - w - edge));
+  const below = t.bottom + gap, above = t.top - gap - h;
+  const up = below + h > vh - edge && above > edge; // ล่างไม่พอ + บนพอ → เปิดขึ้นบน
+  menu.classList.toggle('up', up);
+  menu.style.setProperty('--ai-x', Math.round(x) + 'px');
+  menu.style.setProperty('--ai-y', Math.round(up ? above : below) + 'px');
+}
+
+function badworkAiMenuSet(row, open, refocus = false) {
+  const trig = row.querySelector('.doc-ai-trigger'), menu = row.querySelector('.doc-ai-menu');
+  if (!trig || !menu || row.classList.contains('open') === open) return;
+  const pop = typeof menu.showPopover === 'function';
+  clearTimeout(menu._aiT);
+  row.classList.toggle('open', open);
+  trig.setAttribute('aria-expanded', String(open));
+  if (open) {
+    if (pop) {
+      try { menu.showPopover(); } catch (err) { /* เปิดอยู่แล้ว */ }
+      badworkAiMenuPlace(trig, menu);
+    }
+    void menu.offsetWidth; // ให้เบราว์เซอร์คำนวณสถานะเริ่มต้นก่อน → transition จึงทำงาน
+    menu.classList.add('show');
+  } else {
+    menu.classList.remove('show');
+    if (pop) menu._aiT = setTimeout(() => { try { menu.hidePopover(); } catch (err) { /* ปิดอยู่แล้ว */ } }, 180);
+    if (refocus) trig.focus({ preventScroll: true });
+  }
+}
+
+function badworkAiMenuItems(row) {
+  const all = row.classList.contains('doc-ai-all-off');
+  return [...row.querySelectorAll('.doc-ai-menu [data-doc-ai]')].filter(b => all || !b.classList.contains('doc-ai-off'));
+}
+function badworkAiMenuFocus(row, i) { // i ติดลบ/เกิน = วนรอบ · รอจังหวะให้เมนูขึ้นก่อน ไม่งั้นโฟกัสไม่ติด
+  setTimeout(() => {
+    const items = badworkAiMenuItems(row);
+    if (items.length) items[(i + items.length) % items.length].focus({ preventScroll: true });
+  }, 30);
+}
+
+let badworkAiMenuBound = false;
+function badworkAiMenuBind() { // ตัวฟังระดับหน้าต่าง ผูกครั้งเดียวทั้งแอป (ฟอร์มวาดซ้ำได้ ไม่สะสมตัวฟัง)
+  if (badworkAiMenuBound) return;
+  badworkAiMenuBound = true;
+  const openRows = () => [...document.querySelectorAll('.doc-ai-row.open')];
+  const closeAll = () => openRows().forEach(r => badworkAiMenuSet(r, false));
+  document.addEventListener('click', e => openRows().forEach(r => { if (!r.contains(e.target)) badworkAiMenuSet(r, false); }));
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape') return;
+    const r = openRows()[0];
+    if (r) { e.stopPropagation(); badworkAiMenuSet(r, false, true); } // Esc ปิดเมนูอย่างเดียว ไม่ลามไปปิดหน้าต่างอื่น
+  }, true);
+  window.addEventListener('scroll', closeAll, { capture: true, passive: true });
+  window.addEventListener('resize', closeAll);
 }
 
 function badworkAiMount(view, form, sys = docSystem()) {
   const ad = docAiFind(sys);
   if (!ad || !form || form.dataset.docAi) return;
   const ai = BADWORK_AI_CONFIG;
+  badworkAiMenuBind();
   form.dataset.docAi = '1'; // ใช้เป็นตัวกันติดซ้ำ — ฟอร์มเองจึงตรง [data-doc-ai] ด้วย ตัวฟังคลิกต้องเมินค่า act ที่ไม่รู้จัก
   badworkAiSeedCtx(sys.state.doc, sys);
 
@@ -538,12 +621,38 @@ function badworkAiMount(view, form, sys = docSystem()) {
 
   // 3) คลิกปุ่ม — ตัวต่อบอกว่าปุ่มนี้ต้องส่งช่องไหนด้วยโหมดอะไร (หรือแจ้งว่าทำไม่ได้เพราะอะไร)
   form.addEventListener('click', e => {
+    const trig = e.target.closest('.doc-ai-trigger');
+    if (trig) { // ปุ่ม ✦ = เปิด/ปิดเมนู (ยังไม่สั่งงาน)
+      if (trig.disabled) return;
+      const tr = trig.closest('.doc-ai-row'), willOpen = !tr.classList.contains('open');
+      form.querySelectorAll('.doc-ai-row.open').forEach(r => { if (r !== tr) badworkAiMenuSet(r, false); });
+      if (willOpen) { badworkAiPreviewClear(); badworkAiRefreshBtns(form, sys); } // สถานะช่องล่าสุดก่อนเมนูขึ้น
+      badworkAiMenuSet(tr, willOpen);
+      if (willOpen && e.detail === 0) badworkAiMenuFocus(tr, 0); // เปิดด้วยคีย์บอร์ด → โฟกัสตัวเลือกแรก
+      return;
+    }
     const b = e.target.closest('[data-doc-ai]');
     if (!b) return;
+    const menuRow = b.closest('.doc-ai-row');
+    if (menuRow) badworkAiMenuSet(menuRow, false); // เลือกแล้วเมนูพับเก็บทันที
     badworkAiPreviewClear();
     const r = ad.resolve(sys, b.dataset.docAi, b);
     if (!r) return;
     if (r.toast) { showToast(r.toast); return; }
     badworkAiRunFields(b, r.specs, r.mode, sys);
+  });
+
+  // คีย์บอร์ด: ↓/↑/Home/End เปิดเมนูและเลื่อนตัวเลือก · Esc ปิด (ตัวฟังระดับหน้าต่าง) · โฟกัสออกนอกแถว = ปิด
+  form.addEventListener('keydown', e => {
+    const kr = e.target.closest?.('.doc-ai-row');
+    if (!kr || !['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(e.key)) return;
+    e.preventDefault();
+    if (!kr.classList.contains('open')) { badworkAiRefreshBtns(form, sys); badworkAiMenuSet(kr, true); }
+    const cur = badworkAiMenuItems(kr).indexOf(document.activeElement);
+    badworkAiMenuFocus(kr, e.key === 'Home' ? 0 : e.key === 'End' ? -1 : e.key === 'ArrowDown' ? cur + 1 : cur - 1);
+  });
+  form.addEventListener('focusout', e => {
+    const fr = e.target.closest?.('.doc-ai-row.open');
+    if (fr && !fr.contains(e.relatedTarget)) badworkAiMenuSet(fr, false);
   });
 }

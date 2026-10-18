@@ -62,7 +62,8 @@ function traAiHeading(spec) {
 function traAiSlots(sys, form) {
   const out = [];
   traAiSpecs(sys).forEach(s => {
-    const host = form.querySelector(`#${s.el}`)?.closest('.field');
+    const fld = form.querySelector(`#${s.el}`)?.closest('.field');
+    const host = fld && (fld.querySelector('.doc-item-h') || fld); // หัวช่อง: ชื่อซ้าย · ปุ่ม ✦ ต่อท้ายชื่อ (เหมือน PA / ID-Plan / SAR / CAR)
     if (!host) return;
     out.push({ host, buttons: [
       { act: 'write', label: `เขียน${s.fieldLabel}`, icon: 'write', data: { field: s.field } },

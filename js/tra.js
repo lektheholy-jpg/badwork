@@ -240,10 +240,10 @@ async function traRenderFormView() {
     <!-- ส่วนที่ 1: เนื้อหา (ตัวอย่างโครง — แทนด้วยหัวข้อจริงของเอกสาร) -->
     <section class="doc-section">
       <h2 class="doc-sec-title">ส่วนที่ 1  เนื้อหา</h2>
-      <div class="field"><label for="tra-title">ชื่อเอกสาร / เรื่อง</label>
+      <div class="field"><div class="doc-item-h"><label for="tra-title">ชื่อเอกสาร / เรื่อง</label></div>
         <input id="tra-title" type="text" maxlength="120" value="${escapeHtml(doc.title)}">
       </div>
-      <div class="field u-mt-4"><label for="tra-body">เนื้อหา</label>
+      <div class="field u-mt-4"><div class="doc-item-h"><label for="tra-body">เนื้อหา</label></div>
         <textarea id="tra-body" rows="6">${escapeHtml(doc.body)}</textarea>
       </div>
     </section>

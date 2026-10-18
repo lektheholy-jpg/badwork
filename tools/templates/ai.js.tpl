@@ -62,7 +62,8 @@ function __ID__AiHeading(spec) {
 function __ID__AiSlots(sys, form) {
   const out = [];
   __ID__AiSpecs(sys).forEach(s => {
-    const host = form.querySelector(`#${s.el}`)?.closest('.field');
+    const fld = form.querySelector(`#${s.el}`)?.closest('.field');
+    const host = fld && (fld.querySelector('.doc-item-h') || fld); // หัวช่อง: ชื่อซ้าย · ปุ่ม ✦ ต่อท้ายชื่อ
     if (!host) return;
     out.push({ host, buttons: [
       { act: 'write', label: `เขียน${s.fieldLabel}`, icon: 'write', data: { field: s.field } },
@@ -72,7 +73,7 @@ function __ID__AiSlots(sys, form) {
   return out;
 }
 
-// act: 'all' = ปุ่มบนสุด · 'write' / 'polish' = ปุ่มใต้ป้ายของแต่ละช่อง (data-field)
+// act: 'all' = ปุ่มบนสุด · 'write' / 'polish' = ปุ่มในเมนู ✦ ที่หัวของแต่ละช่อง (data-field)
 function __ID__AiResolve(sys, a, b) {
   if (a === 'all') {
     const pick = __ID__AiSpecs(sys).filter(s => !badworkAiFilled(s));

@@ -57,6 +57,42 @@ const prompt=()=>calls[calls.length-1].body.contents[0].parts[0].text;
  r=rs('all');ok(r.specs.length===9&&!r.specs.some(s=>s.key==='n11'),'ปุ่มบนสุด ข้ามช่องที่มีข้อความแล้ว (ไม่เขียนทับ): 9 ช่อง');
  ok(rs('write','n11').toast&&rs('polish','n11').specs[0].key==='n11'&&rs('shorten','n11').mode==='shorten','ช่องมีข้อความ: เขียนซ้ำ = แจ้ง · ปรับสำนวน/ย่อ ทำได้');
  ok(rs('xyz')===null,'act ที่ไม่รู้จักไม่ทำอะไร');
+ // ---- เมนูปุ่ม ✦ (ปุ่มเดียวต่อท้ายชื่อช่อง → กดแล้วเมนูเลื่อนลง) ----
+ const wait=ms=>new Promise(r=>setTimeout(r,ms));
+ const rowOf=k=>d.getElementById('sar-'+k).closest('.field').querySelector('.doc-ai-row');
+ const row0=rowOf('n11'),row1=rowOf('n121'),trig0=row0.querySelector('.doc-ai-trigger'),trig1=row1.querySelector('.doc-ai-trigger'),menu0=row0.querySelector('.doc-ai-menu'),menu1=row1.querySelector('.doc-ai-menu');
+ const vis=rw=>[...rw.querySelectorAll('.doc-ai-menu [data-doc-ai]')].filter(b=>!b.classList.contains('doc-ai-off')).map(b=>b.dataset.docAi).join(',');
+ ok(!!trig0&&trig0.getAttribute('aria-expanded')==='false'&&trig0.getAttribute('aria-haspopup')==='menu'&&!row0.classList.contains('open')&&!d.querySelector('.doc-ai-tag,.doc-ai-ico,.doc-ai-quiet'),'แถวปุ่ม: ปุ่ม ✦ เดียว ปิดอยู่ · ไม่มีชุดไอคอนล้วนแบบเดิม');
+ ok(row0.parentElement.classList.contains('doc-item-h')&&!!row0.previousElementSibling&&row0.previousElementSibling.tagName==='LABEL','ปุ่ม ✦ อยู่ต่อท้ายชื่อช่อง (ถัดจาก label ใน .doc-item-h)');
+ ok(row0.querySelectorAll('.doc-ai-item-btn').length===3&&[...row0.querySelectorAll('.doc-ai-item-btn .doc-ai-lbl')].every(x=>x.textContent.trim().length>0)&&row0.querySelector('.doc-ai-menu').getAttribute('role')==='menu','เมนูมีปุ่มข้อความครบ 3 (เขียน/ปรับสำนวน/ย่อ) อยู่ใน DOM เสมอ');
+ trig0.click();await settle();
+ ok(row0.classList.contains('open')&&trig0.getAttribute('aria-expanded')==='true'&&menu0.classList.contains('show'),'กด ✦ → เมนูเปิด (open · show · aria-expanded=true)');
+ ok(vis(row0)==='polish,shorten'&&row0.querySelector('[data-doc-ai="write"]').classList.contains('doc-ai-off'),'ช่องมีข้อความ: เมนูโชว์ปรับสำนวน+ย่อ · ซ่อนเขียนให้');
+ trig1.click();await settle();
+ ok(row1.classList.contains('open')&&!row0.classList.contains('open')&&!menu0.classList.contains('show')&&trig0.getAttribute('aria-expanded')==='false','เปิดเมนูอื่น → อันก่อนพับเก็บ (เปิดทีละอัน)');
+ ok(vis(row1)==='write','ช่องว่าง: เมนูโชว์เฉพาะเขียน/เติมให้');
+ d.body.click();await settle();
+ ok(!row1.classList.contains('open')&&!menu1.classList.contains('show'),'กดที่อื่น → เมนูพับ');
+ trig1.click();await settle();d.dispatchEvent(new w.KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true}));await settle();
+ ok(!row1.classList.contains('open')&&d.activeElement!==null,'กด Esc → เมนูพับ');
+ trig1.click();await settle();row1.querySelector('[data-doc-ai="polish"]').click();await settle(); // ปุ่มที่ใช้ไม่ได้ (ช่องว่าง) → แค่แจ้งเหตุผล ไม่ยิง AI
+ ok(!row1.classList.contains('open')&&calls.length===0,'เลือกปุ่มในเมนู → เมนูพับทันที (ปุ่มที่ทำไม่ได้ไม่ยิง AI)');
+ let shown=0,hidden=0;menu1.showPopover=()=>{shown++};menu1.hidePopover=()=>{hidden++};
+ trig1.click();await settle();
+ ok(shown===1&&menu1.style.getPropertyValue('--ai-x')!==''&&menu1.style.getPropertyValue('--ai-y')!=='','มี Popover API: เมนูขึ้น top-layer + ส่งตำแหน่ง --ai-x/--ai-y');
+ trig1.click();await wait(230);
+ ok(hidden===1&&!row1.classList.contains('open'),'ปิดเมนู: รอ transition จบแล้วค่อย hidePopover');
+ trig1.dispatchEvent(new w.KeyboardEvent('keydown',{key:'ArrowDown',bubbles:true,cancelable:true}));await wait(60);
+ ok(row1.classList.contains('open')&&d.activeElement&&d.activeElement.dataset.docAi==='write','คีย์บอร์ด: ↓ เปิดเมนูและโฟกัสตัวเลือกแรกที่ใช้ได้');
+ d.getElementById('sar-n121').focus();await settle();
+ ok(!row1.classList.contains('open'),'โฟกัสออกนอกแถว → เมนูพับ');
+ {let release;const gate=new Promise(rl=>{release=rl});ctx.__gate=gate;ctx.__btn=row0.querySelector('[data-doc-ai="polish"]');
+  const st0=row0.querySelector('.doc-ai-state');
+  const pr=R(`badworkAiGuard(__btn,async say=>{say('กำลังคิด 2/3');await __gate;return 7})`);await settle();
+  ok(row0.classList.contains('busy')&&st0.textContent==='กำลังคิด 2/3'&&trig0.disabled&&trig1.disabled,'AI ทำงาน: แสดงความคืบหน้าข้างปุ่ม ✦ (busy) และปิดปุ่มทุกตัวกันกดซ้ำ');
+  release();const gv=await pr;
+  ok(gv===7&&!row0.classList.contains('busy')&&st0.textContent===''&&!trig0.disabled&&!trig1.disabled,'AI เสร็จ: คืนปุ่ม ✦ + ล้างข้อความสถานะ');}
+ R(`(()=>{const f=document.getElementById('sar-form');f.querySelectorAll('.doc-ai-row').forEach(rw=>rw.classList.remove('open'))})()`);
  // ---- พร้อต์ ----
  reply={n14:'ใช้การวัดผลหลายวิธี',n21:'จัดทำข้อมูลสารสนเทศ'};
  R(`badworkAiBatch(docAi(sarAiSys()).resolve(sarAiSys(),'all').specs.filter(s=>['n14','n21'].includes(s.key)),'write',{},sarAiSys())`);
