@@ -63,6 +63,15 @@ function docSignToIso(v) {
 }
 // แสดง/พิมพ์: ISO → "8 มิถุนายน 2569" · ข้อความเดิม (ยังไม่เคยบันทึกใหม่) แสดงตามที่พิมพ์ไว้ ไม่เปลี่ยนรูปแบบเอง
 const docSignText = v => (/^\d{4}-\d{2}-\d{2}$/.test(v || '') ? docThaiDate(v) : String(v || ''));
+// กริดข้อมูลส่วนบุคคลแบบการ์ดเล็ก (dl.pa-pf) — ใช้ร่วม PA · ID-Plan · SAR · CAR ห้ามเขียน dl/dt/dd เอง
+// items = [[ป้าย, ค่า], …] (ค่าว่าง = "—") · auto = จัดคอลัมน์ตามความกว้าง (ใช้เมื่อรายการเยอะ)
+function docProfileGridHtml(items, o = {}) {
+  return `<dl class="pa-pf${o.auto ? ' pa-pf-auto' : ''}">${items.map(([l, v]) => `<div class="pa-pf-item"><dt>${escapeHtml(l)}</dt><dd>${v ? escapeHtml(String(v)) : '—'}</dd></div>`).join('')}</dl>`;
+}
+// แถบหมายเหตุใต้กริด + ปุ่มไปหน้าข้อมูลส่วนตัว (ผูกคลิกเองด้วย btnId)
+function docProfileNoteHtml(text, btnId, btnLabel = 'ไปแก้ในข้อมูลส่วนตัว') {
+  return `<div class="pa-pf-note"><span>${escapeHtml(text)}</span><button type="button" class="btn btn-ghost btn-sm" id="${btnId}">${escapeHtml(btnLabel)}</button></div>`;
+}
 function docSignInputHtml(id, value) {
   const raw = String(value || '').trim(), iso = docSignToIso(raw), legacy = raw && !iso ? raw : '';
   return `<input id="${id}" type="date" value="${escapeHtml(iso)}"${legacy ? ` data-legacy="${escapeHtml(legacy)}"` : ''}>${legacy ? `<span class="field-hint">ค่าเดิม “${escapeHtml(legacy)}” แปลงเป็นวันที่ไม่ได้ — เลือกวันที่ใหม่เพื่อแทนที่ (ถ้าไม่เลือก จะเก็บข้อความเดิมไว้)</span>` : ''}`;

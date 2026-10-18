@@ -465,7 +465,6 @@ async function renderPAFormView() {
     if (docStale(view, seq, sys) || sys.state.tab !== 'agreement' || sys.state.view !== 'form') return;
   }
 
-  const item = (label, val, wide) => `<div class="pa-pf-item${wide ? ' pa-pf-wide' : ''}"><dt>${label}</dt><dd>${val ? escapeHtml(val) : '—'}</dd></div>`;
   const area = (id, label, val, rows, ph = '') =>
     `<div class="field pa-aifield"><div class="pa-field-h"><label for="${id}">${label}</label></div><textarea id="${id}" rows="${rows}" placeholder="${escapeHtml(ph)}">${escapeHtml(val || '')}</textarea></div>`; // ส่วนที่ 2: หัวช่องเป็นที่วางแถวปุ่ม AI (ทางขวาของชื่อช่อง — js/pa-ai.js) เหมือนหัวกล่องของงานแต่ละข้อ
   const [t1, t2] = paTermLabels(d.fiscalYear);
@@ -507,11 +506,7 @@ async function renderPAFormView() {
 
       <details class="doc-section doc-fold" open>
         <summary class="doc-fold-h"><h2 class="doc-sec-title">ผู้จัดทำข้อตกลง</h2></summary>
-        <dl class="pa-pf">
-          ${item('ชื่อ-นามสกุล', o.name)}${item('ตำแหน่ง', o.position)}
-          ${item('วิทยฐานะ', o.standing)}${item('รับเงินเดือนในตำแหน่ง', o.pay)}
-          ${item('สถานศึกษา', o.school)}${item('สังกัด', o.affiliation)}
-        </dl>
+        ${docProfileGridHtml([['ชื่อ-นามสกุล', o.name], ['ตำแหน่ง', o.position], ['วิทยฐานะ', o.standing], ['รับเงินเดือนในตำแหน่ง', o.pay], ['สถานศึกษา', o.school], ['สังกัด', o.affiliation]])}
         <div class="pa-pf-note">
           <span>${frozen ? 'เอกสารนี้ส่งแล้ว — ใช้ข้อมูลผู้จัดทำที่บันทึกไว้ตอนส่ง (เปลี่ยนสถานะเป็น "ร่าง" เพื่อดึงข้อมูลล่าสุด)' : `ข้อมูลนี้ดึงจากหน้าข้อมูลส่วนตัว${!o.name || !o.school ? ' — ยังกรอกไม่ครบ' : ''}`}</span>
           <button type="button" class="btn btn-ghost btn-sm pa-goto-profile">ไปแก้ในข้อมูลส่วนตัว</button>

@@ -445,10 +445,7 @@ async function sarRenderFormView() {
 
     ${sec('ส่วนที่ 1  ข้อมูลพื้นฐาน', `
       <div class="doc-subsec"><div class="doc-subsec-hd">${SAR_H.s11} <span class="doc-sec-note">(ทั้งหมดในส่วนนี้ดึงจากข้อมูลส่วนตัว — แก้ที่นั่นครั้งเดียว)</span></div>
-        <dl class="pa-pf pa-pf-auto">
-          ${[['ชื่อ', pi.name], ['ตำแหน่ง', pi.position], ['กลุ่มสาระฯ', pi.subjectGroup], ['สถานศึกษา', pi.school], ['อายุ', ps.age && ps.age + ' ปี'], ['อายุราชการ', ps.svcY !== '' && `${ps.svcY} ปี ${ps.svcM || 0} เดือน`], ['คุณวุฒิสูงสุด', ps.degree], ['วิชาเอก', ps.major], ['จากสถาบัน', ps.inst], ['วิทยฐานะ', ps.rank], ['ตำแหน่งเลขที่', ps.posNo]]
-            .map(([l, v]) => `<div class="pa-pf-item"><dt>${l}</dt><dd>${sarEsc(v || '—')}</dd></div>`).join('')}
-        </dl>
+        ${docProfileGridHtml([['ชื่อ', pi.name], ['ตำแหน่ง', pi.position], ['กลุ่มสาระฯ', pi.subjectGroup], ['สถานศึกษา', pi.school], ['อายุ', ps.age && ps.age + ' ปี'], ['อายุราชการ', ps.svcY !== '' && `${ps.svcY} ปี ${ps.svcM || 0} เดือน`], ['คุณวุฒิสูงสุด', ps.degree], ['วิชาเอก', ps.major], ['จากสถาบัน', ps.inst], ['วิทยฐานะ', ps.rank], ['ตำแหน่งเลขที่', ps.posNo]], { auto: true })}
         ${miss.length ? `<div class="pa-pf-note"><span>ยังไม่มีในข้อมูลส่วนตัว: ${miss.join(' · ')}</span><button type="button" class="btn btn-ghost btn-sm" id="sar-goto-profile">ไปเพิ่มในข้อมูลส่วนตัว</button></div>` : ''}
       </div>
       <div class="doc-subsec">

@@ -606,6 +606,10 @@ async function carRenderFormView() {
 
   const doc = sys.state.doc || carBlankDoc();
   sys.state.doc = doc;
+  // ข้อมูลผู้จัดทำดึงจากหน้า "ข้อมูลส่วนตัว" (ใช้ค่าที่แคชไว้ก่อน)
+  const prof = AppState.teacherProfile || await carGetProfile();
+  if (docStale(root, seq, sys) || sys.state.tab !== 'form' || sys.state.view !== 'form') return;
+  const pi = carProfileInfo(prof);
 
   const esc = escapeHtml;
   const input = (k, label, ph, max = 200) => `<div class="field u-mt-4"><label for="car-${k}">${label}</label>
@@ -654,7 +658,9 @@ async function carRenderFormView() {
 
     <!-- ปกรายงาน -->
     <details class="doc-section doc-fold" open>
-      <summary class="doc-fold-h"><h2 class="doc-sec-title">ข้อมูลปกรายงาน <span class="doc-sec-note">(ชื่อ ตำแหน่ง โรงเรียน สังกัด ดึงจาก “ข้อมูลส่วนตัว” อัตโนมัติ)</span></h2></summary>
+      <summary class="doc-fold-h"><h2 class="doc-sec-title">ข้อมูลปกรายงาน</h2></summary>
+      ${docProfileGridHtml([['ชื่อ-นามสกุล', pi.name], ['ตำแหน่ง', pi.position], ['สถานศึกษา', pi.school], ['สังกัด', pi.affiliation]])}
+      ${docProfileNoteHtml('ข้อมูลนี้ดึงจากหน้าข้อมูลส่วนตัว' + (!pi.name || !pi.school ? ' — ยังกรอกไม่ครบ' : ''), 'car-goto-profile')}
       <div class="field"><label for="car-title">ชื่อเรื่อง (ต่อจากคำว่า “เรื่อง”)</label>
         <textarea id="car-title" rows="2" maxlength="250" placeholder="เช่น การแก้ปัญหาการส่งงานในรายวิชา… โดยใช้…">${esc(doc.title)}</textarea>
       </div>
@@ -784,6 +790,8 @@ async function carRenderFormView() {
     ta.value = ta.value.trim() ? ta.value.trim() + '\n' + text : text;
     showToast('เติมข้อความจากตารางแล้ว — ตรวจและแก้สำนวนได้');
   });
+
+  document.getElementById('car-goto-profile')?.addEventListener('click', () => { carCollect(); navigate('profile'); });
 
   ['car-back-btn', 'car-cancel-btn'].forEach(id => document.getElementById(id)?.addEventListener('click', () => {
     carCollect();

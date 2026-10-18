@@ -434,10 +434,7 @@ async function idpRenderFormView() {
 
       <div class="doc-subsec">
         <div class="doc-subsec-hd">ข้อมูลส่วนบุคคล <span class="doc-sec-note">(ดึงจากหน้าข้อมูลส่วนตัวอัตโนมัติ)</span></div>
-        ${pi.name ? `
-          <div class="u-mt-4"><span class="u-muted">ชื่อ</span> <span class="u-semibold">${escapeHtml(pi.name)}</span></div>
-          <div class="u-mt-4"><span class="u-muted">ตำแหน่ง</span> <span class="u-semibold">${escapeHtml(pi.position || '—')}</span>${pi.subjectGroup ? ` <span class="u-muted">กลุ่มสาระฯ</span> <span class="u-semibold">${escapeHtml(pi.subjectGroup)}</span>` : ''}</div>
-          <div class="u-mt-4"><span class="u-muted">สถานศึกษา</span> <span class="u-semibold">${escapeHtml(pi.school || '—')}</span>${pi.affiliation ? ` <span class="u-muted">สังกัด</span> <span class="u-semibold">${escapeHtml(pi.affiliation)}</span>` : ''}</div>`
+        ${pi.name ? `${docProfileGridHtml([['ชื่อ', pi.name], ['ตำแหน่ง', pi.position], ['กลุ่มสาระฯ', pi.subjectGroup], ['สถานศึกษา', pi.school], ['สังกัด', pi.affiliation]], { auto: true })}${docProfileNoteHtml('ข้อมูลนี้ดึงจากหน้าข้อมูลส่วนตัว' + (!pi.position || !pi.school ? ' — ยังกรอกไม่ครบ' : ''), 'idp-goto-profile')}`
         : `<div class="u-note">ยังไม่ได้กรอกข้อมูลส่วนตัว — กรอกที่ไอคอนบัญชี (มุมซ้ายล่าง) → ข้อมูลส่วนตัว แล้วกลับมาเปิดแผนนี้ใหม่ ชื่อ/ตำแหน่ง/โรงเรียนจะขึ้นเองและพิมพ์ลงแผนให้</div>`}
       </div>
 
@@ -553,6 +550,7 @@ async function idpRenderFormView() {
     });
   });
 
+  document.getElementById('idp-goto-profile')?.addEventListener('click', () => { idpCollect(); navigate('profile'); });
   document.getElementById('idp-edu-pull')?.addEventListener('click', async () => {
     idpCollect();
     const sd = sys.state.doc;
