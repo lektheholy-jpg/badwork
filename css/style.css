@@ -2317,11 +2317,12 @@ table.tt tr.is-today td.tt-cell { background: color-mix(in srgb, var(--hue-orang
 .doc-ai-all-off .doc-ai-menu .doc-ai-off { display: flex; }
 .doc-ai-item-btn.doc-ai-off { opacity: .45; cursor: not-allowed; }
 @media (max-width: 860px) { .doc-ai-item-btn { min-height: 50px; } }
-/* ช่องที่ AI จะแก้ (.doc-ai-target): แถบพื้นอ่อนกึ่งโปร่งยืดชิดขอบ card ซ้าย-ขวา (ทึบกว่าพื้น card เล็กน้อย เห็นพื้นหลังรำไร) + เส้นบางบน-ล่าง + เว้นอากาศบนล่าง 8px
-   ใช้ ::before วางหลังเนื้อหา จึงไม่ดันเลย์เอาต์ตอนชี้ · ระยะถึงขอบ card ส่งมาทาง --ai-bleed (.doc-section 20px / มือถือ 12px · .pa-witem 16px) */
+/* ช่องที่ AI จะแก้ (.doc-ai-target): แถบพื้นอ่อนกึ่งโปร่งยืดชิดขอบ card ซ้าย-ขวา (ทึบกว่าพื้น card เล็กน้อย เห็นพื้นหลังรำไร) ไม่มีเส้นขอบ · เว้นอากาศบนล่าง 8px · ใช้แบบเดียวกันทุกฟอร์ม
+   ใช้ ::before วางหลังเนื้อหา จึงไม่ดันเลย์เอาต์ตอนชี้ · ระยะถึงขอบ card ส่งมาทาง --ai-bleed (.doc-section 20px / มือถือ 12px · .pa-witem 16px) · ช่องในตารางให้แถบเต็มทั้งเซลล์ */
 .doc-ai-target:not(textarea, input) { position: relative; isolation: isolate; }
-.doc-ai-target:not(textarea, input)::before { content: ""; position: absolute; z-index: -1; inset: -8px calc(var(--ai-bleed, 0px) * -1) -8px calc(var(--ai-bleed-l, var(--ai-bleed, 0px)) * -1); background: color-mix(in srgb, color-mix(in srgb, var(--primary) 12%, var(--card)) 72%, transparent); box-shadow: inset 0 1px 0 color-mix(in srgb, var(--primary) 40%, transparent), inset 0 -1px 0 color-mix(in srgb, var(--primary) 40%, transparent); pointer-events: none; }
-.doc-ai-target:is(textarea, input) { border-radius: var(--radius-xs); background: color-mix(in srgb, color-mix(in srgb, var(--primary) 12%, var(--card)) 72%, transparent); box-shadow: 0 0 0 3px color-mix(in srgb, color-mix(in srgb, var(--primary) 12%, var(--card)) 72%, transparent), 0 0 0 5px color-mix(in srgb, var(--primary) 55%, transparent); } /* ช่องที่ไม่มี .field ห่อ (เช่นในตาราง ID-Plan) ใช้กรอบรอบช่องแทน */
+.doc-ai-target:not(textarea, input)::before { content: ""; position: absolute; z-index: -1; inset: -8px calc(var(--ai-bleed, 0px) * -1) -8px calc(var(--ai-bleed-l, var(--ai-bleed, 0px)) * -1); background: color-mix(in srgb, color-mix(in srgb, var(--primary) 12%, var(--card)) 72%, transparent); pointer-events: none; }
+td.doc-ai-target::before { inset: 0; }
+.doc-ai-target:is(textarea, input) { border-radius: var(--radius-xs); background: color-mix(in srgb, color-mix(in srgb, var(--primary) 12%, var(--card)) 72%, transparent); } /* ช่องเปล่าที่ไม่มีตัวห่อ ใช้พื้นสีเดียวกัน */
 @media (prefers-reduced-motion: reduce) { .doc-ai-row.busy .doc-ai-tile .ico { animation: none; } }
 
 .modal.doc-ai-modal { display: flex; flex-direction: column; overflow: hidden; }

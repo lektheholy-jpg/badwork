@@ -448,7 +448,7 @@ function badworkAiPreviewShow(btn, sys = docSystem()) {
   if (!r || !r.specs) return;
   r.specs.forEach(sp => {
     const t = document.getElementById(sp.el);
-    const w = t && (t.closest('.field') || t);
+    const w = t && (t.closest('.field') || t.closest('td') || t);
     if (w) { w.classList.add('doc-ai-target'); badworkAiPreviewEls.push(w); }
   });
 }
