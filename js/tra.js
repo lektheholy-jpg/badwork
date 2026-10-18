@@ -110,7 +110,7 @@ function traCollect() {
 
   doc.semester = get('tra-semester');
   doc.year     = get('tra-year');
-  doc.signDate = get('tra-signDate');
+  doc.signDate = docSignRead('tra-signDate');
   doc.title    = get('tra-title');
   doc.body     = get('tra-body');
   if (document.getElementById('tra-status')) doc.status = document.getElementById('tra-status').value || 'draft';
@@ -227,7 +227,7 @@ async function traRenderFormView() {
           <input id="tra-year" type="text" inputmode="numeric" maxlength="4" value="${escapeHtml(doc.year)}">
         </label>
         <label>วันที่ลงนาม
-          <input id="tra-signDate" type="text" placeholder="เช่น 8 มิ.ย. 2569" value="${escapeHtml(doc.signDate)}">
+          ${docSignInputHtml('tra-signDate', doc.signDate)}
         </label>
         <label>สถานะ
           <select id="tra-status">
@@ -341,7 +341,7 @@ function traBuildPreviewHtml(d, profile) {
   <div class="d1-sign">
     <div>ผู้จัดทำ</div>
     <div>(${escapeHtml(name)})</div>${d.signDate ? `
-    <div class="d1-mt3">วันที่ ${escapeHtml(d.signDate)}</div>` : ''}
+    <div class="d1-mt3">วันที่ ${escapeHtml(docSignText(d.signDate))}</div>` : ''}
   </div>
 </section>
 

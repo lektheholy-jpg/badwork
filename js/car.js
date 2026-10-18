@@ -323,7 +323,7 @@ function carCollect() {
 
   doc.semester = get('car-semester');
   doc.year     = get('car-year');
-  doc.signDate = get('car-signDate');
+  doc.signDate = docSignRead('car-signDate');
   CAR_TEXT_KEYS.forEach(k => { if (document.getElementById('car-' + k)) doc[k] = get('car-' + k); });
   CAR_LIST_KEYS.forEach(k => { const v = docLRows(k, false); if (v) doc[k] = v; }); // ไม่มีบล็อกในหน้า = คงค่าเดิม
   const st = carStatRead(document);
@@ -641,7 +641,7 @@ async function carRenderFormView() {
           <input id="car-year" type="text" inputmode="numeric" maxlength="4" value="${esc(doc.year)}">
         </label>
         <label>วันที่ลงนาม
-          <input id="car-signDate" type="text" placeholder="เช่น 8 มิ.ย. 2569" value="${esc(doc.signDate)}">
+          ${docSignInputHtml('car-signDate', doc.signDate)}
         </label>
         <label>สถานะ
           <select id="car-status">
@@ -940,7 +940,7 @@ function carBuildPreviewHtml(d, profile) {
     <div>ผู้รายงาน</div>
     <div>(${e(name)})</div>${pi.position ? `
     <div class="d1-mt3">ตำแหน่ง ${e(pi.position)}</div>` : ''}${d.signDate ? `
-    <div class="d1-mt3">วันที่ ${e(d.signDate)}</div>` : ''}
+    <div class="d1-mt3">วันที่ ${e(docSignText(d.signDate))}</div>` : ''}
   </div>`);
 
   return docSheetsHtml(CAR1_CSS, `<div class="car1">

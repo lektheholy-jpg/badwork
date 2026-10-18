@@ -368,7 +368,7 @@ function paDuplicate(src) {
   sys.state.doc = d;
   sys.state.view = 'form';
   renderPAFormView();
-  showToast('คัดลอกแล้ว — แก้ไขตามต้องการ แล้วกด “บันทึกPersonal Agreement” จะได้เป็นฉบับใหม่');
+  showToast('คัดลอกแล้ว — แก้ไขตามต้องการ แล้วกด “บันทึก Personal Agreement” จะได้เป็นฉบับใหม่');
 }
 
 // ------------------------------------------------------------------
@@ -503,8 +503,8 @@ async function renderPAFormView() {
         </div>
       </div>
 
-      <section class="doc-section">
-        <h2 class="doc-sec-title">ผู้จัดทำข้อตกลง</h2>
+      <details class="doc-section doc-fold" open>
+        <summary class="doc-fold-h"><h2 class="doc-sec-title">ผู้จัดทำข้อตกลง</h2></summary>
         <dl class="pa-pf">
           ${item('ชื่อ-นามสกุล', o.name)}${item('ตำแหน่ง', o.position)}
           ${item('วิทยฐานะ', o.standing)}${item('รับเงินเดือนในตำแหน่ง', o.pay)}
@@ -518,10 +518,10 @@ async function renderPAFormView() {
         <div class="doc-checks">
           ${sys.config.classroomTypes.map(([k, l]) => `<label class="doc-check"><input type="checkbox" data-ct="${k}"${d.classroomTypes[k] ? ' checked' : ''}> ${l}</label>`).join('')}
         </div>
-      </section>
+      </details>
 
-      <section class="doc-section">
-        <h2 class="doc-sec-title">ส่วนที่ 1 · 1. ภาระงาน</h2>
+      <details class="doc-section doc-fold" open>
+        <summary class="doc-fold-h"><h2 class="doc-sec-title">ส่วนที่ 1 · 1. ภาระงาน</h2></summary>
         <div class="pa-pf-note u-mb-12">
           <span>1.1 ดึงจากตารางสอน (นับ 1 คาบ = 1 ชั่วโมง) เก็บเป็นสำเนาในเอกสารนี้ — แก้ไขได้ และไม่เปลี่ยนตามตารางสอนภายหลัง · กดปุ่มเพื่อเลือกช่วงเวลาที่จะดึง (ภาคเรียน / ปีการศึกษา / ปีงบประมาณ)</span>
           <button type="button" class="btn btn-ghost btn-sm" id="pa-tt-pull">ดึงจากตารางสอนใหม่</button>
@@ -534,10 +534,10 @@ async function renderPAFormView() {
         ${paLoadBlock('support', '1.2 งานส่งเสริมและสนับสนุนการจัดการเรียนรู้', d.load.support, 'เช่น การมีส่วนร่วมชุมชนการเรียนรู้ทางวิชาชีพ')}
         ${paLoadBlock('quality', '1.3 งานพัฒนาคุณภาพการจัดการศึกษาของสถานศึกษา', d.load.quality, 'เช่น เจ้าหน้าที่ตามโครงสร้างฝ่าย')}
         ${paLoadBlock('policy', '1.4 งานตอบสนองนโยบายและจุดเน้น', d.load.policy, 'ระบุงาน (ถ้ามี)')}
-      </section>
+      </details>
 
-      <section class="doc-section">
-        <h2 class="doc-sec-title">ส่วนที่ 1 · 2. งานที่จะปฏิบัติตามมาตรฐานตำแหน่งครู</h2>
+      <details class="doc-section doc-fold" open>
+        <summary class="doc-fold-h"><h2 class="doc-sec-title">ส่วนที่ 1 · 2. งานที่จะปฏิบัติตามมาตรฐานตำแหน่งครู</h2></summary>
         <div class="u-note u-mb-12">กรอกแต่ละข้อ: งานที่จะทำในแต่ละภาคเรียน · ผลลัพธ์ที่คาดหวังกับผู้เรียน · ตัวชี้วัด — ข้อที่เว้นว่างจะแสดงเป็นช่องว่างในเอกสาร</div>
         ${sys.config.workItems.map(([gid, gt, items]) => `
           <details class="pa-wgroup"${gid === '1' ? ' open' : ''}>
@@ -553,21 +553,21 @@ async function renderPAFormView() {
               </div>`;
             }).join('')}
           </details>`).join('')}
-      </section>
+      </details>
 
-      <section class="doc-section">
-        <h2 class="doc-sec-title">ส่วนที่ 2 ข้อตกลงในการพัฒนางานที่เป็นประเด็นท้าทาย</h2>
+      <details class="doc-section doc-fold" open>
+        <summary class="doc-fold-h"><h2 class="doc-sec-title">ส่วนที่ 2 ข้อตกลงในการพัฒนางานที่เป็นประเด็นท้าทาย</h2></summary>
         ${area('pa-challengeTitle', 'เรื่อง ประเด็นท้าทาย', d.challengeTitle, 3, 'เช่น การพัฒนาทักษะ … ของนักเรียนระดับชั้น … โดยใช้ …')}
         ${area('pa-problem', '1. สภาพปัญหาของผู้เรียนและการจัดการเรียนรู้', d.problem, 5)}
         ${area('pa-method', '2. วิธีการดำเนินการให้บรรลุผล', d.method, 5)}
         ${d.outcome && !d.outcomeQuant && !d.outcomeQual ? `<div class="pa-legacy"><div class="doc-subsec-hd">ผลลัพธ์ที่คาดหวังแบบเดิม (ยังเก็บไว้ — ย้ายไปช่อง 3.1/3.2 ด้านล่างได้)</div><div class="pa-legacy-text">${escapeHtml(d.outcome)}</div></div>` : ''}
         ${area('pa-outcomeQuant', '3.1 ผลลัพธ์การพัฒนาที่คาดหวัง · เชิงปริมาณ', d.outcomeQuant, 4, 'จำนวนห้อง/นักเรียน และร้อยละที่คาดหวัง')}
         ${area('pa-outcomeQual', '3.2 ผลลัพธ์การพัฒนาที่คาดหวัง · เชิงคุณภาพ', d.outcomeQual, 4)}
-      </section>
+      </details>
 
       <div class="pa-form-footer">
         <button type="button" class="btn btn-ghost pa-cancel-btn">ยกเลิก</button>
-        <button type="submit" class="btn btn-primary" id="pa-save-btn">บันทึกPersonal Agreement</button>
+        <button type="submit" class="btn btn-primary" id="pa-save-btn">บันทึก Personal Agreement</button>
       </div>
     </form>`;
 
@@ -619,12 +619,12 @@ async function renderPAFormView() {
     try {
       await paSave(sys.state.doc);
       sys.state.list = null; // clear cache
-      if (typeof islandToast === 'function') islandToast('บันทึกPersonal Agreement แล้ว', 'save');
+      if (typeof islandToast === 'function') islandToast('บันทึก Personal Agreement แล้ว', 'save');
       sys.state.view = 'list';
       await renderPAListView();
     } catch (err) {
       btn.disabled = false;
-      btn.textContent = 'บันทึกPersonal Agreement';
+      btn.textContent = 'บันทึก Personal Agreement';
       showToast(err.code === 'permission-denied' ? 'บันทึกไม่สำเร็จ: ถูกปฏิเสธสิทธิ์ (ต้องอัปเดต firestore.rules ก่อน)' : 'บันทึกไม่สำเร็จ: ' + (err.message || err));
     }
   });

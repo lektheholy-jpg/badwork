@@ -37,6 +37,40 @@ function docThaiDate(iso) {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || '');
   return m ? `${+m[3]} ${DOC_MONTHS[+m[2] - 1] || ''} ${+m[1] + 543}` : '';
 }
+
+// ------------------------------------------------------------------
+// วันที่ลงนามของทุกระบบเอกสาร: เก็บเป็น ISO (yyyy-mm-dd) แบบ PA · ช่องกรอกเป็น <input type="date">
+// เอกสารเก่าที่เก็บเป็นข้อความ (เช่น "8 มิ.ย. 2569") → แปลงเป็นวันที่ให้ตอนเปิดแก้ไข · แปลงไม่ได้ → เก็บข้อความเดิมไว้ ไม่ทำหาย
+// ------------------------------------------------------------------
+const DOC_MONTH_ABBR = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+function docSignToIso(v) {
+  v = String(v || '').trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
+  const s = v.replace(/[๐-๙]/g, c => String(c.charCodeAt(0) - 0x0E50));
+  let d, mo, y, m = /^(\d{1,2})\s*[\/.-]\s*(\d{1,2})\s*[\/.-]\s*(\d{4})$/.exec(s);
+  if (m) { d = +m[1]; mo = +m[2]; y = +m[3]; }
+  else {
+    m = /^(?:วันที่\s*)?(\d{1,2})\s+(\S+?)\s+(?:พ\.ศ\.\s*)?(\d{4})$/.exec(s);
+    if (!m) return '';
+    d = +m[1]; y = +m[3];
+    mo = DOC_MONTHS.indexOf(m[2]) + 1 || DOC_MONTH_ABBR.indexOf(m[2].endsWith('.') ? m[2] : m[2] + '.') + 1;
+    if (!mo) return '';
+  }
+  if (y > 2400) y -= 543;
+  const dt = new Date(Date.UTC(y, mo - 1, d));
+  if (y < 1900 || y > 2200 || dt.getUTCMonth() !== mo - 1 || dt.getUTCDate() !== d) return '';
+  return `${String(y).padStart(4, '0')}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+}
+// แสดง/พิมพ์: ISO → "8 มิถุนายน 2569" · ข้อความเดิม (ยังไม่เคยบันทึกใหม่) แสดงตามที่พิมพ์ไว้ ไม่เปลี่ยนรูปแบบเอง
+const docSignText = v => (/^\d{4}-\d{2}-\d{2}$/.test(v || '') ? docThaiDate(v) : String(v || ''));
+function docSignInputHtml(id, value) {
+  const raw = String(value || '').trim(), iso = docSignToIso(raw), legacy = raw && !iso ? raw : '';
+  return `<input id="${id}" type="date" value="${escapeHtml(iso)}"${legacy ? ` data-legacy="${escapeHtml(legacy)}"` : ''}>${legacy ? `<span class="field-hint">ค่าเดิม “${escapeHtml(legacy)}” แปลงเป็นวันที่ไม่ได้ — เลือกวันที่ใหม่เพื่อแทนที่ (ถ้าไม่เลือก จะเก็บข้อความเดิมไว้)</span>` : ''}`;
+}
+function docSignRead(id) {
+  const el = document.getElementById(id);
+  return el ? (el.value || el.dataset.legacy || '').trim() : '';
+}
 function docNum(v) {
   const n = parseFloat(String(v ?? '').replace(/[๐-๙]/g, c => String(c.charCodeAt(0) - 0x0E50)).replace(',', '.'));
   return Number.isFinite(n) && n >= 0 ? Math.round(n * 100) / 100 : 0;

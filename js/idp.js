@@ -188,7 +188,7 @@ function idpCollect() {
 
   doc.semester  = get('idp-semester');
   doc.year      = get('idp-year');
-  doc.signDate  = get('idp-signDate');
+  doc.signDate = docSignRead('idp-signDate');
   if (document.getElementById('idp-status')) doc.status = document.getElementById('idp-status').value || 'draft';
 
   // รายการส่วนที่ 1 — อ่านจากโครงกลางของ doc-shell.js (หน้าไม่มีบล็อกนั้น = คงค่าเดิม)
@@ -416,7 +416,7 @@ async function idpRenderFormView() {
           <input id="idp-year" type="text" inputmode="numeric" maxlength="4" value="${escapeHtml(doc.year)}">
         </label>
         <label>วันที่ลงนาม
-          <input id="idp-signDate" type="text" placeholder="เช่น 8 มิ.ย. 2569" value="${escapeHtml(doc.signDate)}">
+          ${docSignInputHtml('idp-signDate', doc.signDate)}
         </label>
         <label>สถานะ
           <select id="idp-status">
@@ -428,11 +428,9 @@ async function idpRenderFormView() {
     </div>
 
     <!-- ส่วนที่ 1: ข้อมูลส่วนบุคคล + ภาระงาน (พิมพ์เป็นหน้าแรก แนวตั้ง) -->
-    <section class="doc-section">
-      <div class="doc-sec-head">
-        <h2 class="doc-sec-title">ส่วนที่ 1  ข้อมูลส่วนบุคคล และภาระงาน</h2>
-        <button type="button" class="btn btn-ghost btn-sm" id="idp-tt-pull">ดึงจากตารางสอน</button>
-      </div>
+    <details class="doc-section doc-fold" open>
+      <summary class="doc-fold-h"><h2 class="doc-sec-title">ส่วนที่ 1  ข้อมูลส่วนบุคคล และภาระงาน</h2></summary>
+      <div class="u-mb-12"><button type="button" class="btn btn-ghost btn-sm" id="idp-tt-pull">ดึงจากตารางสอน</button></div>
 
       <div class="doc-subsec">
         <div class="doc-subsec-hd">ข้อมูลส่วนบุคคล <span class="doc-sec-note">(ดึงจากหน้าข้อมูลส่วนตัวอัตโนมัติ)</span></div>
@@ -452,11 +450,11 @@ async function idpRenderFormView() {
       <div class="field u-mt-4"><label for="idp-specialGroup">กลุ่มงาน (ต่อท้ายหัวข้อ "2. งานมอบหมายพิเศษ" ในเอกสาร)</label>
         <input id="idp-specialGroup" type="text" maxlength="80" placeholder="เช่น กลุ่มงานบริหารทั่วไป" value="${escapeHtml(doc.specialGroup)}">
       </div>
-    </section>
+    </details>
 
     <!-- ส่วนที่ 2: รายละเอียดการพัฒนาตนเอง -->
-    <section class="doc-section">
-      <h2 class="doc-sec-title">ส่วนที่ 2  รายละเอียดการพัฒนาตนเอง</h2>
+    <details class="doc-section doc-fold" open>
+      <summary class="doc-fold-h"><h2 class="doc-sec-title">ส่วนที่ 2  รายละเอียดการพัฒนาตนเอง</h2></summary>
       <div class="doc-table-wrap">
         <table class="doc-table doc-table--wide doc-table--stack idp-comp-table">
           <thead>
@@ -475,11 +473,11 @@ async function idpRenderFormView() {
           </tbody>
         </table>
       </div>
-    </section>
+    </details>
 
     <!-- ส่วนที่ 3: สรุปแผนพัฒนา 3 อันดับแรก -->
-    <section class="doc-section">
-      <h2 class="doc-sec-title">ส่วนที่ 3  ตารางสรุปแผนพัฒนาตนเอง <span class="doc-sec-note">(3 อันดับแรก)</span></h2>
+    <details class="doc-section doc-fold" open>
+      <summary class="doc-fold-h"><h2 class="doc-sec-title">ส่วนที่ 3  ตารางสรุปแผนพัฒนาตนเอง <span class="doc-sec-note">(3 อันดับแรก)</span></h2></summary>
       <div class="doc-table-wrap">
         <table class="doc-table doc-table--wide doc-table--stack idp-sum-table">
           <thead>
@@ -494,7 +492,7 @@ async function idpRenderFormView() {
           <tbody>${summaryHtml}</tbody>
         </table>
       </div>
-    </section>
+    </details>
 
     <div class="pa-form-footer">
       ${sys.state.docId ? `<button type="button" class="btn btn-danger-ghost" id="idp-del-btn">${DOC_ICO_DEL} ลบ</button>` : ''}
@@ -792,7 +790,7 @@ function idpBuildPreviewHtml(d, profile) {
   <div class="i1-sign">
     <div>ผู้จัดทำ</div>
     <div>(${escapeHtml(name)})</div>${d.signDate ? `
-    <div class="i1-mt3">วันที่ ${escapeHtml(d.signDate)}</div>` : ''}
+    <div class="i1-mt3">วันที่ ${escapeHtml(docSignText(d.signDate))}</div>` : ''}
   </div>
 </section>
 

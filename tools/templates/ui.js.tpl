@@ -110,7 +110,7 @@ function __ID__Collect() {
 
   doc.semester = get('__ID__-semester');
   doc.year     = get('__ID__-year');
-  doc.signDate = get('__ID__-signDate');
+  doc.signDate = docSignRead('__ID__-signDate');
   doc.title    = get('__ID__-title');
   doc.body     = get('__ID__-body');
   if (document.getElementById('__ID__-status')) doc.status = document.getElementById('__ID__-status').value || 'draft';
@@ -227,7 +227,7 @@ async function __ID__RenderFormView() {
           <input id="__ID__-year" type="text" inputmode="numeric" maxlength="4" value="${escapeHtml(doc.year)}">
         </label>
         <label>วันที่ลงนาม
-          <input id="__ID__-signDate" type="text" placeholder="เช่น 8 มิ.ย. 2569" value="${escapeHtml(doc.signDate)}">
+          ${docSignInputHtml('__ID__-signDate', doc.signDate)}
         </label>
         <label>สถานะ
           <select id="__ID__-status">
@@ -341,7 +341,7 @@ function __ID__BuildPreviewHtml(d, profile) {
   <div class="d1-sign">
     <div>ผู้จัดทำ</div>
     <div>(${escapeHtml(name)})</div>${d.signDate ? `
-    <div class="d1-mt3">วันที่ ${escapeHtml(d.signDate)}</div>` : ''}
+    <div class="d1-mt3">วันที่ ${escapeHtml(docSignText(d.signDate))}</div>` : ''}
   </div>
 </section>
 
