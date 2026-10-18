@@ -2272,13 +2272,13 @@ table.tt tr.is-today td.tt-cell { background: color-mix(in srgb, var(--hue-orang
 .doc-ai-ctx-grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
 
 /* แถวผู้ช่วย AI = ปุ่ม ✦ ต่อท้ายชื่อช่อง + เมนูเลื่อนลง (js/badwork-ai.js · badworkAiRowHtml) */
-.doc-ai-row { --w: var(--hue-gray); position: relative; display: inline-flex; align-items: center; flex: none; margin: 0; padding: 3px; border-radius: var(--radius-pill); background: color-mix(in srgb, var(--w) 14%, var(--card)); color: color-mix(in srgb, var(--w) 70%, var(--ink)); transition: background-color .2s ease, box-shadow .2s ease; }
+.doc-ai-row { --w: var(--hue-blue); position: relative; display: inline-flex; align-items: center; flex: none; margin: 0; padding: 3px; border-radius: var(--radius-xs); background: color-mix(in srgb, var(--w) 14%, var(--card)); color: color-mix(in srgb, var(--w) 70%, var(--ink)); transition: background-color .2s ease, box-shadow .2s ease; }
 .doc-ai-row:hover { background: color-mix(in srgb, var(--w) 22%, var(--card)); }
 .field > .doc-ai-row { margin-bottom: 8px; }
 /* หัวกล่องมาตรฐานที่มีแถวผู้ช่วย AI ต่อท้ายชื่อ (ชื่อซ้าย · ปุ่ม ✦ ติดชื่อ · แคบแล้วตกบรรทัด) — ฟอร์มเอกสารระบบใหม่ ๆ ใช้คลาสนี้เป็น host ของ slots */
 .doc-item-h { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-start; gap: 6px 10px; margin-bottom: 6px; }
 /* ปุ่ม ✦ = แคปซูลเทาอ่อนไม่เด่น (ไอคอนเทา ไม่มีกรอบสี — สีสันอยู่ที่ไอคอนในเมนูแทน) · พักอยู่เป็นไอคอนล้วน → ยืดออกเป็นแคปซูลยาวมีข้อความตอนเปิดเมนู (.open) หรือตอน AI กำลังคิด (.busy) */
-.doc-ai-trigger { position: relative; display: inline-flex; align-items: center; flex: none; height: 28px; padding: 0; border: 0; border-radius: var(--radius-pill); background: transparent; color: inherit; font: inherit; cursor: pointer; transition: transform .12s ease; }
+.doc-ai-trigger { position: relative; display: inline-flex; align-items: center; flex: none; height: 28px; padding: 0; border: 0; border-radius: var(--radius-xs); background: transparent; color: inherit; font: inherit; cursor: pointer; transition: transform .12s ease; }
 .doc-ai-trigger::after { content: ""; position: absolute; inset: -9px -4px; } /* ขยายพื้นที่แตะเป็น 44px บนมือถือ โดยตัวปุ่มยังเล็ก */
 .doc-ai-trigger:active { transform: scale(.94); }
 .doc-ai-trigger:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
@@ -2293,11 +2293,11 @@ table.tt tr.is-today td.tt-cell { background: color-mix(in srgb, var(--hue-orang
 .doc-ai-row.busy .doc-ai-tile .ico { animation: doc-ai-pulse 1s ease-in-out infinite; }
 @keyframes doc-ai-pulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(.78); opacity: .55; } }
 /* เมนู: ปิด = จางหาย+เลื่อนขึ้นเล็กน้อย · เปิด (.show) = จางเข้า · เป็น popover (top-layer) แล้ว JS ส่งตำแหน่งมาทาง --ai-x/--ai-y */
-.doc-ai-menu { position: absolute; left: 0; top: calc(100% + 6px); z-index: 20; min-width: 220px; margin: 0; padding: 6px; border: 1px solid color-mix(in srgb, var(--w) 24%, var(--border)); border-radius: var(--radius-l); background: color-mix(in srgb, var(--w) 10%, var(--card)); color: var(--ink); font-weight: 400; box-shadow: var(--shadow-ink-md); opacity: 0; visibility: hidden; transform: translateY(-6px) scale(.96); transform-origin: top left; transition: opacity .18s ease, transform .2s cubic-bezier(.3, .9, .3, 1), visibility 0s linear .2s; }
+.doc-ai-menu { position: absolute; left: 0; top: calc(100% + 6px); z-index: 20; min-width: 220px; margin: 0; padding: 6px; border: 1px solid color-mix(in srgb, var(--w) 24%, var(--border)); border-radius: var(--radius-s); background: color-mix(in srgb, var(--w) 10%, var(--card)); color: var(--ink); font-weight: 400; box-shadow: var(--shadow-ink-md); opacity: 0; visibility: hidden; transform: translateY(-6px) scale(.96); transform-origin: top left; transition: opacity .18s ease, transform .2s cubic-bezier(.3, .9, .3, 1), visibility 0s linear .2s; }
 .doc-ai-menu:popover-open { position: fixed; right: auto; bottom: auto; left: var(--ai-x, 0); top: var(--ai-y, 0); overflow: visible; }
 .doc-ai-menu.up { transform: translateY(6px) scale(.96); transform-origin: bottom left; }
 .doc-ai-menu.show { opacity: 1; visibility: visible; transform: none; transition-delay: 0s; }
-.doc-ai-item-btn { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 46px; padding: 6px 14px 6px 6px; border: 0; border-radius: var(--radius-pill); background: transparent; color: var(--ink); font: inherit; font-size: 14px; text-align: left; cursor: pointer; transition: background-color .12s ease; }
+.doc-ai-item-btn { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 46px; padding: 6px 14px 6px 6px; border: 0; border-radius: var(--radius-xs); background: transparent; color: var(--ink); font: inherit; font-size: 14px; text-align: left; cursor: pointer; transition: background-color .12s ease; }
 .doc-ai-item-btn:focus-visible { background: color-mix(in srgb, var(--w) 14%, var(--card)); outline: 2px solid var(--w); outline-offset: -2px; }
 .doc-ai-item-btn:active { background: color-mix(in srgb, var(--w) 22%, var(--card)); }
 @media (hover: hover) { .doc-ai-item-btn:hover { background: color-mix(in srgb, var(--w) 14%, var(--card)); } } /* มือถือไม่มี hover — ใช้สีตอนกด (:active) แทน กันค้างสีหลังแตะ */
