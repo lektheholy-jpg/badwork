@@ -2314,7 +2314,7 @@ table.tt tr.is-today td.tt-cell { background: color-mix(in srgb, var(--hue-orang
 .doc-ai-all-off .doc-ai-menu .doc-ai-off { display: flex; }
 .doc-ai-item-btn.doc-ai-off { opacity: .45; cursor: not-allowed; }
 @media (max-width: 860px) { .doc-ai-item-btn { min-height: 50px; } }
-.doc-ai-target { outline: none; box-shadow: none; background: color-mix(in srgb, var(--primary) 6%, transparent) !important; border-radius: var(--radius-s); }
+.doc-ai-target { outline: none; box-shadow: none; background: color-mix(in srgb, var(--primary) 13%, var(--card)) !important; border-left: 3px solid var(--primary-solid) !important; border-radius: var(--radius-s); }
 @media (prefers-reduced-motion: reduce) { .doc-ai-row.busy .doc-ai-tile .ico { animation: none; } }
 
 .modal.doc-ai-modal { display: flex; flex-direction: column; overflow: hidden; }
