@@ -124,6 +124,108 @@ function carResultsSentence(calc) {
 }
 
 // ------------------------------------------------------------------
+// ข้อมูลคะแนนผลสัมฤทธิ์จากรายวิชา (ฟังก์ชันล้วน — ไม่แตะหน้าเว็บ/Firestore ทดสอบได้)
+//   ครูเลือกวิชา (+ห้อง) และหัวข้อคะแนนจากโครงสร้างคะแนน → สรุปเป็นตัวเลขรวมต่อหัวข้อ (ไม่มีชื่อ/รหัสนักเรียน) เก็บใน doc.scoreSel
+//   scoreSel.rows = ตัวเลขต่อหัวข้อ (แสดงในฟอร์ม) · scoreSel.summary = ข้อความบริบทที่ส่งให้ AI (สร้างจาก rows ทุกครั้ง)
+//   ช่องที่ยังไม่มีคะแนน ≠ 0 — ไม่นับเข้าค่าเฉลี่ย (นับแยกเป็น "ยังไม่มีคะแนน") · เกณฑ์ผ่าน = ร้อยละของคะแนนเต็ม (ครูตั้งเอง ค่าเริ่มต้น 50)
+// ------------------------------------------------------------------
+const CAR_SCORE_MAX_ITEMS = 40;
+function carScoreNum(v) {
+  if (v === null || v === undefined || v === '') return null;
+  const n = Number(v);
+  return Number.isFinite(n) && n >= 0 ? n : null;
+}
+const carR2 = n => (n === null || n === undefined ? null : Math.round(n * 100) / 100);
+
+// cells = คะแนนของนักเรียนแต่ละคนในหัวข้อนี้ (ว่าง/ไม่มี = ยังไม่มีคะแนน)
+function carScoreStat(item, cells, passPct) {
+  const max = Number(item.max) || 0;
+  const all = cells || [];
+  const vals = all.map(carScoreNum).filter(v => v !== null);
+  const n = vals.length;
+  const out = {
+    id: String(item.id == null ? '' : item.id), name: String(item.name == null ? '' : item.name), group: String(item.group || ''),
+    max, total: all.length, n, missing: all.length - n,
+    avg: null, pct: null, sd: null, min: null, top: null, pass: null, pPass: null,
+  };
+  if (!n) return out;
+  const avg = vals.reduce((s, v) => s + v, 0) / n;
+  out.avg = carR2(avg);
+  out.pct = max > 0 ? carR2((avg / max) * 100) : null;
+  out.sd = n > 1 ? carR2(Math.sqrt(vals.reduce((s, v) => s + (v - avg) ** 2, 0) / (n - 1))) : null; // S.D. ของกลุ่มตัวอย่าง (n-1)
+  out.min = Math.min(...vals);
+  out.top = Math.max(...vals);
+  if (max > 0) {
+    const need = (max * passPct) / 100;
+    out.pass = vals.filter(v => v + 1e-9 >= need).length;
+    out.pPass = carR2((out.pass / n) * 100);
+  }
+  return out;
+}
+
+// items = หัวข้อที่เลือก [{id,name,max,group}] · rowsByStudent = เอกสารคะแนนของนักเรียนแต่ละคน {รหัสหัวข้อ: คะแนน} (คนที่ยังไม่มีเอกสาร = {})
+function carScoreCompute(items, rowsByStudent, passPct) {
+  const p = Number(passPct);
+  const pp = Number.isFinite(p) && p > 0 && p <= 100 ? p : 50;
+  const stu = (rowsByStudent || []).map(r => r || {});
+  const rows = items.map(a => carScoreStat(a, stu.map(r => r[a.id]), pp));
+  let combined = null;
+  if (items.length > 1) { // รวมหลายหัวข้อ: คิดเฉพาะนักเรียนที่มีคะแนนครบทุกหัวข้อที่เลือก
+    const full = stu.filter(r => items.every(a => carScoreNum(r[a.id]) !== null));
+    if (full.length) {
+      const sums = full.map(r => items.reduce((s, a) => s + carScoreNum(r[a.id]), 0));
+      const sumMax = items.reduce((s, a) => s + (Number(a.max) || 0), 0);
+      combined = carScoreStat({ id: '_all', name: 'รวมทุกหัวข้อที่เลือก', max: sumMax }, sums, pp);
+      combined.total = stu.length;
+      combined.missing = stu.length - full.length;
+    }
+  }
+  return { passPct: pp, students: stu.length, rows, combined };
+}
+
+// ข้อความบริบทของ AI — ตัวเลขรวมล้วน (ไม่มีชื่อ/รหัสนักเรียน)
+function carScoreSummary(sel) {
+  if (!sel || !Array.isArray(sel.rows) || !sel.rows.length) return '';
+  const f = v => (v === null || v === undefined ? '-' : carFmtAvg(v));
+  const line = r => {
+    const head = `- ${r.group ? r.group + ' · ' : ''}${r.name} (คะแนนเต็ม ${f(r.max)}): `;
+    if (!r.n) return head + 'ยังไม่มีคะแนน';
+    return head + `มีคะแนน ${r.n} คน`
+      + ` · ค่าเฉลี่ย ${f(r.avg)}${r.pct === null ? '' : ` (ร้อยละ ${f(r.pct)})`}`
+      + (r.sd === null ? '' : ` · S.D. ${f(r.sd)}`)
+      + (r.pass === null ? '' : ` · ผ่านเกณฑ์ ${r.pass} คน (ร้อยละ ${f(r.pPass)})`)
+      + ` · ต่ำสุด ${f(r.min)} สูงสุด ${f(r.top)}`;
+  };
+  const lines = [`ข้อมูลคะแนนผลสัมฤทธิ์จากระบบ (ตัวเลขรวม ไม่มีชื่อนักเรียน): วิชา ${sel.courseName || '-'} · ${sel.roomLabel || 'ทุกห้อง'} · นักเรียน ${sel.students || 0} คน · เกณฑ์ผ่าน = ร้อยละ ${sel.passPct} ของคะแนนเต็ม`];
+  sel.rows.forEach(r => lines.push(line(r)));
+  if (sel.combined) lines.push(line(sel.combined) + ` [คิดเฉพาะนักเรียนที่มีคะแนนครบทุกหัวข้อ ${sel.combined.n} คน]`);
+  return lines.join('\n').slice(0, 3000);
+}
+
+// ทำให้ scoreSel ที่อ่านจาก Firestore / ค่าเก่า ปลอดภัยและครบฟิลด์เสมอ (ไม่มีวิชา = null) · summary สร้างใหม่จาก rows
+function carNormScoreSel(s) {
+  if (!s || typeof s !== 'object' || !s.courseId) return null;
+  const str = (v, n) => String(v == null ? '' : v).slice(0, n);
+  const num = v => (v === null || v === undefined || v === '' || !Number.isFinite(Number(v)) ? null : Number(v));
+  const row = r => ({
+    id: str(r.id, 80), name: str(r.name, 120), group: str(r.group, 120),
+    max: num(r.max) || 0, total: num(r.total) || 0, n: num(r.n) || 0, missing: num(r.missing) || 0,
+    avg: num(r.avg), pct: num(r.pct), sd: num(r.sd), min: num(r.min), top: num(r.top), pass: num(r.pass), pPass: num(r.pPass),
+  });
+  const pp = num(s.passPct);
+  const out = {
+    courseId: str(s.courseId, 80), courseName: str(s.courseName, 160), sectionId: str(s.sectionId, 80), roomLabel: str(s.roomLabel, 80),
+    ids: (Array.isArray(s.ids) ? s.ids : []).map(x => str(x, 80)).filter(Boolean).slice(0, CAR_SCORE_MAX_ITEMS),
+    passPct: pp !== null && pp > 0 && pp <= 100 ? pp : 50,
+    at: num(s.at) || 0, students: num(s.students) || 0,
+    rows: (Array.isArray(s.rows) ? s.rows : []).filter(r => r && typeof r === 'object').slice(0, CAR_SCORE_MAX_ITEMS).map(row),
+    combined: s.combined && typeof s.combined === 'object' ? row(s.combined) : null,
+  };
+  out.summary = carScoreSummary(out);
+  return out;
+}
+
+// ------------------------------------------------------------------
 // Normalize / blank doc
 // ------------------------------------------------------------------
 const CAR_TEXT_KEYS = ['title', 'subject', 'level', 'location', 'statsTitle', 'background', 'hypothesis', 'scope', 'results', 'satisfaction', 'conclusion'];
@@ -143,6 +245,7 @@ function carNormalize(d) {
     : [];
   d.status   = d.status || 'draft';
   d.aiCtx    = d.aiCtx && typeof d.aiCtx === 'object' ? d.aiCtx : {};
+  d.scoreSel = carNormScoreSel(d.scoreSel); // ข้อมูลคะแนนจากรายวิชาที่เลือกให้ AI ใช้ (null = ไม่ใช้)
   return d;
 }
 
@@ -236,6 +339,194 @@ function carCollect() {
 }
 
 // ------------------------------------------------------------------
+// เลือกวิชา/หัวข้อคะแนนจากระบบ → สรุปเป็นตัวเลขรวมให้ AI (อ่านอย่างเดียว ไม่แก้คะแนนในวิชา)
+//   โหลด: รายการวิชา → โครงสร้างคะแนน + ห้อง → คะแนนนักเรียน (เฉพาะตอนครูเลือก/กด "คำนวณใหม่") · ผลเก็บใน doc.scoreSel เมื่อกดบันทึกเอกสาร
+// ------------------------------------------------------------------
+function carCourseBase(courseId) {
+  return db.collection('users').doc(AppState.user.uid).collection('courses').doc(courseId);
+}
+
+async function carScoreLoadCourses() {
+  const snap = await db.collection('users').doc(AppState.user.uid).collection('courses').orderBy('createdAt', 'desc').get();
+  return snap.docs.filter(d => !d.data().archived).map(d => {
+    const c = d.data();
+    return { id: d.id, name: String(c.name || ''), label: `${c.code ? c.code + ' - ' : ''}${c.name || 'ไม่มีชื่อวิชา'}${c.level ? ' (' + c.level + ')' : ''}` };
+  });
+}
+
+async function carScoreLoadStructure(courseId) {
+  const base = carCourseBase(courseId);
+  const [aSnap, stDoc, secSnap] = await Promise.all([
+    base.collection('assessments').orderBy('order', 'asc').get(),
+    base.collection('settings').doc('structure').get(),
+    base.collection('sections').get(),
+  ]);
+  const assessments = aSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+  const groups = stDoc.exists ? (stDoc.data().groups || []) : [];
+  const sections = secSnap.docs.map(d => ({ id: d.id, room: String(d.data().room || '') }));
+  sections.sort((a, b) => a.room.localeCompare(b.room, 'th', { numeric: true }));
+  return { assessments, groups, sections };
+}
+
+// จัดหัวข้อตามลำดับเดียวกับหน้าคะแนน: คะแนนเก็บ (ยังไม่จัดหมวด → แต่ละหมวด) → กลางภาค → ปลายภาค
+function carScoreGroups(st) {
+  const gi = gid => st.groups.findIndex(g => g.id === gid);
+  const collect = st.assessments.filter(a => a.category === 'collect').map((a, i) => ({ a, i }))
+    .sort((x, y) => (gi(x.a.groupId) - gi(y.a.groupId)) || (x.i - y.i)).map(x => x.a);
+  const mk = (title, list) => ({ title, items: list.map(a => ({ id: a.id, name: String(a.name || '(ไม่มีชื่อ)'), max: Number(a.max) || 0, group: title })) });
+  const out = [];
+  const loose = collect.filter(a => gi(a.groupId) < 0);
+  if (loose.length) out.push(mk('คะแนนเก็บ', loose));
+  st.groups.forEach(g => {
+    const list = collect.filter(a => a.groupId === g.id);
+    if (list.length) out.push(mk(String(g.name || '').trim() || 'หมวดหมู่ (ยังไม่ตั้งชื่อ)', list));
+  });
+  const mid = st.assessments.filter(a => a.category === 'midterm');
+  const fin = st.assessments.filter(a => a.category === 'final');
+  if (mid.length) out.push(mk('กลางภาค', mid));
+  if (fin.length) out.push(mk('ปลายภาค', fin));
+  return out;
+}
+
+// เอกสารคะแนนของนักเรียนทุกคนในห้องที่เลือก (คนที่ยังไม่มีเอกสาร = {}) — ไม่อ่านชื่อ/รหัสนักเรียน
+async function carScoreLoadRows(courseId, sectionIds) {
+  const base = carCourseBase(courseId);
+  const rows = [];
+  for (const sid of sectionIds) {
+    const sec = base.collection('sections').doc(sid);
+    const [stu, sc] = await Promise.all([sec.collection('students').get(), sec.collection('scores').get()]);
+    const byId = new Map(sc.docs.map(d => [d.id, d.data()]));
+    stu.docs.forEach(d => rows.push(byId.get(d.id) || {}));
+  }
+  return rows;
+}
+
+function carScoreOutHtml(sel) {
+  if (!sel || !sel.rows.length) return '';
+  const e = escapeHtml, f = v => (v === null || v === undefined ? '–' : carFmtAvg(v));
+  const tr = (r, cls) => `<tr${cls ? ` class="${cls}"` : ''}>
+      <td data-label="หัวข้อ">${e(r.name)}</td><td data-label="คะแนนเต็ม">${f(r.max)}</td><td data-label="มีคะแนน (คน)">${r.n}</td>
+      <td data-label="ค่าเฉลี่ย">${f(r.avg)}</td><td data-label="ร้อยละ">${f(r.pct)}</td><td data-label="S.D.">${f(r.sd)}</td>
+      <td data-label="ผ่านเกณฑ์ (คน)">${f(r.pass)}</td><td data-label="ร้อยละ">${f(r.pPass)}</td></tr>`;
+  const miss = sel.rows.reduce((m, r) => Math.max(m, r.missing), 0);
+  const when = sel.at ? new Date(sel.at).toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short' }) : '';
+  return `<div class="car-table-wrap"><table class="car-score-table">
+      <thead><tr><th>หัวข้อ</th><th>คะแนน<br>เต็ม</th><th>มีคะแนน<br>(คน)</th><th>ค่าเฉลี่ย</th><th>ร้อยละ</th><th>S.D.</th><th>ผ่านเกณฑ์<br>(คน)</th><th>ร้อยละ</th></tr></thead>
+      <tbody>${sel.rows.map(r => tr(r)).join('')}${sel.combined ? tr(sel.combined, 'car-sc-sum') : ''}</tbody>
+    </table></div>
+    <div class="car-score-meta">${e(sel.courseName)} · ${e(sel.roomLabel || 'ทุกห้อง')} · นักเรียน ${sel.students} คน · เกณฑ์ผ่านร้อยละ ${sel.passPct}${miss ? ` · มีนักเรียนที่ยังไม่มีคะแนนบางหัวข้อ (สูงสุด ${miss} คน — ไม่นับเป็น 0)` : ''}${when ? ` · คำนวณเมื่อ ${e(when)}` : ''}
+      <button type="button" class="btn btn-ghost btn-sm car-sc-refresh">คำนวณใหม่</button></div>`;
+}
+
+function carScoreUiInit(form) {
+  const sys = docSystem();
+  const $ = id => form.querySelector('#' + id);
+  const elCourse = $('car-sc-course'), elRoom = $('car-sc-room'), elPass = $('car-sc-pass'), elItems = $('car-sc-items'), elOut = $('car-sc-out');
+  if (!elCourse) return;
+  const doc = sys.state.doc;
+  const ui = { seq: 0, timer: null, struct: null, groups: [] };
+  const e = escapeHtml;
+  const renderOut = () => { elOut.innerHTML = carScoreOutHtml(doc.scoreSel); };
+
+  function renderItems(checked) {
+    elItems.innerHTML = ui.groups.map((g, gi) => `<fieldset class="car-sc-grp">
+      <legend><label class="car-sc-chk"><input type="checkbox" class="car-sc-all" data-gi="${gi}"> ${e(g.title)} <span class="u-note">(${g.items.length} หัวข้อ)</span></label></legend>
+      ${g.items.map(it => `<label class="car-sc-chk"><input type="checkbox" class="car-sc-it" value="${e(it.id)}"${checked.has(it.id) ? ' checked' : ''}> ${e(it.name)} <span class="u-note">/${it.max}</span></label>`).join('')}
+    </fieldset>`).join('') || '<div class="u-note">วิชานี้ยังไม่มีโครงสร้างคะแนน — ตั้งค่าที่หน้าวิชา แท็บ “โครงสร้างคะแนน” ก่อน</div>';
+    syncAll();
+  }
+  // ติ๊ก "ทั้งหมวด" ให้ตรงกับหัวข้อในหมวด
+  function syncAll() {
+    elItems.querySelectorAll('.car-sc-all').forEach(a => {
+      const boxes = [...a.closest('fieldset').querySelectorAll('.car-sc-it')];
+      const on = boxes.filter(b => b.checked).length;
+      a.checked = boxes.length > 0 && on === boxes.length;
+      a.indeterminate = on > 0 && on < boxes.length;
+    });
+  }
+
+  async function loadCourse(courseId, saved) {
+    const seq = ++ui.seq;
+    elItems.innerHTML = '<div class="u-note">กำลังโหลดโครงสร้างคะแนน…</div>';
+    elRoom.disabled = true;
+    try {
+      const st = await carScoreLoadStructure(courseId);
+      if (seq !== ui.seq) return;
+      ui.struct = st;
+      ui.groups = carScoreGroups(st);
+      elRoom.innerHTML = '<option value="">ทุกห้อง</option>' + st.sections.map(s => `<option value="${e(s.id)}">ห้อง ${e(s.room)}</option>`).join('');
+      elRoom.value = saved && st.sections.some(s => s.id === saved.sectionId) ? saved.sectionId : '';
+      elRoom.disabled = false;
+      renderItems(new Set(saved ? saved.ids : []));
+    } catch (err) {
+      if (seq !== ui.seq) return;
+      elItems.innerHTML = `<div class="car-warn">โหลดโครงสร้างคะแนนไม่สำเร็จ: ${e(err.message || err)}</div>`;
+    }
+  }
+
+  async function recompute() {
+    const courseId = elCourse.value;
+    if (!courseId) { doc.scoreSel = null; renderOut(); return; }
+    if (!ui.struct) return;
+    const seq = ++ui.seq;
+    const ids = [...elItems.querySelectorAll('.car-sc-it:checked')].map(b => b.value);
+    const sectionId = elRoom.value;
+    const base = {
+      courseId, courseName: elCourse.selectedOptions[0]?.dataset.name || '', sectionId,
+      roomLabel: sectionId ? (elRoom.selectedOptions[0]?.textContent || '') : '',
+      ids, passPct: Number(elPass.value) || 50,
+    };
+    if (!ids.length) { doc.scoreSel = carNormScoreSel({ ...base, rows: [] }); renderOut(); return; }
+    elOut.innerHTML = '<div class="u-note">กำลังคำนวณ…</div>';
+    try {
+      const items = ui.groups.flatMap(g => g.items).filter(it => ids.includes(it.id));
+      const data = await carScoreLoadRows(courseId, sectionId ? [sectionId] : ui.struct.sections.map(s => s.id));
+      if (seq !== ui.seq) return;
+      const calc = carScoreCompute(items, data, base.passPct);
+      doc.scoreSel = carNormScoreSel({ ...base, passPct: calc.passPct, at: Date.now(), students: calc.students, rows: calc.rows, combined: calc.combined });
+      renderOut();
+    } catch (err) {
+      if (seq === ui.seq) elOut.innerHTML = `<div class="car-warn">คำนวณไม่สำเร็จ: ${e(err.message || err)}</div>`;
+    }
+  }
+  const later = () => { clearTimeout(ui.timer); ui.timer = setTimeout(recompute, 400); };
+
+  elCourse.addEventListener('change', async () => {
+    doc.scoreSel = null;
+    renderOut();
+    elItems.innerHTML = '';
+    ui.struct = null;
+    elRoom.innerHTML = '<option value="">ทุกห้อง</option>';
+    elRoom.disabled = true;
+    if (elCourse.value) await loadCourse(elCourse.value, null);
+  });
+  elRoom.addEventListener('change', later);
+  elPass.addEventListener('input', later);
+  elItems.addEventListener('change', ev => {
+    const all = ev.target.closest('.car-sc-all');
+    if (all) all.closest('fieldset').querySelectorAll('.car-sc-it').forEach(b => { b.checked = all.checked; });
+    syncAll();
+    later();
+  });
+  elOut.addEventListener('click', ev => { if (ev.target.closest('.car-sc-refresh')) recompute(); });
+
+  // เริ่มต้น: ใส่รายการวิชา · ถ้าเอกสารเคยเลือกไว้ ให้คืนค่าที่เลือก (ตัวเลขที่บันทึกไว้แสดงทันที ไม่ต้องรอโหลด)
+  const saved = doc.scoreSel;
+  elPass.value = String(saved ? saved.passPct : 50);
+  renderOut();
+  carScoreLoadCourses().then(courses => {
+    if (!document.body.contains(elCourse)) return; // ผู้ใช้ออกจากหน้านี้แล้ว
+    const list = courses.slice();
+    if (saved && !list.some(c => c.id === saved.courseId)) list.push({ id: saved.courseId, name: saved.courseName, label: (saved.courseName || 'วิชาที่เลือกไว้') + ' (ไม่พบในรายการวิชาปัจจุบัน)' });
+    elCourse.innerHTML = '<option value="">— ไม่ใช้ข้อมูลคะแนน —</option>' + list.map(c => `<option value="${e(c.id)}" data-name="${e(c.name)}">${e(c.label)}</option>`).join('');
+    if (saved) { elCourse.value = saved.courseId; loadCourse(saved.courseId, saved); }
+  }).catch(err => {
+    elCourse.innerHTML = '<option value="">โหลดรายการวิชาไม่สำเร็จ</option>';
+    console.warn('carScoreLoadCourses', err);
+  });
+}
+
+// ------------------------------------------------------------------
 // LIST VIEW
 // ------------------------------------------------------------------
 async function carRenderListView() {
@@ -320,7 +611,8 @@ async function carRenderFormView() {
   const input = (k, label, ph, max = 200) => `<div class="field u-mt-4"><label for="car-${k}">${label}</label>
         <input id="car-${k}" type="text" maxlength="${max}" placeholder="${esc(ph || '')}" value="${esc(doc[k])}">
       </div>`;
-  const area = (k, label, rows) => `<div class="field u-mt-4"><label for="car-${k}">${label}</label>
+  // หัวช่อง = ชื่อซ้าย · แถวปุ่ม AI ขวา (.doc-item-h เหมือน PA / ID-Plan / SAR) — ตัวต่อ js/car-ai.js ฝังปุ่มที่นี่
+  const area = (k, label, rows) => `<div class="field u-mt-4"><div class="doc-item-h"><label for="car-${k}">${label}</label></div>
         <textarea id="car-${k}" rows="${rows}">${esc(doc[k])}</textarea>
       </div>`;
   const list = (k, title, ph, add) => docLBlockHtml({ key: k, title, rows: doc[k].length ? doc[k] : [''], hours: false, ph, addLabel: add });
@@ -408,6 +700,17 @@ async function carRenderFormView() {
     <!-- 7 ผลการวิเคราะห์ข้อมูล -->
     <section class="doc-section">
       <h2 class="doc-sec-title">7. ผลการวิเคราะห์ข้อมูล</h2>
+      <div class="doc-subsec car-score" id="car-score">
+        <div class="doc-subsec-hd">ข้อมูลคะแนนผลสัมฤทธิ์จากรายวิชา <span class="doc-sec-note">(ไม่บังคับ · ให้ AI ใช้เขียนผลการวิเคราะห์)</span></div>
+        <div class="u-note">เลือกวิชาและหัวข้อคะแนนที่เกี่ยวกับงานวิจัย ระบบสรุปเป็นตัวเลขรวม (ค่าเฉลี่ย ร้อยละ ผู้ผ่านเกณฑ์) ไม่เก็บและไม่ส่งชื่อหรือรหัสนักเรียน · อ่านอย่างเดียว ไม่แก้คะแนนในวิชา</div>
+        <div class="car-score-pick">
+          <div class="field"><label for="car-sc-course">วิชา</label><select id="car-sc-course"><option value="">กำลังโหลดรายการวิชา…</option></select></div>
+          <div class="field"><label for="car-sc-room">ห้อง</label><select id="car-sc-room" disabled><option value="">ทุกห้อง</option></select></div>
+          <div class="field"><label for="car-sc-pass">เกณฑ์ผ่าน (ร้อยละ)</label><input id="car-sc-pass" type="text" inputmode="numeric" maxlength="3" value="50"></div>
+        </div>
+        <div class="car-score-items" id="car-sc-items"></div>
+        <div id="car-sc-out" role="status"></div>
+      </div>
       ${input('statsTitle', 'ชื่อตารางที่ 1 (ต่อจากคำว่า “ตารางที่ 1”)', 'เช่น แสดงการส่งงานผ่านระบบ… ระดับชั้น…', 200)}
       <div class="doc-subsec-hd u-mt-4">จำนวนนักเรียนที่ส่งงาน (กรอกเป็นจำนวนคน — ร้อยละและค่าเฉลี่ยคำนวณให้เอง)</div>
       <div class="car-table-wrap">
@@ -456,6 +759,7 @@ async function carRenderFormView() {
   if (typeof badworkAiMount === 'function') badworkAiMount(root, form, sys); // ปุ่มผู้ช่วย AI (js/badwork-ai.js + ตัวต่อ js/car-ai.js) — ไม่มีไฟล์นี้ฟอร์มก็ทำงานตามเดิม
 
   docLBind(form); // เพิ่ม/ลบแถวของรายการ (วัตถุประสงค์ · ประโยชน์ · ขั้นตอน · เครื่องมือ)
+  carScoreUiInit(form); // เลือกวิชา/หัวข้อคะแนนจากระบบให้ AI ใช้ (doc.scoreSel)
 
   // ตารางสถิติ: คำนวณสดตอนพิมพ์ · เพิ่ม/ลบแถว
   const body = document.getElementById('car-stat-body');

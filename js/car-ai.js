@@ -3,7 +3,7 @@
 //   สร้างโดย tools/new-doc-system.js · รูปแบบเดียวกับ js/idp-ai.js / js/pa-ai.js (README ข้อ 6 ของหัวข้อ "เพิ่มระบบเอกสารใหม่")
 //   • ช่องที่ให้ AI เขียน = ช่องใน config.ai.prompts.fields · id ของ textarea = car-<ช่อง> (เช่น car-body) — ใส่ไว้ใน carRenderFormView (js/car.js)
 //   • พร้อต์/ช่อง/ตารางบริบทอยู่ที่ sys.config.ai.prompts (js/car-config.js)
-//   • ปุ่ม: แถวปุ่มใต้ป้ายของแต่ละช่อง (act write / polish) + ปุ่มบนสุด "ร่างช่องที่ว่างทั้งหมด" (act all)
+//   • ปุ่ม: แถวปุ่มที่หัวช่อง (ขวามือของชื่อช่อง ใน .doc-item-h เหมือน PA/ID-Plan/SAR) (act write / polish) + ปุ่มบนสุด "ร่างช่องที่ว่างทั้งหมด" (act all)
 //   • ไม่เขียนทับช่องที่กรอกแล้ว · ปุ่มเขียนเติมเฉพาะช่องที่ว่าง · ปุ่มปรับสำนวนทำเฉพาะช่องที่มีข้อความ
 //   • บริบทงานเก็บใน doc.aiCtx ของเอกสารในคอลเลกชัน 'docs' (car_docs)
 //   โหลดหลัง js/car.js และ js/badwork-ai.js (LAZY_BUNDLES.car) · ท้ายไฟล์ลงทะเบียน registerDocAi('car', …)
@@ -49,6 +49,7 @@ function carAiContext(sys, known = {}, scope = null) {
     d.hypothesis && `สมมติฐาน: ${d.hypothesis}`,
     d.steps && d.steps.length && `วิธีดำเนินการ: ${numList(d.steps)}`,
     statLine,
+    want('scores') && carScoreSummary(d.scoreSel), // คะแนนผลสัมฤทธิ์รายหัวข้อที่ครูเลือกจากรายวิชา (ตัวเลขรวม ไม่มีชื่อนักเรียน)
     want('note') && c.note && `ข้อมูลประกอบจากครู: ${c.note}`,
   ];
   return lines.filter(Boolean).join('\n');
@@ -59,6 +60,11 @@ function carAiGuide(sys, fields) {
   const used = new Set(fields.map(f => f.field));
   const hints = sys.config.ai.prompts.fields.filter(([f]) => used.has(f)).map(([f, fl, h]) => `- .${f} (${fl}): ${h}`);
   if (!hints.length) return '';
+  // มีข้อมูลคะแนนผลสัมฤทธิ์ → ช่องผลการวิเคราะห์/สรุปใช้ตัวเลขนั้น (ไม่ผูกกับตารางการส่งงาน)
+  if (carScoreSummary(sys.state.doc && sys.state.doc.scoreSel) && (used.has('results') || used.has('conclusion'))) {
+    hints.push('- ข้อมูลคะแนนผลสัมฤทธิ์ในบริบท: ใช้ตัวเลขนั้นอธิบายผลตามวัตถุประสงค์ (หัวข้อที่คะแนนสูง/ต่ำ ร้อยละผู้ผ่านเกณฑ์) ห้ามแต่งตัวเลขเพิ่ม · '
+      + 'ถ้าไม่มีข้อมูลตารางการส่งงาน ไม่ต้องขึ้นต้นด้วย “จากตารางที่ 1 พบว่า” ให้ใช้ “จากข้อมูลคะแนน พบว่า” แทน');
+  }
   return `\n\nแนวทางช่อง (ตามส่วนท้ายของคีย์):\n${hints.join('\n')}`;
 }
 
@@ -73,7 +79,8 @@ function carAiHeading(spec) {
 function carAiSlots(sys, form) {
   const out = [];
   carAiSpecs(sys).forEach(s => {
-    const host = form.querySelector(`#${s.el}`)?.closest('.field');
+    const fld = form.querySelector(`#${s.el}`)?.closest('.field');
+    const host = fld && (fld.querySelector('.doc-item-h') || fld); // หัวช่อง: ชื่อซ้าย · แถวปุ่มขวา (เหมือน PA / ID-Plan / SAR)
     if (!host) return;
     out.push({ host, buttons: [
       { act: 'write', label: `เขียน${s.fieldLabel}`, icon: 'write', data: { field: s.field } },
@@ -112,7 +119,7 @@ registerDocAi('car', {
   itemHeading: carAiHeading,
 
   copy: {
-    consent: 'ข้อความใน วิจัยในชั้นเรียน นี้ (ชื่อเรื่อง วัตถุประสงค์ ตัวเลขรวมในตารางการส่งงาน ข้อความที่กรอกไว้ และ "บริบทงานของฉัน" ไม่รวมชื่อ-นามสกุล) จะถูกส่งไปประมวลผลที่ Google Gemini เฉพาะส่วนที่เกี่ยวกับช่องที่กด\n\n'
+    consent: 'ข้อความใน วิจัยในชั้นเรียน นี้ (ชื่อเรื่อง วัตถุประสงค์ ตัวเลขรวมในตารางการส่งงาน ตัวเลขสรุปคะแนนรายหัวข้อที่เลือกจากรายวิชา (ไม่มีชื่อ-รหัสนักเรียน) ข้อความที่กรอกไว้ และ "บริบทงานของฉัน" ไม่รวมชื่อ-นามสกุล) จะถูกส่งไปประมวลผลที่ Google Gemini เฉพาะส่วนที่เกี่ยวกับช่องที่กด\n\n'
       + 'โปรดอย่าพิมพ์ชื่อหรือข้อมูลที่ระบุตัวนักเรียนลงในช่อง (ใช้เป็นตัวเลขรวมเท่านั้น) และตรวจทานข้อความที่ AI เสนอทุกครั้งก่อนใช้\n\nต้องการดำเนินการต่อหรือไม่?',
     saveLabel: CAR_SAVE_LABEL,
     topPoints: [

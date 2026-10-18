@@ -70,12 +70,12 @@ const CAR_CONFIG = {
 
       // บริบทที่แต่ละช่องต้องใช้ — ส่งเฉพาะที่เกี่ยวข้อง (ภาคเรียน/ตำแหน่ง/ชื่อเรื่อง ส่งทุกครั้ง) · key = ชื่อช่อง · note = บริบทที่ผู้ใช้กรอกใน aiCtx
       scope: {
-        background: ['note'],
+        background: ['note', 'scores'],
         hypothesis: ['note'],
         scope: ['note'],
-        results: ['note'],
+        results: ['note', 'scores'],
         satisfaction: ['note'],
-        conclusion: ['note'],
+        conclusion: ['note', 'scores'],
       },
     },
   },
