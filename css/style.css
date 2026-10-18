@@ -2272,8 +2272,8 @@ table.tt tr.is-today td.tt-cell { background: color-mix(in srgb, var(--hue-orang
 .doc-ai-ctx-grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
 
 /* แถวผู้ช่วย AI = ปุ่ม ✦ ต่อท้ายชื่อช่อง + เมนูเลื่อนลง (js/badwork-ai.js · badworkAiRowHtml) */
-.doc-ai-row { --w: var(--hue-violet); position: relative; display: inline-flex; align-items: center; flex: none; margin: 0; padding: 3px; border-radius: var(--radius-pill); background: var(--primary-tint); color: var(--primary-dark); transition: background-color .2s ease, box-shadow .2s ease; }
-.doc-ai-row:hover { background: color-mix(in srgb, var(--primary) 14%, var(--primary-tint)); }
+.doc-ai-row { --w: var(--hue-violet); position: relative; display: inline-flex; align-items: center; flex: none; margin: 0; padding: 3px; border-radius: var(--radius-pill); background: color-mix(in srgb, var(--w) 14%, var(--card)); color: color-mix(in srgb, var(--w) 70%, var(--ink)); transition: background-color .2s ease, box-shadow .2s ease; }
+.doc-ai-row:hover { background: color-mix(in srgb, var(--w) 22%, var(--card)); }
 .field > .doc-ai-row { margin-bottom: 8px; }
 /* หัวกล่องมาตรฐานที่มีแถวผู้ช่วย AI ต่อท้ายชื่อ (ชื่อซ้าย · ปุ่ม ✦ ติดชื่อ · แคบแล้วตกบรรทัด) — ฟอร์มเอกสารระบบใหม่ ๆ ใช้คลาสนี้เป็น host ของ slots */
 .doc-item-h { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-start; gap: 6px 10px; margin-bottom: 6px; }
@@ -2286,7 +2286,7 @@ table.tt tr.is-today td.tt-cell { background: color-mix(in srgb, var(--hue-orang
 .doc-ai-tile { position: relative; isolation: isolate; display: grid; place-items: center; flex: none; width: 28px; height: 28px; color: var(--on-w); }
 .doc-ai-tile .ico { width: 16px; height: 16px; transition: transform .28s ease; }
 .doc-ai-trig-lbl, .doc-ai-state { display: block; max-width: 0; margin: 0; overflow: hidden; white-space: nowrap; font-size: 13px; font-weight: 600; opacity: 0; transition: max-width .3s cubic-bezier(.3, .9, .3, 1), margin .3s cubic-bezier(.3, .9, .3, 1), opacity .2s ease; }
-.doc-ai-row.open { box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 35%, transparent); }
+.doc-ai-row.open { box-shadow: 0 0 0 1px color-mix(in srgb, var(--w) 40%, transparent); }
 .doc-ai-row.open .doc-ai-trig-lbl { max-width: 8em; margin: 0 12px 0 8px; opacity: 1; }
 .doc-ai-row.open .doc-ai-tile .ico { transform: rotate(90deg); }
 .doc-ai-row.busy .doc-ai-state { max-width: 14em; margin: 0 12px 0 8px; opacity: 1; }
