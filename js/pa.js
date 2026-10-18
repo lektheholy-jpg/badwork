@@ -11,6 +11,8 @@
 //   aiCtx = บริบทงานจริงสั้นๆ ที่ผู้ช่วย AI ใช้ (ระดับชั้น/ห้อง/นักเรียน/ปัญหา/ผลปีก่อน/จุดเน้น) — 1 ฟิลด์ระดับบน ไม่เกิน validDoc(30)
 // ==========================================================================
 
+const PA_SAVE_LABEL = 'บันทึก Personal Agreement'; // ป้ายปุ่มบันทึก (ข้อความล้วน อยู่ท้ายฟอร์ม) — ตัวต่อ AI ใช้ข้อความเดียวกัน (copy.saveLabel)
+
 // ------------------------------------------------------------------
 // ค่าคงที่ของระบบ PA (โครงแบบ PA 1/ส · แท็บ · ชื่อ collection · ค่าของผู้ช่วย AI) อยู่ที่ PA_CONFIG ใน js/pa-config.js
 // และ state ของหน้า (tab/view/docId/doc/list/…) อยู่ที่ระบบเอกสารใน js/doc-system.js — โค้ดในไฟล์นี้อ่านผ่าน const sys = docSystem() เท่านั้น
@@ -483,7 +485,7 @@ async function renderPAFormView() {
       ${isNew ? '' : `<button type="button" class="btn btn-ghost btn-sm pa-dup-btn" title="คัดลอกข้อมูลในฟอร์มนี้เป็นฉบับร่างใหม่">${DOC_ICO_COPY} คัดลอกเป็นฉบับใหม่</button>`}
     </div>
 
-    <form id="pa-form" class="doc-form" novalidate>
+    <form id="pa-form" class="doc-form" autocomplete="off" novalidate>
       <!-- แถบบนฟอร์ม (เหมือน ID-Plan / CAR / TRA / SAR) -->
       <div class="doc-form-header">
         <div class="doc-form-meta">
@@ -492,7 +494,7 @@ async function renderPAFormView() {
             <span class="field-hint" id="pa-period">${escapeHtml(paPeriodText(d.fiscalYear))}</span>
           </label>
           <label>วันที่ลงนาม
-            <input id="pa-signDate" type="date" value="${escapeHtml(d.signDate || '')}">
+            ${docSignInputHtml('pa-signDate', d.signDate)}
           </label>
           <label>สถานะ
             <select id="pa-status">
@@ -567,7 +569,7 @@ async function renderPAFormView() {
 
       <div class="pa-form-footer">
         <button type="button" class="btn btn-ghost pa-cancel-btn">ยกเลิก</button>
-        <button type="submit" class="btn btn-primary" id="pa-save-btn">บันทึก Personal Agreement</button>
+        <button type="button" class="btn btn-primary" id="pa-save-btn">${PA_SAVE_LABEL}</button>
       </div>
     </form>`;
 
@@ -624,10 +626,12 @@ async function renderPAFormView() {
       await renderPAListView();
     } catch (err) {
       btn.disabled = false;
-      btn.textContent = 'บันทึก Personal Agreement';
+      btn.textContent = PA_SAVE_LABEL;
       showToast(err.code === 'permission-denied' ? 'บันทึกไม่สำเร็จ: ถูกปฏิเสธสิทธิ์ (ต้องอัปเดต firestore.rules ก่อน)' : 'บันทึกไม่สำเร็จ: ' + (err.message || err));
     }
   });
+
+  view.querySelector('#pa-save-btn').addEventListener('click', () => form.requestSubmit()); // ปุ่มเป็น type=button เหมือนหน้าอื่น (กด Enter ในช่องไม่บันทึกเอง) — ใช้ตัวจัดการ submit เดิมทั้งหมด
 
   if (typeof badworkAiMount === 'function') badworkAiMount(view, form, sys); // ปุ่มผู้ช่วย AI (js/badwork-ai.js + ตัวต่อ js/pa-ai.js) — ไม่มีไฟล์นี้ฟอร์มก็ทำงานตามเดิม
 
@@ -667,7 +671,7 @@ function paCollectFormData() {
     fiscalYear: get('pa-fiscalYear'),
     status: get('pa-status') || 'draft',
     classroomTypes,
-    signDate: get('pa-signDate'),
+    signDate: docSignRead('pa-signDate'),
     load,
     workItems,
     challengeTitle: get('pa-challengeTitle'),

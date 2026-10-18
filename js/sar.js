@@ -7,6 +7,7 @@
 // ==========================================================================
 
 const SAR = { view: 'list', docId: null, doc: null, list: null };
+const SAR_SAVE_LABEL = 'บันทึก SAR'; // ป้ายปุ่มบันทึก (ข้อความล้วน อยู่ท้ายฟอร์ม) — ตัวต่อ AI ใช้ข้อความเดียวกัน (copy.saveLabel)
 
 // ระดับคุณภาพตามคะแนนเฉลี่ย [ขั้นต่ำ, ป้าย] — แก้เกณฑ์ที่ตรงนี้ที่เดียว
 const SAR_LV = {
@@ -508,7 +509,7 @@ async function sarRenderFormView() {
       ${SAR.docId ? `<button type="button" class="btn btn-danger-ghost" id="sar-del-btn">${DOC_ICO_DEL} ลบ</button>` : ''}
       <button type="button" class="btn btn-ghost" id="sar-print-btn">${DOC_ICO_PRINT} พิมพ์</button>
       <button type="button" class="btn btn-ghost" id="sar-cancel-btn">ยกเลิก</button>
-      <button type="button" class="btn btn-primary" id="sar-save-btn">บันทึก SAR</button>
+      <button type="button" class="btn btn-primary" id="sar-save-btn">${SAR_SAVE_LABEL}</button>
     </div>
   </form>`;
   docSwapIn(root);
@@ -571,7 +572,7 @@ async function sarRenderFormView() {
     btn.disabled = true; btn.textContent = 'กำลังบันทึก…';
     try { await sarSave(d); SAR.list = null; showToast('บันทึกแล้ว'); }
     catch (e) { showToast('บันทึกไม่สำเร็จ: ' + e.message, 'error'); }
-    btn.disabled = false; btn.textContent = 'บันทึก SAR';
+    btn.disabled = false; btn.textContent = SAR_SAVE_LABEL;
   });
   document.getElementById('sar-del-btn')?.addEventListener('click', async () => {
     if (!confirm('ลบ SAR นี้?')) return;
