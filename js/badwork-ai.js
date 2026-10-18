@@ -481,16 +481,24 @@ function badworkAiRefreshBtns(form, sys = docSystem()) {
 //   เบราว์เซอร์ที่ไม่มี Popover API: เมนูใช้ตำแหน่งปกติใต้ปุ่ม (ยังใช้ได้ แค่ไม่หนีกล่องที่ตัดขอบ)
 //   ปิดเมื่อ: กดที่อื่น · Esc · เลื่อนหน้า/ย่อขยายจอ · โฟกัสออกจากแถว · เลือกปุ่มในเมนู
 // ------------------------------------------------------------------
-function badworkAiMenuPlace(trig, menu) {
+function badworkAiMenuPlace(trig, menu, pop = true) {
   const row = trig.closest('.doc-ai-row') || trig;
+  // วัดความกว้างธรรมชาติของเมนูก่อน แล้วส่งเป็น --ai-w ให้ทั้งแคปซูล (ตอนขยาย) และเมนูใช้ค่าเดียวกัน → กว้างเท่ากันพอดี ต่อกันเป็นก้อนเดียว
+  // อ่านขนาดจาก getComputedStyle (ไม่นับ transform scale(.97) ของสถานะเริ่มต้น และยังได้ทศนิยม — getBoundingClientRect จะได้ค่าที่เล็กลง 3%)
+  row.style.removeProperty('--ai-w');
+  const cs = getComputedStyle(menu), w = parseFloat(cs.width), h = parseFloat(cs.height);
+  row.style.setProperty('--ai-w', w.toFixed(2) + 'px');
+  if (!pop) return; // ไม่มี Popover API: เมนูอยู่ใต้แถวด้วยตำแหน่งปกติ ใช้แค่ความกว้างร่วม
   const t = row.getBoundingClientRect(), vw = document.documentElement.clientWidth, vh = window.innerHeight;
-  const edge = 8, w = menu.offsetWidth, h = menu.offsetHeight;
+  const edge = 8;
   const x = Math.max(edge, Math.min(t.left, vw - w - edge));
   const below = t.bottom, above = t.top - h;
   const up = below + h > vh - edge && above > edge; // ล่างไม่พอ + บนพอ → เปิดขึ้นบน
   menu.classList.toggle('up', up);
-  menu.style.setProperty('--ai-x', Math.round(x) + 'px');
-  menu.style.setProperty('--ai-y', Math.round(up ? above : below) + 'px');
+  row.classList.toggle('up', up); // แคปซูลเปลี่ยนมุมที่ติดกับเมนู (บน/ล่าง) ตามทิศที่เมนูเปิด
+  // ไม่ปัดเศษ: แคปซูลกับเมนูใช้ค่าพิกเซลเดียวกัน รอยต่อจึงไม่มีเส้นช่องว่าง
+  menu.style.setProperty('--ai-x', x.toFixed(2) + 'px');
+  menu.style.setProperty('--ai-y', (up ? above : below).toFixed(2) + 'px');
 }
 
 function badworkAiMenuSet(row, open, refocus = false) {
@@ -501,10 +509,8 @@ function badworkAiMenuSet(row, open, refocus = false) {
   row.classList.toggle('open', open);
   trig.setAttribute('aria-expanded', String(open));
   if (open) {
-    if (pop) {
-      try { menu.showPopover(); } catch (err) { /* เปิดอยู่แล้ว */ }
-      badworkAiMenuPlace(trig, menu);
-    }
+    if (pop) { try { menu.showPopover(); } catch (err) { /* เปิดอยู่แล้ว */ } }
+    badworkAiMenuPlace(trig, menu, pop);
     void menu.offsetWidth; // ให้เบราว์เซอร์คำนวณสถานะเริ่มต้นก่อน → transition จึงทำงาน
     menu.classList.add('show');
   } else {
