@@ -27,7 +27,8 @@
     "test:tra": "node tests/tra.test.js",
     "test:sar": "node tests/sar-merge.test.js",
     "test:sarai": "node tests/sar-ai.test.js",
-    "test:sarorder": "node tests/sar-order.test.js"
+    "test:sarorder": "node tests/sar-order.test.js",
+    "test:car": "node tests/car.test.js"
   },
   "devDependencies": {
     "csso-cli": "4.0.2",

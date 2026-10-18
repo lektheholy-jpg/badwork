@@ -2391,6 +2391,19 @@ table.tt tr.is-today td.tt-cell { background: color-mix(in srgb, var(--hue-orang
   .idp-sum-rank { text-align: left; }
 }
 
+/* CAR (วิจัยในชั้นเรียน): ตารางจำนวนนักเรียนที่ส่งงาน — จอแคบเลื่อนแนวนอนในกรอบ · ร้อยละ/ค่าเฉลี่ยคำนวณสดใน js/car.js (carStatRefresh) */
+.car-table-wrap { overflow-x: auto; }
+.car-stat-table { width: 100%; min-width: 620px; border-collapse: collapse; }
+.car-stat-table th { padding: 8px 6px; text-align: center; font-size: 12.5px; font-weight: 600; line-height: 1.35; color: var(--ink-soft); border-bottom: 1.5px solid var(--border); }
+.car-stat-table td { padding: 6px 4px; text-align: center; vertical-align: middle; border-bottom: 1px solid var(--border); }
+.car-stat-table .car-no { width: 8%; font-weight: 700; color: var(--ink); }
+.car-stat-table .car-act { width: 44px; }
+.car-n { text-align: center; font-variant-numeric: tabular-nums; }
+.car-pct { font-size: 13.5px; font-variant-numeric: tabular-nums; color: var(--ink-soft); }
+.car-avg td { font-weight: 700; font-variant-numeric: tabular-nums; color: var(--ink); background: var(--surface-sunken); border-bottom: 0; }
+.car-warn { margin-top: 8px; font-size: 13px; color: var(--danger); }
+.car-warn:empty { display: none; }
+
 /* SAR: ตารางเลือกระดับ (1.2.6 · 1.2.7 · 1.6 · ส่วนที่ 3) — ช่องตัวเลือกกึ่งกลาง กดได้ทั้งช่อง · จอแคบ (กรอบ ≤900px) เปลี่ยนเป็นการ์ด: ข้อความบนสุด ตัวเลือกเรียงเป็นแคปซูลใต้ข้อความ */
 .sar-matrix { min-width: 0; table-layout: fixed; }
 .sar-matrix th { text-align: center; white-space: nowrap; }

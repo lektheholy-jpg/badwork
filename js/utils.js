@@ -548,13 +548,18 @@ const LAZY_MODULES = {
   'tra-config': 'js/tra-config.js',
   tra: 'js/tra.js',
   'tra-ai': 'js/tra-ai.js', // ตัวต่อผู้ช่วย AI ของ แผนการอบรม (registerDocAi) — แกน AI ใช้ร่วมกับระบบอื่น
+  // กลุ่ม วิจัยในชั้นเรียน (car) — สร้างโดย tools/new-doc-system.js · ใช้ doc-system/doc-shell ร่วมกับ PA · ใช้ loadModules(LAZY_BUNDLES.car)
+  'car-config': 'js/car-config.js',
+  car: 'js/car.js',
+  'car-ai': 'js/car-ai.js', // ตัวต่อผู้ช่วย AI ของ วิจัยในชั้นเรียน (registerDocAi) — แกน AI ใช้ร่วมกับระบบอื่น
 };
 const LAZY_BUNDLES = {
   pa: ['doc-system', 'doc-shell', 'pa-config', 'pa', 'badwork-ai-config', 'badwork-ai', 'pa-ai', 'pa-report', 'pa-rpt'],
   idp: ['doc-system', 'doc-shell', 'idp-config', 'idp', 'sar', 'badwork-ai-config', 'badwork-ai', 'idp-ai', 'sar-ai'],
   tra: ['doc-system', 'doc-shell', 'tra-config', 'tra', 'badwork-ai-config', 'badwork-ai', 'tra-ai'],
+  car: ['doc-system', 'doc-shell', 'car-config', 'car', 'badwork-ai-config', 'badwork-ai', 'car-ai'],
   // เฉพาะ config ของทุกระบบเอกสาร (เบา · ไม่มี UI) — privacy.js ใช้รู้ชื่อ collection · ระบบเอกสารใหม่ต้องเพิ่มไฟล์ config ของตัวเองที่นี่
-  docConfigs: ['doc-system', 'pa-config', 'idp-config', 'tra-config'],
+  docConfigs: ['doc-system', 'pa-config', 'idp-config', 'tra-config', 'car-config'],
 };
 // โหลดหลายโมดูลทีละไฟล์ตามลำดับ (สคริปต์ที่แทรกด้วย JS ไม่รับประกันลำดับถ้าโหลดพร้อมกัน)
 async function loadModules(names) { for (const n of [].concat(names)) await loadModule(n); }
