@@ -41,6 +41,9 @@
 - ว่างเปล่า: `.empty-state` (ใส่ `.icon` ได้)
 - หน้าต่างป๊อปอัป: `.modal-backdrop` + `.modal` และใช้ฟังก์ชันที่มีอยู่ (`openConfirmModal`, `closeModal`, `showToast`)
 
+- การ์ดในฟอร์มเอกสารทุกหน้าใช้ `.doc-section` เหมือนกัน · **ย่อ/ขยายเฉพาะหน้าที่การ์ดเยอะและยาว (เช่น CAR)** ใช้ `<details class="doc-section doc-fold" open><summary class="doc-fold-h"><h2 class="doc-sec-title">…</h2></summary>…</details>` (เปิดไว้เป็นค่าเริ่มต้น พับทุกการ์ดในหน้าเดียวกันแบบเดียวกัน) · หน้าสั้น (PA ส่วนหัว, ID-Plan, TRA, SAR) แสดงเต็ม ไม่พับ · กลุ่มงานยาวที่พับในการ์ดเดียว (`.pa-wgroup` ของ PA) คงไว้
+- ไฮไลท์ช่องที่ AI จะแก้ (`.doc-ai-target`) ทุกฟอร์มใช้แถบเดียวกัน: พื้นอ่อนกึ่งโปร่งชิดขอบ card ไม่มีเส้นขอบ เว้นบนล่าง 8px · ระยะถึงขอบ card อยู่ที่ `--ai-bleed` ของ `.doc-section` / `.pa-witem` (ตัวห่อใหม่ที่มี padding เองต้องตั้ง `--ai-bleed` ให้ตรง) · ช่องในตารางจะไฮไลท์ทั้งเซลล์ (`td`)
+
 ## 3. ข้อความ
 
 - หัวหน้า: `<div class="page-header">` + `<h1>` (34px/700 ชิดซ้าย) ถ้ามีปุ่มด้านขวาใช้ `u-flex u-items-start u-between u-wrap u-gap-16`

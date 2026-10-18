@@ -652,54 +652,54 @@ async function carRenderFormView() {
     </div>
 
     <!-- ปกรายงาน -->
-    <section class="doc-section">
-      <h2 class="doc-sec-title">ข้อมูลปกรายงาน <span class="doc-sec-note">(ชื่อ ตำแหน่ง โรงเรียน สังกัด ดึงจาก “ข้อมูลส่วนตัว” อัตโนมัติ)</span></h2>
+    <details class="doc-section doc-fold" open>
+      <summary class="doc-fold-h"><h2 class="doc-sec-title">ข้อมูลปกรายงาน <span class="doc-sec-note">(ชื่อ ตำแหน่ง โรงเรียน สังกัด ดึงจาก “ข้อมูลส่วนตัว” อัตโนมัติ)</span></h2></summary>
       <div class="field"><label for="car-title">ชื่อเรื่อง (ต่อจากคำว่า “เรื่อง”)</label>
         <textarea id="car-title" rows="2" maxlength="250" placeholder="เช่น การแก้ปัญหาการส่งงานในรายวิชา… โดยใช้…">${esc(doc.title)}</textarea>
       </div>
       ${input('subject', 'รายวิชา', 'เช่น วิทยาการคำนวณ', 100)}
       ${input('level', 'ระดับชั้นของนักเรียน', 'เช่น มัธยมศึกษาปีที่ 2', 80)}
       ${input('location', 'อำเภอ / จังหวัดของโรงเรียน', 'เช่น อำเภอแหลมสิงห์ จังหวัดจันทบุรี', 120)}
-    </section>
+    </details>
 
     <!-- 1 ความสำคัญและที่มา -->
-    <section class="doc-section">
-      <h2 class="doc-sec-title">1. ความสำคัญและที่มา</h2>
+    <details class="doc-section doc-fold" open>
+      <summary class="doc-fold-h"><h2 class="doc-sec-title">1. ความสำคัญและที่มา</h2></summary>
       ${area('background', 'ความสำคัญและที่มาของปัญหา', 9)}
-    </section>
+    </details>
 
     <!-- 2 วัตถุประสงค์ -->
-    <section class="doc-section">
-      <h2 class="doc-sec-title">2. วัตถุประสงค์ในการวิจัย</h2>
+    <details class="doc-section doc-fold" open>
+      <summary class="doc-fold-h"><h2 class="doc-sec-title">2. วัตถุประสงค์ในการวิจัย</h2></summary>
       ${list('objectives', 'ข้อวัตถุประสงค์ (ระบบใส่เลขข้อให้เอง)', 'เช่น เพื่อแก้ปัญหาการส่งงานของนักเรียน…', 'เพิ่มวัตถุประสงค์')}
-    </section>
+    </details>
 
     <!-- 3 สมมติฐาน · 4 ขอบเขต -->
-    <section class="doc-section">
-      <h2 class="doc-sec-title">3. สมมติฐานสำหรับการวิจัย</h2>
+    <details class="doc-section doc-fold" open>
+      <summary class="doc-fold-h"><h2 class="doc-sec-title">3. สมมติฐานสำหรับการวิจัย</h2></summary>
       ${area('hypothesis', 'สมมติฐาน', 4)}
-    </section>
-    <section class="doc-section">
-      <h2 class="doc-sec-title">4. ขอบเขตของการวิจัย</h2>
+    </details>
+    <details class="doc-section doc-fold" open>
+      <summary class="doc-fold-h"><h2 class="doc-sec-title">4. ขอบเขตของการวิจัย</h2></summary>
       ${area('scope', 'ประชากร / กลุ่มเป้าหมาย', 3)}
-    </section>
+    </details>
 
     <!-- 5 ประโยชน์ที่คาดว่าจะได้รับ -->
-    <section class="doc-section">
-      <h2 class="doc-sec-title">5. ประโยชน์ที่คาดว่าจะได้รับ</h2>
+    <details class="doc-section doc-fold" open>
+      <summary class="doc-fold-h"><h2 class="doc-sec-title">5. ประโยชน์ที่คาดว่าจะได้รับ</h2></summary>
       ${list('benefits', 'ข้อประโยชน์ (ระบบใส่เลขข้อให้เอง)', 'เช่น นักเรียนส่งงานทันตามกำหนดเวลา', 'เพิ่มประโยชน์')}
-    </section>
+    </details>
 
     <!-- 6 วิธีดำเนินการวิจัย -->
-    <section class="doc-section">
-      <h2 class="doc-sec-title">6. วิธีดำเนินการวิจัย</h2>
+    <details class="doc-section doc-fold" open>
+      <summary class="doc-fold-h"><h2 class="doc-sec-title">6. วิธีดำเนินการวิจัย</h2></summary>
       ${list('steps', 'ขั้นตอนการดำเนินการ (เรียงตามลำดับ)', 'เช่น ศึกษาปัญหาและอุปสรรคที่ทำให้นักเรียนส่งงานช้า', 'เพิ่มขั้นตอน')}
       ${list('tools', 'เครื่องมือที่ใช้ในการวิจัย', 'เช่น แบบประเมินความพึงพอใจ', 'เพิ่มเครื่องมือ')}
-    </section>
+    </details>
 
     <!-- 7 ผลการวิเคราะห์ข้อมูล -->
-    <section class="doc-section">
-      <h2 class="doc-sec-title">7. ผลการวิเคราะห์ข้อมูล</h2>
+    <details class="doc-section doc-fold" open>
+      <summary class="doc-fold-h"><h2 class="doc-sec-title">7. ผลการวิเคราะห์ข้อมูล</h2></summary>
       <div class="doc-subsec car-score" id="car-score">
         <div class="doc-subsec-hd">ข้อมูลคะแนนผลสัมฤทธิ์จากรายวิชา <span class="doc-sec-note">(ไม่บังคับ · ให้ AI ใช้เขียนผลการวิเคราะห์)</span></div>
         <div class="u-note">เลือกวิชาและหัวข้อคะแนนที่เกี่ยวกับงานวิจัย ระบบสรุปเป็นตัวเลขรวม (ค่าเฉลี่ย ร้อยละ ผู้ผ่านเกณฑ์) ไม่เก็บและไม่ส่งชื่อหรือรหัสนักเรียน · อ่านอย่างเดียว ไม่แก้คะแนนในวิชา</div>
@@ -739,13 +739,13 @@ async function carRenderFormView() {
       ${area('results', 'อธิบายผลจากตาราง', 4)}
       <div class="u-mt-4"><button type="button" class="btn btn-ghost btn-sm" id="car-fill-results">เติมข้อความจากตาราง</button></div>
       ${area('satisfaction', 'ผลความพึงพอใจของนักเรียน (ถ้ามี)', 4)}
-    </section>
+    </details>
 
     <!-- สรุปผล -->
-    <section class="doc-section">
-      <h2 class="doc-sec-title">สรุปผลและอภิปรายผล</h2>
+    <details class="doc-section doc-fold" open>
+      <summary class="doc-fold-h"><h2 class="doc-sec-title">สรุปผลและอภิปรายผล</h2></summary>
       ${area('conclusion', 'สรุปและอภิปรายผล', 8)}
-    </section>
+    </details>
 
     <div class="pa-form-footer">
       ${sys.state.docId ? `<button type="button" class="btn btn-danger-ghost" id="car-del-btn">${DOC_ICO_DEL} ลบ</button>` : ''}

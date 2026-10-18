@@ -2320,9 +2320,10 @@ table.tt tr.is-today td.tt-cell { background: color-mix(in srgb, var(--hue-orang
 /* ช่องที่ AI จะแก้ (.doc-ai-target): แถบพื้นอ่อนกึ่งโปร่งยืดชิดขอบ card ซ้าย-ขวา (ทึบกว่าพื้น card เล็กน้อย เห็นพื้นหลังรำไร) ไม่มีเส้นขอบ · เว้นอากาศบนล่าง 8px · ใช้แบบเดียวกันทุกฟอร์ม
    ใช้ ::before วางหลังเนื้อหา จึงไม่ดันเลย์เอาต์ตอนชี้ · ระยะถึงขอบ card ส่งมาทาง --ai-bleed (.doc-section 20px / มือถือ 12px · .pa-witem 16px) · ช่องในตารางให้แถบเต็มทั้งเซลล์ */
 .doc-ai-target:not(textarea, input) { position: relative; isolation: isolate; }
-.doc-ai-target:not(textarea, input)::before { content: ""; position: absolute; z-index: -1; inset: -8px calc(var(--ai-bleed, 0px) * -1) -8px calc(var(--ai-bleed-l, var(--ai-bleed, 0px)) * -1); background: color-mix(in srgb, color-mix(in srgb, var(--primary) 12%, var(--card)) 72%, transparent); pointer-events: none; }
+.doc-ai-target:not(textarea, input)::before { content: ""; position: absolute; z-index: -1; inset: -8px calc(var(--ai-bleed, 0px) * -1) -8px calc(var(--ai-bleed-l, var(--ai-bleed, 0px)) * -1); background: color-mix(in srgb, color-mix(in srgb, var(--primary) 7%, var(--card)) 55%, transparent); pointer-events: none; }
 td.doc-ai-target::before { inset: 0; }
-.doc-ai-target:is(textarea, input) { border-radius: var(--radius-xs); background: color-mix(in srgb, color-mix(in srgb, var(--primary) 12%, var(--card)) 72%, transparent); } /* ช่องเปล่าที่ไม่มีตัวห่อ ใช้พื้นสีเดียวกัน */
+.pa-aifield.doc-ai-target { border-left-color: transparent; } /* เส้นซ้ายสีฟ้าของช่อง PA หายตอนไฮไลท์ ไม่ให้ซ้อนกับแถบ */
+.doc-ai-target:is(textarea, input) { border-radius: var(--radius-xs); background: color-mix(in srgb, color-mix(in srgb, var(--primary) 7%, var(--card)) 55%, transparent); } /* ช่องเปล่าที่ไม่มีตัวห่อ ใช้พื้นสีเดียวกัน */
 @media (prefers-reduced-motion: reduce) { .doc-ai-row.busy .doc-ai-tile .ico { animation: none; } }
 
 .modal.doc-ai-modal { display: flex; flex-direction: column; overflow: hidden; }
@@ -2364,6 +2365,13 @@ td.doc-ai-target::before { inset: 0; }
 .doc-form-meta label { display: flex; flex-direction: column; gap: 5px; color: var(--ink-soft); font-weight: 600; font-size: 13.5px; }
 .doc-section { --ai-bleed: 20px; padding: 18px 20px; background: var(--card-glass); border-radius: var(--radius-m); }
 .doc-sec-title { margin: 0 0 12px; font-size: 16px; font-weight: 700; color: var(--ink); }
+/* การ์ดยาวที่ย่อ/ขยายได้ (.doc-section.doc-fold = <details open>) — ใช้เฉพาะหน้าที่การ์ดเยอะและยาว (เช่น CAR) · หน้าสั้นแสดงเต็มไม่ต้องพับ · หัวข้อ h2 อยู่ใน summary เพื่อคงสไตล์ .doc-sec-title */
+.doc-fold-h { display: flex; align-items: center; justify-content: space-between; gap: 12px; list-style: none; cursor: pointer; }
+.doc-fold-h::-webkit-details-marker { display: none; }
+.doc-fold-h::after { content: ""; flex: none; width: 8px; height: 8px; border: solid var(--ink-soft); border-width: 0 2px 2px 0; rotate: 45deg; translate: 0 -2px; }
+.doc-fold[open] > .doc-fold-h::after { rotate: 225deg; translate: 0 2px; }
+.doc-fold-h:focus-visible { outline: 2px solid var(--primary); outline-offset: 4px; border-radius: var(--radius-xs); }
+.doc-fold:not([open]) .doc-sec-title { margin-bottom: 0; }
 .doc-sec-note { font-size: 12.5px; font-weight: 500; color: var(--ink-soft); }
 .doc-subsec { margin-bottom: 16px; }
 .doc-subsec-hd { margin-bottom: 8px; font-weight: 600; font-size: 14px; color: var(--ink); }
