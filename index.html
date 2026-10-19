@@ -4,6 +4,31 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>เวรกรรม.. — ระบบบันทึกคะแนนสำหรับครู</title>
+<!-- Content Security Policy: กำหนดแหล่งที่มาที่อนุญาต กันการโหลดสคริปต์/สไตล์จากโดเมนแปลกปลอม -->
+<!-- หมายเหตุ: 'unsafe-inline' ใน style-src จำเป็นสำหรับ Google Fonts และ theme.js ที่ตั้งค่า CSS variable ผ่าน inline style -->
+<meta http-equiv="Content-Security-Policy" content="
+  default-src 'self';
+  script-src 'self'
+    https://www.gstatic.com/firebasejs/
+    https://apis.google.com;
+  style-src 'self' 'unsafe-inline'
+    https://fonts.googleapis.com;
+  font-src 'self'
+    https://fonts.gstatic.com;
+  img-src 'self' data: blob:
+    https://lh3.googleusercontent.com
+    https://storage.googleapis.com;
+  connect-src 'self'
+    https://*.googleapis.com
+    https://*.firebaseio.com
+    https://firestore.googleapis.com
+    https://identitytoolkit.googleapis.com
+    https://securetoken.googleapis.com
+    wss://*.firebaseio.com;
+  frame-src https://accounts.google.com;
+  worker-src 'self';
+  manifest-src 'self';
+">
 
 <!-- Favicon -->
 <link rel="icon" type="image/png" sizes="32x32" href="assets/icons/favicon-32x32.png">
@@ -168,9 +193,9 @@
 </div>
 
 <!-- Firebase SDK (compat, ง่ายต่อการใช้กับ HTML/JS ธรรมดา) -->
-<script defer src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
-<script defer src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
-<script defer src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+<script defer src="https://www.gstatic.com/firebasejs/13.0.0/firebase-app-compat.js"></script>
+<script defer src="https://www.gstatic.com/firebasejs/13.0.0/firebase-auth-compat.js"></script>
+<script defer src="https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore-compat.js"></script>
 
 <script defer src="js/firebase-config.js"></script>
 <script defer src="js/island.js"></script>

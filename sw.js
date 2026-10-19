@@ -16,7 +16,7 @@
 // ตัวหน้าเว็บ (js/pwa.js) จะแจ้ง "มีเวอร์ชันใหม่" ให้กดอัปเดตเอง ไม่รีโหลดกลางคันตอนครูกำลังกรอกคะแนน
 // ==========================================================================
 
-const VERSION = '2026-10-19.8';
+const VERSION = '2026-10-19.9';
 const CORE = `myscore-core-${VERSION}`; // ไฟล์แอป (เปลี่ยนเวอร์ชัน = ทิ้งของเก่า)
 const RUNTIME = 'myscore-rt';           // รูป/ไฟล์ที่แคชตอนใช้งาน (คงอยู่ข้ามเวอร์ชัน)
 
@@ -95,9 +95,9 @@ const PRECACHE = [
 
 // ไฟล์ข้ามโดเมน: ถ้าโหลดไม่ได้ตอนติดตั้งก็ไม่เป็นไร (จะแคชตอนใช้งานจริงแทน) — ต้องตรงกับ index.html
 const PRECACHE_CROSS = [
-  'https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js',
-  'https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js',
-  'https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js',
+  'https://www.gstatic.com/firebasejs/13.0.0/firebase-app-compat.js',
+  'https://www.gstatic.com/firebasejs/13.0.0/firebase-auth-compat.js',
+  'https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore-compat.js',
 ];
 const FONT_CSS = 'https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans+Thai:wght@500;600;700&family=Noto+Sans+Thai:wght@400;500;600;700&display=swap';
 
