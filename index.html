@@ -4,6 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>เวรกรรม.. — ระบบบันทึกคะแนนสำหรับครู</title>
+<meta name="description" content="เวรกรรม.. ระบบบันทึกคะแนนและช่วยงานเอกสารสำหรับครู — บันทึกคะแนน รายงาน PA ID-Plan SAR วิจัยในชั้นเรียน">
+<!-- Open Graph -->
+<meta property="og:title" content="เวรกรรม.. — ระบบบันทึกคะแนนสำหรับครู">
+<meta property="og:description" content="บันทึกคะแนนนักเรียน จัดการเอกสาร PA ID-Plan SAR และวิจัยในชั้นเรียน — ใช้งานบนมือถือและคอมพิวเตอร์">
+<meta property="og:type" content="website">
+<meta property="og:image" content="assets/icons/android-chrome-512x512.png">
 <!-- Content Security Policy: กำหนดแหล่งที่มาที่อนุญาต กันการโหลดสคริปต์/สไตล์จากโดเมนแปลกปลอม -->
 <!-- หมายเหตุ: 'unsafe-inline' ใน style-src จำเป็นสำหรับ Google Fonts และ theme.js ที่ตั้งค่า CSS variable ผ่าน inline style -->
 <meta http-equiv="Content-Security-Policy" content="
@@ -197,19 +203,8 @@
 <script defer src="https://www.gstatic.com/firebasejs/13.0.0/firebase-auth-compat.js"></script>
 <script defer src="https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore-compat.js"></script>
 
-<script defer src="js/firebase-config.js"></script>
-<script defer src="js/island.js"></script>
-<script defer src="js/nav-history.js"></script>
-<script defer src="js/utils.js"></script>
-<script defer src="js/auth.js"></script>
-<script defer src="js/dashboard.js"></script>
-<script defer src="js/courses.js"></script>
-<script defer src="js/students.js"></script>
-<script defer src="js/structure.js"></script>
-<script defer src="js/scores.js"></script>
-<script defer src="js/picker-pages.js"></script>
-<script defer src="js/report-page.js"></script>
-<script defer src="js/app.js"></script>
-<script defer src="js/pwa.js"></script>
+<!-- core bundle: firebase-config · island · nav-history · utils · auth · dashboard · courses · students
+     structure · scores · picker-pages · report-page · app · pwa — รวม 14 ไฟล์ สร้างโดย npm run build:js -->
+<script defer src="js/core.bundle.js"></script>
 </body>
 </html>

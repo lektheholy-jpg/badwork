@@ -33,18 +33,9 @@ const PRECACHE = [
   'css/docs.min.css',
   // สคริปต์ที่ index.html โหลดตั้งแต่เปิดหน้า
   'js/theme.js',
-  'js/firebase-config.js',
-  'js/island.js',
-  'js/nav-history.js',
-  'js/utils.js',
-  'js/auth.js',
-  'js/dashboard.js',
-  'js/courses.js',
-  'js/students.js',
-  'js/structure.js',
-  'js/scores.js',
-  'js/picker-pages.js',
-  'js/report-page.js',
+  // core bundle: firebase-config · island · nav-history · utils · auth · dashboard · courses
+  // students · structure · scores · picker-pages · report-page · app · pwa (สร้างโดย npm run build:js)
+  'js/core.bundle.js',
   'js/doc-system.js',
   'js/doc-shell.js',
   'js/pa-config.js',
@@ -65,8 +56,6 @@ const PRECACHE = [
   'js/car-config.js',
   'js/car.js',
   'js/car-ai.js',
-  'js/app.js',
-  'js/pwa.js',
   // โมดูล lazy (LAZY_MODULES ใน js/utils.js) — ต้องมีไว้ ไม่งั้นเปิดหน้ารายงาน/เครื่องมือ/ข้อมูลส่วนตัวตอนออฟไลน์ไม่ได้
   'js/report.js',
   'js/privacy.js',

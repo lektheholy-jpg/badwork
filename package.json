@@ -1,13 +1,16 @@
 {
   "name": "badwork",
   "private": true,
-  "description": "เครื่องมือ build/ตรวจ CSS ของโปรเจกต์ — ล็อกเวอร์ชันแบบเป๊ะ (ไม่ใช้ ^ หรือ ~) เพื่อให้ผลลัพธ์เหมือนเดิมทุกเครื่อง",
+  "description": "เครื่องมือ build/ตรวจ CSS+JS ของโปรเจกต์ — ล็อกเวอร์ชันแบบเป๊ะ (ไม่ใช้ ^ หรือ ~) เพื่อให้ผลลัพธ์เหมือนเดิมทุกเครื่อง",
   "engines": {
     "node": ">=18"
   },
   "scripts": {
     "build:css": "sh build-css.sh",
     "check:css": "sh build-css.sh --check",
+    "build:js": "node tools/build-js.js",
+    "check:js": "node tools/build-js.js --check",
+    "build": "npm run build:css && npm run build:js",
     "test": "node tools/run-tests.js",
     "test:score": "node tests/score-logic.test.js .",
     "prepare": "git config core.hooksPath .githooks || true",
@@ -31,11 +34,12 @@
     "test:sarorder": "node tests/sar-order.test.js",
     "test:car": "node tests/car.test.js",
     "test:docprofile": "node tests/doc-profile.test.js",
-    "ci": "npm test && npm run check:css",
+    "ci": "npm test && npm run check:css && npm run check:js",
     "test:cssb": "node tests/css-bundles.test.js"
   },
   "devDependencies": {
     "csso-cli": "4.0.2",
+    "esbuild": "0.28.2",
     "jsdom": "24.1.3",
     "postcss": "8.4.47"
   }
