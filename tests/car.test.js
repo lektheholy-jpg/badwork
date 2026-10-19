@@ -183,7 +183,14 @@ const R=code=>vm.runInContext(code,ctx);
   ok(!R(`carAiContext(docSystem('car'),{},new Set(['note']))`).includes('ข้อมูลคะแนนผลสัมฤทธิ์'),'บริบท AI: ช่องที่ไม่ขอ scores (เช่น ขอบเขต) ไม่ได้รับข้อมูลคะแนน');
   const sc=k=>R(`docSystem('car').config.ai.prompts.scope.${k}.join(',')`).split(',');
   ok(sc('results').includes('scores')&&sc('conclusion').includes('scores')&&sc('background').includes('scores')&&!sc('satisfaction').includes('scores'),'scope: ผลวิเคราะห์ · สรุป · ที่มา ได้ข้อมูลคะแนน · ความพึงพอใจไม่ได้');
-  ok(R(`carAiGuide(docSystem('car'),[{field:'results'}])`).includes('จากข้อมูลคะแนน พบว่า'),'แนวทางช่องผลวิเคราะห์: มีข้อมูลคะแนน → ไม่บังคับขึ้นต้น “จากตารางที่ 1”');
+  {
+    const keep=R(`JSON.stringify(docSystem('car').state.doc.stats)`);
+    const guide=st=>{R(`docSystem('car').state.doc.stats=${st}`);return R(`carAiGuide(docSystem('car'),[{field:'results'}])`);};
+    const g1=guide('[]'), g2=guide("[{total:'30',on:'28',late:'1',none:'1'}]");
+    R(`docSystem('car').state.doc.stats=${keep}`);
+    ok(g1.includes('ตารางคะแนนในรายงานคือ “ตารางที่ 1”')&&g1.includes('ยังไม่มีตารางการส่งงาน'),'แนวทางช่องผลวิเคราะห์: มีข้อมูลคะแนนแต่ไม่มีตารางการส่งงาน → ตารางคะแนนคือตารางที่ 1');
+    ok(g2.includes('ตารางคะแนนในรายงานคือ “ตารางที่ 2”')&&g2.includes('ตารางที่ 1 คือตารางการส่งงาน'),'แนวทางช่องผลวิเคราะห์: มีตารางการส่งงานด้วย → ตารางคะแนนคือตารางที่ 2');
+  }
   ok(!R(`carAiGuide(docSystem('car'),[{field:'scope'}])`).includes('จากข้อมูลคะแนน พบว่า'),'แนวทางช่องอื่น: ไม่ได้รับข้อความเสริมนี้');
   R(`docSystem('car').state.doc.scoreSel=null`);
   ok(!R(`carAiGuide(docSystem('car'),[{field:'results'}])`).includes('จากข้อมูลคะแนน พบว่า')&&!R(`carAiContext(docSystem('car'),{},null)`).includes('ข้อมูลคะแนนผลสัมฤทธิ์'),'ไม่ได้เลือกข้อมูลคะแนน → ไม่มีข้อความเสริมและไม่มีบริบทคะแนน');
@@ -221,5 +228,24 @@ const R=code=>vm.runInContext(code,ctx);
  ok(HTML.includes('data-route="car-page"'),'index.html: มีปุ่มเมนู car-page');
  ok(/match \/car_docs\/\{docId\}/.test(RULES),'firestore.rules: มี collection car_docs');
 
- console.log(fail?'FAIL '+fail:'ALL PASS');process.exit(fail?1:0);
+ {
+  // เติมตารางการส่งงานจากคะแนน + ตารางคะแนนในเอกสารพิมพ์
+  const items=[{id:'a',name:'ใบงาน 1',max:10,group:'ก'},{id:'b',name:'ใบงาน 2',max:10,group:'ก'}];
+  const rows=[{a:10,b:8},{a:6,b:4},{a:5},{}];
+  const c=JSON.parse(R(`JSON.stringify(carScoreCompute(${JSON.stringify(items)},${JSON.stringify(rows)},60))`));
+  const selJson=JSON.stringify({courseId:'c1',courseName:'วิทย์',roomLabel:'ม.2/1',ids:['a','b'],passPct:60,students:4,rows:c.rows,combined:c.combined});
+  const fill=JSON.parse(R(`JSON.stringify(carStatRowsFromScore(carNormScoreSel(${selJson})))`));
+  ok(fill.length===2&&fill[0].total==='4'&&fill[0].on==='3'&&fill[0].none==='1'&&fill[0].late==='','carStatRowsFromScore: ใบงาน 1 → นักเรียน 4 · มีคะแนน 3 = ส่ง · ไม่มีคะแนน 1 = ไม่ส่ง · ส่งช้าเว้นว่าง');
+  ok(fill[1].on==='2'&&fill[1].none==='2'&&fill.every(r=>Number(r.on)+Number(r.late||0)+Number(r.none)===Number(r.total)),'carStatRowsFromScore: ใบงาน 2 → ส่ง 2 ไม่ส่ง 2 · ผลรวมตรงจำนวนนักเรียนทุกแถว (ไม่ติดคำเตือนผลรวม)');
+  ok(R(`carStatRowsFromScore(null).length`)===0&&R(`carStatRowsFromScore({rows:[]}).length`)===0,'carStatRowsFromScore: ไม่มีข้อมูลคะแนน → ไม่มีแถว');
+  ok(R(`carScoreTableNo({stats:[]})`)===1&&R(`carScoreTableNo({stats:[{total:'30',on:'28',late:'1',none:'1'}]})`)===2,'carScoreTableNo: ไม่มีตารางการส่งงาน = ตารางที่ 1 · มีตารางการส่งงาน = ตารางที่ 2');
+  const html=R(`carScoreTableHtml(carNormScoreSel(${selJson}),2)`);
+  ok(html.includes('ตารางที่ 2')&&html.includes('วิชาวิทย์')&&html.includes('ม.2/1')&&html.includes('ใบงาน 1')&&html.includes('d1-avg'),'carScoreTableHtml: มีหัวตารางที่ 2 · วิชา/ห้อง · แถวหัวข้อ · แถวรวม');
+  ok(R(`carScoreTableHtml(null,1)`)===''&&R(`carScoreTableHtml({rows:[]},1)`)==='','carScoreTableHtml: ไม่มีคะแนนที่เลือก → ไม่พิมพ์ตาราง');
+  const prev=R(`carBuildPreviewHtml({scoreSel:${selJson},stats:[{total:'30',on:'28',late:'1',none:'1'}],results:'x'},null)`);
+  ok(prev.includes('ตารางที่ 1')&&prev.includes('ตารางที่ 2')&&prev.indexOf('ตารางที่ 1')<prev.indexOf('ตารางที่ 2'),'ตัวอย่างพิมพ์: มีทั้งตารางที่ 1 (ส่งงาน) และตารางที่ 2 (คะแนน) เรียงตามลำดับ');
+  const prev2=R(`carBuildPreviewHtml({scoreSel:${selJson},results:''},null)`);
+  ok(prev2.includes('ตารางที่ 1')&&!prev2.includes('ตารางที่ 2'),'ตัวอย่างพิมพ์: ไม่มีตารางการส่งงาน → ตารางคะแนนเป็นตารางที่ 1');
+}
+console.log(fail?'FAIL '+fail:'ALL PASS');process.exit(fail?1:0);
 })().catch(e=>{console.error(e);process.exit(1)});

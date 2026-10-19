@@ -202,6 +202,33 @@ function carScoreSummary(sel) {
   return lines.join('\n').slice(0, 3000);
 }
 
+// เติมตารางการส่งงานจากคะแนนที่เลือก: 1 หัวข้อ = 1 ชิ้นงาน · มีคะแนน = ส่ง (นับเป็น "ส่งตามกำหนด") · ไม่มีคะแนน = ไม่ส่ง · ส่งช้าเว้นว่างให้ครูกรอกเอง
+function carStatRowsFromScore(sel) {
+  if (!sel || !Array.isArray(sel.rows)) return [];
+  return sel.rows.map(r => ({ total: String(r.n + r.missing), on: String(r.n), late: '', none: String(r.missing) }));
+}
+
+// เลขตารางคะแนนในรายงาน: ตารางการส่งงานเป็นตารางที่ 1 เสมอ (ถ้ามี) → ตารางคะแนนเป็นตารางถัดไป
+function carScoreTableNo(d) {
+  return carStatCalc((d && d.stats) || []).count ? 2 : 1;
+}
+
+// ตารางคะแนนในเอกสารพิมพ์ (ใช้ตัวเลขที่ดึงไว้ใน doc.scoreSel — ไม่มีชื่อนักเรียน)
+function carScoreTableHtml(sel, no) {
+  if (!sel || !Array.isArray(sel.rows) || !sel.rows.length) return '';
+  const e = escapeHtml, f = v => (v === null || v === undefined ? '-' : carFmtAvg(v)), p = v => (v === null || v === undefined ? '-' : carFmtPct(v));
+  const tr = (r, cls) => `<tr${cls ? ` class="${cls}"` : ''}><td class="d1-l">${e(r.name)}</td><td>${f(r.max)}</td><td>${r.n}</td><td>${f(r.avg)}</td><td>${p(r.pct)}</td><td>${f(r.sd)}</td><td>${f(r.pass)}</td><td>${p(r.pPass)}</td></tr>`;
+  const room = sel.roomLabel ? ` ${e(sel.roomLabel)}` : '';
+  return `<div class="d1-h d1-cap"><b>ตารางที่ ${no}</b> แสดงคะแนนผลสัมฤทธิ์ของนักเรียน วิชา${e(sel.courseName)}${room} จำนวน ${sel.students} คน (เกณฑ์ผ่านร้อยละ ${sel.passPct})</div>
+<table class="d1-tb">
+  <thead>
+    <tr><th rowspan="2" class="d1-w25">หัวข้อ</th><th rowspan="2">คะแนนเต็ม</th><th rowspan="2">จำนวนนักเรียน</th><th rowspan="2">ค่าเฉลี่ย</th><th rowspan="2">ร้อยละ</th><th rowspan="2">S.D.</th><th colspan="2">ผ่านเกณฑ์</th></tr>
+    <tr><th>จำนวน</th><th>ร้อยละ</th></tr>
+  </thead>
+  <tbody>${sel.rows.map(r => tr(r)).join('')}${sel.combined ? tr(sel.combined, 'd1-avg') : ''}</tbody>
+</table>`;
+}
+
 // ทำให้ scoreSel ที่อ่านจาก Firestore / ค่าเก่า ปลอดภัยและครบฟิลด์เสมอ (ไม่มีวิชา = null) · summary สร้างใหม่จาก rows
 function carNormScoreSel(s) {
   if (!s || typeof s !== 'object' || !s.courseId) return null;
@@ -717,6 +744,8 @@ async function carRenderFormView() {
         </div>
         <div class="car-score-items" id="car-sc-items"></div>
         <div id="car-sc-out" role="status"></div>
+        <div class="u-mt-4"><button type="button" class="btn btn-ghost btn-sm" id="car-sc-fill-stats">เติมตารางการส่งงานจากคะแนนที่เลือก</button>
+          <span class="u-muted car-score-fillhint">ช่องที่ไม่มีคะแนน = ไม่ส่งงาน · ส่งช้ากรอกเองในตาราง</span></div>
       </div>
       ${input('statsTitle', 'ชื่อตารางที่ 1 (ต่อจากคำว่า “ตารางที่ 1”)', 'เช่น แสดงการส่งงานผ่านระบบ… ระดับชั้น…', 200)}
       <div class="doc-subsec-hd u-mt-4">จำนวนนักเรียนที่ส่งงาน (กรอกเป็นจำนวนคน — ร้อยละและค่าเฉลี่ยคำนวณให้เอง)</div>
@@ -742,6 +771,7 @@ async function carRenderFormView() {
         </table>
       </div>
       <div class="car-warn" id="car-stat-warn" role="status"></div>
+      <div class="u-note" id="car-stat-map" role="status" hidden></div>
       <div class="u-mt-4"><button type="button" class="btn btn-ghost btn-sm" id="car-add-row">${DOC_ICO_ADD} เพิ่มชิ้นงาน</button></div>
       ${area('results', 'อธิบายผลจากตาราง', 4)}
       <div class="u-mt-4"><button type="button" class="btn btn-ghost btn-sm" id="car-fill-results">เติมข้อความจากตาราง</button></div>
@@ -782,6 +812,19 @@ async function carRenderFormView() {
     if (!del) return;
     del.closest('tr').remove();
     carStatRefresh(form);
+  });
+  document.getElementById('car-sc-fill-stats')?.addEventListener('click', () => {
+    const sel = sys.state.doc.scoreSel;
+    const rows = carStatRowsFromScore(sel);
+    if (!rows.length) { showToast('เลือกวิชาและหัวข้อคะแนนก่อน แล้วค่อยเติมตาราง'); return; }
+    const cur = carStatRead(form) || [];
+    if (cur.some(r => CAR_STAT_KEYS.some(k => r[k])) && !confirm('แทนที่ตารางการส่งงานที่กรอกไว้ ด้วยข้อมูลจากคะแนนที่เลือก?')) return;
+    body.innerHTML = rows.map((r, i) => carStatRowHtml(r, i)).join('');
+    carStatRefresh(form);
+    const map = document.getElementById('car-stat-map');
+    map.textContent = 'ชิ้นงานที่ ' + sel.rows.map((r, i) => `${i + 1} = ${r.name}`).join(' · ') + ' — นับ "มีคะแนน" เป็นส่งตามกำหนด และ "ไม่มีคะแนน" เป็นไม่ส่ง · ถ้ามีคนส่งช้า ให้ย้ายตัวเลขจากช่องส่งตามกำหนดมาใส่ช่องส่งช้า';
+    map.hidden = false;
+    showToast(`เติมตารางจากคะแนนแล้ว ${rows.length} ชิ้นงาน — ตรวจและแก้ก่อนใช้`);
   });
   document.getElementById('car-fill-results')?.addEventListener('click', () => {
     const text = carResultsSentence(carStatCalc(carStatRead(form)));
@@ -861,6 +904,7 @@ const CAR1_CSS = `
 .car1 .d1-tb th,.car1 .d1-tb td{border:1px solid #000;padding:.12em .2em;text-align:center;vertical-align:middle}
 .car1 .d1-tb th{font-weight:700}
 .car1 .d1-tb .d1-avg td{font-weight:700}
+.car1 .d1-tb td.d1-l{text-align:left}
 .car1 .d1-w11{width:11%}
 .car1 .d1-w13{width:13%}
 .car1 .d1-w25{width:25%}
@@ -941,7 +985,9 @@ function carBuildPreviewHtml(d, profile) {
   if (d.tools.length) parts.push(`<div class="d1-sub">เครื่องมือที่ใช้ในการวิจัย</div>`, bullets(d.tools));
   parts.push(h('7. ผลการวิเคราะห์ข้อมูล'));
   if (table) parts.push(table);
-  if (d.results.trim() || !table) parts.push(paras(d.results));
+  const scoreTable = carScoreTableHtml(d.scoreSel, carScoreTableNo(d));
+  if (scoreTable) parts.push(scoreTable);
+  if (d.results.trim() || !(table || scoreTable)) parts.push(paras(d.results));
   if (d.satisfaction.trim()) parts.push(paras(d.satisfaction));
   parts.push(h('สรุปผล'), paras(d.conclusion));
   parts.push(`<div class="d1-sign">
