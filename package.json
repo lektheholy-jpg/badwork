@@ -31,7 +31,8 @@
     "test:sarorder": "node tests/sar-order.test.js",
     "test:car": "node tests/car.test.js",
     "test:docprofile": "node tests/doc-profile.test.js",
-    "ci": "npm test && npm run check:css"
+    "ci": "npm test && npm run check:css",
+    "test:cssb": "node tests/css-bundles.test.js"
   },
   "devDependencies": {
     "csso-cli": "4.0.2",

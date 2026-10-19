@@ -16,7 +16,9 @@
 - ค่าที่มาจากข้อมูล ส่งผ่านตัวแปร CSS เท่านั้น: `style="--c:…"` (สี) · `--p` (ความกว้าง %) · `--w` (สีวิดเจ็ต) แล้วให้ CSS เป็นคนนำไปใช้
 - สีใช้ `var(--…)` เท่านั้น ห้ามเขียนรหัสสีตรงๆ (โหมดมืดจะไม่ทำงาน)
 - `!important` ใช้ได้เฉพาะ `.hidden` และ `prefers-reduced-motion`
-- แก้ `css/style.css` เท่านั้น ห้ามแก้ `style.min.css` ด้วยมือ
+- แก้ `css/style.css` เท่านั้น ห้ามแก้ `style.min.css` / `docs.min.css` ด้วยมือ
+- **CSS แยกเป็น 2 ก้อน (แหล่งเดียวคือ `style.css`)**: กฎที่อยู่ในบล็อก `/* @bundle docs … */ … /* @endbundle */` ท้ายไฟล์ → `css/docs.min.css` (โหลดตอนเปิดหน้าระบบเอกสาร PA · ID-Plan · วิจัยในชั้นเรียน · …) · ที่เหลือ → `css/style.min.css` (โหลดตอนเปิดแอป) · `./build-css.sh` สร้างทั้งสองไฟล์ · `tools/split-css.js` ตรวจให้ว่า (1) ทุก selector ในบล็อกมี class/id ที่หน้าหลักไม่ใช้ (2) ไม่มีกฎของหน้าหลักอยู่หลังบล็อก (ลำดับการทับกันต้องเท่าเดิม) — **กฎใหม่ของระบบเอกสารวางในบล็อกนี้ · กฎที่ใช้ร่วมกับหน้าหลัก (เช่น `.card` `.btn`) วางไว้ก่อนบล็อก**
+- `docs.min.css` โหลดผ่าน `loadStyle('docs')` (`js/utils.js`) พร้อม `doc-shell` (`MODULE_STYLES`) และรอเสร็จก่อนวาดหน้า · เพิ่มก้อนใหม่ = ใส่ `@bundle <ชื่อ>` + เพิ่มใน `LAZY_STYLES`/`MODULE_STYLES` + `PRECACHE` ใน `sw.js` · เทสต์: `npm run test:cssb`
 
 ตัวเช็ก `tools/check-inline.js` (รันใน `build-css.sh`) ตรวจเฉพาะ `style="…"` ที่เป็นค่าคงที่ใน `js/*.js` และ `!important` ใน CSS ส่วน `<style>` ในไฟล์ JS และ `el.style.*` ยังต้องดูเองตอนรีวิว
 
@@ -43,6 +45,7 @@ npm run test:pa          # กลุ่มหน้า Personal Agreement: โ�
 npm run test:worker      # พร็อกซี Gemini (worker/worker.js): ตรวจ token/email_verified · rate limit ต่อ uid · คีย์อยู่ใน header
 npm run test:priv        # ส่งออก/ลบบัญชีครอบคลุมเอกสารทุกระบบ (pa_*) และหยุดก่อนลบถ้าโหลด config ไม่ได้
 npm run test:docprint    # ตัวช่วยพิมพ์กลาง (docWaitFonts · docPrintWindow ใน doc-shell.js) + กันไม่ให้ window.open/โค้ดรอฟอนต์หลุดนอก doc-shell.js
+npm run test:cssb        # แยก CSS: กฎครบทั้งสองก้อน · กฎหน้าหลักไม่หลุดเข้า docs · ตัวโหลดสไตล์ (รอสไตล์ · ไม่แทรกสคริปต์ซ้ำ)
 npm run test:docprofile  # ตัวช่วยกลางข้อมูลส่วนตัว (docGetProfile · docProfileInfo ใน doc-shell.js) + กันไม่ให้แต่ละระบบ/เทมเพลตเขียนสำเนาเอง
 npm run test:ttscope     # ตารางสอน: ขอบเขตรายวิชาตามปี/ภาคเรียน
 npm run test:idp         # ID-Plan: รายการ/แผน และไม่ปนกับ PA
@@ -54,7 +57,7 @@ npm run check:sw         # PRECACHE ใน sw.js ตรงกับไฟล์�
 npm run test:docprev     # โครงหน้าตัวอย่างกลาง (docRenderPreview · docPaginate · docFitSheets · docWatchResize) + หน้าตัวอย่าง ID-Plan จริง + กันโค้ด resize/zoom/ตัดหน้า/CSS แถบตัวอย่างหลุดเข้าไฟล์ระบบ
 ```
 
-- หน้าเว็บโหลด `css/style.min.css` · commit `.min` และ `package-lock.json` ด้วย
+- หน้าเว็บโหลด `css/style.min.css` (หน้าเอกสารโหลด `css/docs.min.css` เพิ่ม) · commit ไฟล์ `.min` ทั้งสองและ `package-lock.json` ด้วย
 - `csso-cli`, `postcss`, `jsdom` ล็อกเวอร์ชันเป๊ะใน `package.json` (ไม่ใช้ `^`/`~`)
 - `npm install` รัน `prepare` ซึ่งตั้ง `core.hooksPath` เป็น `.githooks` — มี `.githooks/pre-commit` ที่รัน `./build-css.sh` แล้ว `git add css/style.min.css` ให้เองทุกครั้งที่ commit (ข้ามชั่วคราวด้วย `git commit --no-verify`) · ต้องให้ไฟล์ hook เป็น executable (`chmod +x .githooks/pre-commit`)
 - CI: `.github/workflows/ci.yml` รัน `npm ci` + `npm run ci` ทุก push เข้า `main` และทุก pull request

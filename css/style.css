@@ -2255,6 +2255,26 @@ table.tt tr.is-today td.tt-cell { background: color-mix(in srgb, var(--hue-orang
 .empty-sub { margin-bottom: 20px; color: var(--ink-soft); }
 .empty-state .icon-violet { background: var(--hue-violet); }
 
+/* ----- ปุ่มย้อนขึ้นบน: ลอยมุมขวาล่าง โผล่เมื่อเลื่อนลงมา (js/app.js initToTop) · หน้ายาว เช่น SAR · PA · ตารางคะแนน ----- */
+.to-top {
+  position: fixed; right: 24px; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); z-index: 44;
+  display: grid; place-items: center; width: 46px; height: 46px; padding: 0; border: none; border-radius: 50%;
+  color: var(--primary-dark); background: color-mix(in srgb, var(--card) var(--glass, 60%), transparent); box-shadow: 0 10px 30px var(--shadow-ink-md), inset 0 0 0 1px var(--border);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.6); backdrop-filter: blur(var(--glass-blur)) saturate(1.6);
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+  opacity: 0; visibility: hidden; transform: translateY(10px);
+  transition: opacity .2s ease, transform .2s ease, visibility .2s ease, background-color .2s ease, color .2s ease;
+}
+.to-top svg { display: block; width: 22px; height: 22px; }
+.to-top.is-show { opacity: 1; visibility: visible; transform: none; }
+.to-top.is-show:active { transform: scale(.94); }
+.to-top:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
+@media (hover: hover) { .to-top:hover { background: var(--primary-solid); color: var(--on-primary); } }
+@media (max-width: 860px) { .to-top { right: 16px; bottom: calc(82px + env(safe-area-inset-bottom, 0px)); } } /* พ้นแถบเมนูล่าง */
+@media (prefers-reduced-motion: reduce) { .to-top { transition: none; } }
+@media print { .to-top { display: none; } }
+
+/* @bundle docs — ส่วนนี้แยกเป็น css/docs.min.css โหลดเมื่อเปิดหน้าระบบเอกสาร (PA · ID-Plan · วิจัยในชั้นเรียน · …) — กฎในนี้ต้องไม่ใช้ class ที่หน้าหลักใช้ (tools/split-css.js ตรวจให้) · วางกฎใหม่ของระบบเอกสารไว้ในบล็อกนี้ */
 /* ==========================================================================
    ผู้ช่วย AI ในฟอร์มเอกสาร (แกน js/badwork-ai.js · ใช้ร่วมทุกระบบ) — การ์ดบนสุด · แถวปุ่มใต้ช่อง · หน้าต่างตรวจทาน
    ชื่อ class ขึ้นต้น .doc-ai- (ไม่ผูกกับระบบใด) · .doc-ai-ctx-grid เป็นของตัวต่อ PA (js/pa-ai.js)
@@ -2524,22 +2544,4 @@ td.doc-ai-target::before { inset: 0; }
 @media (max-width: 540px) {
   .doc-form-header { align-items: stretch; }
 }
-
-/* ----- ปุ่มย้อนขึ้นบน: ลอยมุมขวาล่าง โผล่เมื่อเลื่อนลงมา (js/app.js initToTop) · หน้ายาว เช่น SAR · PA · ตารางคะแนน ----- */
-.to-top {
-  position: fixed; right: 24px; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); z-index: 44;
-  display: grid; place-items: center; width: 46px; height: 46px; padding: 0; border: none; border-radius: 50%;
-  color: var(--primary-dark); background: color-mix(in srgb, var(--card) var(--glass, 60%), transparent); box-shadow: 0 10px 30px var(--shadow-ink-md), inset 0 0 0 1px var(--border);
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.6); backdrop-filter: blur(var(--glass-blur)) saturate(1.6);
-  cursor: pointer; -webkit-tap-highlight-color: transparent;
-  opacity: 0; visibility: hidden; transform: translateY(10px);
-  transition: opacity .2s ease, transform .2s ease, visibility .2s ease, background-color .2s ease, color .2s ease;
-}
-.to-top svg { display: block; width: 22px; height: 22px; }
-.to-top.is-show { opacity: 1; visibility: visible; transform: none; }
-.to-top.is-show:active { transform: scale(.94); }
-.to-top:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
-@media (hover: hover) { .to-top:hover { background: var(--primary-solid); color: var(--on-primary); } }
-@media (max-width: 860px) { .to-top { right: 16px; bottom: calc(82px + env(safe-area-inset-bottom, 0px)); } } /* พ้นแถบเมนูล่าง */
-@media (prefers-reduced-motion: reduce) { .to-top { transition: none; } }
-@media print { .to-top { display: none; } }
+/* @endbundle */

@@ -15,20 +15,33 @@ fi
 node tools/check-inline.js
 node tools/check-sw.js
 node tools/check-css.js css/style.css
+node tools/split-css.js --verify
 
 SRC=css/style.css
-OUT=css/style.min.css
 CSSO="node_modules/.bin/csso"
 
-if [ "$1" = "--check" ]; then
-  TMP="$(mktemp)"
-  "$CSSO" "$SRC" --no-restructure -o "$TMP"
-  if cmp -s "$TMP" "$OUT"; then
-    rm -f "$TMP"; echo "✓ $OUT ตรงกับ $SRC"
+# แยก style.css ตาม /* @bundle … */ แล้วย่อทีละก้อน (ดู tools/split-css.js)
+#   core.css → css/style.min.css (โหลดตอนเปิดแอป) · docs.css → css/docs.min.css (โหลดตอนเปิดหน้าระบบเอกสาร)
+PARTS="$(mktemp -d)"
+trap 'rm -rf "$PARTS"' EXIT
+node tools/split-css.js "$PARTS" >/dev/null
+
+# ชื่อไฟล์ที่ได้: core → css/style.min.css · ชื่ออื่น → css/<ชื่อ>.min.css
+out_of() { if [ "$1" = "core" ]; then echo css/style.min.css; else echo "css/$1.min.css"; fi; }
+
+STATUS=0
+for part in "$PARTS"/*.css; do
+  name="$(basename "$part" .css)"
+  OUT="$(out_of "$name")"
+  if [ "$1" = "--check" ]; then
+    TMP="$(mktemp)"
+    "$CSSO" "$part" --no-restructure -o "$TMP"
+    if cmp -s "$TMP" "$OUT"; then echo "✓ $OUT ตรงกับ $SRC"
+    else echo "✗ $OUT ไม่ตรงกับ $SRC — รัน ./build-css.sh แล้ว commit ไฟล์ .min ด้วย" >&2; STATUS=1; fi
+    rm -f "$TMP"
   else
-    rm -f "$TMP"; echo "✗ $OUT ไม่ตรงกับ $SRC — รัน ./build-css.sh แล้ว commit ไฟล์ .min ด้วย" >&2; exit 1
+    "$CSSO" "$part" --no-restructure -o "$OUT"
+    echo "✓ สร้าง $OUT แล้ว"
   fi
-else
-  "$CSSO" "$SRC" --no-restructure -o "$OUT"
-  echo "✓ สร้าง $OUT แล้ว"
-fi
+done
+exit $STATUS

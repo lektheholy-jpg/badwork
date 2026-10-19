@@ -563,6 +563,30 @@ const LAZY_BUNDLES = {
 };
 // โหลดหลายโมดูลทีละไฟล์ตามลำดับ (สคริปต์ที่แทรกด้วย JS ไม่รับประกันลำดับถ้าโหลดพร้อมกัน)
 async function loadModules(names) { for (const n of [].concat(names)) await loadModule(n); }
+// สไตล์ที่แยกจาก css/style.min.css (สร้างจากบล็อก /* @bundle … */ ใน css/style.css — ดู tools/split-css.js)
+// โหลดพร้อมโมดูลแรกที่ต้องใช้ และรอให้โหลดเสร็จก่อนวาดหน้า (ไม่เห็นหน้าไร้สไตล์วูบหนึ่ง)
+const LAZY_STYLES = { docs: 'css/docs.min.css' };
+const MODULE_STYLES = { 'doc-shell': 'docs' }; // ระบบเอกสารทุกระบบต้องผ่าน doc-shell.js (โครงหน้ากลาง) จึงผูกไว้ที่นี่ที่เดียว
+const _stylePromises = {};
+function loadStyle(name) {
+  const href = LAZY_STYLES[name];
+  if (!href) return Promise.reject(new Error('ไม่รู้จักสไตล์: ' + name));
+  if (!_stylePromises[name]) {
+    _stylePromises[name] = new Promise((resolve, reject) => {
+      const l = document.createElement('link');
+      l.rel = 'stylesheet';
+      l.href = href;
+      l.onload = () => resolve();
+      l.onerror = () => {
+        l.remove();
+        delete _stylePromises[name]; // ให้กดลองใหม่ได้
+        reject(new Error('โหลดหน้านี้ไม่สำเร็จ ตรวจสอบอินเทอร์เน็ตแล้วลองอีกครั้ง'));
+      };
+      document.head.appendChild(l);
+    });
+  }
+  return _stylePromises[name];
+}
 const _modulePromises = {};
 function loadModule(name) {
   const src = LAZY_MODULES[name];
@@ -580,7 +604,9 @@ function loadModule(name) {
       document.head.appendChild(s);
     });
   }
-  return _modulePromises[name];
+  // สไตล์ล้มเหลว = ลองใหม่เฉพาะสไตล์ (สคริปต์ที่โหลดสำเร็จแล้วไม่ถูกแทรกซ้ำ ไม่งั้นประกาศ const ซ้ำ)
+  const style = MODULE_STYLES[name] ? loadStyle(MODULE_STYLES[name]) : null;
+  return style ? Promise.all([_modulePromises[name], style]).then(() => {}) : _modulePromises[name];
 }
 
 // URL รูปโปรไฟล์ที่ปลอดภัย (เฉพาะ https) ไม่งั้นใช้รูปตัวอักษรย่อที่สร้างในเครื่อง ไม่ส่งชื่อไปเว็บภายนอก
