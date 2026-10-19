@@ -1,4 +1,6 @@
-# MyScore — ระบบบันทึกคะแนนสำหรับครู
+# เวรกรรม.. (badwork) — ระบบบันทึกคะแนนสำหรับครู
+
+> **ชื่อระบบ:** ชื่อที่ผู้ใช้เห็นคือ "เวรกรรม.." (`index.html` · `manifest.json` · แบนเนอร์) · `badwork` = ชื่อ repo/โฟลเดอร์/ไฟล์ AI · `myscore-*` ในคีย์ localStorage และชื่อแคชของ `sw.js` เป็นชื่อเดิมที่ **ห้ามเปลี่ยน** (เปลี่ยน = ผู้ใช้เดิมเสียธีม/การตั้งค่าและแคชออฟไลน์)
 
 เว็บ HTML/CSS/JavaScript (vanilla) เชื่อม Firebase (Authentication + Firestore) · ใช้งานออฟไลน์ได้ (PWA)
 
@@ -54,7 +56,8 @@ npm run test:docprev     # โครงหน้าตัวอย่างก�
 
 - หน้าเว็บโหลด `css/style.min.css` · commit `.min` และ `package-lock.json` ด้วย
 - `csso-cli`, `postcss`, `jsdom` ล็อกเวอร์ชันเป๊ะใน `package.json` (ไม่ใช้ `^`/`~`)
-- `npm install` รัน `prepare` ซึ่งตั้ง `core.hooksPath` เป็น `.githooks` — **แต่ ณ ตอนนี้ยังไม่มีโฟลเดอร์ `.githooks/` ใน repo (ไม่มี pre-commit hook)** จึงต้องรัน `./build-css.sh` เองทุกครั้งที่แก้ `style.css` ก่อน commit (ถ้าจะทำ hook: สร้าง `.githooks/pre-commit` ที่เรียก `./build-css.sh` แล้ว `git add css/style.min.css`)
+- `npm install` รัน `prepare` ซึ่งตั้ง `core.hooksPath` เป็น `.githooks` — มี `.githooks/pre-commit` ที่รัน `./build-css.sh` แล้ว `git add css/style.min.css` ให้เองทุกครั้งที่ commit (ข้ามชั่วคราวด้วย `git commit --no-verify`) · ต้องให้ไฟล์ hook เป็น executable (`chmod +x .githooks/pre-commit`)
+- CI: `.github/workflows/ci.yml` รัน `npm ci` + `npm run ci` ทุก push เข้า `main` และทุก pull request
 - เพิ่ม/ลบ/เปลี่ยนชื่อไฟล์ใน `js/`, `css/`, `assets/icons/` → แก้ `PRECACHE` ใน `sw.js` และ **เพิ่มเลข `VERSION`** แล้วรัน `npm run check:sw`
 
 ## โครงสร้างไฟล์

@@ -83,8 +83,9 @@ const R=code=>vm.runInContext(code,ctx);
  ok(/tra:\s*\['doc-system',\s*'doc-shell',\s*'tra-config',\s*'tra',\s*'badwork-ai-config',\s*'badwork-ai',\s*'tra-ai'\]/.test(U),'utils.js: LAZY_BUNDLES.tra เรียงลำดับ doc-system → doc-shell → config → UI → AI');
  ok(/docConfigs:\s*\[[^\]]*'tra-config'/.test(U),'utils.js: docConfigs มี tra-config (ส่งออก/ลบข้อมูลของระบบนี้ได้)');
  ok(['js/tra-config.js','js/tra.js','js/tra-ai.js'].every(f=>SW.includes(`'${f}'`)),'sw.js PRECACHE มีไฟล์ของระบบครบ');
- ok(APP.includes("'tra-page': LAZY_BUNDLES.tra")&&/return renderDocPage\('tra'\)/.test(APP)&&/\[[^\]]*'tra-page'[^\]]*\]\.forEach\(addTile\)/.test(APP),'app.js: ROUTE_MODULES · renderRoute (return) · ไทล์เมนู "เพิ่มเติม" บนมือถือ');
- ok(HTML.includes('data-route="tra-page"'),'index.html: มีปุ่มเมนู tra-page');
+ ok(APP.includes("'tra-page': LAZY_BUNDLES.tra")&&/return renderDocPage\('tra'\)/.test(APP),'app.js: ROUTE_MODULES · renderRoute (return) — เก็บ route ไว้ใช้เป็น template');
+ ok(!/\[[^\]]*'tra-page'[^\]]*\]\.forEach\(addTile\)/.test(APP),'app.js: tra เป็น template — ไม่ใส่ไทล์เมนู "เพิ่มเติม" บนมือถือ');
+ ok(!HTML.includes('data-route="tra-page"'),'index.html: tra เป็น template — ไม่มีปุ่มในเมนูข้าง');
  ok(/match \/tra_docs\/\{docId\}/.test(RULES),'firestore.rules: มี collection tra_docs');
 
  console.log(fail?'FAIL '+fail:'ALL PASS');process.exit(fail?1:0);
