@@ -31,7 +31,9 @@
 npm install              # ครั้งแรก: ติดตั้งเครื่องมือเวอร์ชันที่ล็อกไว้ + เปิด git hook
 ./build-css.sh           # ตรวจกฎ (inline style, sw.js, CSS ซ้ำ) แล้วสร้าง css/style.min.css
 ./build-css.sh --check   # ตรวจว่า .min ตรงกับ style.css (ใช้ก่อน deploy / ใน CI)
-npm test                 # tests/score-logic.test.js
+npm test                 # รันทุกชุดใน tests/*.test.js (tools/run-tests.js) · ชุดใหม่ถูกรันเองอัตโนมัติ
+npm run ci               # npm test + check:css — คำสั่งเดียวกับที่ GitHub Actions รัน (.github/workflows/ci.yml)
+npm run test:score       # เฉพาะ tests/score-logic.test.js
 npm run test:sw          # จำลอง Service Worker + เน็ตเปิด/ปิด
 npm run test:tt          # ตารางสอนแยกภาคเรียน + วิดเจ็ตหน้าแรก
 npm run test:rec         # แท็บอบรม/เกียรติบัตร/รางวัล
@@ -39,6 +41,7 @@ npm run test:pa          # กลุ่มหน้า Personal Agreement: โ�
 npm run test:worker      # พร็อกซี Gemini (worker/worker.js): ตรวจ token/email_verified · rate limit ต่อ uid · คีย์อยู่ใน header
 npm run test:priv        # ส่งออก/ลบบัญชีครอบคลุมเอกสารทุกระบบ (pa_*) และหยุดก่อนลบถ้าโหลด config ไม่ได้
 npm run test:docprint    # ตัวช่วยพิมพ์กลาง (docWaitFonts · docPrintWindow ใน doc-shell.js) + กันไม่ให้ window.open/โค้ดรอฟอนต์หลุดนอก doc-shell.js
+npm run test:docprofile  # ตัวช่วยกลางข้อมูลส่วนตัว (docGetProfile · docProfileInfo ใน doc-shell.js) + กันไม่ให้แต่ละระบบ/เทมเพลตเขียนสำเนาเอง
 npm run test:ttscope     # ตารางสอน: ขอบเขตรายวิชาตามปี/ภาคเรียน
 npm run test:idp         # ID-Plan: รายการ/แผน และไม่ปนกับ PA
 npm run test:idpai       # ตัวต่อ AI ของ ID-Plan (js/idp-ai.js)
@@ -100,7 +103,7 @@ tests/                *.test.js ตามสคริปต์ใน package.jso
 manifest.json         PWA manifest
 assets/               fonts/ (Sarabun) · icons/ (favicon · PWA · logo-128.webp) · head-cat*.webp
 worker/worker.js      Cloudflare Worker: พร็อกซี Gemini (ตรวจ Firebase token · email_verified · rate limit ต่อ uid) — ไม่ใช่ส่วนของแอปหน้าเว็บ ไม่อยู่ใน PRECACHE
-worker/wrangler.toml  ค่า deploy ของ Worker (ALLOWED_ORIGINS · RATE_LIMITER)
+worker/wrangler.toml  ค่า deploy ของ Worker (ALLOWED_ORIGINS · RATE_LIMITER · ตัวเลือกคุมค่าใช้จ่าย: ALLOWED_EMAIL_DOMAINS · DAILY_LIMIT_* · QUOTA)
 firestore.rules       กฎความปลอดภัย (Firestore)
 storage.rules         กฎความปลอดภัย (Firebase Storage) — วางใน Console → Storage → Rules
 ```
@@ -115,6 +118,10 @@ npx wrangler deploy                      # แล้วนำ URL ที่ไ�
 
 - แก้ `ALLOWED_ORIGINS` ใน `worker/wrangler.toml` เป็นโดเมนจริงของเว็บ (คั่นด้วย `,`)
 - `RATE_LIMITER` = 20 คำขอ/60 วินาที ต่อผู้ใช้ — ไม่ผูก binding = ไม่จำกัด · หลัง deploy ควรยิงทดสอบจริงว่าเกินโควตาแล้วได้ 429
+- **คุมค่าใช้จ่าย Gemini** (ไม่บังคับ · ตัวเลือกอยู่ใน `worker/wrangler.toml` แบบคอมเมนต์ เอา `#` ออกเพื่อเปิดใช้):
+  - `ALLOWED_EMAIL_DOMAINS` = โดเมนอีเมลที่ใช้ AI ได้ (เช่น `school.ac.th`) — เจ้าของอีเมลอื่นได้ 403 · ควรตั้งให้ตรงกับเงื่อนไข `schoolUser()` ใน `firestore.rules` ถ้าเลือกจำกัดโดเมนด้วย
+  - `DAILY_LIMIT_PER_USER` / `DAILY_LIMIT_GLOBAL` = โควตาต่อคน / รวมทุกคน ต่อวัน (ตัดวันเที่ยงคืนเวลาไทย) เกินแล้วได้ 429 · ต้องสร้าง KV ก่อน: `npx wrangler kv namespace create QUOTA` แล้วใส่ id ใน `[[kv_namespaces]]` (binding ชื่อ `QUOTA`) · ไม่มี KV = ข้ามข้อนี้
+  - KV ไม่ atomic: ถ้ามีคำขอพร้อมกันอาจนับขาดเล็กน้อย — ใช้เป็นเพดานค่าใช้จ่าย ไม่ใช่ตัวนับเป๊ะ · แนะนำตั้ง budget alert ฝั่ง Google AI Studio / Cloud เป็นชั้นสำรองด้วย
 - ถ้า GitHub Pages เผยแพร่ทั้ง repo โฟลเดอร์ `worker/` จะถูกเผยแพร่ไปด้วย (ไม่มีความลับในไฟล์ — คีย์เป็น secret ของ Cloudflare) หากไม่ต้องการ ให้เผยแพร่เฉพาะไฟล์แอปด้วย GitHub Actions
 
 ## ธีมและการตั้งค่าหน้าตา

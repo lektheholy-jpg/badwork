@@ -20,21 +20,6 @@ function __ID__UpdatedAt(d) {
   return dt ? 'แก้ไขล่าสุด ' + dt.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
 }
 
-// ข้อมูลผู้จัดทำดึงจากหน้า "ข้อมูลส่วนตัว" (อ่านไม่ได้ = null → ตัวอย่างพิมพ์ใช้จุดไข่ปลาแทน)
-async function __ID__GetProfile() {
-  try {
-    await loadModule('profile');
-    return await loadTeacherProfile();
-  } catch (e) {
-    return AppState.teacherProfile || null;
-  }
-}
-function __ID__ProfileInfo(p) {
-  p = p || {};
-  const name = [(p.prefix || '') + (p.firstName || ''), p.lastName || ''].filter(Boolean).join(' ');
-  const position = [p.position, p.academicStanding].filter(Boolean).join(' ');
-  return { name, position, school: p.school || '', affiliation: p.affiliation || '' };
-}
 
 // ------------------------------------------------------------------
 // Firestore
@@ -324,7 +309,7 @@ const __UPPER__1_CSS = `
 // ------------------------------------------------------------------
 function __ID__BuildPreviewHtml(d, profile) {
   d = __ID__Normalize(d);
-  const pi = __ID__ProfileInfo(profile);
+  const pi = docProfileInfo(profile);
   const dots = n => '…'.repeat(n);
   const name = pi.name || dots(20);
   const nl = t => escapeHtml(t || '').replace(/\n/g, '<br>');
@@ -372,7 +357,7 @@ async function __ID__RenderPreviewView(pickId) {
       if (!items.length) return { items };
       const pid = items.some(x => x.id === pickId) ? pickId : items[0].id;
       const d = pid === openKey ? open : __ID__Normalize(JSON.parse(JSON.stringify(list.find(x => x.id === pid))));
-      const profile = await __ID__GetProfile(); // อ่านล่าสุดทุกครั้งที่เปิดตัวอย่าง — แก้ข้อมูลส่วนตัวแล้วพิมพ์ได้เลย
+      const profile = await docGetProfile(); // อ่านล่าสุดทุกครั้งที่เปิดตัวอย่าง — แก้ข้อมูลส่วนตัวแล้วพิมพ์ได้เลย
       return { items, pickId: pid, d, open, openKey, profile };
     },
     selectLabel: 'เลือกเอกสาร',

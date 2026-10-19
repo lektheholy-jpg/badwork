@@ -20,25 +20,6 @@ function carUpdatedAt(d) {
   return dt ? 'แก้ไขล่าสุด ' + dt.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
 }
 
-// ข้อมูลผู้จัดทำดึงจากหน้า "ข้อมูลส่วนตัว" (อ่านไม่ได้ = null → ตัวอย่างพิมพ์ใช้จุดไข่ปลาแทน)
-async function carGetProfile() {
-  try {
-    await loadModule('profile');
-    return await loadTeacherProfile();
-  } catch (e) {
-    return AppState.teacherProfile || null;
-  }
-}
-function carProfileInfo(p) {
-  p = p || {};
-  const name = [(p.prefix || '') + (p.firstName || ''), p.lastName || ''].filter(Boolean).join(' ');
-  const position = [p.position, p.academicStanding].filter(Boolean).join(' ');
-  // ที่ตั้งสถานศึกษา: "อำเภอX จังหวัดY" จากข้อมูลส่วนตัว (ตัดคำนำหน้าที่พิมพ์ซ้ำออกก่อน)
-  const strip = (v, re) => String(v || '').trim().replace(re, '').trim();
-  const dist = strip(p.schoolDistrict, /^(อำเภอ|อ\.|เขต)\s*/), prov = strip(p.schoolProvince, /^(จังหวัด|จ\.)\s*/);
-  const location = [dist && 'อำเภอ' + dist, prov && 'จังหวัด' + prov].filter(Boolean).join(' ');
-  return { name, position, school: p.school || '', affiliation: p.affiliation || '', location };
-}
 
 // ------------------------------------------------------------------
 // Firestore
@@ -861,9 +842,9 @@ async function carRenderFormView() {
   const doc = sys.state.doc || carBlankDoc();
   sys.state.doc = doc;
   // ข้อมูลผู้จัดทำดึงจากหน้า "ข้อมูลส่วนตัว" (ใช้ค่าที่แคชไว้ก่อน)
-  const prof = AppState.teacherProfile || await carGetProfile();
+  const prof = AppState.teacherProfile || await docGetProfile();
   if (docStale(root, seq, sys) || sys.state.tab !== 'form' || sys.state.view !== 'form') return;
-  const pi = carProfileInfo(prof);
+  const pi = docProfileInfo(prof);
 
   const esc = escapeHtml;
   const input = (k, label, ph, max = 200) => `<div class="field u-mt-4"><label for="car-${k}">${label}</label>
@@ -1154,7 +1135,7 @@ const CAR1_CSS = `
 // ------------------------------------------------------------------
 function carBuildPreviewHtml(d, profile) {
   d = carNormalize(d);
-  const pi = carProfileInfo(profile);
+  const pi = docProfileInfo(profile);
   const e = escapeHtml;
   const dots = n => '…'.repeat(n);
   const name = pi.name || dots(20);
@@ -1268,7 +1249,7 @@ async function carRenderPreviewView(pickId) {
       if (!items.length) return { items };
       const pid = items.some(x => x.id === pickId) ? pickId : items[0].id;
       const d = pid === openKey ? open : carNormalize(JSON.parse(JSON.stringify(list.find(x => x.id === pid))));
-      const profile = await carGetProfile(); // อ่านล่าสุดทุกครั้งที่เปิดตัวอย่าง — แก้ข้อมูลส่วนตัวแล้วพิมพ์ได้เลย
+      const profile = await docGetProfile(); // อ่านล่าสุดทุกครั้งที่เปิดตัวอย่าง — แก้ข้อมูลส่วนตัวแล้วพิมพ์ได้เลย
       return { items, pickId: pid, d, open, openKey, profile };
     },
     selectLabel: 'เลือกเอกสาร',
@@ -1289,11 +1270,6 @@ async function carRenderPreviewView(pickId) {
         sys.state.view = 'form';
       }
       docSwitchTab('form');
-    },
-    onPrint: (ctx, view) => {
-      const frame = view.querySelector('.doc-preview-frame');
-      frame?.contentWindow?.focus();
-      frame?.contentWindow?.print();
     },
   });
 }

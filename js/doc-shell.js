@@ -303,6 +303,36 @@ function docFontCss() {
 }
 
 // ------------------------------------------------------------------
+// ข้อมูลส่วนตัวของครู (หน้า "ข้อมูลส่วนตัว") — ตัวช่วยกลางของทุกระบบเอกสาร (เดิม idp · tra · car เขียนซ้ำคนละชุด)
+//   docGetProfile()    อ่านโปรไฟล์ล่าสุดทุกครั้ง · อ่านไม่ได้ = โปรไฟล์ที่แคชไว้ใน AppState หรือ null (ตัวอย่างพิมพ์ใช้จุดไข่ปลาแทน)
+//   docProfileInfo(p)  แปลงโปรไฟล์เป็นค่าที่เอกสารใช้ · รับ null ได้
+//        name · position · school · affiliation · subjectGroup · agency · logo
+//        district · province = ค่าดิบจากโปรไฟล์ · location = "อำเภอX จังหวัดY" (ตัดคำนำหน้าที่พิมพ์ซ้ำออกแล้ว)
+//   เพิ่มช่องใหม่ในหน้าข้อมูลส่วนตัว = แก้ docProfileInfo ที่เดียว (ไม่ต้องไล่แก้แต่ละระบบ)
+//   ส่วนของ PA (paOwnerFromProfile) รูปร่างข้อมูลต่างออกไป (เงินเดือน/วิทยฐานะ) จึงยังอยู่ใน pa.js
+// ------------------------------------------------------------------
+async function docGetProfile() {
+  try {
+    await loadModule('profile');
+    return await loadTeacherProfile();
+  } catch (e) {
+    return AppState.teacherProfile || null;
+  }
+}
+function docProfileInfo(p) {
+  p = p || {};
+  const name = [(p.prefix || '') + (p.firstName || ''), p.lastName || ''].filter(Boolean).join(' ');
+  const position = [p.position, p.academicStanding].filter(Boolean).join(' ');
+  const strip = (v, re) => String(v || '').trim().replace(re, '').trim();
+  const dist = strip(p.schoolDistrict, /^(อำเภอ|อ\.|เขต)\s*/), prov = strip(p.schoolProvince, /^(จังหวัด|จ\.)\s*/);
+  const location = [dist && 'อำเภอ' + dist, prov && 'จังหวัด' + prov].filter(Boolean).join(' ');
+  return {
+    name, position, subjectGroup: p.subjectGroup || '', school: p.school || '', affiliation: p.affiliation || '',
+    district: p.schoolDistrict || '', province: p.schoolProvince || '', agency: p.agency || '', logo: p.logo || '', location,
+  };
+}
+
+// ------------------------------------------------------------------
 // พิมพ์ / ตัดหน้า — ตัวช่วยกลาง (เดิมแต่ละระบบเขียนซ้ำเอง: paPrint · parptPrint · idpRenderPreviewView)
 //   docWaitFonts(doc, specs?, maxMs?)  รอฟอนต์ของเอกสาร doc พร้อม (ไม่เกิน maxMs · ไม่ reject)
 //        → true = เบราว์เซอร์มี document.fonts และรอแล้ว · false = ไม่มี API (ผู้เรียกควรหน่วงเอง)
@@ -340,9 +370,17 @@ async function docPrintWindow({ title, css = '', html, fonts, page = DOC_PAGE_A4
   return w;
 }
 
+// พิมพ์จากกรอบตัวอย่าง (iframe .doc-preview-frame) — ค่าเริ่มต้นของ onPrint ใน docRenderPreview
+// (เดิม idp · sar · car · tra เขียนเหมือนกันทุกตัว) · ระบบที่พิมพ์ผ่านหน้าต่างใหม่ (PA · รายงานผล) ส่ง onPrint ของตัวเอง
+function docPrintPreviewFrame(view) {
+  const frame = view && view.querySelector('.doc-preview-frame');
+  frame?.contentWindow?.focus();
+  frame?.contentWindow?.print();
+}
+
 // ------------------------------------------------------------------
 // หน้า "ตัวอย่าง / พิมพ์" — โครงกลาง (เดิม PA · รายงานผล · ID-Plan เขียนแถบเลือก/ปุ่ม/สถานะว่าง/ย่อกระดาษซ้ำกันคนละชุด)
-//   docRenderPreview({ sys, tab, load, shown?, hint, selectLabel, empty, sheets, afterHtml?, mount?, onPick, onEdit, onPrint })
+//   docRenderPreview({ sys, tab, load, shown?, hint, selectLabel, empty, sheets, afterHtml?, mount?, onPick, onEdit, onPrint? })
 //     sys         ถือจากบรรทัดแรกของฟังก์ชันผู้เรียก (docSystem()) — ห้ามเรียก docSystem() ใหม่หลัง await (ดู js/doc-system.js)
 //     tab         รหัสแท็บของหน้านี้ — สลับแท็บ/ออกจากหน้าระหว่างรอข้อมูลแล้วจะไม่วาดทับ
 //     load()      โหลดข้อมูล → คืน ctx = { items: [{ id, label }], pickId, ...อะไรก็ได้ที่ตัววาดต้องใช้ }
@@ -353,7 +391,7 @@ async function docPrintWindow({ title, css = '', html, fonts, page = DOC_PAGE_A4
 //     sheets(ctx) กระดาษตัวอย่าง = แผ่น A4 แยกหน้าบนพื้นเทา (ทุกระบบหน้าตาเหมือนกัน) — คืนค่าตั้งของแผ่น ดูที่ docRenderSheets
 //                 { html() → เอกสารเต็มสำหรับ srcdoc (ใช้ docSheetsHtml ห่อ), specs, bodyClass, keep, breakSel, kindOf?, fonts? }
 //     afterHtml(ctx)  HTML ต่อท้ายกระดาษ (ไม่บังคับ) · mount(view, ctx) งานหลังวาด (async ได้)
-//     onPick(id) · onEdit(ctx) · onPrint(ctx, view)  ตัวจัดการแถบ (เลือก · แก้ไข · พิมพ์)
+//     onPick(id) · onEdit(ctx) · onPrint(ctx, view)?  ตัวจัดการแถบ (เลือก · แก้ไข · พิมพ์) · ไม่ส่ง onPrint = พิมพ์จาก iframe ตัวอย่าง (docPrintPreviewFrame)
 //   พิมพ์: PA ใช้ docPrintWindow · ID-Plan พิมพ์ผ่าน iframe (view.querySelector('.doc-preview-frame')) — โครงกลางไม่ผูกวิธีพิมพ์
 //   การตัดหน้าทำหลังวาดและไม่ถูกรอ (iframe โหลด/ฟอนต์/รูปใช้เวลา) — ผู้ใช้เห็นแถบทันที กระดาษตามมา
 // ------------------------------------------------------------------
@@ -409,7 +447,7 @@ async function docRenderPreview(o) {
 
   view.querySelector('.doc-preview-select').addEventListener('change', e => o.onPick(e.target.value));
   view.querySelector('.doc-preview-edit').addEventListener('click', () => o.onEdit(ctx));
-  view.querySelector('.doc-preview-print').addEventListener('click', () => o.onPrint(ctx, view));
+  view.querySelector('.doc-preview-print').addEventListener('click', () => (o.onPrint || ((c, v) => docPrintPreviewFrame(v)))(ctx, view));
 
   docSwapIn(view);
   docRenderSheets(sys, o.tab, view, ctx, typeof o.sheets === 'function' ? o.sheets(ctx) : o.sheets).catch(err => console.error('docRenderSheets:', err)); // ไม่รอ — แถบแสดงไปก่อน

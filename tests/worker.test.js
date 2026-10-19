@@ -55,6 +55,49 @@ const b64u = b => Buffer.from(b).toString('base64url');
   r = await worker.fetch(await mk(await token(), { model: '../evil', contents: [] }), env());
   ok(r.status === 400 && !upstream, 'ชื่อรุ่นแปลก → 400 และไม่ยิงต่อ');
 
+  // ---- ตัวคุมค่าใช้จ่าย: โดเมนอีเมล · โควตารายวัน ----
+  const kv = () => { const m = new Map(); return { m, get: async k => m.has(k) ? m.get(k) : null, put: async (k, v) => { m.set(k, v) } } };
+  upstream = null;
+  r = await worker.fetch(await mk(await token({ email: 'a@school.ac.th' })), env({ ALLOWED_EMAIL_DOMAINS: 'school.ac.th' }));
+  ok(r.status === 200, 'โดเมนตรงที่อนุญาต → ผ่าน');
+  upstream = null;
+  r = await worker.fetch(await mk(await token({ email: 'a@gmail.com' })), env({ ALLOWED_EMAIL_DOMAINS: 'school.ac.th' }));
+  ok(r.status === 403 && !upstream, 'Gmail ส่วนตัวเมื่อจำกัดโดเมน → 403 และไม่ยิง Gemini');
+  r = await worker.fetch(await mk(await token({ email: 'a@evil.school.ac.th' })), env({ ALLOWED_EMAIL_DOMAINS: 'school.ac.th' }));
+  ok(r.status === 403, 'โดเมนย่อย/ปลอมที่ลงท้ายคล้ายกัน → 403');
+  r = await worker.fetch(await mk(await token({ email: 'a@school.ac.th.evil.com' })), env({ ALLOWED_EMAIL_DOMAINS: 'school.ac.th' }));
+  ok(r.status === 403, 'school.ac.th.evil.com → 403');
+  r = await worker.fetch(await mk(await token({ email: undefined })), env({ ALLOWED_EMAIL_DOMAINS: 'school.ac.th' }));
+  ok(r.status === 403, 'token ไม่มีอีเมลเมื่อจำกัดโดเมน → 403');
+  r = await worker.fetch(await mk(await token({ email: 'a@gmail.com' })), env());
+  ok(r.status === 200, 'ไม่ตั้ง ALLOWED_EMAIL_DOMAINS → ไม่จำกัด (พฤติกรรมเดิม)');
+
+  let QUOTA = kv();
+  const q = () => env({ QUOTA, DAILY_LIMIT_PER_USER: '2' });
+  const sts = [];
+  for (let i = 0; i < 3; i++) sts.push((await worker.fetch(await mk(await token()), q())).status);
+  ok(sts.join() === '200,200,429', 'โควตารายวันต่อคน: ครั้งที่ 3 → 429 (ได้ ' + sts.join() + ')');
+  upstream = null;
+  r = await worker.fetch(await mk(await token()), q());
+  ok(r.status === 429 && !upstream && r.headers.get('Retry-After') === '3600', 'เกินโควตา → ไม่ยิง Gemini + Retry-After');
+  r = await worker.fetch(await mk(await token({ sub: 'u2' })), q());
+  ok(r.status === 200, 'ผู้ใช้อื่นไม่โดนโควตาของ u1');
+
+  QUOTA = kv();
+  const g = () => env({ QUOTA, DAILY_LIMIT_GLOBAL: '2' });
+  const gs = [];
+  for (const sub of ['a', 'b', 'c']) gs.push((await worker.fetch(await mk(await token({ sub })), g())).status);
+  ok(gs.join() === '200,200,429', 'เพดานรวมทุกคน: คนที่ 3 → 429 (ได้ ' + gs.join() + ')');
+
+  const { dayKey, takeDaily } = await import(tmp);
+  QUOTA = kv();
+  const e1 = env({ QUOTA, DAILY_LIMIT_PER_USER: '1' });
+  const t0 = Date.UTC(2026, 9, 19, 12, 0, 0);
+  ok(await takeDaily(e1, 'x', t0) && !(await takeDaily(e1, 'x', t0)), 'ใช้ครบ 1 ครั้ง → ครั้งต่อไปไม่ได้');
+  ok(await takeDaily(e1, 'x', t0 + 24 * 3600 * 1000), 'ขึ้นวันใหม่ → โควตารีเซ็ต');
+  ok(dayKey(Date.UTC(2026, 9, 19, 17, 30)) === '2026-10-20' && dayKey(Date.UTC(2026, 9, 19, 16, 30)) === '2026-10-19', 'ตัดวันที่เที่ยงคืนเวลาไทย (17:00 UTC)');
+  ok(await takeDaily(env({ DAILY_LIMIT_PER_USER: '1' }), 'x'), 'ไม่มี KV binding → ข้าม (ไม่ล้ม)');
+
   console.log(`\nผลรวม: ผ่าน ${pass}, ไม่ผ่าน ${fail}`);
   process.exit(fail ? 1 : 0);
 })().catch(e => { console.error(e); process.exit(1); });

@@ -142,7 +142,7 @@ const run = code => vm.runInContext(code, ctx);
     const opens = files.filter(f => f !== 'doc-shell.js' && /window\.open\s*\(/.test(strip(read('js/' + f))));
     ok(opens.length === 0, 'ไม่มี window.open( นอก doc-shell.js' + (opens.length ? ' — พบที่: ' + opens.join(', ') : ''));
     const prints = files.filter(f => f !== 'doc-shell.js' && /[\w\]\)]\??\.print\s*\(\s*\)/.test(strip(read('js/' + f))));
-    ok(prints.length === 1 && prints[0] === 'idp.js', 'มี .print() เฉพาะ idp.js (พิมพ์ผ่าน iframe — เหตุผลอยู่ที่หัวตัวช่วยใน doc-shell.js) พบที่: ' + prints.join(', '));
+    ok(prints.length === 0, 'ไม่มี .print() นอก doc-shell.js (พิมพ์ผ่าน iframe ใช้ docPrintPreviewFrame)' + (prints.length ? ' — พบที่: ' + prints.join(', ') : ''));
     const fontLoads = files.filter(f => f !== 'doc-shell.js' && /fonts\.load\s*\(|fl\.load\s*\(/.test(strip(read('js/' + f))));
     ok(fontLoads.length === 0, 'ไม่มีโค้ดรอฟอนต์เขียนเองนอก doc-shell.js' + (fontLoads.length ? ' — พบที่: ' + fontLoads.join(', ') : ''));
   }

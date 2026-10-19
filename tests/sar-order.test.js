@@ -6,7 +6,7 @@ const ctx = {
   console, Promise, JSON, Date, Math, Object, Array, Set, Map, String, Number,
   escapeHtml: s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;'),
   docNl: s => String(s).replace(/\n/g, '<br>'),
-  idpProfileInfo: () => ({ name: 'นางสาวยุพิน ช่วยรัมย์', position: 'ครู', school: 'โรงเรียนหนองกี่พิทยาคม', affiliation: '', subjectGroup: 'คณิตศาสตร์' }),
+  docProfileInfo: () => ({ name: 'นางสาวยุพิน ช่วยรัมย์', position: 'ครู', school: 'โรงเรียนหนองกี่พิทยาคม', affiliation: '', subjectGroup: 'คณิตศาสตร์' }),
 };
 vm.createContext(ctx);
 vm.runInContext(fs.readFileSync(path.join(ROOT, 'js/sar.js'), 'utf8'), ctx, { filename: 'js/sar.js' });

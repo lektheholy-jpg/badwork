@@ -33,7 +33,7 @@ function env(){
     function groupsByLevelHtml(list,o){return list.map(o.rowFn).join('')}
     function courseColor(){return '#000'} function getLevelColor(){return {strong:'#000'}}
     function escapeHtml(s){return String(s)}
-    function courseHeaderHtml(o){return '<header>'+o.title+'<a id="back-to-courses"></a></header>'}
+    function courseHeaderHtml(o){return '<header>'+o.title+'<a id="back-to-courses"></a>'+(o.actions||'')+'</header>'}
     function initNavPill(){} function pillSlideNext(){} function playViewEnter(){}
     function navigate(r){window.__nav=r}
     function openCourse(){}

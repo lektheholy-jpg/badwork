@@ -8,7 +8,8 @@
   "scripts": {
     "build:css": "sh build-css.sh",
     "check:css": "sh build-css.sh --check",
-    "test": "node tests/score-logic.test.js .",
+    "test": "node tools/run-tests.js",
+    "test:score": "node tests/score-logic.test.js .",
     "prepare": "git config core.hooksPath .githooks || true",
     "test:sw": "node tests/sw.test.js",
     "test:tt": "node tests/timetable-term.test.js",
@@ -28,7 +29,9 @@
     "test:sar": "node tests/sar-merge.test.js",
     "test:sarai": "node tests/sar-ai.test.js",
     "test:sarorder": "node tests/sar-order.test.js",
-    "test:car": "node tests/car.test.js"
+    "test:car": "node tests/car.test.js",
+    "test:docprofile": "node tests/doc-profile.test.js",
+    "ci": "npm test && npm run check:css"
   },
   "devDependencies": {
     "csso-cli": "4.0.2",

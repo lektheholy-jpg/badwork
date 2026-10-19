@@ -150,6 +150,8 @@ function badworkAiError(err) {
   if (!navigator.onLine || /Failed to fetch|dynamically imported module|NetworkError/i.test(m)) msg = 'ใช้ AI ไม่ได้ — ไม่มีอินเทอร์เน็ตหรือโหลดชุดคำสั่งไม่สำเร็จ';
   else if (/API key not valid|API_KEY_INVALID|ยังไม่ได้ตั้ง/i.test(m)) msg = `API key ไม่ถูกต้องหรือยังไม่ได้ตั้ง${tag} — ตรวจ apiKey ใน js/badwork-ai-config.js (สร้างคีย์ที่ aistudio.google.com/apikey)`;
   else if (code === '404' || /not found|is not supported|no longer available/i.test(m)) msg = `ไม่พบโมเดล ${badworkAiModelId()}${tag} — ลองเลือกรุ่นอื่นในการ์ดผู้ช่วย AI หรือตรวจชื่อรุ่นใน js/badwork-ai-config.js (BADWORK_AI_CONFIG.models)`;
+  else if (/daily quota exceeded/i.test(m)) msg = `ใช้ AI ครบโควตาของวันนี้แล้ว${tag} — ลองใหม่พรุ่งนี้ (โควตารีเซ็ตเที่ยงคืนเวลาไทย)`;
+  else if (/email domain not allowed/i.test(m)) msg = `AI เปิดให้เฉพาะบัญชีอีเมลของโรงเรียน${tag} — ออกจากระบบแล้วเข้าด้วยอีเมลโรงเรียน`;
   else if (code === '403' || /PERMISSION_DENIED|API has not been used|API_KEY_SERVICE_BLOCKED|not enabled/i.test(m)) msg = `AI ถูกปฏิเสธสิทธิ์${tag} — ตรวจว่า API key อนุญาต Generative Language API และโดเมนของเว็บอยู่ในรายการ HTTP referrer ที่อนุญาต`;
   else if (code === '429' || /RESOURCE_EXHAUSTED|quota exceeded|too many requests|rate limit/i.test(m)) msg = `โควตา AI เต็มหรือเรียกถี่เกิน${tag} — รอ 1 นาทีแล้วลองใหม่ (ดูโควตาใน Google AI Studio > Usage)`;
   else if (/timeout/i.test(m)) msg = 'AI ตอบช้าเกินไป ลองใหม่อีกครั้ง';

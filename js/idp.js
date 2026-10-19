@@ -59,20 +59,6 @@ function idpApplyTimetable(doc, t, keepTerm) {
 // ข้อมูลส่วนบุคคล — ดึงจากหน้า "ข้อมูลส่วนตัว" (profile) ทุกครั้งที่เปิดฟอร์ม/พิมพ์ ไม่ต้องกรอกซ้ำ
 //   ระดับการศึกษา: แผนใหม่ดึงจากหน้าข้อมูลส่วนตัว (profileEducationLines) · ถ้าไม่มีให้ยกจากแผนล่าสุด · เก็บในแผน (doc.education) แก้ได้ · ปุ่ม "ดึงจากข้อมูลส่วนตัว" ใช้ซ้ำกับแผนเดิมได้
 // ------------------------------------------------------------------
-async function idpGetProfile() {
-  try {
-    await loadModule('profile');
-    return await loadTeacherProfile();
-  } catch (e) {
-    return AppState.teacherProfile || null;
-  }
-}
-function idpProfileInfo(p) {
-  p = p || {};
-  const name = [(p.prefix || '') + (p.firstName || ''), p.lastName || ''].filter(Boolean).join(' ');
-  const position = [p.position, p.academicStanding].filter(Boolean).join(' ');
-  return { name, position, subjectGroup: p.subjectGroup || '', school: p.school || '', affiliation: p.affiliation || '', district: p.schoolDistrict || '', province: p.schoolProvince || '', agency: p.agency || '', logo: p.logo || '' };
-}
 function idpTotalHours(d) {
   const sum = a => (a || []).reduce((t, r) => t + (Number(r.hours) || 0), 0);
   return sum(d.subjects) + sum(d.activities);
@@ -319,7 +305,7 @@ async function idpRenderFormView() {
     } catch (e) { /* ไม่มีตารางสอน/โหลดไม่ได้ → กรอกเอง */ }
     // ระดับการศึกษา: ดึงจากหน้าข้อมูลส่วนตัวก่อน (ไม่มี → ยกจากแผนล่าสุดด้านล่าง)
     try {
-      const pr0 = await idpGetProfile();
+      const pr0 = await docGetProfile();
       const eds = typeof profileEducationLines === 'function' ? profileEducationLines(pr0) : [];
       if (eds.length && !doc.education.length) doc.education = eds;
     } catch (e) { /* ใช้แผนล่าสุดแทน */ }
@@ -336,9 +322,9 @@ async function idpRenderFormView() {
     if (!stillHere()) return;
   }
   // ข้อมูลส่วนบุคคลดึงจากหน้า "ข้อมูลส่วนตัว" (ใช้ค่าที่แคชไว้ก่อน ไม่ต้องอ่านซ้ำทุกครั้งที่วาดฟอร์ม)
-  const prof = AppState.teacherProfile || await idpGetProfile();
+  const prof = AppState.teacherProfile || await docGetProfile();
   if (!stillHere()) return;
-  const pi = idpProfileInfo(prof);
+  const pi = docProfileInfo(prof);
 
   const comps = sys.config.competencies;
 
@@ -554,7 +540,7 @@ async function idpRenderFormView() {
   document.getElementById('idp-edu-pull')?.addEventListener('click', async () => {
     idpCollect();
     const sd = sys.state.doc;
-    const lines = typeof profileEducationLines === 'function' ? profileEducationLines(await idpGetProfile()) : [];
+    const lines = typeof profileEducationLines === 'function' ? profileEducationLines(await docGetProfile()) : [];
     if (!lines.length) { showToast('ยังไม่ได้กรอกวุฒิการศึกษา — เพิ่มได้ที่ ข้อมูลส่วนตัว → วุฒิการศึกษา'); return; }
     if (sd.education.length && !confirm('แทนที่ระดับการศึกษาที่กรอกไว้ด้วยข้อมูลจากข้อมูลส่วนตัว?')) return;
     sd.education = lines;
@@ -673,7 +659,7 @@ function idpBuildPreviewHtml(d, profile) {
   const sys = docSystem('idp');
   const comps = sys.config.competencies;
 
-  const pi = idpProfileInfo(profile);
+  const pi = docProfileInfo(profile);
   const dots = n => '…'.repeat(n);
   const name = pi.name || dots(20);
   const position = pi.position || dots(12);
@@ -820,7 +806,7 @@ async function idpRenderPreviewView(pickId) {
       if (!items.length) return { items };
       const pid = items.some(x => x.id === pickId) ? pickId : items[0].id;
       const d = pid === openKey ? open : idpNormalize(JSON.parse(JSON.stringify(list.find(x => x.id === pid))));
-      const profile = await idpGetProfile(); // อ่านล่าสุดทุกครั้งที่เปิดตัวอย่าง — แก้ข้อมูลส่วนตัวแล้วพิมพ์ได้เลย
+      const profile = await docGetProfile(); // อ่านล่าสุดทุกครั้งที่เปิดตัวอย่าง — แก้ข้อมูลส่วนตัวแล้วพิมพ์ได้เลย
       return { items, pickId: pid, d, open, openKey, profile };
     },
     selectLabel: 'เลือกแผน',
@@ -841,11 +827,6 @@ async function idpRenderPreviewView(pickId) {
         sys.state.view = 'form';
       }
       docSwitchTab('form');
-    },
-    onPrint: (ctx, view) => {
-      const frame = view.querySelector('.doc-preview-frame');
-      frame?.contentWindow?.focus();
-      frame?.contentWindow?.print();
     },
   });
 }

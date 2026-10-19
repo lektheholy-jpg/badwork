@@ -1,7 +1,7 @@
 // ==========================================================================
 // SAR — แท็บ "Self-Assessment Report" ในหน้า ID-Plan (รายงานผลการปฏิบัติงานและการประเมินตนเองรายบุคคล)
 //   อยู่ในระบบเอกสาร 'idp' (แท็บ 'sar' ใน IDP_CONFIG.tabs) · เก็บที่ users/{uid}/idp_sar (IDP_CONFIG.collections.sar)
-//   โหลดหลัง idp.js (LAZY_BUNDLES.idp) — ใช้ idpGetProfile / idpProfileInfo / idpPullTimetableEntries จาก idp.js
+//   โหลดหลัง idp.js (LAZY_BUNDLES.idp) — ใช้ idpPullTimetableEntries จาก idp.js · ข้อมูลส่วนตัวใช้ docGetProfile / docProfileInfo จาก doc-shell.js
 //   โครงเอกสาร: { semester, year, status, f:{ช่องเดี่ยว}, rows:{ตารางแถวซ้ำ}, lv:{ระดับคุณภาพรายข้อ} }
 //   ค่าที่คำนวณ (เกรดเฉลี่ย · ร้อยละ · คะแนนมาตรฐาน · ระดับคุณภาพ) ไม่เก็บ — คำนวณสดจาก sarStats(d) ทั้งหน้าจอและตอนพิมพ์
 // ==========================================================================
@@ -398,14 +398,14 @@ async function sarRenderFormView() {
   const sys = docSystem(), root = docMount(), seq = sys.state.seq;
   const stillHere = () => !docStale(root, seq, sys) && sys.state.tab === 'sar' && SAR.view === 'form';
   const d = SAR.doc = sarNormalize(SAR.doc);
-  const prof = await idpGetProfile(); // อ่านล่าสุดทุกครั้ง — เพิ่มข้อมูลส่วนตัวแล้วกลับมาเห็นทันที
+  const prof = await docGetProfile(); // อ่านล่าสุดทุกครั้ง — เพิ่มข้อมูลส่วนตัวแล้วกลับมาเห็นทันที
   if (d.f.logo) { // SAR เก่าที่เก็บตราไว้ในเอกสารเอง → ย้ายเข้าข้อมูลส่วนตัว (โปรไฟล์มีตราแล้ว = ใช้ของโปรไฟล์ ทิ้งของเก่า)
     const had = !!prof?.logo, moved = !had && await sarMoveLogoToProfile(prof, d.f.logo);
     if (had || moved) delete d.f.logo;
     if (moved) showToast('ย้ายตราโรงเรียนไปเก็บในข้อมูลส่วนตัวแล้ว');
   }
   if (!stillHere()) return;
-  const pi = idpProfileInfo(prof), f = d.f, ps = sarPersonal(prof, f), logo = pi.logo || f.logo || '';
+  const pi = docProfileInfo(prof), f = d.f, ps = sarPersonal(prof, f), logo = pi.logo || f.logo || '';
   const pf = prof || {}; // ตัดสินจากข้อมูลส่วนตัวจริง (ไม่นับค่าสำรองจาก SAR เก่า) — ถ้าว่างให้ชวนไปเพิ่ม
   const miss = [['วันเกิด', pf.birthDate], ['วันที่บรรจุ', pf.startDate], ['วุฒิการศึกษา', (pf.education || []).length], ['วิทยฐานะ', pf.academicStanding], ['เลขที่ตำแหน่ง', pf.positionNo]].filter(m => !m[1]).map(m => m[0]);
   const sec = (t, body) => `<details class="doc-section doc-fold" open><summary class="doc-fold-h"><h2 class="doc-sec-title">${t}</h2></summary>${body}</details>`;
@@ -647,7 +647,7 @@ table.nb th,table.nb td{border:0;padding:1px 5px}.sg .l{text-align:left}.sg .dl{
 
 // สร้าง HTML เนื้อหา SAR (ใช้ทั้งตอนพิมพ์และตอนแสดงตัวอย่างบนจอ)
 function sarBuildBodyHtml(d, prof) {
-  const pi = idpProfileInfo(prof), s = sarStats(d), f = d.f || {}, R = d.rows || {}, L = d.lv || {}, ps = sarPersonal(prof, f);
+  const pi = docProfileInfo(prof), s = sarStats(d), f = d.f || {}, R = d.rows || {}, L = d.lv || {}, ps = sarPersonal(prof, f);
   const E = sarEsc, cell = v => (v === '' || v == null ? '' : E(v));
   // seq = หัวคอลัมน์เลขลำดับ ("ที่" / "ครั้งที่") — เติมคอลัมน์แรกให้ตอนพิมพ์เท่านั้น ไม่ได้เก็บในข้อมูล
   const hh = (key, c) => (SAR_PRINT_HEAD[key] || {})[c[0]] || c[1];
@@ -764,7 +764,7 @@ function sarBuildBodyHtml(d, prof) {
 }
 
 async function sarPrint(d) {
-  const prof = await idpGetProfile();
+  const prof = await docGetProfile();
   const html = sarBuildBodyHtml(d, prof);
   return docPrintWindow({ title: sarTitle(d), css: SAR_PRINT_CSS, html });
 }
@@ -787,7 +787,7 @@ async function sarRenderPreviewView(pickId) {
       if (!items.length) return { items };
       const pid = items.some(x => x.id === pickId) ? pickId : items[0].id;
       const d = pid === openKey ? open : sarNormalize(JSON.parse(JSON.stringify(list.find(x => x.id === pid))));
-      const profile = await idpGetProfile();
+      const profile = await docGetProfile();
       return { items, pickId: pid, d, open, openKey, profile };
     },
     selectLabel: 'เลือก SAR',
@@ -808,11 +808,6 @@ async function sarRenderPreviewView(pickId) {
       }
       SAR.view = 'form';
       docSwitchTab('sar'); // กลับไปแท็บ SAR (แสดงฟอร์ม)
-    },
-    onPrint: (ctx, view) => {
-      const frame = view.querySelector('.doc-preview-frame');
-      frame?.contentWindow?.focus();
-      frame?.contentWindow?.print();
     },
   });
 }
