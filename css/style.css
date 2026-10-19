@@ -2413,6 +2413,9 @@ td.doc-ai-target::before { inset: 0; }
 .idp-sum-table select::picker-icon, #sar-form .field select::picker-icon, #sar-form .doc-form-meta select::picker-icon { display: none; }
 /* SAR: dropdown ระดับคุณภาพ (ข้อ 5) · โมเดล AI ใช้แบบมาตรฐานของระบบเหมือนส่วนที่ 3 ของ ID-Plan — กดแล้วลิสต์เปิดแน่นอน ไม่ใช้ลิสต์ปรับแต่งเอง · ภาคเรียน/สถานะที่หัวฟอร์มก็เหมือนกัน (ไม่บังคับ display:block เพราะอยู่แถวเดียวกับป้าย) */
 #sar-form .doc-form-meta select { -webkit-appearance: none; appearance: none; display: inline-block; padding: 10px 40px 10px 14px; background-image: var(--chev); }
+/* CAR (วิจัยในชั้นเรียน): dropdown เลือกวิชา/ห้อง/หัวข้อก่อน–หลัง ใช้แบบมาตรฐานของระบบ/มือถือ เหมือน SAR — ลิสต์ปรับแต่งเอง (base-select) ไม่ขึ้นตัวเลือกเมื่อรายการถูกเติมด้วย JS ทีหลัง (กดแล้วแค่ลูกศรหมุน) */
+#car-form .field select { width: 100%; -webkit-appearance: none; appearance: none; display: block; padding: 10px 40px 10px 14px; background-image: var(--chev); }
+#car-form .field select::picker-icon { display: none; }
 
 /* --- IDP: Responsive stacked layout — วัดจากความกว้างของกรอบตารางเอง (ไม่ใช่หน้าจอ) เพราะมีแถบเมนูข้าง/ขอบกินที่ไว้ · ตารางกว้างขั้นต่ำ 880px จึงสลับเป็นการ์ดเมื่อกรอบแคบกว่า 900px --- */
 @container doc-tbl (max-width: 900px) {
