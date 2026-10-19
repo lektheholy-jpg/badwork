@@ -8,7 +8,7 @@
 const PROFILE_FIELDS = [
   'prefix', 'firstName', 'lastName', 'phone',
   'position', 'academicStanding', 'ksLevel', 'salary', 'positionNo', 'subjectGroup',
-  'school', 'affiliation',
+  'school', 'affiliation', 'schoolDistrict', 'schoolProvince', 'agency', // ที่ตั้งสถานศึกษา (อำเภอ/จังหวัด) + ส่วนราชการ — SAR/CAR ดึงไปพิมพ์บนปก ไม่ต้องพิมพ์ซ้ำทุกเอกสาร
   'director', 'deputyAcademic', 'subjectHead', 'assessmentHead', 'personnelAsst', 'personnelDeputy',
   'birthDate', 'startDate', 'licenseNo', // birthDate · startDate = วันที่รูปแบบ YYYY-MM-DD (ค.ศ.) · แสดงเป็น พ.ศ. ด้วย profileThaiDate()
 ];
@@ -178,7 +178,7 @@ function profileFormHtml(p) {
   return `
     <div class="profile-grid" id="profile-form">
       <div class="card card-pad">
-        <h2 class="card-title">ชื่อและการติดต่อ</h2>
+        <h2 class="card-title">ข้อมูลส่วนตัว</h2>
         <div class="settings-profile">
           <img src="${escapeHtml(safePhotoUrl(u.photoURL, u.displayName))}" alt="" referrerpolicy="no-referrer" class="u-avatar-48">
           <div>
@@ -196,9 +196,10 @@ function profileFormHtml(p) {
       </div>
 
       <div class="card card-pad">
-        <h2 class="card-title">ตำแหน่งและเงินเดือน</h2>
+        <h2 class="card-title">ตำแหน่งและงานราชการ</h2>
         ${pfInput('position', 'ตำแหน่ง', p.position, { ph: 'ครู', list: 'position' })}
         ${pfInput('academicStanding', 'วิทยฐานะ', p.academicStanding, { ph: 'ครูชำนาญการ', list: 'standing' })}
+        ${pfInput('subjectGroup', 'กลุ่มสาระการเรียนรู้ / กลุ่มงาน', p.subjectGroup, { ph: 'คณิตศาสตร์', opt: true })}
         <div class="field-row">
           <div class="field">
             <label for="pf-ksLevel">รับเงินเดือนในตำแหน่ง</label>
@@ -209,13 +210,18 @@ function profileFormHtml(p) {
         ${pfInput('positionNo', 'เลขที่ตำแหน่ง', p.positionNo, { opt: true, hint: 'บางแบบฟอร์มของ ก.ค.ศ. ขอข้อมูลนี้' })}
         ${pfInput('startDate', 'วันที่บรรจุเข้ารับราชการ', p.startDate, { type: 'date', opt: true, hintId: 'pf-startDate-hint' })}
         ${pfInput('licenseNo', 'เลขที่ใบอนุญาตประกอบวิชาชีพครู', p.licenseNo, { opt: true })}
-        ${pfInput('subjectGroup', 'กลุ่มสาระการเรียนรู้ / กลุ่มงาน', p.subjectGroup, { ph: 'คณิตศาสตร์', opt: true })}
       </div>
 
       <div class="card card-pad">
         <h2 class="card-title">สถานศึกษา</h2>
-        ${pfInput('school', 'สถานศึกษา', p.school, { ph: 'โรงเรียน...' })}
+        <div class="u-note u-mb-12">กรอกครั้งเดียว — PA · ID-Plan · SAR · วิจัยในชั้นเรียนดึงไปใส่ปกและหัวเอกสารให้ (ช่องในเอกสารที่เคยพิมพ์ไว้เองยังมาก่อน)</div>
+        ${pfInput('school', 'ชื่อสถานศึกษา', p.school, { ph: 'โรงเรียน...' })}
         ${pfInput('affiliation', 'สังกัด', p.affiliation, { ph: 'สำนักงานเขตพื้นที่การศึกษา...' })}
+        <div class="field-row">
+          ${pfInput('schoolDistrict', 'อำเภอ/เขตที่ตั้ง', p.schoolDistrict, { ph: 'เช่น หนองกี่', opt: true })}
+          ${pfInput('schoolProvince', 'จังหวัด', p.schoolProvince, { ph: 'เช่น บุรีรัมย์', opt: true })}
+        </div>
+        ${pfInput('agency', 'ส่วนราชการ', p.agency, { ph: 'สำนักงานคณะกรรมการการศึกษาขั้นพื้นฐาน', opt: true, hint: 'เว้นว่างได้ ถ้าสังกัด สพฐ. (ระบบใช้ค่านี้ให้ใน SAR)' })}
         <div class="pf-logo">
           <div class="pf-logo-h">ตราโรงเรียน <span class="profile-opt">(ไม่บังคับ · ไฟล์ภาพ PNG/JPG)</span></div>
           <div class="pf-logo-box">

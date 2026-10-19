@@ -33,7 +33,11 @@ function carProfileInfo(p) {
   p = p || {};
   const name = [(p.prefix || '') + (p.firstName || ''), p.lastName || ''].filter(Boolean).join(' ');
   const position = [p.position, p.academicStanding].filter(Boolean).join(' ');
-  return { name, position, school: p.school || '', affiliation: p.affiliation || '' };
+  // ที่ตั้งสถานศึกษา: "อำเภอX จังหวัดY" จากข้อมูลส่วนตัว (ตัดคำนำหน้าที่พิมพ์ซ้ำออกก่อน)
+  const strip = (v, re) => String(v || '').trim().replace(re, '').trim();
+  const dist = strip(p.schoolDistrict, /^(อำเภอ|อ\.|เขต)\s*/), prov = strip(p.schoolProvince, /^(จังหวัด|จ\.)\s*/);
+  const location = [dist && 'อำเภอ' + dist, prov && 'จังหวัด' + prov].filter(Boolean).join(' ');
+  return { name, position, school: p.school || '', affiliation: p.affiliation || '', location };
 }
 
 // ------------------------------------------------------------------
@@ -916,7 +920,7 @@ async function carRenderFormView() {
       </div>
       ${input('subject', 'รายวิชา', 'เช่น วิทยาการคำนวณ', 100)}
       ${input('level', 'ระดับชั้นของนักเรียน', 'เช่น มัธยมศึกษาปีที่ 2', 80)}
-      ${input('location', 'อำเภอ / จังหวัดของโรงเรียน', 'เช่น อำเภอแหลมสิงห์ จังหวัดจันทบุรี', 120)}
+      ${input('location', 'อำเภอ / จังหวัดของโรงเรียน (เว้นว่าง = ใช้จากข้อมูลส่วนตัว)', pi.location || 'เช่น อำเภอแหลมสิงห์ จังหวัดจันทบุรี', 120)}
     </details>
 
     <!-- 1 ความสำคัญและที่มา -->
@@ -1197,7 +1201,7 @@ function carBuildPreviewHtml(d, profile) {
     `<div class="d1-cn">${e(name)}</div>`,
     `<div class="d1-cn">ตำแหน่ง ${e(pi.position || dots(10))}</div>`,
     `<div class="d1-cn">${e(pi.school || dots(25))}</div>`,
-    `<div class="d1-cn">${d.location.trim() ? e(d.location.trim()) : dots(25)}</div>`,
+    `<div class="d1-cn">${d.location.trim() ? e(d.location.trim()) : (pi.location ? e(pi.location) : dots(25))}</div>`,
     `<div class="d1-cn">${e(pi.affiliation || dots(30))}</div>`,
   ].join('\n');
 

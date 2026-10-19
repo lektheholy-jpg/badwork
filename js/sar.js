@@ -97,7 +97,8 @@ const SAR_P3_GUIDE = ['ศึกษาเกณฑ์มาตรฐานคุ
 const SAR_P3_JUDGE = ['5 หมายถึง มีผลการปฏิบัติอยู่ในระดับยอดเยี่ยม', '4 หมายถึง มีผลการปฏิบัติอยู่ในระดับดีเลิศ', '3 หมายถึง มีผลการปฏิบัติอยู่ในระดับดี', '2 หมายถึง มีผลการปฏิบัติอยู่ในระดับปานกลาง', '1 หมายถึง มีผลการปฏิบัติอยู่ในระดับกำลังพัฒนา'];
 // อำเภอ/จังหวัด — ผู้ใช้พิมพ์มาพร้อมคำนำหน้าหรือไม่ก็ได้
 const sarStripPre = (v, re) => String(v ?? '').trim().replace(re, '').trim();
-const sarAddr = f => [f.district && `อำเภอ${sarStripPre(f.district, /^(อำเภอ|อ\.)\s*/)}`, f.province && `จังหวัด${sarStripPre(f.province, /^(จังหวัด|จ\.)\s*/)}`].filter(Boolean).join(' ');
+// ค่าที่พิมพ์ในเอกสารมาก่อน · ว่างอยู่ = ใช้จากข้อมูลส่วนตัว (pi.district / pi.province)
+const sarAddr = (f, pi = {}) => { const dist = f.district || pi.district, prov = f.province || pi.province; return [dist && `อำเภอ${sarStripPre(dist, /^(อำเภอ|อ\.|เขต)\s*/)}`, prov && `จังหวัด${sarStripPre(prov, /^(จังหวัด|จ\.)\s*/)}`].filter(Boolean).join(' '); };
 const SAR_ROWS = {
   teaching:   [['name', 'รายวิชาที่สอน'], ['room', 'ห้อง'], ['n', 'จำนวนนักเรียน'], ['hours', 'ชม./สัปดาห์']],
   activities: [['name', 'กิจกรรมพัฒนาผู้เรียน'], ['room', 'ห้อง/กลุ่ม'], ['n', 'จำนวนนักเรียน'], ['hours', 'ชม./สัปดาห์']],
@@ -435,8 +436,8 @@ async function sarRenderFormView() {
           <div class="pf-logo-act"><button type="button" class="btn btn-ghost btn-sm" id="sar-goto-logo">${logo ? 'เปลี่ยนตราในข้อมูลส่วนตัว' : 'ไปเพิ่มตราในข้อมูลส่วนตัว'}</button></div>
         </div>
       </div>
-      <div class="doc-subsec"><div class="doc-subsec-hd">ที่ตั้งสถานศึกษาและส่วนราชการ <span class="doc-sec-note">(พิมพ์บนปกและ 1.1)</span></div>
-        <div class="doc-form-meta">${sarFld('อำเภอ', sarIn('district', f.district, 'เช่น หนองกี่'))}${sarFld('จังหวัด', sarIn('province', f.province, 'เช่น บุรีรัมย์'))}${sarFld('ส่วนราชการ', sarIn('agency', f.agency, SAR_AGENCY_DEFAULT))}</div>
+      <div class="doc-subsec"><div class="doc-subsec-hd">ที่ตั้งสถานศึกษาและส่วนราชการ <span class="doc-sec-note">(พิมพ์บนปกและ 1.1 · เว้นว่าง = ใช้จากข้อมูลส่วนตัว)</span></div>
+        <div class="doc-form-meta">${sarFld('อำเภอ', sarIn('district', f.district, pi.district || 'เช่น หนองกี่'))}${sarFld('จังหวัด', sarIn('province', f.province, pi.province || 'เช่น บุรีรัมย์'))}${sarFld('ส่วนราชการ', sarIn('agency', f.agency, pi.agency || SAR_AGENCY_DEFAULT))}</div>
       </div>
       <div class="doc-subsec"><div class="doc-subsec-hd">คำนำ</div>
         <div class="field"><textarea class="idp-ta" id="sar-preface" data-f="preface" rows="8" placeholder="เว้นว่าง = ใช้คำนำมาตรฐาน (ดึงชื่อสถานศึกษา สังกัด และปีการศึกษาให้อัตโนมัติ)">${sarEsc(f.preface)}</textarea></div>
@@ -706,7 +707,7 @@ function sarBuildBodyHtml(d, prof) {
     <div class="sar-cv-t">Self - Assessment Report : SAR</div>
     <div class="sar-cv-t">${sy}</div>
     <div class="sar-cv-by">จัดทำโดย<br>${E(pi.name)}<br>ตำแหน่ง ${E(ps.position || pi.position)}</div>
-    <div class="sar-cv-sc">${E(pi.school)}${sarAddr(f) ? `<br>${E(sarAddr(f))}` : ''}${pi.affiliation ? `<br>${E(pi.affiliation)}` : ''}</div>
+    <div class="sar-cv-sc">${E(pi.school)}${sarAddr(f, pi) ? `<br>${E(sarAddr(f, pi))}` : ''}${pi.affiliation ? `<br>${E(pi.affiliation)}` : ''}</div>
   </section>
   <section>
     <div class="sar-pf-h">คำนำ</div>
@@ -718,7 +719,7 @@ function sarBuildBodyHtml(d, prof) {
   <div class="sar-p1h">${E(SAR_P1_TITLE)}</div>
   ${SAR_P1_INTRO.map(t => `<p class="sar-pf-p">${E(t)}</p>`).join('')}
   ${hd(2, SAR_H.s11)}
-  <p>ชื่อ ${E(pi.name)} กลุ่มสาระการเรียนรู้ ${E(pi.subjectGroup)} อายุ ${E(ps.age)} ปี อายุราชการ ${E(ps.svcY)} ปี ${E(ps.svcM)} เดือน คุณวุฒิสูงสุด ${E(ps.degree)} วิชาเอก ${E(ps.major)} จาก ${E(ps.inst)} ตำแหน่ง ${E(ps.position || pi.position)} วิทยฐานะ ${E(ps.rank)} ตำแหน่งเลขที่ ${E(ps.posNo)} สถานศึกษา ${E(pi.school)}${sarAddr(f) ? ' ' + E(sarAddr(f)) : ''}${pi.affiliation ? ' ' + E(pi.affiliation) : ''} ส่วนราชการ ${E(f.agency || SAR_AGENCY_DEFAULT)}</p>
+  <p>ชื่อ ${E(pi.name)} กลุ่มสาระการเรียนรู้ ${E(pi.subjectGroup)} อายุ ${E(ps.age)} ปี อายุราชการ ${E(ps.svcY)} ปี ${E(ps.svcM)} เดือน คุณวุฒิสูงสุด ${E(ps.degree)} วิชาเอก ${E(ps.major)} จาก ${E(ps.inst)} ตำแหน่ง ${E(ps.position || pi.position)} วิทยฐานะ ${E(ps.rank)} ตำแหน่งเลขที่ ${E(ps.posNo)} สถานศึกษา ${E(pi.school)}${sarAddr(f, pi) ? ' ' + E(sarAddr(f, pi)) : ''}${pi.affiliation ? ' ' + E(pi.affiliation) : ''} ส่วนราชการ ${E(f.agency || pi.agency || SAR_AGENCY_DEFAULT)}</p>
   ${hd(2, SAR_H.s12)}
   ${hd(3, `${SAR_H.teach}${sy}`)}${tbl('teaching', `<tr><th colspan="3">รวม</th><th>${s.teachN}</th><th>${sarFmt(s.teachHours, 1)}</th></tr>`, 'ที่')}
   ${hd(3, `${SAR_H.act}${sy}`)}${tbl('activities', `<tr><th colspan="3">รวม</th><th></th><th>${sarFmt(s.actHours, 1)}</th></tr>`, 'ที่')}
