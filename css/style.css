@@ -2468,6 +2468,11 @@ td.doc-ai-target::before { inset: 0; }
 .car-score-table .car-sc-sum td { font-weight: 700; background: var(--surface-sunken); }
 .car-score-meta { margin: 8px 0 14px; font-size: 13px; color: var(--ink-soft); }
 .car-score-fillhint { margin-left: 8px; font-size: 13px; }
+.car-cmp { margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--border); }
+.car-cmp-pick { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 10px; }
+.car-cmp-pick[hidden] { display: none; }
+.car-cmp-out { margin-top: 14px; }
+@media (max-width: 540px) { .car-cmp-pick { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 540px) { .car-score-pick { grid-template-columns: minmax(0, 1fr); } }
 
 /* SAR: ตารางเลือกระดับ (1.2.6 · 1.2.7 · 1.6 · ส่วนที่ 3) — ช่องตัวเลือกกึ่งกลาง กดได้ทั้งช่อง · จอแคบ (กรอบ ≤900px) เปลี่ยนเป็นการ์ด: ข้อความบนสุด ตัวเลือกเรียงเป็นแคปซูลใต้ข้อความ */

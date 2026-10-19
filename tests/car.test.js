@@ -247,5 +247,89 @@ const R=code=>vm.runInContext(code,ctx);
   const prev2=R(`carBuildPreviewHtml({scoreSel:${selJson},results:''},null)`);
   ok(prev2.includes('ตารางที่ 1')&&!prev2.includes('ตารางที่ 2'),'ตัวอย่างพิมพ์: ไม่มีตารางการส่งงาน → ตารางคะแนนเป็นตารางที่ 1');
 }
+{
+  // ---- เปรียบเทียบก่อน–หลัง (paired t-test) ----
+  const near=(a,b,e)=>typeof a==='number'&&Math.abs(a-b)<=e;
+  ok(near(R(`carTwoTailP(2.262157,9)`),0.05,0.001)&&near(R(`carTwoTailP(12.7062,1)`),0.05,0.001)&&near(R(`carTwoTailP(3.1693,10)`),0.01,0.0005),'carTwoTailP: ตรงค่าวิกฤตมาตรฐาน (t=2.262 df=9 → .05 · t=12.706 df=1 → .05 · t=3.169 df=10 → .01)');
+  ok(R(`carTwoTailP(0,5)`)===1&&R(`carTwoTailP(NaN,5)`)===null&&R(`carTwoTailP(2,0)`)===null,'carTwoTailP: t=0 → p=1 · ค่าที่ใช้ไม่ได้ → null');
+  const cmp=JSON.parse(R(`JSON.stringify(carScoreCompare({id:'b',name:'ก่อน',max:20},{id:'a',name:'หลัง',max:20},[{b:10,a:12},{b:12,a:15},{b:14,a:15},{b:16,a:20},{b:9},{a:3},{}]))`));
+  ok(cmp.n===4&&cmp.students===7&&cmp.missing===3&&cmp.basis==='score','carScoreCompare: จับคู่เฉพาะคนที่มีคะแนนทั้งสองครั้ง (4 จาก 7 คน)');
+  ok(cmp.meanB===13&&cmp.meanA===15.5&&cmp.meanD===2.5&&cmp.sdD===1.29&&cmp.improved===4&&cmp.same===0&&cmp.declined===0,'carScoreCompare: ค่าเฉลี่ยก่อน 13 หลัง 15.5 ผลต่าง 2.5 · S.D. ผลต่าง 1.29 · เพิ่มขึ้น 4 คน');
+  ok(near(cmp.t,3.87,0.01)&&cmp.df===3&&near(cmp.p,0.0305,0.0015)&&cmp.sig===true,'carScoreCompare: paired t = 3.87 df 3 p ≈ .030 → มีนัยสำคัญที่ .05');
+  ok(near(cmp.pctChange,19.23,0.01)&&near(cmp.gain,35.71,0.01),'carScoreCompare: ร้อยละที่เพิ่ม 19.23 · normalized gain 35.71 (เต็ม 20)');
+  const pc=JSON.parse(R(`JSON.stringify(carScoreCompare({id:'b',name:'ก',max:10},{id:'a',name:'ข',max:20},[{b:5,a:12},{b:6,a:10}]))`));
+  ok(pc.basis==='pct'&&pc.top===100&&pc.meanB===55&&pc.meanA===55&&pc.meanD===0&&pc.improved===1&&pc.declined===1,'carScoreCompare: คะแนนเต็มไม่เท่ากัน → คิดเป็นร้อยละของคะแนนเต็ม (ก่อน 5/10=50,60 · หลัง 12/20=60,50)');
+  const none=JSON.parse(R(`JSON.stringify(carScoreCompare({id:'b',name:'ก',max:10},{id:'a',name:'ข',max:10},[{b:5},{a:4}]))`));
+  ok(none.n===0&&none.meanD===null&&none.p===null,'carScoreCompare: ไม่มีใครมีคะแนนครบสองครั้ง → ค่าเป็น null (ไม่เดา)');
+  const flat=JSON.parse(R(`JSON.stringify(carScoreCompare({id:'b',name:'ก',max:10},{id:'a',name:'ข',max:10},[{b:5,a:5},{b:6,a:6}]))`));
+  ok(flat.n===2&&flat.same===2&&flat.p===null&&flat.t===null,'carScoreCompare: คะแนนไม่เปลี่ยนเลย → ไม่คำนวณ t (หารศูนย์)');
+
+  const selJson=JSON.stringify({courseId:'c1',courseName:'วิทย์',roomLabel:'ม.2/1',ids:[],passPct:50,students:7,rows:[],combined:null,cmp});
+  const ns=JSON.parse(R(`JSON.stringify(carNormScoreSel(${selJson}))`));
+  ok(ns.cmp&&ns.cmp.n===4&&ns.cmp.p===cmp.p&&ns.cmp.beforeName==='ก่อน','carNormScoreSel: เก็บผลเปรียบเทียบไว้ครบ (แม้ไม่ได้เลือกหัวข้อสรุปรายหัวข้อ)');
+  ok(R(`carNormScoreSel({courseId:'c1',rows:[],cmp:{beforeId:'',afterId:'a'}}).cmp`)===null,'carNormScoreSel: ผลเปรียบเทียบที่ข้อมูลไม่ครบ → ทิ้ง');
+  const sum=R(`carScoreSummary(carNormScoreSel(${selJson}))`);
+  ok(sum.includes('เปรียบเทียบก่อน–หลัง')&&sum.includes('paired t-test')&&sum.includes('ผลต่าง 2.5'),'carScoreSummary: เลือกเปรียบเทียบอย่างเดียว (ไม่มีแถวรายหัวข้อ) ก็ส่งข้อมูลให้ AI');
+  const out=R(`carScoreOutHtml(carNormScoreSel(${selJson}))`);
+  ok(out.includes('ผลเปรียบเทียบก่อน–หลัง')&&out.includes('car-sc-refresh')&&!out.includes('ค่าเฉลี่ย</th><th>ร้อยละ</th><th>S.D.'),'carScoreOutHtml: เปรียบเทียบอย่างเดียว → มีตารางเปรียบเทียบ + ปุ่มคำนวณใหม่');
+  const html=R(`carCmpTableHtml(carNormScoreSel(${selJson}).cmp,3)`);
+  ok(html.includes('ตารางที่ 3')&&html.includes('ก่อน กับ หลัง')&&html.includes('3.87')&&html.includes('0.03'),'carCmpTableHtml: หัวตาราง · ชื่อหัวข้อก่อน/หลัง · t · p');
+  ok(R(`carCmpTableHtml(null,1)`)===''&&R(`carCmpSentence(null)`)==='','carCmpTableHtml/carCmpSentence: ไม่มีผลเปรียบเทียบ → ว่าง');
+  const sen=R(`carCmpSentence(carNormScoreSel(${selJson}).cmp)`);
+  ok(sen.includes('4 คน')&&sen.includes('เพิ่มขึ้น 4 คน')&&sen.includes('อย่างมีนัยสำคัญทางสถิติ')&&!sen.includes('อย่างไม่มีนัยสำคัญ'),'carCmpSentence: ประโยคผลเปรียบเทียบ — นัยสำคัญ');
+  ok(R(`carCmpTableNo({stats:[],scoreSel:null})`)===1&&R(`carCmpTableNo({stats:[{total:'30',on:'28',late:'1',none:'1'}],scoreSel:{rows:[{}]}})`)===3&&R(`carCmpTableNo({stats:[],scoreSel:{rows:[{}]}})`)===2,'carCmpTableNo: ต่อจากตารางการส่งงาน/ตารางคะแนนที่มี');
+  const pv=R(`carBuildPreviewHtml({scoreSel:${selJson},results:''},null)`);
+  ok(pv.includes('แสดงการเปรียบเทียบคะแนนก่อนและหลัง')&&pv.includes('ตารางที่ 1'),'ตัวอย่างพิมพ์: เปรียบเทียบอย่างเดียว → ตารางเปรียบเทียบเป็นตารางที่ 1 + ประโยคอธิบาย');
+}
+{
+  // ---- ช่องเลือกวิชา + เปรียบเทียบ (UI จริงด้วย db จำลอง) ----
+  const mk=a=>({docs:a.map(([id,data])=>({id,data:()=>data}))});
+  const stu=['st1','st2','st3','st4'], A1=[5,6,7,8], A2=[7,8,8,10];
+  const scores=stu.map((id,i)=>[id,{a1:A1[i],a2:A2[i]}]);
+  const courses=[['c2',{name:'เก่า',createdAt:{toMillis:()=>1}}],['c1',{name:'วิทย์',code:'ว1',level:'ม.2',createdAt:{toMillis:()=>2}}],['c3',{name:'เก็บแล้ว',archived:true}]];
+  const mkDb=getCourses=>({collection:()=>({doc:()=>({collection:()=>({
+    get:getCourses, orderBy:()=>({get:getCourses}),
+    doc:()=>({collection:cn=>{
+      if(cn==='assessments')return{orderBy:()=>({get:async()=>mk([['a1',{name:'ก่อนเรียน',max:10,category:'collect',order:0}],['a2',{name:'หลังเรียน',max:10,category:'collect',order:1}]])})};
+      if(cn==='sections')return{get:async()=>mk([['s1',{room:'1'}]]),doc:()=>({collection:n=>({get:async()=>n==='students'?mk(stu.map(id=>[id,{no:1}])):mk(scores)})})};
+      return{doc:()=>({get:async()=>({exists:false,data:()=>undefined})})};
+    }}),
+  })})})});
+  const D=w.document, origDb=ctx.db;
+  const render=async()=>{R(`(()=>{docActivate('car'); const s=docSystem('car'); s.state.tab='form'; s.state.view='form'; s.state.docId=null; s.state.doc=carBlankDoc(); carRenderFormView();})()`);await settle();await settle();};
+  const fire=(el,t='change')=>el.dispatchEvent(new w.Event(t,{bubbles:true}));
+  const wait=ms=>new Promise(r=>setTimeout(r,ms));
+
+  ctx.db=mkDb(async()=>mk(courses));
+  await render();
+  const sel=D.getElementById('car-sc-course');
+  ok(sel.options.length===3&&sel.options[1].value==='c1'&&sel.options[2].value==='c2'&&![...sel.options].some(o=>o.value==='c3'),'ช่องเลือกวิชา: มีวิชาให้เลือก (เรียงใหม่→เก่า · ไม่รวมวิชาที่เก็บแล้ว) ไม่ใช่ตัวเลือกเดียว');
+  sel.value='c1';fire(sel);await settle();await settle();
+  ok(D.querySelectorAll('.car-sc-it').length===2&&!D.getElementById('car-cmp-on').disabled&&D.getElementById('car-cmp-before').options.length===3,'เลือกวิชา → แสดงหัวข้อคะแนน 2 หัวข้อ · เปิดใช้ช่องเปรียบเทียบ · ตัวเลือกก่อน/หลังครบ');
+  const on=D.getElementById('car-cmp-on');on.checked=true;fire(on);
+  ok(!D.getElementById('car-cmp-pick').hidden,'ติ๊กเปรียบเทียบ → แสดงช่องเลือกก่อน/หลัง');
+  D.getElementById('car-cmp-before').value='a1';fire(D.getElementById('car-cmp-before'));
+  D.getElementById('car-cmp-after').value='a1';fire(D.getElementById('car-cmp-after'));await wait(520);
+  ok(D.getElementById('car-cmp-msg').textContent.includes('ต่างกัน'),'เลือกหัวข้อก่อน=หลัง → เตือนให้เลือกให้ต่างกัน');
+  D.getElementById('car-cmp-after').value='a2';fire(D.getElementById('car-cmp-after'));await wait(520);await settle();
+  const ss=JSON.parse(R(`JSON.stringify(docSystem('car').state.doc.scoreSel)`));
+  ok(ss&&ss.cmp&&ss.cmp.n===4&&ss.cmp.meanB===6.5&&ss.cmp.meanA===8.25&&ss.cmp.improved===4&&ss.cmp.p>0.004&&ss.cmp.p<0.008&&ss.rows.length===0,'เลือกก่อน=ก่อนเรียน หลัง=หลังเรียน → คำนวณ: n 4 · 6.5 → 8.25 · p ≈ .006 (ไม่ต้องติ๊กหัวข้อรายตัว)');
+  ok(D.getElementById('car-sc-out').innerHTML.includes('paired t-test'),'ผลเปรียบเทียบแสดงในฟอร์ม');
+  on.checked=false;fire(on);await wait(520);await settle();
+  ok(R(`docSystem('car').state.doc.scoreSel.cmp`)===null&&D.getElementById('car-cmp-pick').hidden,'ยกเลิกติ๊กเปรียบเทียบ → ผลเปรียบเทียบหาย');
+
+  // โหลดรายการวิชาไม่สำเร็จ → บอกสาเหตุ + ปุ่มลองใหม่ (แล้วลองใหม่สำเร็จ)
+  ctx.db=mkDb(async()=>{throw new Error('boom')});
+  await render();
+  ok(D.getElementById('car-sc-course').textContent.includes('โหลดรายการวิชาไม่สำเร็จ')&&D.getElementById('car-sc-status').textContent.includes('boom')&&!!D.getElementById('car-sc-retry'),'โหลดวิชาล้มเหลว → ช่องเลือกบอกว่าไม่สำเร็จ + แสดงสาเหตุ + ปุ่มลองใหม่');
+  ctx.db=mkDb(async()=>mk(courses));
+  D.getElementById('car-sc-retry').click();await settle();await settle();
+  ok(D.getElementById('car-sc-course').options.length===3&&D.getElementById('car-sc-status').textContent==='','กดลองใหม่ → โหลดรายการวิชาได้');
+  // ไม่มีวิชาเลย → บอกให้ไปสร้างวิชา
+  ctx.db=mkDb(async()=>mk([]));
+  await render();
+  ok(D.getElementById('car-sc-status').textContent.includes('ยังไม่มีวิชา'),'ไม่มีวิชาที่เปิดใช้งาน → บอกให้ไปสร้างวิชาก่อน');
+  ctx.db=origDb;
+}
 console.log(fail?'FAIL '+fail:'ALL PASS');process.exit(fail?1:0);
 })().catch(e=>{console.error(e);process.exit(1)});

@@ -185,7 +185,7 @@ function carScoreCompute(items, rowsByStudent, passPct) {
 
 // ข้อความบริบทของ AI — ตัวเลขรวมล้วน (ไม่มีชื่อ/รหัสนักเรียน)
 function carScoreSummary(sel) {
-  if (!sel || !Array.isArray(sel.rows) || !sel.rows.length) return '';
+  if (!sel || !Array.isArray(sel.rows) || (!sel.rows.length && !(sel.cmp && sel.cmp.n))) return '';
   const f = v => (v === null || v === undefined ? '-' : carFmtAvg(v));
   const line = r => {
     const head = `- ${r.group ? r.group + ' · ' : ''}${r.name} (คะแนนเต็ม ${f(r.max)}): `;
@@ -199,7 +199,148 @@ function carScoreSummary(sel) {
   const lines = [`ข้อมูลคะแนนผลสัมฤทธิ์จากระบบ (ตัวเลขรวม ไม่มีชื่อนักเรียน): วิชา ${sel.courseName || '-'} · ${sel.roomLabel || 'ทุกห้อง'} · นักเรียน ${sel.students || 0} คน · เกณฑ์ผ่าน = ร้อยละ ${sel.passPct} ของคะแนนเต็ม`];
   sel.rows.forEach(r => lines.push(line(r)));
   if (sel.combined) lines.push(line(sel.combined) + ` [คิดเฉพาะนักเรียนที่มีคะแนนครบทุกหัวข้อ ${sel.combined.n} คน]`);
+  const c = sel.cmp;
+  if (c && c.n) {
+    lines.push(`เปรียบเทียบก่อน–หลัง: ก่อน = ${c.beforeName} · หลัง = ${c.afterName} (${c.basis === 'pct' ? 'คิดเป็นร้อยละของคะแนนเต็ม' : 'คะแนนเต็ม ' + f(c.top)}): นักเรียนที่มีคะแนนทั้งสองครั้ง ${c.n} คน`
+      + ` · ก่อน ค่าเฉลี่ย ${f(c.meanB)} S.D. ${f(c.sdB)} · หลัง ค่าเฉลี่ย ${f(c.meanA)} S.D. ${f(c.sdA)} · ผลต่าง ${f(c.meanD)}${c.pctChange === null ? '' : ` (ร้อยละ ${f(c.pctChange)} ของคะแนนก่อน)`}`
+      + ` · เพิ่มขึ้น ${c.improved} คน เท่าเดิม ${c.same} คน ลดลง ${c.declined} คน${c.gain === null ? '' : ` · normalized gain ร้อยละ ${f(c.gain)}`}`
+      + (c.p === null ? '' : ` · paired t-test t(${c.df}) = ${f(c.t)}, p ${c.p < 0.001 ? '< .001' : '= ' + c.p.toFixed(3)} (${c.sig ? 'แตกต่างอย่างมีนัยสำคัญที่ระดับ .05' : 'ไม่แตกต่างอย่างมีนัยสำคัญที่ระดับ .05'})`));
+  }
   return lines.join('\n').slice(0, 3000);
+}
+
+// ------------------------------------------------------------------
+// เปรียบเทียบคะแนนก่อน–หลัง (จับคู่รายคน · ไม่เก็บชื่อ) — paired t-test แบบสองทาง
+//   คะแนนเต็มของสองหัวข้อไม่เท่ากัน → คิดเป็นร้อยละของคะแนนเต็มแต่ละหัวข้อ (basis = 'pct') · เท่ากัน → ใช้คะแนนดิบ (basis = 'score')
+//   นับเฉพาะนักเรียนที่มีคะแนนทั้งสองครั้ง · normalized gain = (หลัง − ก่อน) / (เต็ม − ก่อน) ของค่าเฉลี่ยกลุ่ม
+// ------------------------------------------------------------------
+function carLnGamma(z) {
+  const c = [0.99999999999980993, 676.5203681218851, -1259.1392167224028, 771.32342877765313, -176.61502916214059, 12.507343278686905, -0.13857109526572012, 9.9843695780195716e-6, 1.5056327351493116e-7];
+  z -= 1;
+  let x = c[0];
+  for (let i = 1; i < 9; i++) x += c[i] / (z + i);
+  const t = z + 7.5;
+  return 0.5 * Math.log(2 * Math.PI) + (z + 0.5) * Math.log(t) - t + Math.log(x);
+}
+function carBetaCf(a, b, x) {
+  const FP = 1e-300, qab = a + b, qap = a + 1, qam = a - 1;
+  let c = 1, d = 1 - (qab * x) / qap;
+  if (Math.abs(d) < FP) d = FP;
+  d = 1 / d;
+  let h = d;
+  for (let m = 1; m <= 300; m++) {
+    const m2 = 2 * m;
+    let aa = (m * (b - m) * x) / ((qam + m2) * (a + m2));
+    d = 1 + aa * d; if (Math.abs(d) < FP) d = FP;
+    c = 1 + aa / c; if (Math.abs(c) < FP) c = FP;
+    d = 1 / d; h *= d * c;
+    aa = (-(a + m) * (qab + m) * x) / ((a + m2) * (qap + m2));
+    d = 1 + aa * d; if (Math.abs(d) < FP) d = FP;
+    c = 1 + aa / c; if (Math.abs(c) < FP) c = FP;
+    d = 1 / d;
+    const del = d * c;
+    h *= del;
+    if (Math.abs(del - 1) < 3e-14) break;
+  }
+  return h;
+}
+function carBetaInc(x, a, b) {
+  if (x <= 0) return 0;
+  if (x >= 1) return 1;
+  const bt = Math.exp(carLnGamma(a + b) - carLnGamma(a) - carLnGamma(b) + a * Math.log(x) + b * Math.log(1 - x));
+  return x < (a + 1) / (a + b + 2) ? (bt * carBetaCf(a, b, x)) / a : 1 - (bt * carBetaCf(b, a, 1 - x)) / b;
+}
+// ค่า p สองทางของ t ที่ df องศาอิสระ
+function carTwoTailP(t, df) {
+  if (!Number.isFinite(t) || !(df >= 1)) return null;
+  return carBetaInc(df / (df + t * t), df / 2, 0.5);
+}
+const carFmtP = p => (p === null || p === undefined ? '-' : p < 0.001 ? '< .001' : p.toFixed(3));
+
+// bItem/aItem = หัวข้อก่อน/หลัง {id,name,max} · rows = เอกสารคะแนนของนักเรียนแต่ละคน {รหัสหัวข้อ: คะแนน}
+function carScoreCompare(bItem, aItem, rows) {
+  const mb = Number(bItem.max) || 0, ma = Number(aItem.max) || 0;
+  const basis = mb > 0 && ma > 0 && mb !== ma ? 'pct' : 'score';
+  const top = basis === 'pct' ? 100 : ma;
+  const conv = (v, m) => (basis === 'pct' ? (m > 0 ? (v / m) * 100 : null) : v);
+  const all = rows || [];
+  const pairs = [];
+  all.forEach(r => {
+    const vb = carScoreNum((r || {})[bItem.id]), va = carScoreNum((r || {})[aItem.id]);
+    if (vb === null || va === null) return;
+    const x = conv(vb, mb), y = conv(va, ma);
+    if (x === null || y === null) return;
+    pairs.push([x, y]);
+  });
+  const n = pairs.length;
+  const out = {
+    beforeId: String(bItem.id), afterId: String(aItem.id), beforeName: String(bItem.name || ''), afterName: String(aItem.name || ''),
+    basis, top: carR2(top), students: all.length, n, missing: all.length - n,
+    meanB: null, meanA: null, sdB: null, sdA: null, meanD: null, sdD: null, pctChange: null, gain: null,
+    improved: 0, same: 0, declined: 0, t: null, df: null, p: null, sig: null,
+  };
+  if (!n) return out;
+  const mean = a => a.reduce((s, v) => s + v, 0) / a.length;
+  const sd = a => (a.length > 1 ? Math.sqrt(a.reduce((s, v) => s + (v - mean(a)) ** 2, 0) / (a.length - 1)) : null);
+  const xs = pairs.map(p => p[0]), ys = pairs.map(p => p[1]), ds = pairs.map(p => p[1] - p[0]);
+  const mB = mean(xs), mA = mean(ys), mD = mean(ds);
+  out.meanB = carR2(mB); out.meanA = carR2(mA); out.meanD = carR2(mD);
+  out.sdB = carR2(sd(xs)); out.sdA = carR2(sd(ys)); out.sdD = carR2(sd(ds));
+  out.pctChange = mB > 0 ? carR2((mD / mB) * 100) : null;
+  out.gain = top > mB ? carR2((mD / (top - mB)) * 100) : null;
+  ds.forEach(d => { if (d > 1e-9) out.improved++; else if (d < -1e-9) out.declined++; else out.same++; });
+  const sdD = sd(ds);
+  if (n > 1 && sdD !== null && sdD > 1e-12) {
+    const t = mD / (sdD / Math.sqrt(n));
+    const p = carTwoTailP(Math.abs(t), n - 1);
+    out.t = carR2(t); out.df = n - 1;
+    out.p = p === null ? null : Math.round(p * 10000) / 10000;
+    out.sig = out.p === null ? null : out.p < 0.05;
+  }
+  return out;
+}
+
+// ประโยคอธิบายผลเปรียบเทียบ (ใช้ในเอกสารพิมพ์ — ตัวเลขจากตารางเท่านั้น)
+function carCmpSentence(c) {
+  if (!c || !c.n) return '';
+  const f = v => (v === null || v === undefined ? '…' : carFmtAvg(v));
+  const unit = c.basis === 'pct' ? ' (คิดเป็นร้อยละของคะแนนเต็ม)' : '';
+  let t = `นักเรียนที่มีคะแนนทั้งก่อนและหลัง ${c.n} คน คะแนนเฉลี่ยก่อน ${f(c.meanB)} หลัง ${f(c.meanA)}${unit} ผลต่าง ${f(c.meanD)}`
+    + (c.pctChange === null ? '' : ` คิดเป็นร้อยละ ${f(c.pctChange)} ของคะแนนก่อน`)
+    + ` โดยมีนักเรียนที่คะแนนเพิ่มขึ้น ${c.improved} คน เท่าเดิม ${c.same} คน ลดลง ${c.declined} คน`;
+  if (c.p !== null) t += ` เมื่อทดสอบด้วย paired t-test พบว่าคะแนนหลังแตกต่างจากก่อน${c.sig ? 'อย่างมีนัยสำคัญทางสถิติ' : 'อย่างไม่มีนัยสำคัญทางสถิติ'}ที่ระดับ .05`;
+  return t;
+}
+
+// ตารางเปรียบเทียบในเอกสารพิมพ์ (ไม่มีชื่อนักเรียน)
+function carCmpTableHtml(c, no) {
+  if (!c || !c.n) return '';
+  const e = escapeHtml, f = v => (v === null || v === undefined ? '-' : carFmtAvg(v));
+  return `<div class="d1-h d1-cap"><b>ตารางที่ ${no}</b> แสดงการเปรียบเทียบคะแนนก่อนและหลัง (${e(c.beforeName)} กับ ${e(c.afterName)})${c.basis === 'pct' ? ' คิดเป็นร้อยละของคะแนนเต็ม' : ''}</div>
+<table class="d1-tb">
+  <thead>
+    <tr><th rowspan="2">จำนวนนักเรียน</th><th colspan="2">ก่อน</th><th colspan="2">หลัง</th><th rowspan="2">ผลต่าง</th><th rowspan="2">t</th><th rowspan="2">p</th></tr>
+    <tr><th>ค่าเฉลี่ย</th><th>S.D.</th><th>ค่าเฉลี่ย</th><th>S.D.</th></tr>
+  </thead>
+  <tbody><tr><td>${c.n}</td><td>${f(c.meanB)}</td><td>${f(c.sdB)}</td><td>${f(c.meanA)}</td><td>${f(c.sdA)}</td><td>${f(c.meanD)}</td><td>${f(c.t)}</td><td>${carFmtP(c.p)}</td></tr></tbody>
+</table>`;
+}
+
+// ตารางสรุปผลเปรียบเทียบในฟอร์ม
+function carCmpOutHtml(sel, withMeta) {
+  const c = sel && sel.cmp;
+  if (!c) return '';
+  const e = escapeHtml, f = v => (v === null || v === undefined ? '–' : carFmtAvg(v));
+  const unit = c.basis === 'pct' ? ' (ร้อยละของคะแนนเต็ม)' : '';
+  const verdict = c.p === null ? 'ยังคำนวณ t ไม่ได้ (ต้องมีนักเรียนอย่างน้อย 2 คน และคะแนนต้องไม่เท่ากันทุกคน)'
+    : `paired t-test: t(${c.df}) = ${f(c.t)}, p ${c.p < 0.001 ? '< .001' : '= ' + c.p.toFixed(3)} → ${c.sig ? 'แตกต่างอย่างมีนัยสำคัญที่ระดับ .05' : 'ไม่แตกต่างอย่างมีนัยสำคัญที่ระดับ .05'}`;
+  const when = sel.at ? new Date(sel.at).toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short' }) : '';
+  return `<div class="car-cmp-out"><div class="doc-subsec-hd">ผลเปรียบเทียบก่อน–หลัง${unit}</div>
+    <div class="doc-table-wrap"><table class="doc-table doc-table--center car-score-table">
+      <thead><tr><th>ก่อน → หลัง</th><th>มีคะแนนทั้งสองครั้ง<br>(คน)</th><th>ก่อน<br>ค่าเฉลี่ย</th><th>S.D.</th><th>หลัง<br>ค่าเฉลี่ย</th><th>S.D.</th><th>ผลต่าง</th><th>ร้อยละที่เพิ่ม</th></tr></thead>
+      <tbody><tr><td data-label="ก่อน → หลัง">${e(c.beforeName)} → ${e(c.afterName)}</td><td data-label="มีคะแนนทั้งสองครั้ง (คน)">${c.n}</td><td data-label="ก่อน ค่าเฉลี่ย">${f(c.meanB)}</td><td data-label="S.D.">${f(c.sdB)}</td><td data-label="หลัง ค่าเฉลี่ย">${f(c.meanA)}</td><td data-label="S.D.">${f(c.sdA)}</td><td data-label="ผลต่าง">${f(c.meanD)}</td><td data-label="ร้อยละที่เพิ่ม">${f(c.pctChange)}</td></tr></tbody>
+    </table></div>
+    <div class="car-score-meta">เพิ่มขึ้น ${c.improved} คน · เท่าเดิม ${c.same} คน · ลดลง ${c.declined} คน${c.gain === null ? '' : ` · normalized gain ร้อยละ ${f(c.gain)}`}${c.missing ? ` · ไม่นับ ${c.missing} คนที่ขาดคะแนนก่อนหรือหลัง` : ''}<br>${e(verdict)}${withMeta ? `${when ? ` · คำนวณเมื่อ ${e(when)}` : ''} <button type="button" class="btn btn-ghost btn-sm car-sc-refresh">คำนวณใหม่</button>` : ''}</div></div>`;
 }
 
 // เติมตารางการส่งงานจากคะแนนที่เลือก: 1 หัวข้อ = 1 ชิ้นงาน · มีคะแนน = ส่ง (นับเป็น "ส่งตามกำหนด") · ไม่มีคะแนน = ไม่ส่ง · ส่งช้าเว้นว่างให้ครูกรอกเอง
@@ -211,6 +352,11 @@ function carStatRowsFromScore(sel) {
 // เลขตารางคะแนนในรายงาน: ตารางการส่งงานเป็นตารางที่ 1 เสมอ (ถ้ามี) → ตารางคะแนนเป็นตารางถัดไป
 function carScoreTableNo(d) {
   return carStatCalc((d && d.stats) || []).count ? 2 : 1;
+}
+// เลขตารางเปรียบเทียบก่อน–หลัง: ต่อจากตารางคะแนน (ถ้ามีตารางคะแนนพิมพ์ด้วย)
+function carCmpTableNo(d) {
+  const sel = d && d.scoreSel;
+  return carScoreTableNo(d) + (sel && sel.rows && sel.rows.length ? 1 : 0);
 }
 
 // ตารางคะแนนในเอกสารพิมพ์ (ใช้ตัวเลขที่ดึงไว้ใน doc.scoreSel — ไม่มีชื่อนักเรียน)
@@ -239,6 +385,13 @@ function carNormScoreSel(s) {
     max: num(r.max) || 0, total: num(r.total) || 0, n: num(r.n) || 0, missing: num(r.missing) || 0,
     avg: num(r.avg), pct: num(r.pct), sd: num(r.sd), min: num(r.min), top: num(r.top), pass: num(r.pass), pPass: num(r.pPass),
   });
+  const cmpNorm = c => (!c || typeof c !== 'object' || !c.beforeId || !c.afterId ? null : {
+    beforeId: str(c.beforeId, 80), afterId: str(c.afterId, 80), beforeName: str(c.beforeName, 120), afterName: str(c.afterName, 120),
+    basis: c.basis === 'pct' ? 'pct' : 'score', top: num(c.top), students: num(c.students) || 0, n: num(c.n) || 0, missing: num(c.missing) || 0,
+    meanB: num(c.meanB), meanA: num(c.meanA), sdB: num(c.sdB), sdA: num(c.sdA), meanD: num(c.meanD), sdD: num(c.sdD),
+    pctChange: num(c.pctChange), gain: num(c.gain), improved: num(c.improved) || 0, same: num(c.same) || 0, declined: num(c.declined) || 0,
+    t: num(c.t), df: num(c.df), p: num(c.p), sig: c.sig === true ? true : c.sig === false ? false : null,
+  });
   const pp = num(s.passPct);
   const out = {
     courseId: str(s.courseId, 80), courseName: str(s.courseName, 160), sectionId: str(s.sectionId, 80), roomLabel: str(s.roomLabel, 80),
@@ -247,6 +400,7 @@ function carNormScoreSel(s) {
     at: num(s.at) || 0, students: num(s.students) || 0,
     rows: (Array.isArray(s.rows) ? s.rows : []).filter(r => r && typeof r === 'object').slice(0, CAR_SCORE_MAX_ITEMS).map(row),
     combined: s.combined && typeof s.combined === 'object' ? row(s.combined) : null,
+    cmp: cmpNorm(s.cmp),
   };
   out.summary = carScoreSummary(out);
   return out;
@@ -373,12 +527,35 @@ function carCourseBase(courseId) {
   return db.collection('users').doc(AppState.user.uid).collection('courses').doc(courseId);
 }
 
+function carCourseOption(id, c) {
+  return { id, name: String(c.name || ''), label: `${c.code ? c.code + ' - ' : ''}${c.name || 'ไม่มีชื่อวิชา'}${c.level ? ' (' + c.level + ')' : ''}` };
+}
+
+// รายการวิชาจากแคชกลางของแอป (ถ้ามี) — แสดงได้ทันทีโดยไม่รอเครือข่าย
+function carScoreCachedCourses() {
+  try {
+    const cc = typeof getCourseDataCache === 'function' ? getCourseDataCache() : AppState.courseDataCache;
+    if (!cc || !Array.isArray(cc.list) || cc.uid !== (AppState.user && AppState.user.uid)) return [];
+    return cc.list.filter(x => x && x.data && !x.data.archived).map(x => carCourseOption(x.id, x.data));
+  } catch (err) {
+    return [];
+  }
+}
+
+// อ่านรายการวิชา (ไม่ใช้ orderBy — วิชาที่ไม่มี createdAt จะไม่หาย) · ค้างเกิน 15 วินาที = แจ้งข้อผิดพลาดให้กดลองใหม่
 async function carScoreLoadCourses() {
-  const snap = await db.collection('users').doc(AppState.user.uid).collection('courses').orderBy('createdAt', 'desc').get();
-  return snap.docs.filter(d => !d.data().archived).map(d => {
-    const c = d.data();
-    return { id: d.id, name: String(c.name || ''), label: `${c.code ? c.code + ' - ' : ''}${c.name || 'ไม่มีชื่อวิชา'}${c.level ? ' (' + c.level + ')' : ''}` };
-  });
+  const uid = AppState.user && AppState.user.uid;
+  if (!uid) throw new Error('ยังไม่ได้เข้าสู่ระบบ');
+  let timer;
+  const timeout = new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('โหลดนานเกินไป — ตรวจอินเทอร์เน็ตแล้วกด “ลองใหม่”')), 15000); });
+  try {
+    const snap = await Promise.race([db.collection('users').doc(uid).collection('courses').get(), timeout]);
+    const ts = v => (v && typeof v.toMillis === 'function' ? v.toMillis() : Number(v) || 0);
+    return snap.docs.map(d => ({ id: d.id, data: d.data() })).filter(x => !x.data.archived)
+      .sort((a, b) => ts(b.data.createdAt) - ts(a.data.createdAt)).map(x => carCourseOption(x.id, x.data));
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 async function carScoreLoadStructure(courseId) {
@@ -429,7 +606,10 @@ async function carScoreLoadRows(courseId, sectionIds) {
 }
 
 function carScoreOutHtml(sel) {
-  if (!sel || !sel.rows.length) return '';
+  if (!sel) return '';
+  return (sel.rows.length ? carScoreMainOutHtml(sel) : '') + (sel.cmp ? carCmpOutHtml(sel, !sel.rows.length) : '');
+}
+function carScoreMainOutHtml(sel) {
   const e = escapeHtml, f = v => (v === null || v === undefined ? '–' : carFmtAvg(v));
   const tr = (r, cls) => `<tr${cls ? ` class="${cls}"` : ''}>
       <td data-label="หัวข้อ">${e(r.name)}</td><td data-label="คะแนนเต็ม">${f(r.max)}</td><td data-label="มีคะแนน (คน)">${r.n}</td>
@@ -449,18 +629,32 @@ function carScoreUiInit(form) {
   const sys = docSystem();
   const $ = id => form.querySelector('#' + id);
   const elCourse = $('car-sc-course'), elRoom = $('car-sc-room'), elPass = $('car-sc-pass'), elItems = $('car-sc-items'), elOut = $('car-sc-out');
+  const elStatus = $('car-sc-status'), elCmpOn = $('car-cmp-on'), elCmpPick = $('car-cmp-pick'), elCmpB = $('car-cmp-before'), elCmpA = $('car-cmp-after'), elCmpMsg = $('car-cmp-msg');
   if (!elCourse) return;
   const doc = sys.state.doc;
-  const ui = { seq: 0, timer: null, struct: null, groups: [] };
+  const ui = { seq: 0, cseq: 0, restored: false, timer: null, struct: null, groups: [] };
   const e = escapeHtml;
   const renderOut = () => { elOut.innerHTML = carScoreOutHtml(doc.scoreSel); };
 
-  function renderItems(checked) {
+  function renderItems(checked, savedCmp) {
     elItems.innerHTML = ui.groups.map((g, gi) => `<fieldset class="car-sc-grp">
       <legend><label class="car-sc-chk"><input type="checkbox" class="car-sc-all" data-gi="${gi}"> ${e(g.title)} <span class="u-note">(${g.items.length} หัวข้อ)</span></label></legend>
       ${g.items.map(it => `<label class="car-sc-chk"><input type="checkbox" class="car-sc-it" value="${e(it.id)}"${checked.has(it.id) ? ' checked' : ''}> ${e(it.name)} <span class="u-note">/${it.max}</span></label>`).join('')}
     </fieldset>`).join('') || '<div class="u-note">วิชานี้ยังไม่มีโครงสร้างคะแนน — ตั้งค่าที่หน้าวิชา แท็บ “โครงสร้างคะแนน” ก่อน</div>';
     syncAll();
+    const flat = ui.groups.flatMap(g => g.items);
+    const opts = '<option value="">— เลือกหัวข้อ —</option>' + ui.groups.map(g => `<optgroup label="${e(g.title)}">${g.items.map(it => `<option value="${e(it.id)}">${e(it.name)} (/${it.max})</option>`).join('')}</optgroup>`).join('');
+    elCmpB.innerHTML = opts;
+    elCmpA.innerHTML = opts;
+    elCmpOn.disabled = !flat.length;
+    elCmpOn.checked = false;
+    elCmpPick.hidden = true;
+    if (savedCmp && flat.some(it => it.id === savedCmp.beforeId) && flat.some(it => it.id === savedCmp.afterId)) {
+      elCmpOn.checked = true;
+      elCmpPick.hidden = false;
+      elCmpB.value = savedCmp.beforeId;
+      elCmpA.value = savedCmp.afterId;
+    }
   }
   // ติ๊ก "ทั้งหมวด" ให้ตรงกับหัวข้อในหมวด
   function syncAll() {
@@ -484,7 +678,7 @@ function carScoreUiInit(form) {
       elRoom.innerHTML = '<option value="">ทุกห้อง</option>' + st.sections.map(s => `<option value="${e(s.id)}">ห้อง ${e(s.room)}</option>`).join('');
       elRoom.value = saved && st.sections.some(s => s.id === saved.sectionId) ? saved.sectionId : '';
       elRoom.disabled = false;
-      renderItems(new Set(saved ? saved.ids : []));
+      renderItems(new Set(saved ? saved.ids : []), saved && saved.cmp);
     } catch (err) {
       if (seq !== ui.seq) return;
       elItems.innerHTML = `<div class="car-warn">โหลดโครงสร้างคะแนนไม่สำเร็จ: ${e(err.message || err)}</div>`;
@@ -503,14 +697,20 @@ function carScoreUiInit(form) {
       roomLabel: sectionId ? (elRoom.selectedOptions[0]?.textContent || '') : '',
       ids, passPct: Number(elPass.value) || 50,
     };
-    if (!ids.length) { doc.scoreSel = carNormScoreSel({ ...base, rows: [] }); renderOut(); return; }
+    const cb = elCmpOn.checked ? elCmpB.value : '', ca = elCmpOn.checked ? elCmpA.value : '';
+    elCmpMsg.textContent = cb && ca && cb === ca ? 'เลือกหัวข้อก่อนและหลังให้ต่างกัน' : (elCmpOn.checked && (!cb || !ca) ? 'เลือกหัวข้อทั้งก่อนและหลังเพื่อเปรียบเทียบ' : '');
+    const useCmp = !!(cb && ca && cb !== ca);
+    if (!ids.length && !useCmp) { doc.scoreSel = carNormScoreSel({ ...base, rows: [] }); renderOut(); return; }
     elOut.innerHTML = '<div class="u-note">กำลังคำนวณ…</div>';
     try {
-      const items = ui.groups.flatMap(g => g.items).filter(it => ids.includes(it.id));
+      const flat = ui.groups.flatMap(g => g.items);
+      const items = flat.filter(it => ids.includes(it.id));
       const data = await carScoreLoadRows(courseId, sectionId ? [sectionId] : ui.struct.sections.map(s => s.id));
       if (seq !== ui.seq) return;
       const calc = carScoreCompute(items, data, base.passPct);
-      doc.scoreSel = carNormScoreSel({ ...base, passPct: calc.passPct, at: Date.now(), students: calc.students, rows: calc.rows, combined: calc.combined });
+      const bi = useCmp ? flat.find(it => it.id === cb) : null, ai = useCmp ? flat.find(it => it.id === ca) : null;
+      const cmp = bi && ai ? carScoreCompare(bi, ai, data) : null;
+      doc.scoreSel = carNormScoreSel({ ...base, passPct: calc.passPct, at: Date.now(), students: calc.students, rows: calc.rows, combined: calc.combined, cmp });
       renderOut();
     } catch (err) {
       if (seq === ui.seq) elOut.innerHTML = `<div class="car-warn">คำนวณไม่สำเร็จ: ${e(err.message || err)}</div>`;
@@ -525,9 +725,16 @@ function carScoreUiInit(form) {
     ui.struct = null;
     elRoom.innerHTML = '<option value="">ทุกห้อง</option>';
     elRoom.disabled = true;
+    elCmpOn.checked = false;
+    elCmpOn.disabled = true;
+    elCmpPick.hidden = true;
+    elCmpMsg.textContent = '';
     if (elCourse.value) await loadCourse(elCourse.value, null);
   });
   elRoom.addEventListener('change', later);
+  elCmpOn.addEventListener('change', () => { elCmpPick.hidden = !elCmpOn.checked; later(); });
+  elCmpB.addEventListener('change', later);
+  elCmpA.addEventListener('change', later);
   elPass.addEventListener('input', later);
   elItems.addEventListener('change', ev => {
     const all = ev.target.closest('.car-sc-all');
@@ -541,16 +748,32 @@ function carScoreUiInit(form) {
   const saved = doc.scoreSel;
   elPass.value = String(saved ? saved.passPct : 50);
   renderOut();
-  carScoreLoadCourses().then(courses => {
-    if (!document.body.contains(elCourse)) return; // ผู้ใช้ออกจากหน้านี้แล้ว
+  const fillCourses = (courses, selected) => {
     const list = courses.slice();
     if (saved && !list.some(c => c.id === saved.courseId)) list.push({ id: saved.courseId, name: saved.courseName, label: (saved.courseName || 'วิชาที่เลือกไว้') + ' (ไม่พบในรายการวิชาปัจจุบัน)' });
     elCourse.innerHTML = '<option value="">— ไม่ใช้ข้อมูลคะแนน —</option>' + list.map(c => `<option value="${e(c.id)}" data-name="${e(c.name)}">${e(c.label)}</option>`).join('');
-    if (saved) { elCourse.value = saved.courseId; loadCourse(saved.courseId, saved); }
-  }).catch(err => {
-    elCourse.innerHTML = '<option value="">โหลดรายการวิชาไม่สำเร็จ</option>';
-    console.warn('carScoreLoadCourses', err);
-  });
+    if (selected && list.some(c => c.id === selected)) elCourse.value = selected;
+    elStatus.innerHTML = courses.length ? '' : '<div class="u-note">ยังไม่มีวิชาที่เปิดใช้งาน — สร้างวิชาที่หน้า “รายวิชา” ก่อน แล้วกลับมาเลือกที่นี่</div>';
+    if (saved && !ui.restored && elCourse.value === saved.courseId) { ui.restored = true; loadCourse(saved.courseId, saved); }
+  };
+  async function loadCourses() {
+    const mine = ++ui.cseq;
+    elStatus.innerHTML = '';
+    const cached = carScoreCachedCourses();
+    if (cached.length) fillCourses(cached, elCourse.value || (saved && saved.courseId)); // แสดงจากแคชก่อน ไม่ต้องรอเครือข่าย
+    try {
+      const courses = await carScoreLoadCourses();
+      if (mine !== ui.cseq || !document.body.contains(elCourse)) return; // ผู้ใช้ออกจากหน้านี้แล้ว
+      fillCourses(courses, elCourse.value || (saved && saved.courseId));
+    } catch (err) {
+      if (mine !== ui.cseq || !document.body.contains(elCourse)) return;
+      console.warn('carScoreLoadCourses', err);
+      if (!cached.length) elCourse.innerHTML = '<option value="">โหลดรายการวิชาไม่สำเร็จ</option>';
+      elStatus.innerHTML = `<div class="car-warn">โหลดรายการวิชาไม่สำเร็จ: ${e(err.message || err)} <button type="button" class="btn btn-ghost btn-sm" id="car-sc-retry">ลองใหม่</button></div>`;
+    }
+  }
+  elStatus.addEventListener('click', ev => { if (ev.target.closest('#car-sc-retry')) loadCourses(); });
+  loadCourses();
 }
 
 // ------------------------------------------------------------------
@@ -736,13 +959,22 @@ async function carRenderFormView() {
       <summary class="doc-fold-h"><h2 class="doc-sec-title">7. ผลการวิเคราะห์ข้อมูล</h2></summary>
       <div class="doc-subsec car-score" id="car-score">
         <div class="doc-subsec-hd">ข้อมูลคะแนนผลสัมฤทธิ์จากรายวิชา <span class="doc-sec-note">(ไม่บังคับ · ให้ AI ใช้เขียนผลการวิเคราะห์)</span></div>
-        <div class="u-note">เลือกวิชาและหัวข้อคะแนนที่เกี่ยวกับงานวิจัย ระบบสรุปเป็นตัวเลขรวม (ค่าเฉลี่ย ร้อยละ ผู้ผ่านเกณฑ์) ไม่เก็บและไม่ส่งชื่อหรือรหัสนักเรียน · อ่านอย่างเดียว ไม่แก้คะแนนในวิชา</div>
+        <div class="u-note">เลือกวิชาและหัวข้อคะแนนที่เกี่ยวกับงานวิจัย ระบบสรุปเป็นตัวเลขรวม (ค่าเฉลี่ย ร้อยละ ผู้ผ่านเกณฑ์ และเปรียบเทียบก่อน–หลังได้) ไม่เก็บและไม่ส่งชื่อหรือรหัสนักเรียน · อ่านอย่างเดียว ไม่แก้คะแนนในวิชา</div>
         <div class="car-score-pick">
           <div class="field"><label for="car-sc-course">วิชา</label><select id="car-sc-course"><option value="">กำลังโหลดรายการวิชา…</option></select></div>
           <div class="field"><label for="car-sc-room">ห้อง</label><select id="car-sc-room" disabled><option value="">ทุกห้อง</option></select></div>
           <div class="field"><label for="car-sc-pass">เกณฑ์ผ่าน (ร้อยละ)</label><input id="car-sc-pass" type="text" inputmode="numeric" maxlength="3" value="50"></div>
         </div>
+        <div id="car-sc-status" role="status"></div>
         <div class="car-score-items" id="car-sc-items"></div>
+        <div class="car-cmp">
+          <label class="car-sc-chk"><input type="checkbox" id="car-cmp-on" disabled> เปรียบเทียบคะแนนก่อน–หลัง <span class="u-note">(เช่น ก่อนเรียน/หลังเรียน หรือก่อน/หลังใช้นวัตกรรม — จับคู่รายคน ทดสอบ paired t-test)</span></label>
+          <div class="car-cmp-pick" id="car-cmp-pick" hidden>
+            <div class="field"><label for="car-cmp-before">คะแนนก่อน</label><select id="car-cmp-before"></select></div>
+            <div class="field"><label for="car-cmp-after">คะแนนหลัง</label><select id="car-cmp-after"></select></div>
+          </div>
+          <div class="car-warn" id="car-cmp-msg" role="status"></div>
+        </div>
         <div id="car-sc-out" role="status"></div>
         <div class="u-mt-4"><button type="button" class="btn btn-ghost btn-sm" id="car-sc-fill-stats">เติมตารางการส่งงานจากคะแนนที่เลือก</button>
           <span class="u-muted car-score-fillhint">ช่องที่ไม่มีคะแนน = ไม่ส่งงาน · ส่งช้ากรอกเองในตาราง</span></div>
@@ -987,7 +1219,9 @@ function carBuildPreviewHtml(d, profile) {
   if (table) parts.push(table);
   const scoreTable = carScoreTableHtml(d.scoreSel, carScoreTableNo(d));
   if (scoreTable) parts.push(scoreTable);
-  if (d.results.trim() || !(table || scoreTable)) parts.push(paras(d.results));
+  const cmpTable = carCmpTableHtml(d.scoreSel && d.scoreSel.cmp, carCmpTableNo(d));
+  if (cmpTable) parts.push(cmpTable, paras(carCmpSentence(d.scoreSel.cmp)));
+  if (d.results.trim() || !(table || scoreTable || cmpTable)) parts.push(paras(d.results));
   if (d.satisfaction.trim()) parts.push(paras(d.satisfaction));
   parts.push(h('สรุปผล'), paras(d.conclusion));
   parts.push(`<div class="d1-sign">
