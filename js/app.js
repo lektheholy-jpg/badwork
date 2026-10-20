@@ -268,6 +268,99 @@ function initLook(view) {
   return { sync };
 }
 
+// ---------- ชุดตั้งค่าของฉัน: บันทึก/ใช้/อัปเดต/ลบ preset ของพื้นหลัง + สีหลัก + ความโปร่งใสเมนู·การ์ด (ตรรกะอยู่ที่ js/theme.js: getLookPresets / saveLookPreset / applyLookPreset / deleteLookPreset) ----------
+function presetsHtml() {
+  return `
+    <div class="card card-pad set-preset">
+      <h2 class="card-title">ชุดตั้งค่าของฉัน</h2>
+      <div class="u-note">บันทึกพื้นหลัง สีหลัก ความโปร่งใสของการ์ดและแถบเมนู และความเบลอ ณ ตอนนี้ไว้เป็นชุดของตัวเอง แล้วกดใช้ได้ในครั้งเดียว (เก็บไว้ในเครื่อง/เบราว์เซอร์นี้ ไม่รวมโหมดสว่าง-มืด)</div>
+      <div class="preset-save">
+        <div class="field"><input type="text" id="preset-name" maxlength="${LOOK_PRESET_NAME_MAX}" autocomplete="off" placeholder="ตั้งชื่อชุด เช่น โปร่งใสมาก, กลางคืน" aria-label="ชื่อชุดตั้งค่า"></div>
+        <button type="button" class="btn btn-primary btn-sm" id="preset-save-btn">บันทึกชุดนี้</button>
+      </div>
+      <div class="preset-list" id="preset-list"></div>
+    </div>`;
+}
+
+function initPresets(view, onApplied) {
+  const box = view.querySelector('.set-preset');
+  const list = box.querySelector('#preset-list'), nameEl = box.querySelector('#preset-name');
+  const D = () => getLookDefaults();
+  const render = () => {
+    const items = getLookPresets();
+    if (!items.length) { list.innerHTML = '<div class="u-note-sm preset-empty">ยังไม่มีชุดที่บันทึกไว้ · ปรับพื้นหลังและความโปร่งใสให้ถูกใจ แล้วตั้งชื่อด้านบนเพื่อบันทึก</div>'; return; }
+    list.innerHTML = items.map(p => {
+      const d = D(), card = p.look.card ?? d.card, menu = p.look.menu ?? d.menu, blur = p.look.blur ?? d.blur;
+      const dot = p.look.pc ? ` style="--dot:${p.look.pc}"` : '';
+      return `
+      <div class="preset-item" data-preset="${escapeHtml(p.id)}">
+        <span class="preset-sw" style="--sw:${presetBgCss(p.bg)}" aria-hidden="true"><i class="preset-dot${p.look.pc ? '' : ' is-default'}"${dot}></i></span>
+        <div class="preset-info">
+          <div class="u-semibold preset-name">${escapeHtml(p.name)}</div>
+          <div class="u-note-sm">โปร่งใส: การ์ด ${card}% · เมนู ${menu}% · เบลอ ${blur}px</div>
+        </div>
+        <div class="preset-actions">
+          <button type="button" class="btn btn-primary btn-sm" data-preset-act="apply">ใช้</button>
+          <button type="button" class="btn btn-ghost btn-sm" data-preset-act="update" title="เขียนทับด้วยค่าที่ตั้งอยู่ตอนนี้">อัปเดต</button>
+          <button type="button" class="btn btn-danger-ghost btn-sm" data-preset-act="delete">ลบ</button>
+        </div>
+      </div>`;
+    }).join('');
+  };
+  const REASONS = {
+    name: ['กรุณาตั้งชื่อชุดก่อนบันทึก', 'warn'],
+    dup: ['มีชื่อนี้อยู่แล้ว · ตั้งชื่อใหม่ หรือกด “อัปเดต” ที่ชุดนั้น', 'warn'],
+    full: ['บันทึกได้สูงสุด ' + LOOK_PRESET_MAX + ' ชุด · ลบชุดเก่าก่อน', 'warn'],
+    missing: ['ไม่พบชุดนี้แล้ว', 'warn'],
+    storage: ['บันทึกไม่สำเร็จ (เบราว์เซอร์ไม่อนุญาตให้เก็บข้อมูล)', 'error']
+  };
+  const save = () => {
+    const r = saveLookPreset(nameEl.value);
+    if (!r.ok) { nameEl.focus(); showToast(...REASONS[r.reason]); return; }
+    nameEl.value = '';
+    render();
+    showToast('บันทึกชุด “' + r.preset.name + '” แล้ว', 'success');
+  };
+  box.querySelector('#preset-save-btn').addEventListener('click', save);
+  nameEl.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); save(); } });
+  list.addEventListener('click', e => {
+    const btn = e.target.closest('[data-preset-act]'); if (!btn) return;
+    const id = btn.closest('[data-preset]').dataset.preset, act = btn.dataset.presetAct;
+    const p = getLookPresets().find(x => x.id === id);
+    if (!p) { render(); showToast(...REASONS.missing); return; }
+    if (act === 'apply') {
+      applyLookPreset(id);
+      onApplied(); // วาดหน้าตั้งค่าใหม่ ให้ปุ่มพื้นหลัง/แถบเลื่อนตรงกับชุดที่ใช้
+      showToast('ใช้ชุด “' + p.name + '” แล้ว', 'success');
+    } else if (act === 'update') {
+      openConfirmModal({
+        title: 'อัปเดตชุดนี้?',
+        body: 'เขียนทับชุด “' + escapeHtml(p.name) + '” ด้วยพื้นหลังและความโปร่งใสที่ตั้งอยู่ตอนนี้',
+        confirmLabel: 'อัปเดต',
+        onConfirm: () => {
+          const r = saveLookPreset(null, id);
+          if (!r.ok) throw new Error(r.reason);
+          render();
+          showToast('อัปเดตชุด “' + p.name + '” แล้ว', 'success');
+        }
+      });
+    } else if (act === 'delete') {
+      openConfirmModal({
+        title: 'ลบชุดนี้?',
+        body: 'ลบชุด “' + escapeHtml(p.name) + '” ออกจากรายการ (ไม่กระทบการตั้งค่าที่ใช้อยู่ตอนนี้)',
+        confirmLabel: 'ลบ',
+        danger: true,
+        onConfirm: () => {
+          if (!deleteLookPreset(id)) throw new Error('delete');
+          render();
+          showToast('ลบชุด “' + p.name + '” แล้ว', 'success');
+        }
+      });
+    }
+  });
+  render();
+}
+
 // ผูกตัวควบคุมพื้นหลังกำหนดเองในหน้าตั้งค่า · onChange = เรียกเมื่อมีการใช้พื้นหลังกำหนดเอง (ให้ช่องสำเร็จรูปเลิกติ๊กถูก)
 function initBgCustom(view, onChange) {
   const saved = getBgCustom();
@@ -383,6 +476,7 @@ function renderSettings() {
       <div id="bg-custom-panel" class="hidden"></div>
     </div>
     ${lookHtml()}
+    ${presetsHtml()}
     <div class="card card-pad set-priv">
       <h2 class="card-title">ความเป็นส่วนตัวและข้อมูลของฉัน</h2>
       <div class="u-note u-lh-165 u-mt-4">
@@ -426,6 +520,7 @@ function renderSettings() {
     bgCustom.reset();
   }));
   syncBgButtons();
+  initPresets(view, renderSettings);
   initNavPill(view.querySelector('.theme-seg[aria-label="ธีม"]'), '.theme-opt', 'seg-pill', { activeSel: '[aria-pressed="true"]', watch: true });
 }
 

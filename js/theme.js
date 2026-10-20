@@ -287,6 +287,76 @@
     applyBg('custom');
     return cfg;
   };
+  // ---------- ชุดตั้งค่าของฉัน (preset) ----------
+  // เก็บ "หน้าตา" ทั้งชุดในเครื่อง: พื้นหลัง (ชุดสำเร็จรูป / กำหนดเอง) + สีหลัก + ความโปร่งใสการ์ด/เมนู + ความเบลอ
+  // รูปแบบที่เก็บ: [{ id, name, bg: 'default' | ชื่อชุดสำเร็จรูป | cfg พื้นหลังกำหนดเอง, look: { pc, card, menu, blur } }]
+  // ไม่รวมโหมดสว่าง/มืด (ธีม) เพราะเป็นการตั้งค่าแยก · ค่าที่อ่านกลับผ่านตัวตรวจ cleanCfg/cleanLook ทุกครั้ง
+  var PRESET_KEY = 'myscore-presets', PRESET_MAX = 12, PRESET_NAME_MAX = 40;
+  function newPresetId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+  function cleanPresetName(n) { return typeof n === 'string' ? n.replace(/\s+/g, ' ').trim().slice(0, PRESET_NAME_MAX) : ''; }
+  function cleanPreset(o) {
+    if (!o || typeof o !== 'object') return null;
+    var name = cleanPresetName(o.name);
+    if (!name) return null;
+    var bg = 'default';
+    if (typeof o.bg === 'string' && BG_IDS.indexOf(o.bg) !== -1) bg = o.bg;
+    else if (o.bg && typeof o.bg === 'object') bg = cleanCfg(o.bg) || 'default';
+    return { id: typeof o.id === 'string' && /^[a-z0-9]{4,24}$/.test(o.id) ? o.id : newPresetId(), name: name, bg: bg, look: cleanLook(o.look) };
+  }
+  function readPresets() {
+    try {
+      var arr = JSON.parse(localStorage.getItem(PRESET_KEY));
+      return (arr instanceof Array ? arr : []).map(cleanPreset).filter(Boolean).slice(0, PRESET_MAX);
+    } catch (e) { return []; }
+  }
+  function writePresets(list) {
+    try { localStorage.setItem(PRESET_KEY, JSON.stringify(list)); return true; } catch (e) { return false; }
+  }
+  function currentBgValue() { // พื้นหลังที่ใช้อยู่ ในรูปที่เก็บลง preset
+    var raw = readRaw();
+    if (BG_IDS.indexOf(raw) !== -1) return raw;
+    return parseCustom(raw) || 'default';
+  }
+  window.getLookPresets = readPresets;
+  window.LOOK_PRESET_MAX = PRESET_MAX;
+  window.LOOK_PRESET_NAME_MAX = PRESET_NAME_MAX;
+  // บันทึกค่าปัจจุบันเป็นชุดใหม่ (name) หรือเขียนทับชุดเดิม (id) · คืน { ok, preset } หรือ { ok:false, reason: 'name'|'dup'|'full'|'missing'|'storage' }
+  window.saveLookPreset = function (name, id) {
+    var list = readPresets(), cur = { bg: currentBgValue(), look: readLook() };
+    if (id) {
+      var i = list.findIndex(function (x) { return x.id === id; });
+      if (i < 0) return { ok: false, reason: 'missing' };
+      list[i] = { id: id, name: list[i].name, bg: cur.bg, look: cur.look };
+      return writePresets(list) ? { ok: true, preset: list[i] } : { ok: false, reason: 'storage' };
+    }
+    name = cleanPresetName(name);
+    if (!name) return { ok: false, reason: 'name' };
+    if (list.some(function (x) { return x.name.toLowerCase() === name.toLowerCase(); })) return { ok: false, reason: 'dup' };
+    if (list.length >= PRESET_MAX) return { ok: false, reason: 'full' };
+    var p = { id: newPresetId(), name: name, bg: cur.bg, look: cur.look };
+    list.push(p);
+    return writePresets(list) ? { ok: true, preset: p } : { ok: false, reason: 'storage' };
+  };
+  window.applyLookPreset = function (id) { // ใช้ชุดที่บันทึกไว้ (พื้นหลัง + สี + ความโปร่งใส) · คืนชุดนั้น หรือ null ถ้าไม่พบ
+    var p = readPresets().filter(function (x) { return x.id === id; })[0];
+    if (!p) return null;
+    try {
+      if (p.bg === 'default') localStorage.removeItem(BG_KEY);
+      else localStorage.setItem(BG_KEY, typeof p.bg === 'string' ? p.bg : JSON.stringify(p.bg));
+      localStorage.setItem(LOOK_KEY, JSON.stringify(p.look));
+    } catch (e) {}
+    applyBg(readBg()); // applyBg → applyTone → applyLook : คำนวณสีตัวหนังสือ/การ์ดใหม่ให้ตรงกับชุดนี้
+    return p;
+  };
+  window.deleteLookPreset = function (id) {
+    var list = readPresets(), next = list.filter(function (x) { return x.id !== id; });
+    return next.length !== list.length && writePresets(next);
+  };
+  window.presetBgCss = function (bg) { // CSS พื้นหลังสำหรับช่องตัวอย่างของชุด
+    if (bg && typeof bg === 'object') return bgCss(bg, 0.5);
+    if (PRESET_CFG[bg]) return bgCss(cleanCfg(PRESET_CFG[bg]), 0.5);
+    return BG_IDS.indexOf(bg) !== -1 ? 'var(--bgp-' + bg + ')' : 'var(--bg)';
+  };
   window.bgCssOf = function (cfg, scale) { cfg = cleanCfg(cfg); return cfg ? bgCss(cfg, scale) : ''; }; // สำหรับช่องตัวอย่างในหน้าตั้งค่า
   window.bgPresetCss = function (id) { return PRESET_CFG[id] ? bgCss(cleanCfg(PRESET_CFG[id])) : ''; }; // สำหรับช่องตัวอย่างของชุดไล่เฉด
   window.BG_PATTERNS = PATTERNS;

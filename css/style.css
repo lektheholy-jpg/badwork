@@ -1998,11 +1998,12 @@ table.sheet tbody tr:nth-child(n) td.over-max { background: var(--danger-tint); 
 .settings-profile > div { min-width: 0; overflow-wrap: anywhere; }
 .settings-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 @media (min-width: 861px) {
-  .settings-grid { grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); grid-template-rows: auto auto auto 1fr; grid-template-areas: "acct bg" "theme bg" "look bg" "priv bg"; gap: 16px; }
+  .settings-grid { grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); grid-template-rows: auto auto auto auto 1fr; grid-template-areas: "acct bg" "theme bg" "look bg" "preset bg" "priv bg"; gap: 16px; }
   .set-acct { grid-area: acct; }
   .set-theme { grid-area: theme; }
   .set-bg { grid-area: bg; }
   .set-look { grid-area: look; }
+  .set-preset { grid-area: preset; }
   .set-priv { grid-area: priv; }
 }
 @media (max-width: 480px) {
@@ -2273,6 +2274,24 @@ table.tt tr.is-today td.tt-cell { background: color-mix(in srgb, var(--hue-orang
 @media (max-width: 860px) { .to-top { right: 16px; bottom: calc(82px + env(safe-area-inset-bottom, 0px)); } } /* พ้นแถบเมนูล่าง */
 @media (prefers-reduced-motion: reduce) { .to-top { transition: none; } }
 @media print { .to-top { display: none; } }
+
+/* ----- ตั้งค่า → ชุดตั้งค่าของฉัน (preset พื้นหลัง/สีหลัก/ความโปร่งใส) · js/app.js presetsHtml + initPresets ----- */
+.preset-save { display: flex; align-items: flex-start; gap: 8px; margin-top: 12px; }
+.preset-save .field { flex: 1 1 auto; min-width: 0; margin: 0; }
+.preset-save .btn { flex: none; min-height: 44px; }
+.preset-list { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+.preset-empty { padding: 12px 4px; }
+.preset-item { display: flex; align-items: center; gap: 12px; padding: 10px; border: 2px solid var(--border); border-radius: var(--radius-m); min-width: 0; }
+.preset-sw { position: relative; flex: none; width: 48px; height: 48px; border: 2px solid var(--border); border-radius: var(--radius-s, 10px); background: var(--sw); overflow: hidden; }
+.preset-dot { position: absolute; right: 4px; bottom: 4px; width: 14px; height: 14px; border: 2px solid var(--white); border-radius: 50%; background: var(--dot, var(--primary-solid)); box-shadow: 0 0 0 1px rgb(0 0 0 / 25%); }
+.preset-info { flex: 1 1 auto; min-width: 0; }
+.preset-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.preset-actions { display: flex; flex: none; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
+@media (max-width: 560px) {
+  .preset-item { flex-wrap: wrap; }
+  .preset-info { flex-basis: calc(100% - 64px); }
+  .preset-actions { flex: 1 1 100%; justify-content: flex-start; }
+}
 
 /* @bundle docs — ส่วนนี้แยกเป็น css/docs.min.css โหลดเมื่อเปิดหน้าระบบเอกสาร (PA · ID-Plan · วิจัยในชั้นเรียน · …) — กฎในนี้ต้องไม่ใช้ class ที่หน้าหลักใช้ (tools/split-css.js ตรวจให้) · วางกฎใหม่ของระบบเอกสารไว้ในบล็อกนี้ */
 /* ==========================================================================
