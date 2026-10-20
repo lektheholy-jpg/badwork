@@ -35,7 +35,8 @@
     "test:car": "node tests/car.test.js",
     "test:docprofile": "node tests/doc-profile.test.js",
     "ci": "npm test && npm run check:css && npm run check:js",
-    "test:cssb": "node tests/css-bundles.test.js"
+    "test:cssb": "node tests/css-bundles.test.js",
+    "test:rules": "node tests/rules-profile.test.js"
   },
   "devDependencies": {
     "csso-cli": "4.0.2",
