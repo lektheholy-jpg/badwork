@@ -5,7 +5,7 @@ compatibility_date = "2025-01-01"
 [vars]
 FIREBASE_PROJECT_ID = "mywork-lektheholy"
 # แก้เป็นโดเมนจริงของเว็บ (คั่นด้วย ,) — ตัด localhost ออกตอนใช้งานจริงได้
-ALLOWED_ORIGINS = "https://lektheholy-jpg.github.io"
+ALLOWED_ORIGINS = "https://lektheholy-jpg.github.io,https://wenkham.pages.dev"
 # GEMINI_API_KEY ตั้งด้วยคำสั่ง: npx wrangler secret put GEMINI_API_KEY
 
 # ---- คุมค่าใช้จ่าย Gemini (ไม่บังคับ · เอา # ออกเพื่อเปิดใช้) ----
