@@ -97,14 +97,14 @@ function makeSW({ online = true, body = {} } = {}) {
     const orig = bad.state.body;
     // ไฟล์ของแอปหายไปหนึ่งไฟล์ (404) → ติดตั้งต้องไม่ผ่าน
     const realFetch = bad.ctx.fetch;
-    bad.ctx.fetch = async (r) => (String(r.url || r).endsWith('js/app.js') ? new Response('', { status: 404 }) : realFetch(r));
+    bad.ctx.fetch = async (r) => (String(r.url || r).endsWith('js/core.bundle.js') ? new Response('', { status: 404 }) : realFetch(r));
     let rejected = false; try { await bad.install(); } catch (e) { rejected = true; }
     ok(rejected, 'ไฟล์ของแอปโหลดไม่ได้ (404) → ติดตั้งไม่ผ่าน ไม่ได้แอปครึ่งเดียว');
   }
 
   console.log('\n[2] เปิดแอปตอนออฟไลน์');
   {
-    const sw = makeSW({ body: { [SCOPE + 'index.html']: '<html>v1</html>', [SCOPE + 'js/app.js']: 'APP-1' } });
+    const sw = makeSW({ body: { [SCOPE + 'index.html']: '<html>v1</html>', [SCOPE + 'js/core.bundle.js']: 'APP-1' } });
     await sw.install(); await sw.activate();
     sw.state.body[SCOPE + 'index.html'] = '<html>v2</html>';
     let r = await sw.fetch(SCOPE, { mode: 'navigate' });
@@ -114,15 +114,15 @@ function makeSW({ online = true, body = {} } = {}) {
     ok(await sw.text(r) === '<html>v2</html>', 'ออฟไลน์ → เปิดหน้าล่าสุดที่เคยโหลดจากแคชได้');
     r = await sw.fetch(SCOPE + 'index.html?utm=x', { mode: 'navigate' });
     ok(await sw.text(r) === '<html>v2</html>', 'ออฟไลน์ + URL มี query → ยังได้ index.html');
-    r = await sw.fetch(SCOPE + 'js/app.js');
+    r = await sw.fetch(SCOPE + 'js/core.bundle.js');
     ok(await sw.text(r) === 'APP-1', 'ออฟไลน์ → สคริปต์ของแอปมาจากแคช', await sw.text(r));
     r = await sw.fetch(SCOPE + 'js/vendor/xlsx.mini.min.js?v=0.20.3');
     ok(r && r.ok, 'ออฟไลน์ → xlsx.mini.min.js?v=… (มี query) หาในแคชเจอ');
     r = await sw.fetch(SCOPE + 'js/report.js');
     ok(r && r.ok, 'ออฟไลน์ → โมดูล lazy (report.js) เปิดได้');
-    r = await sw.fetch('https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js');
+    r = await sw.fetch('https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore-compat.js');
     ok(r && r.ok, 'ออฟไลน์ → Firebase SDK มาจากแคช');
-    r = await sw.fetch('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans+Thai:wght@500;600;700&family=Noto+Sans+Thai:wght@400;500;600;700&display=swap');
+    r = await sw.fetch('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans+Thai:wght@500;600;700&family=Noto+Sans+Thai:wght@400;500;600;700;800&display=swap');
     ok(r && r.ok, 'ออฟไลน์ → CSS ฟอนต์มาจากแคช');
   }
 
@@ -147,7 +147,7 @@ function makeSW({ online = true, body = {} } = {}) {
     ok(!(await hit('https://api.open-meteo.com/v1/forecast?latitude=1&longitude=2')), 'API สภาพอากาศไม่ผ่าน SW');
     ok(!(await hit('https://accounts.google.com/o/oauth2/auth')), 'Google Sign-In ไม่ผ่าน SW');
     ok(!(await hit(SCOPE + '__/auth/handler')), 'ตัวช่วยล็อกอิน /__/auth ไม่ผ่าน SW');
-    ok(!(await hit(SCOPE + 'js/app.js', { method: 'POST' })), 'คำขอที่ไม่ใช่ GET ไม่ผ่าน SW');
+    ok(!(await hit(SCOPE + 'js/core.bundle.js', { method: 'POST' })), 'คำขอที่ไม่ใช่ GET ไม่ผ่าน SW');
   }
 
   console.log('\n[5] อัปเดตเวอร์ชัน');
