@@ -674,20 +674,27 @@ table.sheet :is(th, td).sticky-right-2 { right: 0; width: var(--r2-w); min-width
 .check-row.ok { color: var(--success); }
 .check-row.warn { color: var(--danger); }
 
-/* ---------- Dynamic Island: แคปซูลดำกลางบนจอ — พัก = วัน·เวลา | ไอคอน ชื่อหน้า · ใช้งาน = แจ้งเตือน/บันทึก/เลิกทำ/ความคืบหน้า ----------
+/* ---------- Dynamic Island (แบบ F "Notch Tab"): ลิ้นต่อขึ้นจากขอบบนของเมนูล่าง — พัก = วัน·เวลา | ไอคอน ชื่อหน้า · ใช้งาน = แจ้งเตือน/บันทึก/เลิกทำ/ความคืบหน้า ----------
+   ไม่ลอยกลางบนจออีกแล้ว (ชนเกาะจริงของ iPhone) · มือถือ: ฐานลิ้นแนบขอบบน .tabbar (--island-dock) · จอใหญ่ (ไม่มีเมนูล่าง): แนบขอบล่างจอ
+   ผิวกระจกเดียวกับ .tabbar · ตอนมีแจ้งเตือนย้อมสีตามชนิด (เขียว=สำเร็จ แดง=ลบ/ผิดพลาด เหลือง=เตือน/ออฟไลน์) ใช้ token ธีม จึงตามธีมมืดเอง
    ความสูงคงที่เสมอ (--island-h) — เปลี่ยนสถานะ/แจ้งเตือน = เปลี่ยนข้อความ ถ้ายาวก็ขยายออกด้านข้างเท่านั้น (ไม่สูงขึ้น ไม่ขึ้นบรรทัดใหม่)
    ความกว้างตอนพัก (--iw) ตอนขยาย (--ow) และช่องชื่อหน้า (--pw) js/island.js วัดจากเนื้อหาจริงแล้วใส่ให้ */
 .island {
-  --island-h: 32px; --island-t: .55s cubic-bezier(.3, 1.4, .5, 1);
+  --island-h: 30px; --island-t: .55s cubic-bezier(.3, 1.4, .5, 1);
+  --island-dock: 0px; /* ระยะจากขอบล่างจอถึงฐานลิ้น: จอใหญ่ = 0 · มือถือ (ล็อกอินแล้ว) = ลอยเหนือ .tabbar ตั้งในบล็อก @media (max-width: 860px) ข้างล่าง */
   --island-shift: 0px; /* ระยะที่ขยับจากกลางจอไปกลางเนื้อหา = ครึ่งหนึ่งของความกว้างเมนูข้าง (ตั้งค่าด้านล่างเฉพาะจอ desktop) */
-  position: fixed; top: calc(10px + env(safe-area-inset-top, 0px)); left: calc(50% + var(--island-shift)); z-index: 80;
+  position: fixed; bottom: var(--island-dock); left: calc(50% + var(--island-shift)); z-index: 80;
   display: flex; align-items: center; justify-content: center; overflow: hidden;
-  width: var(--iw, 132px); max-width: calc(100vw - 2 * var(--island-shift) - 24px); height: var(--island-h); border-radius: calc(var(--island-h) / 2); transform: translateX(-50%);
-  background: #000; color: var(--white); pointer-events: none;
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, .12), 0 8px 24px rgba(0, 0, 0, .22);
-  transition: width var(--island-t), left .2s ease; /* left ตามจังหวะเดียวกับเมนูข้างที่ย่อ/ขยาย (.sidebar: width .2s ease) */
+  width: var(--iw, 132px); max-width: calc(100vw - 2 * var(--island-shift) - 24px); height: var(--island-h); border-radius: calc(var(--island-h) / 2) calc(var(--island-h) / 2) 0 0; transform: translateX(-50%);
+  background: color-mix(in srgb, var(--card) var(--glass, 60%), transparent); color: var(--ink); pointer-events: none;
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.6); backdrop-filter: blur(var(--glass-blur)) saturate(1.6);
+  box-shadow: 0 -6px 16px var(--shadow-ink-sm);
+  transition: width var(--island-t), left .2s ease, background-color .2s ease, opacity .2s ease; /* left ตามจังหวะเดียวกับเมนูข้างที่ย่อ/ขยาย (.sidebar: width .2s ease) */
 }
 .island.open { width: var(--ow, 240px); }
+.island.open[data-kind="success"] { background: var(--success-tint); }
+.island.open[data-kind="warn"], .island.open[data-kind="offline"] { background: var(--warning-tint); }
+.island.open[data-kind="error"], .island.open[data-kind="trash"] { background: var(--danger-tint); }
 /* ตั้งค่าครั้งแรกตอนโหลดหน้า: ไม่ต้องมีแอนิเมชัน (ใช้ความจำเพาะสูงกว่าแทน !important ตามกฎของโปรเจกต์) */
 .island.island-instant, .island.island-instant .island-idle, .island.island-instant .island-idle-page, .island.island-instant .island-idle-page .pg, .island.island-instant .island-body { transition: none; }
 
@@ -696,11 +703,11 @@ table.sheet :is(th, td).sticky-right-2 { right: 0; width: var(--r2-w); min-width
   position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: max-content;
   display: flex; align-items: center; white-space: nowrap;
   font-family: var(--font-head); font-size: 12.5px; font-weight: 600; line-height: 1; font-variant-numeric: tabular-nums;
-  color: rgba(255, 255, 255, .9); transition: opacity .18s ease;
+  color: var(--ink); transition: opacity .18s ease;
 }
 .island.open .island-idle { opacity: 0; }
 .island-idle-main { flex: none; display: flex; align-items: center; }
-.island-idle-date, .island-idle-sep { color: rgba(255, 255, 255, .85); margin: 0 6px; } /* เดิม color .6 ซ้อน opacity .6 = สว่างจริงแค่ ~36% จึงมืดเกิน */
+.island-idle-date, .island-idle-sep { color: var(--ink-soft); margin: 0 6px; }
 /* ช่องชื่อหน้า: กว้างตาม --pw (ความกว้างจริงของหน้านั้น) แล้ว transition ด้วยจังหวะเดียวกับแคปซูล · มี 2 ชั้นสลับกัน:
    ชั้นเก่าเลื่อนขึ้นแล้วจางหาย ชั้นใหม่เลื่อนขึ้นมาแทน ระหว่างที่แคปซูลยืด/หดไปพร้อมกัน */
 .island-idle-page { position: relative; flex: none; display: block; height: 18px; width: var(--pw, 0px); overflow: hidden; transition: width var(--island-t); }
@@ -712,11 +719,11 @@ table.sheet :is(th, td).sticky-right-2 { right: 0; width: var(--r2-w); min-width
 .island-idle-page .pg.on { opacity: 1; transform: none; }
 .island-idle-page .pg.out { opacity: 0; transform: translateY(-7px); }
 .island-idle-page .pg.no-t { transition: none; }
-.pg-div { flex: none; width: 1px; height: 12px; margin: 0 9px; background: rgba(255, 255, 255, .28); }
+.pg-div { flex: none; width: 1px; height: 12px; margin: 0 9px; background: color-mix(in srgb, var(--ink) 22%, transparent); }
 .pg-ico { flex: none; display: flex; align-items: center; margin-right: 6px; }
-.pg-ico svg { display: block; width: 14px; height: 14px; color: var(--viz-sky); }
-.pg-name { flex: none; font-weight: 700; color: var(--white); }
-.island-idle-off { display: none; align-items: center; gap: 7px; color: var(--hue-amber); }
+.pg-ico svg { display: block; width: 14px; height: 14px; color: var(--primary-dark); }
+.pg-name { flex: none; font-weight: 700; color: var(--ink); }
+.island-idle-off { display: none; align-items: center; gap: 7px; color: var(--warning); }
 .island-idle-off i { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
 .island.is-offline .island-idle-off { display: inline-flex; }
 .island.is-offline .island-idle-date, .island.is-offline .island-idle-sep, .island.is-offline .island-idle-time { display: none; }
@@ -733,30 +740,30 @@ table.sheet :is(th, td).sticky-right-2 { right: 0; width: var(--r2-w); min-width
 .island-body.pop { animation: island-pop .4s cubic-bezier(.3, 1.3, .5, 1) .08s backwards; }
 .island-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .island[data-mode="progress"] .island-body { min-width: 220px; }
-.island-icon { flex: none; display: flex; align-items: center; justify-content: center; width: 18px; height: 18px; color: var(--viz-sky); }
+.island-icon { flex: none; display: flex; align-items: center; justify-content: center; width: 18px; height: 18px; color: var(--primary-dark); }
 .island-icon svg { display: block; width: 100%; height: 100%; }
-.island[data-kind="success"] .island-icon { color: var(--viz-mint); }
-.island[data-kind="warn"] .island-icon, .island[data-kind="offline"] .island-icon { color: var(--hue-amber); }
-.island[data-kind="error"] .island-icon, .island[data-kind="trash"] .island-icon { color: var(--hue-red); }
+.island[data-kind="success"] .island-icon { color: var(--success); }
+.island[data-kind="warn"] .island-icon, .island[data-kind="offline"] .island-icon { color: var(--warning); }
+.island[data-kind="error"] .island-icon, .island[data-kind="trash"] .island-icon { color: var(--danger); }
 .island-check { stroke-dasharray: 14; stroke-dashoffset: 14; animation: island-check .35s .15s ease forwards; }
-.island-spin { width: 16px; height: 16px; border-radius: 50%; border: 2.5px solid rgba(255, 255, 255, .22); border-top-color: var(--viz-sky); animation: island-spin .8s linear infinite; }
+.island-spin { width: 16px; height: 16px; border-radius: 50%; border: 2.5px solid color-mix(in srgb, var(--ink) 18%, transparent); border-top-color: var(--primary-dark); animation: island-spin .8s linear infinite; }
 
 /* ปุ่มในแคปซูล (เลิกทำ / ลองใหม่) — แคปซูลทั้งก้อนไม่รับคลิก เฉพาะปุ่มนี้รับ */
 .island-action {
   pointer-events: auto; flex: none; appearance: none; border: 0; border-radius: 999px; margin: 0 -8px 0 0; padding: 4px 12px;
-  background: rgba(255, 255, 255, .14); color: var(--viz-sky); font: inherit; font-size: 12.5px; font-weight: 700; line-height: 1.4; cursor: pointer;
+  background: color-mix(in srgb, var(--ink) 10%, transparent); color: var(--ink); font: inherit; font-size: 12.5px; font-weight: 700; line-height: 1.4; cursor: pointer;
   -webkit-tap-highlight-color: transparent; transition: background .15s ease;
 }
-.island-action:hover { background: rgba(255, 255, 255, .24); }
-.island-action:focus-visible { outline: 2px solid var(--white); outline-offset: 2px; }
+.island-action:hover { background: color-mix(in srgb, var(--ink) 18%, transparent); }
+.island-action:focus-visible { outline: 2px solid var(--primary-solid); outline-offset: 2px; }
 .island-action[hidden] { display: none; }
 
 /* แถบเล็กชิดขอบล่าง: ความคืบหน้า / นับถอยหลังเลิกทำ / วิ่งไม่รู้ความยาว */
-.island-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: rgba(255, 255, 255, .14); opacity: 0; transition: opacity .2s ease; }
-.island-bar i { display: block; height: 100%; width: 100%; background: var(--viz-sky); transform-origin: left center; transform: scaleX(0); }
+.island-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: color-mix(in srgb, var(--ink) 10%, transparent); opacity: 0; transition: opacity .2s ease; }
+.island-bar i { display: block; height: 100%; width: 100%; background: var(--primary-dark); transform-origin: left center; transform: scaleX(0); }
 .island[data-bar="progress"] .island-bar, .island[data-bar="indeterminate"] .island-bar, .island[data-bar="countdown"] .island-bar { opacity: 1; }
 .island[data-bar="progress"] .island-bar i { transform: scaleX(var(--p, 0)); transition: transform .3s ease; }
-.island[data-bar="countdown"] .island-bar i { background: rgba(255, 255, 255, .5); transform: scaleX(1); animation: island-countdown var(--cd, 5000ms) linear forwards; }
+.island[data-bar="countdown"] .island-bar i { background: color-mix(in srgb, var(--ink) 40%, transparent); transform: scaleX(1); animation: island-countdown var(--cd, 5000ms) linear forwards; }
 .island[data-bar="indeterminate"] .island-bar i { width: 38%; transform: none; animation: island-slide 1.1s ease-in-out infinite; }
 
 @keyframes island-pop { from { opacity: 0; transform: scale(.86); } to { opacity: 1; transform: none; } }
@@ -766,7 +773,7 @@ table.sheet :is(th, td).sticky-right-2 { right: 0; width: var(--r2-w); min-width
 @keyframes island-slide { from { transform: translateX(-100%); } to { transform: translateX(263%); } }
 @media print { .island { display: none; } }
 
-/* island อยู่กึ่งกลาง "เนื้อหา" (.main) ไม่ใช่กึ่งกลางจอ: บน desktop เมนูข้างกินพื้นที่ซ้าย ทำให้กลางเนื้อหา = กลางจอ + ครึ่งความกว้างเมนู
+/* ลิ้นอยู่กึ่งกลาง "เนื้อหา" (.main) ไม่ใช่กึ่งกลางจอ: บน desktop เมนูข้างกินพื้นที่ซ้าย ทำให้กลางเนื้อหา = กลางจอ + ครึ่งความกว้างเมนู
    (.main จัดกึ่งกลางในพื้นที่ที่เหลือด้วย margin auto → จุดกึ่งกลางเท่ากันทุกความกว้างจอ ทั้งกรณี max-width 1060px และจอกลาง 861–1100px)
    มือถือ (≤860px) เมนูเป็นลิ้นชักลอย เนื้อหาเต็มจอ → ใช้ค่าเริ่มต้น 0 = กลางจอ · ยังไม่ล็อกอิน (#app ซ่อนอยู่) = กลางจอเช่นกัน */
 @media (min-width: 861px) {
@@ -1456,6 +1463,9 @@ button.brand:hover .mark { transform: rotate(-6deg) scale(1.04); }
 .tabbar, .more-scrim, .more-sheet { display: none; }
 @media (max-width: 860px) {
   .hamburger-btn { display: none; }
+  /* ลิ้นของ Dynamic Island แนบขอบบน .tabbar: 8px (ระยะลอย) + 64px (สูงแถบเมนู = padding 4+4 + .tab-item 56) + safe-area · ยังไม่ล็อกอิน (ไม่มีเมนูล่าง) = 0 · เปิดแผง "เพิ่มเติม" แล้วซ่อน ไม่ให้ทับรายการ */
+  body:has(#app:not(.hidden)) .island { --island-dock: calc(72px + env(safe-area-inset-bottom, 0px)); }
+  body:has(#app.more-open) .island { opacity: 0; }
 
   .tabbar {
     display: flex; position: fixed; z-index: 45; left: 12px; right: 12px; bottom: calc(8px + env(safe-area-inset-bottom, 0px));
