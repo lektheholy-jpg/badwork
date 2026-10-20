@@ -273,7 +273,7 @@ function presetsHtml() {
   return `
     <div class="card card-pad set-preset">
       <h2 class="card-title">ชุดตั้งค่าของฉัน</h2>
-      <div class="u-note">บันทึกพื้นหลัง สีหลัก ความโปร่งใสของการ์ดและแถบเมนู และความเบลอ ณ ตอนนี้ไว้เป็นชุดของตัวเอง แล้วกดใช้ได้ในครั้งเดียว (เก็บไว้ในเครื่อง/เบราว์เซอร์นี้ ไม่รวมโหมดสว่าง-มืด)</div>
+      <div class="u-note">บันทึกพื้นหลัง สีหลัก ความโปร่งใสของการ์ดและแถบเมนู และความเบลอ ณ ตอนนี้ไว้เป็นชุดของตัวเอง แล้วกดใช้ได้ในครั้งเดียว (เก็บตามบัญชี Google ของคุณ ใช้ได้ทุกเครื่องที่ล็อกอิน · ไม่รวมโหมดสว่าง-มืด)</div>
       <div class="preset-save">
         <div class="field"><input type="text" id="preset-name" maxlength="${LOOK_PRESET_NAME_MAX}" autocomplete="off" placeholder="ตั้งชื่อชุด เช่น โปร่งใสมาก, กลางคืน" aria-label="ชื่อชุดตั้งค่า"></div>
         <button type="button" class="btn btn-primary btn-sm" id="preset-save-btn">บันทึกชุดนี้</button>
@@ -462,11 +462,13 @@ function renderSettings() {
     </div>
     <div class="card card-pad set-bg">
       <h2 class="card-title">พื้นหลัง</h2>
-      <div class="u-note">เลือกจากชุดสำเร็จรูป หรือปรับเองอิสระ: สีเดียว ไล่สีหลายสี และลายพื้นหลัง ชื่อแอปและตัวหนังสือบนพื้นจะเปลี่ยนสีให้อ่านชัดตามพื้นหลังเอง</div>
+      <div class="u-note">เลือกจากชุดสำเร็จรูป หรือปรับเองอิสระ: สีเดียว ไล่สีหลายสี และลายพื้นหลัง ชื่อแอปและตัวหนังสือบนพื้นจะเปลี่ยนสีให้อ่านชัดตามพื้นหลังเอง · การตั้งค่าหน้าตาทั้งหมดในหน้านี้บันทึกตามบัญชี Google ของคุณ จึงเหมือนเดิมเมื่อเปิดจากเครื่องอื่น</div>
       ${bgGroupHtml('ค่าเริ่มต้น', [['default', 'ค่าเริ่มต้น']])}
       ${bgGroupHtml('สีทึบ', BG_OPTIONS.solid)}
       ${bgGroupHtml('ไล่สี', BG_OPTIONS.gradient)}
       ${bgGroupHtml('ชุดสีเพิ่มเติม', BG_OPTIONS.preset)}
+      ${bgGroupHtml('สไตล์ One UI (พาสเทลนุ่ม)', BG_OPTIONS.oneui)}
+      ${bgGroupHtml('เข้มและสดใส', BG_OPTIONS.vivid)}
       <div class="u-note u-semibold u-mt-16">ปรับเองอิสระ</div>
       <div class="theme-seg bg-mode u-mt-6" role="group" aria-label="ชนิดพื้นหลังที่ปรับเอง">
         <button type="button" class="theme-opt" data-bg-mode="solid" aria-pressed="false">สีเดียว</button>
@@ -480,7 +482,7 @@ function renderSettings() {
     <div class="card card-pad set-priv">
       <h2 class="card-title">ความเป็นส่วนตัวและข้อมูลของฉัน</h2>
       <div class="u-note u-lh-165 u-mt-4">
-        แอปเก็บชื่อ อีเมล รูปโปรไฟล์ของครู ข้อมูลส่วนตัวที่ครูกรอกเอง (ตำแหน่ง สังกัด เงินเดือน ผู้ลงนาม) และข้อมูลรายวิชา นักเรียน (ซึ่งเป็นข้อมูลส่วนบุคคลของผู้เยาว์) และคะแนน บน Google Firebase โดยผูกกับบัญชีของครูเท่านั้น
+        แอปเก็บชื่อ อีเมล รูปโปรไฟล์ของครู การตั้งค่าหน้าตา (ธีม พื้นหลัง สี) ข้อมูลส่วนตัวที่ครูกรอกเอง (ตำแหน่ง สังกัด เงินเดือน ผู้ลงนาม) และข้อมูลรายวิชา นักเรียน (ซึ่งเป็นข้อมูลส่วนบุคคลของผู้เยาว์) และคะแนน บน Google Firebase โดยผูกกับบัญชีของครูเท่านั้น
         หน้าหลักส่งพิกัดโดยประมาณ (ปัดเหลือราว 1 กม.) ไปยัง Open-Meteo เพื่อแสดงสภาพอากาศ โดยไม่ส่งข้อมูลนักเรียน
         ครูควรใช้ข้อมูลนักเรียนเท่าที่จำเป็นและตามนโยบายของโรงเรียน
       </div>

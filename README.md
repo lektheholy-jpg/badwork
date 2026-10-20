@@ -141,6 +141,8 @@ npx wrangler deploy                      # แล้วนำ URL ที่ไ�
 | ชุดสีเพิ่มเติม (ไล่สีเส้นตรง) | `PRESET_CFG` + `BG_OPTIONS.preset` ใน `theme.js` (ไม่ต้องเพิ่ม `--bgp-*`) |
 | พื้นหลังปรับเอง (สีเดียว/ไล่สี/ลาย 8 แบบ) | `myscore-bg` (JSON) ตรวจด้วย `cleanCfg` · ลายสร้างจาก CSS gradient ไม่โหลดรูป |
 | สีหลัก + ความโปร่งใสการ์ด/เมนู + ความเบลอ | `myscore-look` (JSON) ตรวจด้วย `cleanLook` · ตั้ง `--primary*` `--on-primary` `--glass` `--glass-blur` `--card-glass*` ทับค่าที่ `applyTone` คำนวณจากพื้นหลัง · ปุ่ม "คืนค่าเริ่มต้น" ล้างทั้งหมด |
+| ชุดสีพื้นหลังสำเร็จรูปไล่เฉด (Classic Blue · One UI Calm Blue / Soft Purple & Pink · สไตล์ One UI พาสเทล 8 ชุด · เข้มและสดใส 6 ชุด) | กำหนดใน `PRESET_CFG` + `BG_OPTIONS` ของ `js/theme.js` · ผ่านระบบคำนวณสีตัวหนังสือเดียวกับพื้นหลังกำหนดเอง · ค่าสีของชุด "สไตล์ One UI" เลือกเองให้ใกล้โทนวอลเปเปอร์ ไม่ใช่ค่าทางการของ Samsung |
+| **ซิงค์หน้าตาตามบัญชี Google** (ธีม · พื้นหลัง · สีหลัก · ความโปร่งใส/เบลอ · ชุดตั้งค่าของฉัน) | เก็บที่ `users/{uid}.appearance` · ตรรกะค่า: `getAppearance` / `setAppearance` / `resetAppearance` ใน `js/theme.js` · ตัวซิงค์: `appearanceSync` ใน `js/auth.js` (ล็อกอิน → ดึง · แก้ → ส่งหลังหยุด 0.8 วินาที · `myscore-appearance-owner` กันหน้าตาของบัญชีอื่นบนเครื่องเดียวกันปนกัน · `myscore-appearance-dirty` กันค่าที่แก้ค้างถูกค่าเก่าบนคลาวด์ทับ) · ฟิลด์ต้องตรงกับ `validAppearance` ใน `firestore.rules` (**แก้ rules แล้วต้อง `firebase deploy --only firestore:rules`**) · ทดสอบ: `npm run test:appearance` |
 | สีตัวหนังสือบนพื้นหลัง | `theme.js` คำนวณคอนทราสต์ (WCAG 4.5:1) แล้วตั้ง `--on-brand` `--on-bg*` · ถ้าพื้นสวนธีมหรือเป็นลาย จะเพิ่มความทึบ `--card-glass` |
 | สีวิดเจ็ต / ไอคอน | `--w` ต่อการ์ด + ชุด `--hue-*` |
 | สีกราฟ / ตาราง | `--viz-*` · สีระดับชั้น `LEVEL_COLORS` ใน `js/utils.js` |

@@ -2,11 +2,19 @@
 // ธีม สว่าง / มืด / ตามระบบ + พื้นหลังหน้า — โหลดใน <head> ก่อนวาดหน้า เพื่อไม่ให้จอวาบขาวตอนเปิดโหมดมืด
 // พื้นหลังมี 2 แบบ: ชุดสีสำเร็จรูป (BG_OPTIONS) และ "กำหนดเอง" (สีเดียว / ไล่สี / ลาย) ที่ผู้ใช้เลือกสีได้อิสระ
 // สีตัวหนังสือที่วางบนพื้นหลังโดยตรง (ชื่อ เวรกรรม.. เมนู หัวหน้า) คำนวณใหม่ตามพื้นหลังทุกครั้ง
+// ค่าเก็บใน localStorage ก่อนเสมอ (เปิดแอปได้ทันที/ออฟไลน์) แล้ว js/auth.js ซิงค์ขึ้นบัญชี Google (getAppearance / setAppearance / เหตุการณ์ 'myscore:appearance')
 // ==========================================================================
 (function () {
   var KEY = 'myscore-theme'; // 'auto' | 'light' | 'dark'
   var mq = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
   var curCfg = null; // ค่าพื้นหลังแบบกำหนดเองที่ใช้อยู่ (null = ค่าเริ่มต้น/ชุดสำเร็จรูป)
+  // แจ้งว่า "หน้าตา" เปลี่ยน (ธีม/พื้นหลัง/สี/ความโปร่งใส/ชุดตั้งค่า) → js/auth.js ฟังเหตุการณ์นี้แล้วซิงค์ขึ้นบัญชี Google
+  // muted = ตอนนำค่าจากคลาวด์มาใช้ ไม่แจ้ง (กันวนส่งค่ากลับขึ้นคลาวด์)
+  var muted = false;
+  function notify() {
+    if (muted) return;
+    try { document.dispatchEvent(new CustomEvent('myscore:appearance')); } catch (e) {}
+  }
 
   function readPref() {
     try { var v = localStorage.getItem(KEY); if (v === 'light' || v === 'dark' || v === 'auto') return v; } catch (e) {}
@@ -50,7 +58,23 @@
   var PRESET_CFG = {
     classicblue:    { t: 'grad', c: ['#20a2ff', '#034ea2'], a: 120, k: 'linear' },
     calmblue:       { t: 'grad', c: ['#cedbec', '#9eb8da', '#6d94c7'], a: 135, k: 'linear' },
-    softpurplepink: { t: 'grad', c: ['#a56df5', '#685bc7', '#1c4cd4'], a: 135, k: 'linear' }
+    softpurplepink: { t: 'grad', c: ['#a56df5', '#685bc7', '#1c4cd4'], a: 135, k: 'linear' },
+    // สไตล์ One UI (พาสเทลนุ่ม ไล่เฉด 3 สี) — โทนและแนวไล่สีใกล้เคียงวอลเปเปอร์ One UI แต่เป็นค่าที่เลือกเอง ไม่ใช่ค่าทางการของ Samsung
+    uimint:     { t: 'grad', c: ['#d4f1e4', '#a9dfd0', '#7cc4c0'], a: 135, k: 'linear' },
+    uipeach:    { t: 'grad', c: ['#ffe3d0', '#ffc4b0', '#f79fa4'], a: 135, k: 'linear' },
+    uilavender: { t: 'grad', c: ['#e6dcf8', '#c9b8ee', '#a493de'], a: 135, k: 'linear' },
+    uirose:     { t: 'grad', c: ['#fde1ea', '#f8bdd2', '#e996b9'], a: 135, k: 'linear' },
+    uisage:     { t: 'grad', c: ['#e3ecd6', '#c4d6b0', '#9fbb8a'], a: 135, k: 'linear' },
+    uisand:     { t: 'grad', c: ['#f5ebd9', '#e8d4b3', '#d3b78f'], a: 135, k: 'linear' },
+    uisky:      { t: 'grad', c: ['#dff0fb', '#b8dcf5', '#8fc3ee'], a: 135, k: 'linear' },
+    uigraphite: { t: 'grad', c: ['#e4e6ea', '#c3c8d0', '#9aa2ae'], a: 135, k: 'linear' },
+    // เข้มและสดใส
+    midnight:   { t: 'grad', c: ['#1e2a4a', '#2d3b6b', '#4b4f9a'], a: 150, k: 'linear' },
+    forest:     { t: 'grad', c: ['#0f3d3a', '#1b5e43', '#4f7d2c'], a: 150, k: 'linear' },
+    berry:      { t: 'grad', c: ['#5e1740', '#8f2559', '#c2417c'], a: 150, k: 'linear' },
+    sunsetpop:  { t: 'grad', c: ['#ff9a8b', '#ff6a88', '#c471f5'], a: 135, k: 'linear' },
+    oceandeep:  { t: 'grad', c: ['#0a3560', '#0f5a8a', '#1d7ba3'], a: 160, k: 'linear' },
+    lagoon:     { t: 'grad', c: ['#2193b0', '#6dd5ed'], a: 135, k: 'linear' }
   };
   var BG_IDS = ['lemon', 'sky', 'lilac', 'mint', 'ocean', 'aurora', 'sunny', 'dusk'].concat(Object.keys(PRESET_CFG));
   var PATTERNS = [['dots', 'จุด'], ['grid', 'ตาราง'], ['lines', 'เส้นบรรทัด'], ['diag', 'ทแยง'],
@@ -247,11 +271,13 @@
     var cur = readLook(), next = cleanLook(Object.assign({}, cur, patch));
     try { localStorage.setItem(LOOK_KEY, JSON.stringify(next)); } catch (e) {}
     applyTone();
+    notify();
     return next;
   };
   window.resetLookPref = function () {
     try { localStorage.removeItem(LOOK_KEY); } catch (e) {}
     applyTone();
+    notify();
   };
 
   function readRaw() { try { return localStorage.getItem(BG_KEY); } catch (e) { return null; } }
@@ -278,6 +304,7 @@
   window.setBgPref = function (id) {
     try { if (id === 'default') localStorage.removeItem(BG_KEY); else localStorage.setItem(BG_KEY, id); } catch (e) {}
     applyBg(id);
+    notify();
   };
   window.getBgCustom = function () { return parseCustom(readRaw()); };
   window.setBgCustom = function (cfg) { // คืน cfg ที่ผ่านการตรวจแล้ว (หรือ null ถ้าไม่ถูกต้อง)
@@ -285,6 +312,7 @@
     if (!cfg) return null;
     try { localStorage.setItem(BG_KEY, JSON.stringify(cfg)); } catch (e) {}
     applyBg('custom');
+    notify();
     return cfg;
   };
   // ---------- ชุดตั้งค่าของฉัน (preset) ----------
@@ -310,7 +338,7 @@
     } catch (e) { return []; }
   }
   function writePresets(list) {
-    try { localStorage.setItem(PRESET_KEY, JSON.stringify(list)); return true; } catch (e) { return false; }
+    try { localStorage.setItem(PRESET_KEY, JSON.stringify(list)); notify(); return true; } catch (e) { return false; }
   }
   function currentBgValue() { // พื้นหลังที่ใช้อยู่ ในรูปที่เก็บลง preset
     var raw = readRaw();
@@ -346,6 +374,7 @@
       localStorage.setItem(LOOK_KEY, JSON.stringify(p.look));
     } catch (e) {}
     applyBg(readBg()); // applyBg → applyTone → applyLook : คำนวณสีตัวหนังสือ/การ์ดใหม่ให้ตรงกับชุดนี้
+    notify();
     return p;
   };
   window.deleteLookPreset = function (id) {
@@ -363,13 +392,55 @@
   window.BG_OPTIONS = {
     solid: [['lemon', 'เหลือง'], ['sky', 'ฟ้า'], ['lilac', 'ม่วง'], ['mint', 'เขียวมิ้นต์']],
     gradient: [['ocean', 'ฟ้า-เขียว'], ['aurora', 'ออโรรา'], ['sunny', 'เหลือง-เขียว'], ['dusk', 'ฟ้า-ม่วง']],
-    preset: [['classicblue', 'Classic Blue'], ['calmblue', 'One UI Calm Blue'], ['softpurplepink', 'One UI Soft Purple & Pink']]
+    preset: [['classicblue', 'Classic Blue'], ['calmblue', 'One UI Calm Blue'], ['softpurplepink', 'One UI Soft Purple & Pink']],
+    oneui: [['uimint', 'มิ้นต์'], ['uipeach', 'พีช'], ['uilavender', 'ลาเวนเดอร์'], ['uirose', 'โรส'],
+            ['uisage', 'เขียวเซจ'], ['uisand', 'ทราย'], ['uisky', 'ฟ้าใส'], ['uigraphite', 'เทากราไฟต์']],
+    vivid: [['midnight', 'กลางคืน'], ['forest', 'ป่าลึก'], ['berry', 'เบอร์รี'], ['sunsetpop', 'พระอาทิตย์ตก'],
+            ['oceandeep', 'ทะเลลึก'], ['lagoon', 'ลากูน']]
+  };
+
+  // ---------- ซิงค์หน้าตาตามบัญชี Google (js/auth.js เรียกใช้) ----------
+  // รูปแบบที่เก็บบนคลาวด์ (users/{uid}.appearance): { theme: 'auto'|'light'|'dark', bg: 'default' | ชื่อชุด | JSON พื้นหลังกำหนดเอง,
+  //   look: { pc, card, menu, blur }, presets: JSON ของชุดตั้งค่าของฉัน } · ทุกค่าที่รับเข้าผ่านตัวตรวจเดิม (cleanCfg / cleanLook / cleanPreset)
+  window.getAppearance = function () {
+    var raw = readRaw(), bg = 'default';
+    if (BG_IDS.indexOf(raw) !== -1) bg = raw;
+    else { var c = parseCustom(raw); if (c) bg = JSON.stringify(c); }
+    return { theme: readPref(), bg: bg, look: readLook(), presets: JSON.stringify(readPresets()) };
+  };
+  window.setAppearance = function (a) { // นำค่าจากคลาวด์มาใช้ในเครื่อง (ไม่แจ้ง notify) · คืน false ถ้าข้อมูลไม่ใช่ object
+    if (!a || typeof a !== 'object') return false;
+    var th = a.theme === 'light' || a.theme === 'dark' || a.theme === 'auto' ? a.theme : 'auto';
+    muted = true;
+    try {
+      try {
+        localStorage.setItem(KEY, th);
+        var bg = typeof a.bg === 'string' ? a.bg : 'default';
+        if (BG_IDS.indexOf(bg) !== -1) localStorage.setItem(BG_KEY, bg);
+        else { var c = parseCustom(bg); if (c) localStorage.setItem(BG_KEY, JSON.stringify(c)); else localStorage.removeItem(BG_KEY); }
+        localStorage.setItem(LOOK_KEY, JSON.stringify(cleanLook(a.look)));
+        var arr = []; try { arr = JSON.parse(a.presets); } catch (e) {}
+        writePresets((arr instanceof Array ? arr : []).map(cleanPreset).filter(Boolean).slice(0, PRESET_MAX));
+      } catch (e) {}
+      apply(th);
+      applyBg(readBg());
+    } finally { muted = false; }
+    return true;
+  };
+  window.resetAppearance = function () { // กลับค่าเริ่มต้นทั้งหมด (ใช้เมื่อเครื่องนี้เคยเก็บหน้าตาของบัญชีอื่นไว้)
+    muted = true;
+    try {
+      try { [KEY, BG_KEY, LOOK_KEY, PRESET_KEY].forEach(function (k) { localStorage.removeItem(k); }); } catch (e) {}
+      apply('auto');
+      applyBg('default');
+    } finally { muted = false; }
   };
 
   window.getThemePref = readPref;
   window.setThemePref = function (pref) {
     try { localStorage.setItem(KEY, pref); } catch (e) {}
     apply(pref);
+    notify();
   };
 
   apply(readPref());
