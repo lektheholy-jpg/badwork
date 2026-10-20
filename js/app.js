@@ -432,12 +432,41 @@ function initBgCustom(view, onChange) {
   return { reset() { mode = null; syncMode(); } }; // เลือกชุดสำเร็จรูปแล้ว → พับแผงกำหนดเอง
 }
 
+// ---------- เกี่ยวกับ (บนสุดของหน้าตั้งค่า): เวอร์ชันเว็บ · build ล่าสุด · ผู้สร้าง ----------
+// build ต้องเท่ากับ VERSION ใน sw.js (npm run check:sw ตรวจให้) — ปล่อยเวอร์ชันใหม่ทุกครั้งให้แก้ทั้งสองที่พร้อมกัน
+// version = เลขเวอร์ชันของเว็บที่ตั้งเอง (เปลี่ยนเมื่อมีฟีเจอร์ใหม่/ปรับใหญ่)
+const APP_INFO = { version: '1.0.0', build: '2026-10-20.10', creator: 'lektheholy', email: 'lektheholy@gmail.com' };
+
+// '2026-10-20.9' → '20 ต.ค. 2569 · รุ่น 9' (ปี พ.ศ.) · รูปแบบไม่ตรง = แสดงตามที่เป็น
+function appBuildLabel(build) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})(?:\.(\d+))?$/.exec(String(build));
+  if (!m) return String(build);
+  const mon = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'][Number(m[2]) - 1];
+  if (!mon) return String(build);
+  return Number(m[3]) + ' ' + mon + ' ' + (Number(m[1]) + 543) + (m[4] ? ' · รุ่น ' + m[4] : '');
+}
+
+function aboutHtml() {
+  const a = APP_INFO;
+  return `
+    <div class="card card-pad set-about">
+      <h2 class="card-title">เกี่ยวกับ</h2>
+      <dl class="about-list">
+        <div><dt class="u-note">เวอร์ชันของเว็บ</dt><dd class="u-semibold">${escapeHtml(a.version)}</dd></div>
+        <div><dt class="u-note">อัปเดต build ล่าสุด</dt><dd class="u-semibold" title="${escapeHtml(a.build)}">${escapeHtml(appBuildLabel(a.build))}</dd></div>
+        <div><dt class="u-note">ผู้สร้าง</dt><dd class="u-semibold">${escapeHtml(a.creator)}</dd></div>
+        <div><dt class="u-note">อีเมล</dt><dd class="u-semibold"><a href="mailto:${escapeHtml(a.email)}">${escapeHtml(a.email)}</a></dd></div>
+      </dl>
+    </div>`;
+}
+
 function renderSettings() {
   const view = document.getElementById('view');
   const u = AppState.user;
   view.innerHTML = `
     ${pageHeaderHtml('ตั้งค่า')}
     <div class="settings-grid">
+    ${aboutHtml()}
     <div class="card card-pad set-acct">
       <h2 class="card-title">บัญชี</h2>
       <div class="settings-profile">

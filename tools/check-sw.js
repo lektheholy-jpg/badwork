@@ -50,5 +50,12 @@ for (const m of lazy.matchAll(/:\s*'([^']+)'/g)) if (!precache.has(m[1])) errors
 if (!precache.has('js/vendor/xlsx.mini.min.js')) errors.push('PRECACHE ไม่มี js/vendor/xlsx.mini.min.js');
 for (const i of manifest.icons || []) if (!precache.has(i.src)) errors.push(`manifest.json ใช้ไอคอน "${i.src}" แต่ไม่อยู่ใน PRECACHE`);
 
+// 5) build ที่แสดงในหน้าตั้งค่า (APP_INFO.build ใน js/app.js) ต้องตรงกับ VERSION ใน sw.js
+const swVersion = (sw.match(/const VERSION = '([^']+)'/) || [])[1];
+const appBuild = (read('js/app.js').match(/const APP_INFO = \{[^}]*build:\s*'([^']+)'/) || [])[1];
+if (!swVersion) errors.push('หา VERSION ใน sw.js ไม่เจอ');
+else if (!appBuild) errors.push('หา APP_INFO.build ใน js/app.js ไม่เจอ');
+else if (swVersion !== appBuild) errors.push(`APP_INFO.build ใน js/app.js ("${appBuild}") ไม่ตรงกับ VERSION ใน sw.js ("${swVersion}") — แก้ให้เท่ากัน`);
+
 if (errors.length) { console.error('✗ sw.js:\n  - ' + errors.join('\n  - ')); process.exit(1); }
 console.log(`✓ sw.js ครอบคลุม ${precache.size} ไฟล์ + ${cross.size} ไฟล์ข้ามโดเมน`);
