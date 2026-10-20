@@ -2017,8 +2017,8 @@ table.sheet tbody tr:nth-child(n) td.over-max { background: var(--danger-tint); 
 /* เกี่ยวกับ: รายการ ป้าย-ค่า ชิดสองฝั่ง · ค่าที่ยาว (อีเมล) ตัดบรรทัดได้ ไม่ดันการ์ดล้น */
 .about-list { margin: 8px 0 0; display: grid; gap: 6px; }
 .about-list > div { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 2px 12px; min-width: 0; }
-.about-list dt, .about-list dd { margin: 0; }
-.about-list dd { min-width: 0; overflow-wrap: anywhere; text-align: right; font-size: 14px; }
+.about-list dt { margin: 0; }
+.about-list dd { margin: 0; min-width: 0; overflow-wrap: anywhere; text-align: right; font-size: 14px; }
 .about-list a { color: var(--primary-dark, var(--primary)); text-decoration: underline; text-underline-offset: 2px; }
 @media (min-width: 861px) {
   .settings-grid { grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); grid-template-rows: auto auto auto auto auto 1fr; grid-template-areas: "about bg" "acct bg" "theme bg" "look bg" "preset bg" "priv bg"; gap: 16px; }
