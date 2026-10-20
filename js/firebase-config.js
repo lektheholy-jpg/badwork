@@ -25,7 +25,16 @@ const db = firebase.firestore();
 // ส่วนอื่นของแอปอ่านค่านี้เพื่อบอกผู้ใช้ตามจริงว่าคะแนน "บันทึกในเครื่องแล้ว" หรือไม่
 // ==========================================================================
 let FS_PERSISTENCE = 'pending';
-const FS_PERSISTENCE_READY = db.enablePersistence({ synchronizeTabs: true })
+// SDK 13 พิมพ์คำเตือน "enableMultiTabIndexedDbPersistence() will be deprecated" ทุกครั้งที่เรียก enablePersistence()
+//   (ฝั่ง compat ยังไม่มีทางตั้ง cache แบบใหม่ — ต้องย้ายทั้งแอปไป modular SDK ถึงจะเลี่ยงได้) ฟังก์ชันยังทำงานปกติ
+//   จึงปิดคำเตือนเฉพาะช่วงเรียกนี้ (คำเตือนพิมพ์แบบ synchronous ในการเรียก) แล้วคืนค่าเริ่มต้น 'warn' ทันที
+//   คำเตือน/error อื่นของ Firestore ยังแสดงตามปกติ
+// TODO ถาวร: ย้าย Firestore ไป modular SDK → initializeFirestore(app, { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) })
+const FS_PERSISTENCE_READY = (() => {
+  firebase.firestore.setLogLevel('error');
+  try { return db.enablePersistence({ synchronizeTabs: true }); }
+  finally { firebase.firestore.setLogLevel('warn'); }
+})()
   .then(() => { FS_PERSISTENCE = 'on'; })
   .catch((err) => {
     // failed-precondition = เปิดหลายแท็บแบบไม่ซิงค์กัน (เวอร์ชันเก่า) · unimplemented = เบราว์เซอร์ไม่รองรับ
