@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 // ==========================================================================
 // tools/version.js — สร้างเลขเวอร์ชันเว็บรูปแบบ  v<รุ่นใหญ่>.<ฟีเจอร์>.<วันเวลา>
-//   ตัวอย่าง: v1.15.26OC2012
+//   ตัวอย่าง: v1.15.26OC201912
 //
 //   รุ่นใหญ่  = ตัวเลขแรกของ "version" ใน package.json (แก้เอง เมื่อปรับใหญ่)
 //   ฟีเจอร์   = จำนวนหน้าในเมนูข้าง (ปุ่ม data-route ใน index.html)
 //             + จำนวนระบบเอกสารที่ลงทะเบียน (registerDocSystem ใน js/*-config.js)
-//   วันเวลา   = ปี 2 หลัก + รหัสเดือน 2 ตัว + วัน + ชั่วโมง ตามเวลาไทย (Asia/Bangkok)
+//   วันเวลา   = ปี 2 หลัก + รหัสเดือน 2 ตัว + วัน + ชั่วโมง + นาที ตามเวลาไทย (Asia/Bangkok) เวลาตอน build จริง
 //             เปลี่ยนเฉพาะเมื่อ "ไฟล์ต้นทาง" เปลี่ยนจริง (เทียบ sha256) ไม่ใช่ทุกครั้งที่สั่ง build
 //
 // เขียนค่าที่ได้ลง 2 ที่ให้เท่ากัน: APP_INFO.version (js/app.js) และ VERSION (sw.js)
@@ -90,16 +90,16 @@ function sourceHash() {
   return h.digest('hex');
 }
 
-// ---------- วันเวลาไทย → 26OC1906 ----------
+// ---------- วันเวลาไทย → 26OC201912 (ปี 2 หลัก · เดือน · วัน · ชั่วโมง · นาที) ----------
 const MONTH = ['JA', 'FE', 'MR', 'AP', 'MY', 'JN', 'JL', 'AU', 'SE', 'OC', 'NO', 'DE'];
 function stampNow(date = new Date()) {
   const parts = Object.fromEntries(
     new Intl.DateTimeFormat('en-GB', {
       timeZone: 'Asia/Bangkok', year: 'numeric', month: '2-digit', day: '2-digit',
-      hour: '2-digit', hourCycle: 'h23',
+      hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
     }).formatToParts(date).map(p => [p.type, p.value])
   );
-  return `${parts.year.slice(-2)}${MONTH[Number(parts.month) - 1]}${parts.day}${parts.hour}`;
+  return `${parts.year.slice(-2)}${MONTH[Number(parts.month) - 1]}${parts.day}${parts.hour}${parts.minute}`;
 }
 
 // ---------- รวมทั้งหมด ----------
@@ -109,7 +109,7 @@ const hash = sourceHash();
 const lock = fs.existsSync(LOCK) ? JSON.parse(fs.readFileSync(LOCK, 'utf8')) : null;
 
 // ต้นทางไม่เปลี่ยน (และรุ่นใหญ่/ฟีเจอร์เท่าเดิม) = ใช้วันเวลาเดิม · เปลี่ยน = วันเวลาตอนนี้
-const unchanged = lock && lock.hash === hash && lock.major === major && lock.features === feat.total;
+const unchanged = lock && /^\d{2}[A-Z]{2}\d{6}$/.test(lock.stamp || '') && lock.hash === hash && lock.major === major && lock.features === feat.total;
 const stamp = unchanged ? lock.stamp : stampNow();
 const version = `v${major}.${feat.total}.${stamp}`;
 
