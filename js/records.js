@@ -103,7 +103,7 @@ function recStorage() {
     _recStoragePromise = new Promise((resolve, reject) => {
       if (firebase.storage) { resolve(firebase.storage()); return; }
       const s = document.createElement('script');
-      s.src = 'https://www.gstatic.com/firebasejs/10.13.0/firebase-storage-compat.js';
+      s.src = 'https://www.gstatic.com/firebasejs/13.0.0/firebase-storage-compat.js';
       s.onload = () => resolve(firebase.storage());
       s.onerror = () => { _recStoragePromise = null; reject(new Error('โหลดตัวส่งไฟล์ไม่สำเร็จ (ต้องมีอินเทอร์เน็ต)')); };
       document.head.appendChild(s);
