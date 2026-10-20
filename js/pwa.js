@@ -19,14 +19,33 @@
     location.reload();
   });
 
+  let pending = null;   // worker ใหม่ที่รออยู่ (ผู้ใช้ยังไม่กดอัปเดต)
+  let lastOffer = 0;
+  const island = () => (typeof IslandUI !== 'undefined' ? IslandUI : null);
+  function applyUpdate() {
+    if (!pending) return;
+    const ui = island();
+    if (ui) ui.present({ key: 'sw', kind: 'loading', text: 'กำลังอัปเดต...', prio: 'warn', ms: 15000, indeterminate: true });
+    pending.postMessage({ type: 'SKIP_WAITING' }); // → controllerchange ด้านบน บันทึกคะแนนค้างแล้วรีโหลดเป็นเวอร์ชันใหม่
+  }
   function offerUpdate(worker) {
-    const ui = typeof IslandUI !== 'undefined' ? IslandUI : null;
+    pending = worker;
+    const ui = island();
     if (!ui) { worker.postMessage({ type: 'SKIP_WAITING' }); return; }
+    lastOffer = Date.now();
     ui.present({
       key: 'sw', kind: 'info', text: 'มีเวอร์ชันใหม่ของแอป', prio: 'warn', ms: 30000,
-      action: { label: 'อัปเดต', fn: () => worker.postMessage({ type: 'SKIP_WAITING' }) },
+      action: { label: 'อัปเดต', fn: applyUpdate },
     });
   }
+  // ผู้ใช้ปล่อยผ่าน (ข้อความหายเองใน 30 วินาที) → เตือนซ้ำตอนเปลี่ยนหน้า/กลับมาเปิดแอป · เฉพาะตอน Island ว่าง และห่างกันอย่างน้อย 5 นาที (ไม่แย่งจังหวะกรอกคะแนน)
+  function reoffer() {
+    const ui = island();
+    if (!pending || !ui || !ui.idle() || Date.now() - lastOffer < 5 * 60 * 1000) return;
+    offerUpdate(pending);
+  }
+  if (typeof islandOnPage === 'function') islandOnPage(() => setTimeout(reoffer, 1500));
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) setTimeout(reoffer, 1500); });
 
   window.addEventListener('load', async () => {
     let reg;

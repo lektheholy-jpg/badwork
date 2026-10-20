@@ -15,6 +15,7 @@ const ToolsState = {
   timerLeft: 300,
   timerEndAt: 0,         // เวลาสิ้นสุด (ms) ตอนกำลังเดิน
   timerId: null,
+  timerPaint: null,      // ฟังก์ชันวาดหน้าจับเวลาซ้ำ (ตั้งโดย drawTimer · วาดเฉพาะเมื่อหน้านั้นยังอยู่ใน DOM)
   rooms: null,           // [{ key, label }] แคชรายการห้อง
 };
 
@@ -73,7 +74,6 @@ async function toolsLoadStudents(roomKey) {
 }
 
 async function renderToolsPage() {
-  toolsStopTimerIfDetached();
   const view = document.getElementById('view');
   showLoading('cat');
   let rooms = [];
@@ -203,11 +203,31 @@ function drawGroups() {
 }
 
 // ---------- จับเวลา ----------
-function toolsStopTimerIfDetached() {
-  if (ToolsState.timerId && !document.getElementById('timer-out')) {
-    clearInterval(ToolsState.timerId); ToolsState.timerId = null; ToolsState.timerEndAt = 0;
-  }
+// ตัวจับเวลาเดินอยู่ที่ระดับโมดูล (ไม่ผูกกับหน้าจอ) → ออกจากหน้าเครื่องมือแล้วยังนับต่อ แสดงเป็นชิป ⏱ บน Dynamic Island
+// ครบเวลา = เสียงบี๊บ + เด้งแจ้งเตือนบน Island · หน้าจับเวลา (ถ้าเปิดอยู่) วาดซ้ำผ่าน ToolsState.timerPaint
+function toolsTimerStop() {
+  if (ToolsState.timerId) clearInterval(ToolsState.timerId);
+  ToolsState.timerId = null;
+  islandTimer(null);
 }
+function toolsTimerTick() {
+  ToolsState.timerLeft = Math.max(0, Math.ceil((ToolsState.timerEndAt - Date.now()) / 1000));
+  if (ToolsState.timerLeft <= 0) {
+    toolsTimerStop(); toolsBeep();
+    islandTimerDone('หมดเวลาแล้ว · ' + toolsFmtTime(ToolsState.timerTotal));
+  } else {
+    islandTimer(toolsFmtTime(ToolsState.timerLeft), ToolsState.timerLeft <= 10);
+  }
+  if (ToolsState.timerPaint) ToolsState.timerPaint();
+}
+function toolsTimerStart() {
+  if (ToolsState.timerLeft <= 0) ToolsState.timerLeft = ToolsState.timerTotal;
+  ToolsState.timerEndAt = Date.now() + ToolsState.timerLeft * 1000;
+  if (ToolsState.timerId) clearInterval(ToolsState.timerId);
+  ToolsState.timerId = setInterval(toolsTimerTick, 250);
+  toolsTimerTick();
+}
+document.addEventListener('visibilitychange', () => { if (!document.hidden && ToolsState.timerId) toolsTimerTick(); }); // แท็บถูกหน่วงเวลาตอนอยู่เบื้องหลัง → เช็กทันทีที่กลับมา
 
 function toolsBeep() {
   try {
@@ -282,28 +302,19 @@ function drawTimer(body) {
     toolsRing();
   }
   const setTotal = (min) => {
-    stop(); ToolsState.timerTotal = ToolsState.timerLeft = Math.min(180, Math.max(1, min)) * 60;
+    toolsTimerStop(); ToolsState.timerTotal = ToolsState.timerLeft = Math.min(180, Math.max(1, min)) * 60;
     paint();
   };
-  function stop() { if (ToolsState.timerId) clearInterval(ToolsState.timerId); ToolsState.timerId = null; }
-  function tick() {
-    if (!$('timer-out')) { stop(); return; }   // ออกจากหน้านี้แล้ว
-    ToolsState.timerLeft = Math.max(0, Math.ceil((ToolsState.timerEndAt - Date.now()) / 1000));
-    if (ToolsState.timerLeft <= 0) { stop(); toolsBeep(); showToast('หมดเวลา'); }
-    paint();
-  }
-  paint();
-  if (ToolsState.timerId) { clearInterval(ToolsState.timerId); ToolsState.timerId = setInterval(tick, 250); } // กลับมาที่แท็บนี้ระหว่างนับ
+  ToolsState.timerPaint = () => { if (out.isConnected) paint(); }; // เครื่องยนต์อยู่นอกหน้านี้ — วาดเฉพาะเมื่อหน้ายังอยู่
+  paint(); // กลับมาที่แท็บนี้ระหว่างนับ = วาดสถานะปัจจุบันต่อได้เลย (interval เดินอยู่แล้ว)
   body.querySelectorAll('[data-min]').forEach(b => b.addEventListener('click', () => setTotal(Number(b.dataset.min))));
   $('timer-min').addEventListener('change', (e) => setTotal(Number(e.target.value) || 1));
   $('timer-dec').addEventListener('click', () => setTotal(mins() - 1));
   $('timer-inc').addEventListener('click', () => setTotal(mins() + 1));
   $('timer-reset').addEventListener('click', () => setTotal(mins()));
   toggle.addEventListener('click', () => {
-    if (ToolsState.timerId) { stop(); paint(); return; }
-    if (ToolsState.timerLeft <= 0) ToolsState.timerLeft = ToolsState.timerTotal;
-    ToolsState.timerEndAt = Date.now() + ToolsState.timerLeft * 1000;
-    ToolsState.timerId = setInterval(tick, 250);
+    if (ToolsState.timerId) { toolsTimerStop(); paint(); return; }
+    toolsTimerStart();
     paint();
   });
 }

@@ -357,8 +357,9 @@ async function docPrintWindow({ title, css = '', html, fonts, page = DOC_PAGE_A4
   const w = window.open('', '_blank'); // ต้องเป็นคำสั่งแรก (ก่อน await)
   if (!w) { showToast('เบราว์เซอร์บล็อกหน้าต่างพิมพ์ — อนุญาต pop-up แล้วลองใหม่'); return null; }
   let body;
+  const busy = typeof islandBusy === 'function' ? islandBusy('กำลังเตรียมเอกสาร…', 'doc', 30000) : null; // Dynamic Island: แถบวิ่งระหว่างสร้างเนื้อหา/โหลดฟอนต์
   try { body = typeof html === 'function' ? await html() : html; }
-  catch (err) { try { w.close(); } catch (e) { /* ปิดไม่ได้ก็ปล่อย */ } throw err; } // ไม่ทิ้งหน้าต่างว่างค้าง
+  catch (err) { if (busy) busy.clear(); try { w.close(); } catch (e) { /* ปิดไม่ได้ก็ปล่อย */ } throw err; } // ไม่ทิ้งหน้าต่างว่างค้าง
   w.document.write(`<!doctype html><html lang="th"><head><meta charset="utf-8"><title>${escapeHtml(title || '')}</title>
     <style>${docFontCss()}${css}${page}</style></head>
     <body>${body}</body></html>`);
@@ -366,6 +367,7 @@ async function docPrintWindow({ title, css = '', html, fonts, page = DOC_PAGE_A4
   w.focus();
   const go = () => { try { w.print(); } catch (err) { /* ผู้ใช้สั่งพิมพ์เองได้ */ } };
   const hasFonts = await docWaitFonts(w.document, fonts);
+  if (busy) busy.done('เปิดหน้าพิมพ์แล้ว');
   setTimeout(go, hasFonts ? 150 : 600);
   return w;
 }

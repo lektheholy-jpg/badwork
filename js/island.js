@@ -12,6 +12,10 @@
 //   const p = islandProgress({ label: 'นำเข้า', total: 45, unit: 'คน' });  p.update(32); p.finish('นำเข้าแล้ว'); p.fail('ไม่สำเร็จ')
 //     (ไม่ใส่ total = แถบวิ่งไม่รู้ความยาว)
 //
+//   islandTimer('12:30', warn?) / islandTimer(null)   ชิปจับเวลาถาวรตอนพัก (⏱ 12:30) — เดินต่อแม้เปลี่ยนหน้า · islandTimerDone('หมดเวลาแล้ว') เด้งแจ้งเตือนตอนครบ
+//   const b = islandBusy('AI กำลังคิด…', 'ai'); b.done('เสร็จแล้ว'); b.fail('ไม่สำเร็จ'); b.clear()   แถบวิ่งไม่รู้ความยาว (คนละ key กับ islandProgress จึงไม่ทับกัน)
+//   islandOnPage(route => …)   เรียกทุกครั้งที่เปลี่ยนหน้า (ใช้เช่น เตือนอัปเดตซ้ำ)
+//
 //   ลำดับความสำคัญ: ข้อความที่สำคัญกว่าจะไม่ถูกข้อความที่เบากว่าทับ (key เดียวกันทับกันเองได้เสมอ)
 //   สไตล์อยู่ที่บล็อก .island ใน css/style.css · มาร์กอัปอยู่ใน index.html
 // ==========================================================================
@@ -24,6 +28,7 @@ const ISLAND_ICONS = {
   info: ISLAND_SVG('<circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><path d="M12 7.8v.01"/>'),
   trash: ISLAND_SVG('<path d="M4 7h16"/><path d="M9 7V4.5h6V7"/><path d="M6.5 7l1 12.5h9l1-12.5"/>'),
   offline: ISLAND_SVG('<path d="M12 20h.01"/><path d="M8.5 16.4a5 5 0 0 1 7 0"/><path d="M5 12.9a10 10 0 0 1 5.2-2.7"/><path d="M19 12.9a10 10 0 0 0-2-1.5"/><path d="M2 8.8a15 15 0 0 1 4.2-2.6"/><path d="M22 8.8a15 15 0 0 0-11.3-3.8"/><path d="m2 2 20 20"/>'),
+  timer: ISLAND_SVG('<circle cx="12" cy="13.5" r="7.5"/><path d="M12 9.5v4l2.6 1.6"/><path d="M9.5 3h5"/>'),
   loading: '<span class="island-spin"></span>',
   progress: '<span class="island-spin"></span>',
 };
@@ -46,11 +51,14 @@ const IslandUI = (() => {
   const idleMain = el.querySelector('.island-idle-main');   // วัน · เวลา (· ออฟไลน์)
   const idleDate = el.querySelector('.island-idle-date');
   const idleTime = el.querySelector('.island-idle-time');
+  const timerTxt = el.querySelector('.island-idle-timer-text'); // ชิปจับเวลา (อยู่ใน idleMain จึงถูกวัดความกว้างรวมให้เอง) · ไม่มีมาร์กอัป = ข้ามเงียบๆ (ไม่ให้ทั้งไฟล์พัง)
+  const timerIco = el.querySelector('.island-idle-timer-ico');
+  if (timerIco) timerIco.innerHTML = ISLAND_ICONS.timer;
   const pageSlot = el.querySelector('.island-idle-page');   // ช่องชื่อหน้า: กว้างตาม --pw
   const layers = pageSlot.querySelectorAll('.pg');          // 2 ชั้นสลับกัน (ชั้นเก่าออก ชั้นใหม่เข้า)
 
   // ลำดับความสำคัญ (เลขมาก = สำคัญกว่า)
-  const PRIO = { save: 1, info: 2, success: 2, warn: 3, loading: 3, undo: 4, progress: 5, error: 5, net: 6 };
+  const PRIO = { save: 1, info: 2, success: 2, warn: 3, loading: 3, undo: 4, timer: 4, progress: 5, error: 5, net: 6 };
   let cur = null;        // ข้อความที่แสดงอยู่ { key, kind, text, prio }
   let timer = 0;
   let actionFn = null;
@@ -105,6 +113,19 @@ const IslandUI = (() => {
   function setOffline(v) {
     offline = v;
     el.classList.toggle('is-offline', v);
+    sizeIdle();
+  }
+
+  // ---------- ชิปจับเวลาตอนพัก (⏱ 12:30) — ข้อความเดิมซ้ำ = ไม่ทำอะไร (เรียกถี่ได้) ----------
+  let timerText = '';
+  function setTimer(text, warn) {
+    if (!timerTxt) return;
+    text = text ? String(text) : '';
+    el.classList.toggle('timer-warn', !!text && !!warn);
+    if (text === timerText) return;
+    timerText = text;
+    el.classList.toggle('has-timer', !!text);
+    if (text) timerTxt.textContent = text;
     sizeIdle();
   }
 
@@ -213,12 +234,15 @@ const IslandUI = (() => {
   // ปิดข้อความของ key นั้นทันที (ใช้เมื่องานจบแล้วแต่ไม่อยากขึ้นข้อความซ้ำ)
   function clear(key) { if (cur && cur.key === key) end(); }
 
-  return { present, clear, setPage };
+  return { present, clear, setPage, setTimer, idle: () => !cur };
 })();
 
 // ---------- ชื่อ/ไอคอนหน้าที่เปิดอยู่ (แสดงตลอด) — ดึงจากปุ่มเมนูข้างตาม data-route จึงตรงกับเมนูเสมอ ----------
 const ISLAND_PAGE_ALIAS = { course: 'courses' }; // หน้าภายในวิชา นับเป็น "รายวิชาของฉัน"
+const islandPageHooks = [];
+function islandOnPage(fn) { islandPageHooks.push(fn); }
 function islandSetPage(route) {
+  islandPageHooks.forEach(fn => { try { fn(route); } catch (e) { console.error(e); } });
   if (!IslandUI) return;
   const key = ISLAND_PAGE_ALIAS[route] || route;
   if (key === 'profile') { IslandUI.setPage({ label: 'ข้อมูลส่วนตัว', icon: window.icon('user') }); return; } // เปิดจากไอคอนบัญชี ไม่ได้อยู่ในรายการเมนู
@@ -229,11 +253,11 @@ function islandSetPage(route) {
 }
 
 // ---------- API ที่ส่วนอื่นของแอปเรียกใช้ ----------
-function showToast(msg, kind) {
+function showToast(msg, kind, customMs) {
   if (!IslandUI) return;
   msg = String(msg == null ? '' : msg);
   if (!ISLAND_ICONS[kind]) kind = islandKind(msg);
-  const ms = kind === 'loading' ? 12000 : (kind === 'warn' || kind === 'error' ? 3600 : 2400) + Math.min(msg.length * 25, 1500);
+  const ms = customMs || (kind === 'loading' ? 12000 : (kind === 'warn' || kind === 'error' ? 3600 : 2400) + Math.min(msg.length * 25, 1500));
   IslandUI.present({ key: 'toast', kind, text: msg, ms });
 }
 
@@ -283,5 +307,27 @@ function islandProgress({ label, total = 0, unit = '' }) {
     finish: msg => IslandUI && IslandUI.present({ key: 'progress', kind: 'success', text: msg, prio: 'progress', ms: 2800 }),
     fail: msg => IslandUI && IslandUI.present({ key: 'progress', kind: 'error', text: msg, prio: 'error', ms: 4200 }),
     clear: () => IslandUI && IslandUI.clear('progress'),
+  };
+}
+
+// ---------- ชิปจับเวลา: อยู่ถาวรตอนพัก ไม่ขึ้นกับหน้าที่เปิดอยู่ ----------
+function islandTimer(text, warn) { if (IslandUI) IslandUI.setTimer(text, warn); }
+// ครบเวลา: เด้งแจ้งเตือนสีเตือนค้างไว้ 8 วินาที (สำคัญกว่าข้อความทั่วไป)
+function islandTimerDone(text) {
+  if (!IslandUI) return;
+  IslandUI.setTimer(null);
+  IslandUI.present({ key: 'timer', kind: 'warn', text: text || 'หมดเวลาแล้ว', prio: 'timer', ms: 8000 });
+}
+
+// งานเบื้องหลังที่ไม่รู้ความยาว (เช่น AI กำลังคิด): แถบวิ่ง → done/fail เมื่อจบ · key แยกกันได้ ไม่ทับ islandProgress
+//   ms = เวลากันค้างสูงสุด (ปิดเองถ้างานไม่เคยเรียก done/fail/clear)
+function islandBusy(label, key = 'busy', ms = 120000) {
+  const show = text => IslandUI && IslandUI.present({ key, kind: 'loading', text, prio: 'loading', ms, indeterminate: true, quiet: true });
+  show(label);
+  return {
+    update: show,
+    done: msg => IslandUI && IslandUI.present({ key, kind: 'success', text: msg, prio: 'success', ms: 2400 }),
+    fail: msg => IslandUI && IslandUI.present({ key, kind: 'error', text: msg, prio: 'error', ms: 4200 }),
+    clear: () => IslandUI && IslandUI.clear(key),
   };
 }

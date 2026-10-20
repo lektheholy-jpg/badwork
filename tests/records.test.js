@@ -26,7 +26,7 @@ function makeEnv(docs = {}) {
     window: dom.window, document: dom.window.document, console: { ...console, error() {} }, db, log, store, setTimeout, clearTimeout, navigator: { onLine: true },
     AppState: { user: { uid: 'u1' } },
     firebase: { firestore: { FieldValue: { serverTimestamp: () => 'TS' } } },
-    islandSave() {}, islandUndo: (t, fn) => { log.undo = fn; }, showToast: (m) => log.toasts.push(m), showLoading() {}, clearLoading() {},
+    islandSave() {}, islandProgress: () => ({ update() {}, finish() {}, fail() {}, clear() {} }), islandUndo: (t, fn) => { log.undo = fn; }, showToast: (m) => log.toasts.push(m), showLoading() {}, clearLoading() {},
     escapeHtml: s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])),
     initNavPill() {}, Image: dom.window.Image, File: dom.window.File,
     openModal: html => { let m = dom.window.document.getElementById('modal'); if (!m) { m = dom.window.document.createElement('div'); m.id = 'modal'; dom.window.document.body.appendChild(m); } m.innerHTML = html; },

@@ -727,7 +727,13 @@ table.sheet :is(th, td).sticky-right-2 { right: 0; width: var(--r2-w); min-width
 .island-idle-off i { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
 .island.is-offline .island-idle-off { display: inline-flex; }
 .island.is-offline .island-idle-date, .island.is-offline .island-idle-sep, .island.is-offline .island-idle-time { display: none; }
-@media (max-width: 640px) { .island-idle-sep, .island-idle-time { display: none; } }
+/* ชิปจับเวลา (ใส่ผ่าน islandTimer ใน js/island.js): ซ่อนไว้จนมีเวลาเดิน · 10 วินาทีสุดท้ายเปลี่ยนเป็นสีเตือน · มือถือ: มีชิปแล้วซ่อนวันที่เพื่อให้พอดีแคปซูล */
+.island-idle-timer { display: none; align-items: center; gap: 5px; margin-left: 12px; font-weight: 700; }
+.island.has-timer .island-idle-timer { display: inline-flex; }
+.island.timer-warn .island-idle-timer { color: var(--danger); }
+.island-idle-timer-ico { flex: none; display: flex; width: 13px; height: 13px; }
+.island-idle-timer-ico svg { display: block; width: 100%; height: 100%; }
+@media (max-width: 640px) { .island-idle-sep, .island-idle-time, .island.has-timer .island-idle-date { display: none; } }
 
 /* ตอนขยาย: บรรทัดเดียว สูงเท่าตอนพัก ยาวเกินจะขยายด้านข้าง (สุดจอแล้วตัดด้วย …) */
 .island-body {

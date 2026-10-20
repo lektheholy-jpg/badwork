@@ -305,13 +305,17 @@ function recEditModal(ctx, { item = null, year }) {
     if (picked) {
       saveBtn.disabled = true; cancelBtn.disabled = true; saveBtn.textContent = 'กำลังอัปโหลด...';
       const thumb = await recMakeThumb(picked);
+      let up = null; // แถบความคืบหน้าบน Dynamic Island (เปอร์เซ็นต์จริงจากไบต์ที่ส่งแล้ว)
       try {
         const blob = await recPrepareOriginal(picked);
-        const meta = await recUpload(id, blob, recFileName(date, title, picked.name, blob.type), p => showToast(`กำลังอัปโหลดต้นฉบับ ${Math.round(p * 100)}%...`));
+        up = islandProgress({ label: 'อัปโหลดต้นฉบับ', total: 100, unit: '%' });
+        const meta = await recUpload(id, blob, recFileName(date, title, picked.name, blob.type), p => up.update(Math.round(p * 100)));
+        up.clear(); // ไม่ขึ้น "สำเร็จ" ซ้ำ — ข้อความบันทึกรายการของ commitItem ขึ้นต่อ
         oldPath = e.file ? e.file.path : '';
         next.file = meta; next.thumb = thumb;
       } catch (err) {
         console.error(err);
+        if (up) up.clear();
         if (isEdit) warn = `เปลี่ยนไฟล์ไม่สำเร็จ (${err.message || err}) — ยังใช้ไฟล์เดิม`;
         else { next.thumb = thumb; next.file = null; warn = `บันทึกรายการแล้ว แต่ส่งต้นฉบับไม่สำเร็จ (${err.message || err}) — แตะรายการ → แก้ไข เพื่อแนบไฟล์อีกครั้ง`; }
       }

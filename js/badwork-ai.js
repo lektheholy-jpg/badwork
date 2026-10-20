@@ -221,8 +221,14 @@ async function badworkAiGuard(btn, fn, sys = docSystem()) {
   const say = t => { if (state) state.textContent = t; else btn.textContent = t; };
   if (state) { row.classList.add('busy'); say('กำลังคิด…'); }
   else btn.innerHTML = 'กำลังคิด<span class="loader-dots" aria-hidden="true"><i></i><i></i><i></i></span>';
-  try { return await fn(say); }
-  catch (err) { badworkAiError(err); return undefined; }
+  // Dynamic Island: แถบวิ่ง "AI กำลังคิด…" ค้างอยู่แม้ผู้ใช้เปลี่ยนหน้าไปแล้ว → จบแล้วขึ้น "AI เสร็จแล้ว" (key 'ai' แยกจากงานอื่น)
+  const isl = typeof islandBusy === 'function' ? islandBusy('AI กำลังคิด…', 'ai', (BADWORK_AI_CONFIG.timeout || 90000) + 10000) : null;
+  try {
+    const r = await fn(say);
+    if (r && (!Array.isArray(r) || r.length)) isl?.done('AI เสร็จแล้ว'); else isl?.clear(); // ไม่มีผลลัพธ์ → ให้ข้อความของผู้เรียกขึ้นแทน
+    return r;
+  }
+  catch (err) { isl?.clear(); badworkAiError(err); return undefined; } // เคลียร์ก่อน เพราะ error toast เบากว่าแถบ loading จะถูกบัง
   finally {
     badworkAiBusy = false;
     all.forEach(b => { b.disabled = false; });
