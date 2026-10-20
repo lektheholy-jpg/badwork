@@ -10,7 +10,7 @@
 //        js/utils.js    LAZY_MODULES · LAZY_BUNDLES · docConfigs
 //        js/app.js      ROUTE_MODULES · renderRoute · ไทล์เมนู "เพิ่มเติม" บนมือถือ
 //        index.html     ปุ่มเมนูข้าง (ต่อท้ายกลุ่มระบบเอกสาร)
-//        sw.js          PRECACHE + เลข VERSION
+//        sw.js          PRECACHE (เลข VERSION สร้างโดย npm run build)
 //        firestore.rules  collection <id>_docs ใต้ users/{uid}/
 //        (+ package.json เพิ่มสคริปต์ test:<id>)
 //   3) รัน node --check กับไฟล์ที่สร้าง แล้ว check-sw + check-inline เอง
@@ -194,15 +194,9 @@ function must(cond, f, what) { if (!cond) die(`หาจุดแก้ใน ${
   const preNew = pre[0].slice(0, at) + add + pre[0].slice(at);
   let s = sw.replace(pre[0], () => preNew);
 
-  // เลข VERSION: วันเดียวกัน = +1 · คนละวัน = วันนี้.1  (รูปแบบ YYYY-MM-DD.N)
-  const v = s.match(/const VERSION = '(\d{4}-\d{2}-\d{2})\.(\d+)';/);
-  must(v, 'sw.js', "const VERSION = 'YYYY-MM-DD.N';");
-  const d = new Date();
-  const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  const next = v[1] === today ? `${today}.${Number(v[2]) + 1}` : (today > v[1] ? `${today}.1` : `${v[1]}.${Number(v[2]) + 1}`); // วันที่ย้อนหลัง (นาฬิกาเครื่องผิด) = เพิ่มเลขท้ายของวันเดิม ไม่ให้เวอร์ชันถอย
-  s = s.replace(v[0], () => `const VERSION = '${next}';`);
+  // เลข VERSION ไม่แก้ที่นี่ — รัน npm run build (build:version) หลังวางไฟล์ เลขจะขึ้นเองตามจำนวนระบบเอกสาร
   out['sw.js'] = s;
-  notes.push(`sw.js              PRECACHE +3 ไฟล์ · VERSION ${v[1]}.${v[2]} → ${next}`);
+  notes.push('sw.js              PRECACHE +3 ไฟล์ (เลข VERSION ให้รัน npm run build)');
 }
 
 // 5) firestore.rules -------------------------------------------

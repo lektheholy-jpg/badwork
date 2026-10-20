@@ -1,16 +1,19 @@
 {
   "name": "badwork",
   "private": true,
+  "version": "1.0.0",
   "description": "เครื่องมือ build/ตรวจ CSS+JS ของโปรเจกต์ — ล็อกเวอร์ชันแบบเป๊ะ (ไม่ใช้ ^ หรือ ~) เพื่อให้ผลลัพธ์เหมือนเดิมทุกเครื่อง",
   "engines": {
     "node": ">=18"
   },
   "scripts": {
+    "build:version": "node tools/version.js",
+    "check:version": "node tools/version.js --check",
     "build:css": "sh build-css.sh",
     "check:css": "sh build-css.sh --check",
     "build:js": "node tools/build-js.js",
     "check:js": "node tools/build-js.js --check",
-    "build": "npm run build:css && npm run build:js",
+    "build": "npm run build:version && npm run build:css && npm run build:js",
     "test": "node tools/run-tests.js",
     "test:score": "node tests/score-logic.test.js .",
     "prepare": "git config core.hooksPath .githooks || true",
@@ -34,7 +37,7 @@
     "test:sarorder": "node tests/sar-order.test.js",
     "test:car": "node tests/car.test.js",
     "test:docprofile": "node tests/doc-profile.test.js",
-    "ci": "npm test && npm run check:css && npm run check:js",
+    "ci": "npm test && npm run check:css && npm run check:js && npm run check:version",
     "test:cssb": "node tests/css-bundles.test.js",
     "test:rules": "node tests/rules-profile.test.js",
     "test:appearance": "node tests/appearance.test.js",

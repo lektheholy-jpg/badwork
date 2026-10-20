@@ -54,6 +54,8 @@ npm run test:sarai       # ตัวต่อ AI ของ SAR ส่วนท�
 npm run test:nav         # ปุ่ม/ท่าย้อนกลับ (NavHistory)
 npm run test:cache       # แคชวาดทันทีของหน้ารายวิชา
 npm run check:sw         # PRECACHE ใน sw.js ตรงกับไฟล์จริง
+npm run build:version    # เลขเวอร์ชัน v<ใหญ่>.<ฟีเจอร์>.<วันเวลา> → APP_INFO + sw.js VERSION (อยู่ใน npm run build แล้ว)
+npm run check:version    # ตรวจว่าเลขเวอร์ชันตรงกับต้นทาง (อยู่ใน npm run ci แล้ว)
 npm run test:docprev     # โครงหน้าตัวอย่างกลาง (docRenderPreview · docPaginate · docFitSheets · docWatchResize) + หน้าตัวอย่าง ID-Plan จริง + กันโค้ด resize/zoom/ตัดหน้า/CSS แถบตัวอย่างหลุดเข้าไฟล์ระบบ
 ```
 
@@ -61,7 +63,7 @@ npm run test:docprev     # โครงหน้าตัวอย่างก�
 - `csso-cli`, `postcss`, `jsdom` ล็อกเวอร์ชันเป๊ะใน `package.json` (ไม่ใช้ `^`/`~`)
 - `npm install` รัน `prepare` ซึ่งตั้ง `core.hooksPath` เป็น `.githooks` — มี `.githooks/pre-commit` ที่รัน `./build-css.sh` แล้ว `git add css/style.min.css` ให้เองทุกครั้งที่ commit (ข้ามชั่วคราวด้วย `git commit --no-verify`) · ต้องให้ไฟล์ hook เป็น executable (`chmod +x .githooks/pre-commit`)
 - CI: `.github/workflows/ci.yml` รัน `npm ci` + `npm run ci` ทุก push เข้า `main` และทุก pull request
-- เพิ่ม/ลบ/เปลี่ยนชื่อไฟล์ใน `js/`, `css/`, `assets/icons/` → แก้ `PRECACHE` ใน `sw.js` และ **เพิ่มเลข `VERSION`** แล้วรัน `npm run check:sw`
+- เพิ่ม/ลบ/เปลี่ยนชื่อไฟล์ใน `js/`, `css/`, `assets/icons/` → แก้ `PRECACHE` ใน `sw.js` แล้วรัน `npm run build` (เลข `VERSION` ขึ้นเองด้วย `tools/version.js`) และ `npm run check:sw`
 
 ## โครงสร้างไฟล์
 
@@ -255,7 +257,7 @@ node tools/new-doc-system.js <id> "<ชื่อระบบ>" --dry-run   # ด
 2. สร้างไฟล์ UI ของระบบ (ฟอร์ม/รายการ/พิมพ์) แล้วท้ายไฟล์เรียก `registerDocUi('<id>', { tabs: { <แท็บ>: sys => …, default: sys => … }, beforeLeave(sys) {…} })` (ดูตัวอย่างท้าย `js/pa.js`) · ปุ่มพิมพ์เรียก `docPrintWindow(...)` (ดูหัวข้อ "พิมพ์ / บันทึกเป็น PDF" ด้านบน) — ไม่เขียน `window.open`/รอฟอนต์เอง · แท็บตัวอย่างเรียก `docRenderPreview(...)` (ดูหัวข้อ "หน้า ตัวอย่าง / พิมพ์") — ไม่เขียนแถบเลือก/ปุ่ม/สถานะว่างเอง
 3. `js/utils.js`: เพิ่มไฟล์ใน `LAZY_MODULES` + กลุ่มใหม่ใน `LAZY_BUNDLES` (ลำดับ `doc-system` → `doc-shell` → config → UI) และใส่ config ใน `docConfigs` (ให้ privacy.js ส่งออก/ลบข้อมูลของระบบนี้)
 4. `app.js`: เพิ่ม `ROUTE_MODULES['<id>-page'] = LAZY_BUNDLES.<id>` และ `renderRoute` → `return renderDocPage('<id>')` (ต้อง `return`) และเพิ่ม `'<id>-page'` ในอาร์เรย์ `[...].forEach(addTile)` (ไทล์เมนู "เพิ่มเติม" บนมือถือ — ไม่ใส่ = ระบบใหม่ไม่ขึ้นบนมือถือ) · `index.html`: ปุ่มเมนู `<button class="nav-item" data-route="<id>-page" data-tip="…">` (ดู `idp-page`) — ต้องวางไว้ในกลุ่มเมนูเดียวกับ `pa-page` / `idp-page`
-5. `sw.js`: เพิ่มไฟล์ใน PRECACHE + เลข VERSION (รัน `npm run check:sw`) · `firestore.rules`: เพิ่ม collection ใหม่ใต้ `users/{uid}/`
+5. `sw.js`: เพิ่มไฟล์ใน PRECACHE (เลข VERSION ขึ้นเองตอน `npm run build` · รัน `npm run check:sw`) · `firestore.rules`: เพิ่ม collection ใหม่ใต้ `users/{uid}/`
 6. ผู้ช่วย AI (ไม่บังคับ): ไม่ต้องแก้ `js/badwork-ai.js` / `js/badwork-ai-config.js` — สร้าง `js/<id>-ai.js` ท้ายไฟล์เรียก `registerDocAi('<id>', { systemPrompt, task, context, scope, guide, itemHeading, copy, ctxBody, ctxStorageKey, docRef, slots, resolve })` (ดูตัวอย่าง `js/pa-ai.js`) · ธรรมเนียมเฉพาะระบบในหน้าต่างตรวจทานใส่ที่ `copy.reviewNote` (หมายเหตุสั้นๆ) และ `copy.placeholder = { mark, toast }` (ถ้าพร้อต์ให้ AI ใส่เครื่องหมายแทนค่าที่ผู้ใช้ต้องกรอกเอง) — ไม่บังคับ ไม่ใส่ = แกนไม่แสดง/ไม่ตรวจ · ใน config ของระบบต้องมี `aiCtx = { fields, maxLen, idPrefix }` (idPrefix ไม่ซ้ำระบบอื่น) และ `ai.storageKeys.ctx` ไม่ซ้ำระบบอื่น · ฟังก์ชันบันทึกเอกสารต้องตัดคีย์ที่ขึ้นต้น `_` · ใส่ไฟล์ใน `LAZY_MODULES`/`LAZY_BUNDLES` หลัง `badwork-ai` และ `sw.js` PRECACHE · ฟอร์มเรียก `badworkAiMount(view, form, sys)` ท้ายการวาด
 7. เทสต์: ดูตัวอย่างระบบจำลอง `idp` และ `mock` ใน `tests/pa-config.test.js` (ทะเบียน/state แยกกัน · แกน AI ร่วม)
 
@@ -290,7 +292,7 @@ node tools/new-doc-system.js <id> "<ชื่อระบบ>" --dry-run   # ด
 **แคชของ `sw.js`**: ไฟล์แอป = เน็ตก่อนแล้วถอยไปแคช (ไฟล์ไม่มี hash) · รูปใน `assets/` = แคชก่อนแล้วอัปเดตเบื้องหลัง · Firebase SDK/ฟอนต์ = แคชก่อน · **Firestore, Auth, สภาพอากาศ, Google Sign-In ไม่ผ่าน SW** · มีเวอร์ชันใหม่ = Island ขึ้น "มีเวอร์ชันใหม่ของแอป [อัปเดต]" ไม่รีโหลดเองกลางคัน
 
 **กติกาโค้ด**
-- ลืมแก้ `PRECACHE` / `VERSION` = หน้านั้นเปิดตอนออฟไลน์ไม่ได้
+- ลืมแก้ `PRECACHE` หรือลืมรัน `npm run build` = หน้านั้นเปิดตอนออฟไลน์ไม่ได้
 - **อย่า `await` การเขียน Firestore (`set/update/add/delete`) ในจุดที่บล็อกการแสดงหน้า** — ออฟไลน์ promise จะค้างจนเซิร์ฟเวอร์ตอบ ให้เรียกแล้วไม่ต้องรอ หรือใส่ `.catch()` (การอ่านไม่เป็นปัญหา)
 - เรียก `invalidateCourseData()` **ทันทีที่สั่งเขียน** ไม่ใช่หลัง `await`
 - ทดสอบจริง: DevTools → Application → Service Workers → ติ๊ก Offline แล้วรีเฟรช (ต้องรันผ่าน https หรือ localhost)
