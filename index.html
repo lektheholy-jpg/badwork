@@ -9,7 +9,10 @@
 <meta property="og:title" content="เวรกรรม.. — ระบบบันทึกคะแนนสำหรับครู">
 <meta property="og:description" content="บันทึกคะแนนนักเรียน จัดการเอกสาร PA ID-Plan SAR และวิจัยในชั้นเรียน — ใช้งานบนมือถือและคอมพิวเตอร์">
 <meta property="og:type" content="website">
-<meta property="og:image" content="assets/icons/android-chrome-512x512.png">
+<meta property="og:url" content="https://lektheholy-jpg.github.io/badwork/">
+<meta property="og:image" content="https://lektheholy-jpg.github.io/badwork/assets/icons/android-chrome-512x512.png">
+<meta property="og:image:width" content="512">
+<meta property="og:image:height" content="512">
 <!-- Content Security Policy: กำหนดแหล่งที่มาที่อนุญาต กันการโหลดสคริปต์/สไตล์จากโดเมนแปลกปลอม -->
 <!-- หมายเหตุ: 'unsafe-inline' ใน style-src จำเป็นสำหรับ Google Fonts และ theme.js ที่ตั้งค่า CSS variable ผ่าน inline style -->
 <meta http-equiv="Content-Security-Policy" content="
@@ -59,8 +62,38 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans+Thai:wght@500;600;700&family=Noto+Sans+Thai:wght@400;500;600;700&display=swap">
 <link rel="stylesheet" href="css/style.min.css">
 <script src="js/theme.js"></script>
+<style>
+/* Loading screen — แสดงระหว่าง auth.onAuthStateChanged กำลังตรวจสอบ session
+   ซ่อนอัตโนมัติโดย auth.js เมื่อ Firebase พร้อม ไม่ต้องแก้ไฟล์นี้ */
+#auth-loading {
+  position: fixed; inset: 0; z-index: 9999;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px;
+  background: var(--bg, #F4F4F4);
+  transition: opacity .25s ease;
+}
+#auth-loading img { width: 64px; height: 64px; border-radius: 50%; }
+#auth-loading .spinner {
+  width: 28px; height: 28px;
+  border: 3px solid var(--border, #E5E6EA);
+  border-top-color: var(--primary, #3E91FF);
+  border-radius: 50%;
+  animation: auth-spin .7s linear infinite;
+}
+@keyframes auth-spin { to { transform: rotate(360deg); } }
+</style>
 </head>
 <body>
+<!-- Loading screen: แสดงระหว่าง Firebase ตรวจสอบ session — ถูกลบโดย auth.js -->
+<div id="auth-loading" role="status" aria-label="กำลังโหลด">
+  <img src="assets/icons/logo-128.webp" alt="โลโก้เวรกรรม..">
+  <div class="spinner" aria-hidden="true"></div>
+</div>
+<noscript>
+  <div style="font-family:sans-serif;text-align:center;padding:48px 24px;color:#111">
+    <strong>กรุณาเปิดใช้งาน JavaScript</strong><br>
+    ระบบเวรกรรม.. ต้องการ JavaScript เพื่อทำงาน กรุณาเปิดใช้งานใน browser แล้วรีเฟรชหน้านี้
+  </div>
+</noscript>
 
 <!-- LOGIN SCREEN -->
 <div id="login-screen" class="login-screen hidden">

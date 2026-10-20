@@ -17,8 +17,17 @@ document.getElementById('google-signin-btn').addEventListener('click', async () 
   try {
     await auth.signInWithPopup(googleProvider);
   } catch (err) {
-    console.error(err);
-    showToast('เข้าสู่ระบบไม่สำเร็จ: ' + err.message);
+    // popup ถูกบล็อก (มือถือบางรุ่น / PWA mode / iOS Safari) — ใช้ redirect แทน
+    if (err.code === 'auth/popup-blocked' || err.code === 'auth/popup-cancelled-by-user') {
+      try {
+        await auth.signInWithRedirect(googleProvider);
+        return; // redirect จะโหลดหน้าใหม่เอง
+      } catch (redirectErr) {
+        showToast('เข้าสู่ระบบไม่สำเร็จ: ' + (redirectErr.message || redirectErr));
+        return;
+      }
+    }
+    showToast('เข้าสู่ระบบไม่สำเร็จ: ' + (err.message || err));
   }
 });
 
@@ -49,10 +58,20 @@ document.getElementById('logout-btn').addEventListener('click', async () => {
   location.reload();
 });
 
+// ผลลัพธ์จาก signInWithRedirect (กรณีที่ popup ถูกบล็อกแล้วใช้ redirect แทน)
+// getRedirectResult จะ resolve ทันทีเป็น null ถ้าไม่ได้มาจาก redirect
+auth.getRedirectResult().catch(err => {
+  if (err && err.code !== 'auth/null-user') {
+    showToast('เข้าสู่ระบบไม่สำเร็จ: ' + (err.message || err));
+  }
+});
+
 auth.onAuthStateChanged(async (user) => {
   AppState.user = user;
   const loginScreen = document.getElementById('login-screen');
   const app = document.getElementById('app');
+  // ซ่อน loading screen เมื่อ auth state พร้อมแล้ว
+  document.getElementById('auth-loading')?.remove();
 
   if (user) {
     loginScreen.classList.add('hidden');
