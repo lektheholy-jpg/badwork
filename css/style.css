@@ -73,6 +73,7 @@
   --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23666666' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 6l4 4 4-4'/%3E%3C/svg%3E");  /* ลูกศร dropdown (สีเท่า --ink-soft) · ใช้ใน select ที่เบราว์เซอร์ยังไม่รองรับ appearance: base-select */
   --glass:      30%;    /* sidebar/tabbar/more-sheet opacity — ยิ่งน้อยยิ่งโปร่ง */
   --glass-blur: 30px;
+  --island-bg: #111111;  --island-fg: #EEEEEE;  --island-shadow: rgba(0, 0, 0, .35);  /* Dynamic Island สีกลับด้านกับธีม: ธีมสว่าง = พื้นดำ · ธีมมืด = พื้นขาว (ตัวหนังสือในแคปซูลใช้ currentColor ตาม --island-fg) */
   color-scheme: light;
 }
 
@@ -676,7 +677,7 @@ table.sheet :is(th, td).sticky-right-2 { right: 0; width: var(--r2-w); min-width
 
 /* ---------- Dynamic Island (แบบ F "Notch Tab"): ลิ้นต่อขึ้นจากขอบบนของเมนูล่าง — พัก = วัน·เวลา | ไอคอน ชื่อหน้า · ใช้งาน = แจ้งเตือน/บันทึก/เลิกทำ/ความคืบหน้า ----------
    ไม่ลอยกลางบนจออีกแล้ว (ชนเกาะจริงของ iPhone) · มือถือ: ฐานลิ้นแนบขอบบน .tabbar (--island-dock) · จอใหญ่ (ไม่มีเมนูล่าง): แนบขอบล่างจอ
-   ผิวกระจกเดียวกับ .tabbar · ตอนมีแจ้งเตือนย้อมสีตามชนิด (เขียว=สำเร็จ แดง=ลบ/ผิดพลาด เหลือง=เตือน/ออฟไลน์) ใช้ token ธีม จึงตามธีมมืดเอง
+   พื้นทึบสีกลับด้านกับธีม (--island-bg / --island-fg) · ตอนมีแจ้งเตือนย้อมสีตามชนิด (เขียว=สำเร็จ แดง=ลบ/ผิดพลาด เหลือง=เตือน/ออฟไลน์) ใช้ token ธีม จึงตามธีมมืดเอง
    ความสูงคงที่เสมอ (--island-h) — เปลี่ยนสถานะ/แจ้งเตือน = เปลี่ยนข้อความ ถ้ายาวก็ขยายออกด้านข้างเท่านั้น (ไม่สูงขึ้น ไม่ขึ้นบรรทัดใหม่)
    ความกว้างตอนพัก (--iw) ตอนขยาย (--ow) และช่องชื่อหน้า (--pw) js/island.js วัดจากเนื้อหาจริงแล้วใส่ให้ */
 .island {
@@ -686,15 +687,14 @@ table.sheet :is(th, td).sticky-right-2 { right: 0; width: var(--r2-w); min-width
   position: fixed; bottom: var(--island-dock); left: calc(50% + var(--island-shift)); z-index: 80;
   display: flex; align-items: center; justify-content: center; overflow: hidden;
   width: var(--iw, 132px); max-width: calc(100vw - 2 * var(--island-shift) - 24px); height: var(--island-h); border-radius: calc(var(--island-h) / 2) calc(var(--island-h) / 2) 0 0; transform: translateX(-50%);
-  background: color-mix(in srgb, var(--card) var(--glass, 60%), transparent); color: var(--ink); pointer-events: none;
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.6); backdrop-filter: blur(var(--glass-blur)) saturate(1.6);
-  box-shadow: 0 -6px 16px var(--shadow-ink-sm);
+  background: var(--island-bg); color: var(--island-fg); pointer-events: none;
+  box-shadow: 0 -6px 20px var(--island-shadow);
   transition: width var(--island-t), left .2s ease, background-color .2s ease, opacity .2s ease; /* left ตามจังหวะเดียวกับเมนูข้างที่ย่อ/ขยาย (.sidebar: width .2s ease) */
 }
 .island.open { width: var(--ow, 240px); }
-.island.open[data-kind="success"] { background: var(--success-tint); }
-.island.open[data-kind="warn"], .island.open[data-kind="offline"] { background: var(--warning-tint); }
-.island.open[data-kind="error"], .island.open[data-kind="trash"] { background: var(--danger-tint); }
+.island.open[data-kind="success"] { background: var(--success-tint); color: var(--ink); }
+.island.open[data-kind="warn"], .island.open[data-kind="offline"] { background: var(--warning-tint); color: var(--ink); }
+.island.open[data-kind="error"], .island.open[data-kind="trash"] { background: var(--danger-tint); color: var(--ink); }
 /* ตั้งค่าครั้งแรกตอนโหลดหน้า: ไม่ต้องมีแอนิเมชัน (ใช้ความจำเพาะสูงกว่าแทน !important ตามกฎของโปรเจกต์) */
 .island.island-instant, .island.island-instant .island-idle, .island.island-instant .island-idle-page, .island.island-instant .island-idle-page .pg, .island.island-instant .island-body { transition: none; }
 
@@ -703,11 +703,11 @@ table.sheet :is(th, td).sticky-right-2 { right: 0; width: var(--r2-w); min-width
   position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: max-content;
   display: flex; align-items: center; white-space: nowrap;
   font-family: var(--font-head); font-size: 12.5px; font-weight: 600; line-height: 1; font-variant-numeric: tabular-nums;
-  color: var(--ink); transition: opacity .18s ease;
+  color: inherit; transition: opacity .18s ease;
 }
 .island.open .island-idle { opacity: 0; }
 .island-idle-main { flex: none; display: flex; align-items: center; }
-.island-idle-date, .island-idle-sep { color: var(--ink-soft); margin: 0 6px; }
+.island-idle-date, .island-idle-sep { color: color-mix(in srgb, currentColor 65%, transparent); margin: 0 6px; }
 /* ช่องชื่อหน้า: กว้างตาม --pw (ความกว้างจริงของหน้านั้น) แล้ว transition ด้วยจังหวะเดียวกับแคปซูล · มี 2 ชั้นสลับกัน:
    ชั้นเก่าเลื่อนขึ้นแล้วจางหาย ชั้นใหม่เลื่อนขึ้นมาแทน ระหว่างที่แคปซูลยืด/หดไปพร้อมกัน */
 .island-idle-page { position: relative; flex: none; display: block; height: 18px; width: var(--pw, 0px); overflow: hidden; transition: width var(--island-t); }
@@ -719,10 +719,10 @@ table.sheet :is(th, td).sticky-right-2 { right: 0; width: var(--r2-w); min-width
 .island-idle-page .pg.on { opacity: 1; transform: none; }
 .island-idle-page .pg.out { opacity: 0; transform: translateY(-7px); }
 .island-idle-page .pg.no-t { transition: none; }
-.pg-div { flex: none; width: 1px; height: 12px; margin: 0 9px; background: color-mix(in srgb, var(--ink) 22%, transparent); }
+.pg-div { flex: none; width: 1px; height: 12px; margin: 0 9px; background: color-mix(in srgb, currentColor 22%, transparent); }
 .pg-ico { flex: none; display: flex; align-items: center; margin-right: 6px; }
 .pg-ico svg { display: block; width: 14px; height: 14px; color: var(--primary-dark); }
-.pg-name { flex: none; font-weight: 700; color: var(--ink); }
+.pg-name { flex: none; font-weight: 700; color: inherit; }
 .island-idle-off { display: none; align-items: center; gap: 7px; color: var(--warning); }
 .island-idle-off i { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
 .island.is-offline .island-idle-off { display: inline-flex; }
@@ -740,30 +740,30 @@ table.sheet :is(th, td).sticky-right-2 { right: 0; width: var(--r2-w); min-width
 .island-body.pop { animation: island-pop .4s cubic-bezier(.3, 1.3, .5, 1) .08s backwards; }
 .island-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .island[data-mode="progress"] .island-body { min-width: 220px; }
-.island-icon { flex: none; display: flex; align-items: center; justify-content: center; width: 18px; height: 18px; color: var(--primary-dark); }
+.island-icon { flex: none; display: flex; align-items: center; justify-content: center; width: 18px; height: 18px; color: inherit; }
 .island-icon svg { display: block; width: 100%; height: 100%; }
 .island[data-kind="success"] .island-icon { color: var(--success); }
 .island[data-kind="warn"] .island-icon, .island[data-kind="offline"] .island-icon { color: var(--warning); }
 .island[data-kind="error"] .island-icon, .island[data-kind="trash"] .island-icon { color: var(--danger); }
 .island-check { stroke-dasharray: 14; stroke-dashoffset: 14; animation: island-check .35s .15s ease forwards; }
-.island-spin { width: 16px; height: 16px; border-radius: 50%; border: 2.5px solid color-mix(in srgb, var(--ink) 18%, transparent); border-top-color: var(--primary-dark); animation: island-spin .8s linear infinite; }
+.island-spin { width: 16px; height: 16px; border-radius: 50%; border: 2.5px solid color-mix(in srgb, currentColor 18%, transparent); border-top-color: var(--primary-dark); animation: island-spin .8s linear infinite; }
 
 /* ปุ่มในแคปซูล (เลิกทำ / ลองใหม่) — แคปซูลทั้งก้อนไม่รับคลิก เฉพาะปุ่มนี้รับ */
 .island-action {
   pointer-events: auto; flex: none; appearance: none; border: 0; border-radius: 999px; margin: 0 -8px 0 0; padding: 4px 12px;
-  background: color-mix(in srgb, var(--ink) 10%, transparent); color: var(--ink); font: inherit; font-size: 12.5px; font-weight: 700; line-height: 1.4; cursor: pointer;
+  background: color-mix(in srgb, currentColor 10%, transparent); color: inherit; font: inherit; font-size: 12.5px; font-weight: 700; line-height: 1.4; cursor: pointer;
   -webkit-tap-highlight-color: transparent; transition: background .15s ease;
 }
-.island-action:hover { background: color-mix(in srgb, var(--ink) 18%, transparent); }
+.island-action:hover { background: color-mix(in srgb, currentColor 18%, transparent); }
 .island-action:focus-visible { outline: 2px solid var(--primary-solid); outline-offset: 2px; }
 .island-action[hidden] { display: none; }
 
 /* แถบเล็กชิดขอบล่าง: ความคืบหน้า / นับถอยหลังเลิกทำ / วิ่งไม่รู้ความยาว */
-.island-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: color-mix(in srgb, var(--ink) 10%, transparent); opacity: 0; transition: opacity .2s ease; }
+.island-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: color-mix(in srgb, currentColor 10%, transparent); opacity: 0; transition: opacity .2s ease; }
 .island-bar i { display: block; height: 100%; width: 100%; background: var(--primary-dark); transform-origin: left center; transform: scaleX(0); }
 .island[data-bar="progress"] .island-bar, .island[data-bar="indeterminate"] .island-bar, .island[data-bar="countdown"] .island-bar { opacity: 1; }
 .island[data-bar="progress"] .island-bar i { transform: scaleX(var(--p, 0)); transition: transform .3s ease; }
-.island[data-bar="countdown"] .island-bar i { background: color-mix(in srgb, var(--ink) 40%, transparent); transform: scaleX(1); animation: island-countdown var(--cd, 5000ms) linear forwards; }
+.island[data-bar="countdown"] .island-bar i { background: color-mix(in srgb, currentColor 40%, transparent); transform: scaleX(1); animation: island-countdown var(--cd, 5000ms) linear forwards; }
 .island[data-bar="indeterminate"] .island-bar i { width: 38%; transform: none; animation: island-slide 1.1s ease-in-out infinite; }
 
 @keyframes island-pop { from { opacity: 0; transform: scale(.86); } to { opacity: 1; transform: none; } }
@@ -1205,6 +1205,7 @@ table.sheet tbody tr:last-child td { border-bottom: none; }
 :root[data-theme="dark"] {
   color-scheme: dark;
   --bg: #121212;
+  --island-bg: #FFFFFF;  --island-fg: #111111;  --island-shadow: rgba(255, 255, 255, .2);
   --card-glass: rgb(70 70 78 / 40%);  --card-glass-hover: rgb(70 70 78 / 56%);  /* พื้นการ์ดดำโปร่ง */
   --bgp-lemon: #2E2A0A;  --bgp-sky: #0B1B33;  --bgp-lilac: #1E1230;  --bgp-mint: #0C2418;
   --bgp-ocean: linear-gradient(180deg, #0F2347, #12301E);
