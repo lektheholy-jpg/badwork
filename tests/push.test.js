@@ -189,7 +189,21 @@ async function decrypt(body, uaPriv, uaPubRaw, authSecret) {
   ok(/lead: 5/.test(tt), 'ตั้งเตือนล่วงหน้า 5 นาที');
   ok(/function saveTimetable[\s\S]*?ttPushSync\(\)/.test(tt), 'บันทึกตารางแล้วซิงก์ให้ตัวส่งแจ้งเตือน');
   const toml = fs.readFileSync(path.join(__dirname, '..', 'worker', 'wrangler.toml'), 'utf8');
-  ok(/\* 0-10 \* \* 1-5/.test(toml), 'wrangler.toml: มีตัวอย่าง cron (UTC 00–10 = 07:00–17:59 ไทย · จ.–ศ.)');
+  // แยกไฟล์ตามหัวตาราง TOML เพื่อเช็คว่าคีย์อยู่ "ใต้ตารางที่ถูกต้อง" (เคยวาง VAPID ไว้ใต้ [[unsafe.bindings]] จนไม่เข้า env)
+  const tomlSec = {}; let cur = '';
+  toml.split(/\r?\n/).forEach(l => {
+    const h = /^\s*(\[\[?[^\]]+\]\]?)\s*(#.*)?$/.exec(l);
+    if (h) { cur = h[1]; tomlSec[cur] = tomlSec[cur] || []; return; }
+    if (!/^\s*(#|$)/.test(l)) (tomlSec[cur] = tomlSec[cur] || []).push(l);
+  });
+  const inSec = (sec, re) => (tomlSec[sec] || []).some(l => re.test(l));
+  ok(inSec('[triggers]', /^\s*crons\s*=\s*\[\s*"\* 0-10 \* \* 1-5"\s*\]/), 'wrangler.toml: เปิด cron จริง (ไม่ถูกคอมเมนต์) UTC 00–10 = 07:00–17:59 ไทย · จ.–ศ.');
+  ok(inSec('[vars]', /^\s*VAPID_PUBLIC_KEY\s*=\s*"[^"]+"/), 'wrangler.toml: VAPID_PUBLIC_KEY อยู่ใต้ [vars]');
+  ok(inSec('[vars]', /^\s*VAPID_SUBJECT\s*=\s*"mailto:[^"]+"/), 'wrangler.toml: VAPID_SUBJECT อยู่ใต้ [vars]');
+  ok(!Object.keys(tomlSec).some(k => k !== '[vars]' && inSec(k, /^\s*VAPID_/)), 'wrangler.toml: ไม่มี VAPID_* หลงอยู่ใต้ตารางอื่น');
+  ok(inSec('[[kv_namespaces]]', /^\s*binding\s*=\s*"PUSH"/), 'wrangler.toml: มี KV binding ชื่อ PUSH');
+  const pubInToml = (toml.match(/^VAPID_PUBLIC_KEY\s*=\s*"([^"]+)"/m) || [])[1];
+  ok(pubInToml && tt.includes(pubInToml), 'VAPID public key ใน wrangler.toml ตรงกับ TT_PUSH.vapidKey');
   ok(!/VAPID_PRIVATE_KEY\s*=/.test(toml), 'private key ไม่อยู่ในไฟล์ตั้งค่า');
 
   console.log(`\n${pass} ผ่าน · ${fail} ไม่ผ่าน`);

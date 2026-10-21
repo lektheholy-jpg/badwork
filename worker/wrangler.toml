@@ -6,6 +6,9 @@ compatibility_date = "2025-01-01"
 FIREBASE_PROJECT_ID = "mywork-lektheholy"
 # แก้เป็นโดเมนจริงของเว็บ (คั่นด้วย ,) — ตัด localhost ออกตอนใช้งานจริงได้
 ALLOWED_ORIGINS = "https://lektheholy-jpg.github.io,https://wenkham.pages.dev"
+# แจ้งเตือนก่อนเริ่มคาบ (Web Push) — VAPID_PRIVATE_KEY เป็น secret: npx wrangler secret put VAPID_PRIVATE_KEY
+VAPID_PUBLIC_KEY = "BMcslZVJ7pSQJlxfMvw5-QK7AIjXP14fv7ebtcnmcgC22dwsVO31p0wau026_rVcOq7dJE2eNfEkM89s-9fF-QU"
+VAPID_SUBJECT = "mailto:lektheholy@gmail.com"
 # GEMINI_API_KEY ตั้งด้วยคำสั่ง: npx wrangler secret put GEMINI_API_KEY
 
 # ---- คุมค่าใช้จ่าย Gemini (ไม่บังคับ · เอา # ออกเพื่อเปิดใช้) ----
@@ -32,9 +35,7 @@ simple = { limit = 20, period = 60 }
 # 2) KV เก็บ subscription:  npx wrangler kv namespace create PUSH   แล้วใส่ id ที่ได้ และเอา # ออก
 # 3) ตั้ง secret:  npx wrangler secret put VAPID_PRIVATE_KEY   (วาง private key)
 # 4) ใส่ public key ด้านล่าง + ที่ TT_PUSH.vapidKey ใน js/timetable.js   แล้ว  npx wrangler deploy
-# [vars] ด้านบนมีอยู่แล้ว — ใส่สองบรรทัดนี้ไว้ใต้ [vars] (TOML ห้ามประกาศ [vars] ซ้ำ):
-VAPID_PUBLIC_KEY = "BMcslZVJ7pSQJlxfMvw5-QK7AIjXP14fv7ebtcnmcgC22dwsVO31p0wau026_rVcOq7dJE2eNfEkM89s-9fF-QU"
-VAPID_SUBJECT = "mailto:lektheholy@gmail.com"
+# VAPID_PUBLIC_KEY / VAPID_SUBJECT อยู่ใต้ [vars] ด้านบนแล้ว (ห้ามวางไว้ใต้ [[...]] อื่น ไม่งั้น TOML จะนับเป็นฟิลด์ของตารางนั้น)
 [[kv_namespaces]]
 binding = "PUSH"
 id = "2f85b6b57793447a800b7fb03c58f108"
@@ -42,4 +43,4 @@ id = "2f85b6b57793447a800b7fb03c58f108"
 # cron เป็นเวลา UTC: 00:00–10:59 UTC = 07:00–17:59 น. เวลาไทย · วันจันทร์–ศุกร์ · ทุกนาที
 # (KV แผนฟรี list ได้ 1,000 ครั้ง/วัน — ช่วงเวลานี้ใช้ ~660 ครั้ง/วัน จึงไม่ควรขยายช่วงเวลาถ้าอยู่แผนฟรี)
 [triggers]
-# crons = ["* 0-10 * * 1-5"]
+crons = ["* 0-10 * * 1-5"]
