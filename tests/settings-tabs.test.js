@@ -49,6 +49,36 @@ const hexes = t.LOOK_COLORS.map(x => x[0]);
 ok(hexes.length === new Set(hexes).size && !hexes.includes('#0381fe'), 'ไม่มีสีน้ำเงินซ้ำกับ "ค่าเริ่มต้น"', hexes);
 
 
+// ---------- เอฟเฟกต์กระจกของการ์ด (theme.js: look.glass · style.css: :root[data-glass="on"] · firestore.rules) ----------
+console.log('เอฟเฟกต์กระจก');
+const gw = new JSDOM('<!doctype html><html><head><meta name="theme-color" content="#fff"></head><body></body></html>', { url: 'https://example.test/', runScripts: 'outside-only' }).window;
+gw.matchMedia = () => ({ matches: false, addEventListener() {} });
+gw.eval(read('js/theme.js'));
+const html = gw.document.documentElement;
+ok(html.dataset.glass === 'on' && gw.getLookPref().glass === null && gw.getLookDefaults().glass === true, 'ค่าเริ่มต้น: เปิด (data-glass="on") · ค่าที่เก็บเป็น null');
+gw.setLookPref({ glass: false });
+ok(html.dataset.glass === undefined && gw.getLookPref().glass === false && gw.getAppearance().look.glass === false, 'ปิดสวิตช์ → เอา data-glass ออก และค่าไปอยู่ใน getAppearance (ซิงค์ขึ้นบัญชี)');
+gw.setLookPref({ pc: '#7b52e6' });
+ok(html.dataset.glass === undefined, 'ปรับค่าอื่นไม่ทำให้สวิตช์กลับมาเปิดเอง');
+gw.setLookPref({ glass: true });
+ok(html.dataset.glass === 'on' && gw.getLookPref().glass === true, 'เปิดสวิตช์ → data-glass="on"');
+gw.setAppearance({ theme: 'auto', bg: 'default', look: { glass: 'yes' }, presets: '[]' });
+ok(gw.getLookPref().glass === null && html.dataset.glass === 'on', 'ค่า glass ที่ไม่ใช่ boolean จากคลาวด์ถูกกรองเป็น null (ใช้ค่าเริ่มต้น)');
+gw.setAppearance({ theme: 'auto', bg: 'default', look: { glass: false }, presets: '[]' });
+ok(html.dataset.glass === undefined, 'รับค่าปิดจากคลาวด์ได้');
+gw.saveLookPreset('ปิดกระจก'); gw.setLookPref({ glass: true }); gw.applyLookPreset(gw.getLookPresets()[0].id);
+ok(gw.getLookPref().glass === false && html.dataset.glass === undefined, 'ชุดตั้งค่าของฉันจำสวิตช์กระจกด้วย');
+gw.resetAppearance();
+ok(html.dataset.glass === 'on', 'คืนค่าเริ่มต้นทั้งหมด → กลับมาเปิด');
+
+const css = read('css/style.css'), rulesTxt = read('firestore.rules');
+const docsPart = css.slice(css.indexOf('/* @bundle docs'));
+ok(/--card-bf:\s*blur\(/.test(css) && /@media \(prefers-reduced-transparency: reduce\)\s*\{\s*:root\s*\{\s*--card-bf:\s*none/.test(css), 'มีตัวแปร --card-bf และปิดเบลอเมื่อผู้ใช้ตั้ง "ลดความโปร่งใส" ในระบบ');
+ok(/@media print\s*\{\s*:root\s*\{\s*--card-bf:\s*none/.test(css), 'ปิดเบลอตอนพิมพ์');
+ok(/:root\[data-glass="on"\] \.card,[^{]*\.rec-card\s*\{[^}]*var\(--card-glass\)[^}]*backdrop-filter/.test(css), '.card / .rec-card ที่พื้นทึบ → พื้นโปร่ง + เบลอเมื่อเปิดกระจก');
+ok(/:root\[data-glass="on"\] \.doc-section/.test(docsPart) && !/:root\[data-glass="on"\] \.doc-section/.test(css.slice(0, css.indexOf('/* @bundle docs'))), 'การ์ดฟอร์มเอกสารอยู่ในบล็อก docs (ไม่ปนกับ CSS หน้าหลัก)');
+ok(/hasOnly\(\[[^\]]*'glass'[^\]]*\]\)/.test(rulesTxt) && /get\('glass', null\) is bool/.test(rulesTxt), 'firestore.rules ยอมรับ look.glass (boolean/null)');
+
 // ---------- ปุ่มติดตั้งแอป (js/pwa.js: PwaInstall · js/app.js: installCardHtml / bindInstallCard) ----------
 console.log('ติดตั้งแอป');
 const IOS = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Safari/604.1';

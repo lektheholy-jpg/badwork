@@ -229,13 +229,14 @@
   // ค่าที่เก็บ: { pc: สีหลัก hex | null, card: ความโปร่งใสการ์ด 0–90 | null, menu: ความโปร่งใสเมนู 0–90 | null, blur: ความเบลอเมนู 0–40 px | null }
   // null = ใช้ค่าเริ่มต้นของ css/style.css · ทับค่าที่ applyTone คำนวณ (พื้นหลังสวนธีม/ลาย) เพราะผู้ใช้ตั้งเอง
   var LOOK_KEY = 'myscore-look';
-  var LOOK_DEFAULT = { card: { light: 65, dark: 60 }, menu: 70, blur: 30 }; // ตรงกับ --card-glass / --glass / --glass-blur ใน style.css
+  var LOOK_DEFAULT = { card: { light: 65, dark: 60 }, menu: 70, blur: 30, glass: true }; // ตรงกับ --card-glass / --glass / --glass-blur ใน style.css
   var LOOK_VARS = ['--primary', '--primary-solid', '--primary-dark', '--primary-tint', '--on-primary', '--glass', '--glass-blur'];
   function cleanLook(o) {
     o = o && typeof o === 'object' ? o : {};
     function opt(v, lo, hi) { return v == null ? null : num(v, lo, hi, null); }
     return { pc: typeof o.pc === 'string' && HEX.test(o.pc) ? o.pc.toLowerCase() : null,
-             card: opt(o.card, 0, 90), menu: opt(o.menu, 0, 90), blur: opt(o.blur, 0, 40) };
+             card: opt(o.card, 0, 90), menu: opt(o.menu, 0, 90), blur: opt(o.blur, 0, 40),
+             glass: typeof o.glass === 'boolean' ? o.glass : null }; // เอฟเฟกต์กระจกของการ์ด · null = ค่าเริ่มต้น (เปิด)
   }
   function readLook() {
     try { return cleanLook(JSON.parse(localStorage.getItem(LOOK_KEY))); } catch (e) { return cleanLook(null); }
@@ -256,6 +257,7 @@
     var root = document.documentElement, st = root.style, L = readLook(), dark = root.dataset.theme === 'dark';
     LOOK_VARS.forEach(function (v) { st.removeProperty(v); });
     if (L.pc) { var pv = primaryVars(L.pc, dark); Object.keys(pv).forEach(function (k) { st.setProperty(k, pv[k]); }); }
+    if (L.glass === false) delete root.dataset.glass; else root.dataset.glass = 'on'; // css: :root[data-glass="on"] → เบลอหลังการ์ด
     if (L.menu != null) st.setProperty('--glass', (100 - L.menu) + '%');
     if (L.blur != null) st.setProperty('--glass-blur', L.blur + 'px');
     if (L.card != null) {
@@ -266,7 +268,7 @@
   }
   function applyTone() { toneBase(); applyLook(); }
   window.getLookPref = readLook;
-  window.getLookDefaults = function () { return { card: LOOK_DEFAULT.card[resolve(readPref()) === 'dark' ? 'dark' : 'light'], menu: LOOK_DEFAULT.menu, blur: LOOK_DEFAULT.blur }; };
+  window.getLookDefaults = function () { return { card: LOOK_DEFAULT.card[resolve(readPref()) === 'dark' ? 'dark' : 'light'], menu: LOOK_DEFAULT.menu, blur: LOOK_DEFAULT.blur, glass: LOOK_DEFAULT.glass }; };
   window.setLookPref = function (patch) { // patch = บางคีย์ของค่าข้างบน · คืนค่าที่ผ่านการตรวจแล้ว
     var cur = readLook(), next = cleanLook(Object.assign({}, cur, patch));
     try { localStorage.setItem(LOOK_KEY, JSON.stringify(next)); } catch (e) {}

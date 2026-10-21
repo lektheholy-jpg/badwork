@@ -168,7 +168,7 @@ const lsOf = (e, k) => e.w.localStorage.getItem(k);
   ok(!!prof && /hasOnly\(\[[^\]]*'appearance'[^\]]*\]\)/.test(prof[0]) && /validAppearance\(d\.get\('appearance', null\)\)/.test(prof[0]), 'validProfile ยอมรับและตรวจฟิลด์ appearance');
   const va = rules.match(/function validAppearance\(a\)[\s\S]*?\n    }\n/);
   const keys = va ? [...va[0].matchAll(/hasOnly\(\[([^\]]*)\]\)/g)].map(m => [...m[1].matchAll(/'([^']+)'/g)].map(x => x[1])) : [];
-  ok(keys.length === 2 && keys[0].sort().join() === 'bg,look,presets,theme,updatedAt' && keys[1].sort().join() === 'blur,card,menu,pc', 'ฟิลด์ใน rules ตรงกับที่ appearanceSync ส่ง', keys);
+  ok(keys.length === 2 && keys[0].sort().join() === 'bg,look,presets,theme,updatedAt' && keys[1].sort().join() === 'blur,card,glass,menu,pc', 'ฟิลด์ใน rules ตรงกับที่ appearanceSync ส่ง', keys);
 
   console.log(`\n${pass} ผ่าน · ${fail} ไม่ผ่าน`);
   process.exit(fail ? 1 : 0);

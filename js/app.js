@@ -233,6 +233,7 @@ function lookHtml() {
       </div>
       ${bgColorField('pc', 'เลือกสีเอง', '#0381fe')}
       <div class="u-note u-semibold u-mt-16">ความโปร่งใส</div>
+      <label class="bg-field"><span>เอฟเฟกต์กระจก (เบลอพื้นหลังหลังการ์ด)</span><span class="switch"><input type="checkbox" id="look-glass" role="switch" aria-label="เอฟเฟกต์กระจก"><span class="switch-slider"></span></span></label>
       ${sliders}
       <div class="u-flex u-gap-8 u-wrap u-mt-12"><button type="button" class="btn btn-ghost btn-sm" data-look-reset>คืนค่าเริ่มต้น</button></div>
     </div>`;
@@ -245,6 +246,7 @@ function initLook(view) {
     const L = getLookPref(), D = getLookDefaults();
     const pc = L.pc || (isDark() ? '#3e91ff' : '#0381fe');
     box.querySelectorAll('[data-look-color]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.lookColor === (L.pc || ''))));
+    box.querySelector('#look-glass').checked = L.glass ?? D.glass;
     const inp = box.querySelector('.bg-color[data-key="pc"]'); inp.value = pc;
     box.querySelector('[data-hex="pc"]').textContent = pc;
     ['card', 'menu', 'blur'].forEach(k => {
@@ -258,6 +260,9 @@ function initLook(view) {
     if (key === 'pc') setLookPref({ pc: e.target.value });
     else setLookPref({ [key]: Number(e.target.value) });
     sync();
+  });
+  box.addEventListener('change', e => {
+    if (e.target.id === 'look-glass') { setLookPref({ glass: e.target.checked }); sync(); }
   });
   box.addEventListener('click', e => {
     const c = e.target.closest('[data-look-color]');
@@ -273,7 +278,7 @@ function presetsHtml() {
   return `
     <div class="card card-pad set-preset">
       <h2 class="card-title">ชุดตั้งค่าของฉัน</h2>
-      <div class="u-note">บันทึกพื้นหลัง สีหลัก ความโปร่งใสของการ์ดและแถบเมนู และความเบลอ ณ ตอนนี้ไว้เป็นชุดของตัวเอง แล้วกดใช้ได้ในครั้งเดียว (เก็บตามบัญชี Google ของคุณ ใช้ได้ทุกเครื่องที่ล็อกอิน · ไม่รวมโหมดสว่าง-มืด)</div>
+      <div class="u-note">บันทึกพื้นหลัง สีหลัก ความโปร่งใสของการ์ดและแถบเมนู ความเบลอ และเอฟเฟกต์กระจก ณ ตอนนี้ไว้เป็นชุดของตัวเอง แล้วกดใช้ได้ในครั้งเดียว (เก็บตามบัญชี Google ของคุณ ใช้ได้ทุกเครื่องที่ล็อกอิน · ไม่รวมโหมดสว่าง-มืด)</div>
       <div class="preset-save">
         <div class="field"><input type="text" id="preset-name" maxlength="${LOOK_PRESET_NAME_MAX}" autocomplete="off" placeholder="ตั้งชื่อชุด เช่น โปร่งใสมาก, กลางคืน" aria-label="ชื่อชุดตั้งค่า"></div>
         <button type="button" class="btn btn-primary btn-sm" id="preset-save-btn">บันทึกชุดนี้</button>
@@ -435,7 +440,7 @@ function initBgCustom(view, onChange) {
 // ---------- เกี่ยวกับ (บนสุดของหน้าตั้งค่า): เวอร์ชันเว็บ · ผู้สร้าง ----------
 // version รูปแบบ v<รุ่นใหญ่>.<ฟีเจอร์>.<วันเวลา> เช่น v1.15.26OC201912 — **ห้ามแก้มือ**
 //   npm run build:version (รวมใน npm run build) เขียนให้ทั้งตรงนี้และ VERSION ใน sw.js · รายละเอียดดู tools/version.js
-const APP_INFO = { version: 'v1.15.26OC210844', creator: 'lektheholy', email: 'lektheholy@gmail.com' };
+const APP_INFO = { version: 'v1.15.26OC210856', creator: 'lektheholy', email: 'lektheholy@gmail.com' };
 
 function aboutHtml() {
   const a = APP_INFO;

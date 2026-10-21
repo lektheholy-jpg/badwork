@@ -58,11 +58,12 @@ service cloud.firestore {
         && okStr(a.get('presets', null), 20000)
         && (a.get('updatedAt', null) == null || a.get('updatedAt', null) is timestamp)
         && (a.get('look', null) == null || (a.get('look', null) is map
-          && a.get('look', null).keys().hasOnly(['pc', 'card', 'menu', 'blur'])
+          && a.get('look', null).keys().hasOnly(['pc', 'card', 'menu', 'blur', 'glass'])
           && okStr(a.get('look', null).get('pc', null), 7)
           && okNumOrNull(a.get('look', null).get('card', null), 0, 90)
           && okNumOrNull(a.get('look', null).get('menu', null), 0, 90)
-          && okNumOrNull(a.get('look', null).get('blur', null), 0, 40))));
+          && okNumOrNull(a.get('look', null).get('blur', null), 0, 40)
+          && (a.get('look', null).get('glass', null) == null || a.get('look', null).get('glass', null) is bool))));
     }
 
     // โปรไฟล์ครู: มีเฉพาะฟิลด์ที่แอปเขียนจริง
