@@ -168,7 +168,7 @@ async function saveTimetable(tt, term) {
 // ตัวส่งอยู่ที่ Cloudflare Worker (worker/worker.js · cron ทุกนาที) — ที่นี่ทำแค่ ขออนุญาต + สมัครรับ + ส่งตารางปัจจุบันไปเก็บ
 //   vapidKey ว่าง = ปิดฟีเจอร์ (ไม่แสดงการ์ด) · สร้างคีย์ด้วย node tools/gen-vapid.js แล้วใส่ public key ที่นี่และใน wrangler.toml
 //   url ต้องเป็นตัวเดียวกับ proxyUrl ใน js/badwork-ai-config.js (ไฟล์นี้ต้องใช้งานเดี่ยวได้ จึงไม่อ้างถึงค่านั้นตรงๆ)
-const TT_PUSH = { vapidKey: '', url: 'https://badwork-gemini-proxy.badwork.workers.dev', lead: 5 };
+const TT_PUSH = { vapidKey: 'BMcslZVJ7pSQJlxfMvw5-QK7AIjXP14fv7ebtcnmcgC22dwsVO31p0wau026_rVcOq7dJE2eNfEkM89s-9fF-QU', url: 'https://badwork-gemini-proxy.badwork.workers.dev', lead: 5 };
 
 const ttPushIsIos = () => /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const ttPushStandalone = () => (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
