@@ -42,6 +42,7 @@
     "test:rules": "node tests/rules-profile.test.js",
     "test:appearance": "node tests/appearance.test.js",
     "test:island": "node tests/island-ambient.test.js",
+    "test:islandclass": "node tests/island-class.test.js",
     "test:settings": "node tests/settings-tabs.test.js"
   },
   "devDependencies": {

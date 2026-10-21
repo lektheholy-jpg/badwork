@@ -232,6 +232,32 @@ async function makeEnv({ nStudents = 4, nAssess = 8, max = 10, seed = {} } = {})
     ok(/บันทึกแล้ว/.test(h.status().textContent) && h.store.s1.a1 === 7, 'ออนไลน์ปกติ → "บันทึกแล้ว"', h.status().textContent);
   }
 
+  console.log('\n[10] Island: "บันทึกแล้ว · เหลืออีก N คนที่ยังไม่มีคะแนน"');
+  {
+    const islandText = e => e.w.document.querySelector('.island-text').textContent;
+    const e = await makeEnv({ nStudents: 4, seed: { s4: { a1: 5 } } });
+    e.type('s1', 'a1', '7'); await sleep(80);
+    ok(islandText(e) === 'บันทึกแล้ว · เหลืออีก 2 คนที่ยังไม่มีคะแนน', 'กรอกช่อง 1 ของ 4 คน (s4 มีแล้ว) → เหลือ 2 คน', islandText(e));
+    e.type('s2', 'a1', '0'); await sleep(80);
+    ok(islandText(e) === 'บันทึกแล้ว · เหลืออีก 1 คนที่ยังไม่มีคะแนน', 'พิมพ์ 0 นับว่ากรอกแล้ว (ไม่ใช่ว่าง) → เหลือ 1 คน', islandText(e));
+    e.type('s3', 'a1', '9'); await sleep(80);
+    ok(islandText(e) === 'บันทึกแล้ว', 'ครบทุกคน → "บันทึกแล้ว" เฉยๆ ไม่มีส่วนเหลือ', islandText(e));
+    e.type('s1', 'a2', '4'); await sleep(80);
+    ok(islandText(e) === 'บันทึกแล้ว · เหลืออีก 3 คนที่ยังไม่มีคะแนน', 'เปลี่ยนไปกรอกช่องอื่น → นับเฉพาะช่องนั้น (ไม่ปนช่องเดิม)', islandText(e));
+    e.type('s1', 'a2', ''); await sleep(80);
+    ok(islandText(e) === 'บันทึกแล้ว · เหลืออีก 4 คนที่ยังไม่มีคะแนน', 'ล้างช่องที่เพิ่งกรอก → กลับมานับเป็นคนที่ยังไม่มี', islandText(e));
+    // วางหลายคอลัมน์ทีเดียว: นับคนที่ยังขาดอย่างน้อย 1 ช่องในคอลัมน์ที่วาง
+    const f = await makeEnv({ nStudents: 3 });
+    const inp = f.input('s1', 'a1');
+    inp.dispatchEvent(Object.assign(new f.w.Event('paste', { bubbles: true, cancelable: true }), { clipboardData: { getData: () => '1\t2\n3\t\n' } }));
+    await sleep(120);
+    ok(islandText(f) === 'บันทึกแล้ว · เหลืออีก 2 คนที่ยังไม่มีคะแนน', 'วาง 2 คอลัมน์ (แถว 2 ขาดช่อง 2 · แถว 3 ว่างทั้งคู่) → เหลือ 2 คน', islandText(f));
+    // ถ้าคะแนนค้างอยู่ตอนออกจากหน้า (container ถูกถอด) → ไม่ขึ้นข้อความเหลืออีก
+    const g = await makeEnv({ nStudents: 3 });
+    g.type('s1', 'a1', '7'); g.container.remove(); await sleep(80);
+    ok(islandText(g) === 'บันทึกแล้ว', 'ออกจากหน้าคะแนนไปแล้ว → ไม่บอกจำนวนที่เหลือ', islandText(g));
+  }
+
   console.log(`\nผลรวม: ผ่าน ${pass}, ไม่ผ่าน ${fail}`);
   process.exit(fail ? 1 : 0);
 })().catch(e => { console.error('HARNESS ERROR', e); process.exit(2); });

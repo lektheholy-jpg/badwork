@@ -7,6 +7,7 @@
 //   เอกสาร "main" = ตารางแบบเดิมที่ยังไม่แยกภาคเรียน — อ่านได้อย่างเดียว ใช้เป็นตารางตั้งต้นของภาคเรียนปัจจุบัน
 //   (ถ้าภาคนั้นยังไม่มีเอกสารของตัวเอง) พอบันทึกครั้งแรกจะถูกเขียนเป็นเอกสารของภาคเรียนนั้น ไม่ลบ/ไม่แก้ main
 // ฟิลด์ต้องตรงกับ validTimetable ใน firestore.rules · ไฟล์นี้ต้องใช้งานเดี่ยวได้ (หน้าแรกโหลดไปทำวิดเจ็ตโดยไม่โหลด profile.js)
+// ชิปคาบสอนบน Dynamic Island (ท้ายไฟล์: ttChipInfo / ttChipSync) ใช้ตรรกะ กำลังสอน/ถัดไป ชุดเดียวกับวิดเจ็ตหน้าแรก (ttFindNowNext)
 // ==========================================================================
 
 const TT_DAYS = [[1, 'จันทร์'], [2, 'อังคาร'], [3, 'พุธ'], [4, 'พฤหัสบดี'], [5, 'ศุกร์']]; // เลขวันตรงกับ Date.getDay()
@@ -150,6 +151,7 @@ async function saveTimetable(tt, term) {
   try {
     await ttCol().doc(ttTermKey(term)).set({ periods: tt.periods, entries: tt.entries, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
     AppState.timetable = null; // แคชของวิดเจ็ตหน้าแรกเก่าแล้ว — ให้โหลดใหม่ตอนกลับหน้าแรก
+    ttChipReload();            // ชิปคาบสอนบน Island เก็บสำเนาของตัวเอง (ต้องใช้ได้ทุกหน้า) → โหลดตารางใหม่เบื้องหลัง
     islandSave('saved');
     return true;
   } catch (err) {
@@ -802,6 +804,18 @@ function ttwItemHtml(e, periods, tag, courseIds) {
     </div>`;
 }
 
+// หาคาบที่กำลังสอน/คาบถัดไป (ยังไม่เริ่ม) ของวันนั้น — วิดเจ็ตหน้าแรกกับชิปบน Island ใช้ร่วมกัน (ที่เดียว)
+// entries = คาบของวันนั้นเรียงตามคาบแล้ว · nowMin = นาทีนับจากเที่ยงคืน · คืน { nowIdx, nextIdx } (-1 = ไม่มี)
+function ttFindNowNext(entries, periods, nowMin) {
+  let nowIdx = -1, nextIdx = -1;
+  entries.forEach((e, i) => {
+    const s = ttMin(periods[e.period].start), en = ttMin(periods[e.period + e.span - 1].end);
+    if (nowMin >= s && nowMin < en) nowIdx = i;
+    else if (s > nowMin && nextIdx < 0) nextIdx = i;
+  });
+  return { nowIdx, nextIdx };
+}
+
 async function initTimetableWidget(root) {
   const daysEl = root.querySelector('#ttw-days'), listEl = root.querySelector('#ttw-list'), subEl = root.querySelector('#ttw-sub');
   const first = new Date();
@@ -827,14 +841,7 @@ async function initTimetableWidget(root) {
     if (!entries.length) { listEl.innerHTML = `<div class="ttw-empty">ไม่มีคาบในวัน${ttDayName(day)}</div>`; return; }
 
     const today = now.getDay() === day;
-    let nowIdx = -1, nextIdx = -1;
-    if (today) {
-      entries.forEach((e, i) => {
-        const s = ttMin(tt.periods[e.period].start), en = ttMin(tt.periods[e.period + e.span - 1].end);
-        if (nowMin >= s && nowMin < en) nowIdx = i;
-        else if (s > nowMin && nextIdx < 0) nextIdx = i;
-      });
-    }
+    const { nowIdx, nextIdx } = today ? ttFindNowNext(entries, tt.periods, nowMin) : { nowIdx: -1, nextIdx: -1 };
     const courseIds = Array.isArray(AppState.courses) ? new Set(AppState.courses.map(c => c.id)) : null; // หน้าแรกโหลดรายวิชาไว้แล้ว · ถ้ายังไม่มีให้ตรวจตอนกด
     listEl.innerHTML = entries.map((e, i) => ttwItemHtml(e, tt.periods, i === nowIdx ? 'now' : i === nextIdx ? 'next' : '', courseIds)).join('');
   };
@@ -846,6 +853,7 @@ async function initTimetableWidget(root) {
     try {
       const fresh = await loadTimetable();
       AppState.timetable = fresh; tt = fresh;
+      ttChipSet(fresh); // ชิปคาบสอนบน Island (ทำงานทุกหน้า แม้วิดเจ็ตหน้าแรกถูกถอดออกไปแล้ว)
       if (!root.isConnected) return;
       clearLoading(listEl);
       draw();
@@ -881,3 +889,54 @@ async function initTimetableWidget(root) {
   const timer = setInterval(() => { if (!root.isConnected) clearInterval(timer); else draw(); }, 60000);
   await load();
 }
+
+// ==========================================================================
+// ชิปคาบสอนบน Dynamic Island — "คาบ 3 · ม.2/1 · อีก 12 นาที" (กำลังสอน) / "ถัดไป 13:20 · ม.4/2" (ใกล้คาบ)
+// ขึ้นเฉพาะตอนอยู่ในคาบ หรือคาบถัดไปเริ่มภายใน TT_CHIP_LEAD_MIN นาที — ตอนพักยาวไม่ขึ้น ไม่ให้แถบแน่น
+// ข้อมูลมาจากวิดเจ็ตหน้าแรก (ttChipSet) · เก็บสำเนาเองแยกจาก AppState.timetable เพราะต้องอยู่ได้ทุกหน้า และ saveTimetable ล้าง AppState.timetable ทิ้ง
+// อัปเดตทุกนาทีผ่าน islandOnMinute (ตัวนับเดียวกับนาฬิกาบนแคปซูล) · ไม่มี Island (เช่นในเทสต์) = ไม่ทำอะไร
+// ==========================================================================
+const TT_CHIP_LEAD_MIN = 15; // "ใกล้คาบ" = คาบถัดไปเริ่มภายในกี่นาที
+
+function ttChipClip(s, max) {
+  const t = Array.from(String(s == null ? '' : s));
+  return t.length > max ? t.slice(0, max).join('').replace(/[เแโใไ]$/, '') + '…' : t.join(''); // ไม่ทิ้งสระหน้าห้อยท้ายคำ
+}
+function ttChipWho(e) { return ttChipClip(e.cls || e.title, 14); } // ห้อง/ชั้น (ม.2/1) · ไม่ได้ใส่ → ชื่อวิชา/กิจกรรม · ตัด 14 ตัวอักษร (ช่องห้องรับได้ 30 → ชิปจะล้นจอ 320px)
+function ttChipDur(min) { return min >= 60 ? `${Math.floor(min / 60)} ชม.${min % 60 ? ' ' + (min % 60) + ' นาที' : ''}` : `${min} นาที`; }
+
+// tt = { periods, entries } (ตารางของภาคเรียนที่ใช้งานอยู่) → { state: 'now' | 'next', entry, text } หรือ null (ไม่ต้องขึ้นชิป)
+function ttChipInfo(tt, now = new Date(), lead = TT_CHIP_LEAD_MIN) {
+  if (!tt || !Array.isArray(tt.entries) || !tt.entries.length || !Array.isArray(tt.periods)) return null;
+  const entries = [...ttLayoutDay(tt.entries, now.getDay()).values()].sort((a, b) => a.period - b.period); // เสาร์-อาทิตย์ = ว่าง
+  if (!entries.length) return null;
+  const nowMin = now.getHours() * 60 + now.getMinutes();
+  const { nowIdx, nextIdx } = ttFindNowNext(entries, tt.periods, nowMin);
+  if (nowIdx >= 0) {
+    const e = entries[nowIdx], left = ttMin(tt.periods[e.period + e.span - 1].end) - nowMin;
+    const label = e.span > 1 ? `คาบ ${e.period + 1}-${e.period + e.span}` : `คาบ ${e.period + 1}`;
+    return { state: 'now', entry: e, text: `${label} · ${ttChipWho(e)} · อีก ${ttChipDur(left)}` };
+  }
+  if (nextIdx >= 0) {
+    const e = entries[nextIdx], start = tt.periods[e.period].start;
+    if (ttMin(start) - nowMin <= lead) return { state: 'next', entry: e, text: `ถัดไป ${start} · ${ttChipWho(e)}` };
+  }
+  return null;
+}
+
+let _ttChip = null; // { tt, uid } สำเนาตารางของชิป (uid กันข้อมูลของบัญชีก่อนหน้า)
+function ttChipSync(now = new Date()) {
+  if (typeof islandClass !== 'function') return;
+  const ok = _ttChip && AppState.user && AppState.user.uid === _ttChip.uid;
+  const hit = ok ? ttChipInfo(_ttChip.tt, now) : null;
+  islandClass(hit ? hit.text : null);
+}
+function ttChipSet(tt) {
+  _ttChip = { tt, uid: AppState.user && AppState.user.uid };
+  ttChipSync();
+}
+// หลังบันทึกตาราง: อ่านตารางที่ใช้งานอยู่ใหม่แล้วให้ชิปใช้ · พลาด = ใช้ของเดิมต่อ (ไม่โยน error ให้ผู้เรียก)
+async function ttChipReload() {
+  try { ttChipSet(await loadTimetable()); } catch (err) { console.warn('โหลดตารางสำหรับชิปคาบสอนไม่สำเร็จ:', err); }
+}
+if (typeof islandOnMinute === 'function') islandOnMinute(ttChipSync);

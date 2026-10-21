@@ -7,14 +7,16 @@
 //
 //   showToast('ข้อความ', 'success|warn|error|info|loading')   แจ้งเตือนทั่วไป (เดาชนิดจากข้อความได้ ข้อความลงท้าย ... = กำลังโหลด)
 //   islandSetPage(route)   ตั้งชื่อ/ไอคอนหน้าที่เปิดอยู่ (setActiveNav ใน app.js เรียกให้เองทุกครั้งที่เปลี่ยนหน้า — ดึงจากปุ่มเมนูข้าง)
-//   islandSave('saving' | 'saved' | 'error', { count, retry })  สถานะบันทึกอัตโนมัติ
+//   islandSave('saving' | 'saved' | 'error', { count, retry, missing })  สถานะบันทึกอัตโนมัติ (saved + missing = "บันทึกแล้ว · เหลืออีก N คนที่ยังไม่มีคะแนน")
 //   islandUndo('ลบนักเรียนแล้ว', async () => { ...กู้คืน... }, 5000)  ปุ่มเลิกทำ พร้อมแถบนับถอยหลัง
 //   const p = islandProgress({ label: 'นำเข้า', total: 45, unit: 'คน' });  p.update(32); p.finish('นำเข้าแล้ว'); p.fail('ไม่สำเร็จ')
 //     (ไม่ใส่ total = แถบวิ่งไม่รู้ความยาว)
 //
 //   islandTimer('12:30', warn?) / islandTimer(null)   ชิปจับเวลาถาวรตอนพัก (⏱ 12:30) — เดินต่อแม้เปลี่ยนหน้า · islandTimerDone('หมดเวลาแล้ว') เด้งแจ้งเตือนตอนครบ
 //   const b = islandBusy('AI กำลังคิด…', 'ai'); b.done('เสร็จแล้ว'); b.fail('ไม่สำเร็จ'); b.clear()   แถบวิ่งไม่รู้ความยาว (คนละ key กับ islandProgress จึงไม่ทับกัน)
+//   islandClass('คาบ 3 · ม.2/1 · อีก 12 นาที') / islandClass(null)   ชิปคาบสอนตอนพัก (ข้อความมาจาก ttChipInfo ใน js/timetable.js) — ซ่อนเองเมื่อชิปจับเวลาเดินอยู่ · มือถือซ่อนวันที่+ชื่อหน้าให้ชิปพอดีแคปซูล
 //   islandOnPage(route => …)   เรียกทุกครั้งที่เปลี่ยนหน้า (ใช้เช่น เตือนอัปเดตซ้ำ)
+//   islandOnMinute(now => …)   เรียกทุกครั้งที่ขึ้นนาทีใหม่ (และตอนกลับมาเปิดแท็บ) — ใช้ตัวนับเดียวกับนาฬิกาบนแคปซูล ไม่ต้องตั้ง setInterval เอง
 //
 //   ลำดับความสำคัญ: ข้อความที่สำคัญกว่าจะไม่ถูกข้อความที่เบากว่าทับ (key เดียวกันทับกันเองได้เสมอ)
 //   สไตล์อยู่ที่บล็อก .island ใน css/style.css · มาร์กอัปอยู่ใน index.html
@@ -29,6 +31,7 @@ const ISLAND_ICONS = {
   trash: ISLAND_SVG('<path d="M4 7h16"/><path d="M9 7V4.5h6V7"/><path d="M6.5 7l1 12.5h9l1-12.5"/>'),
   offline: ISLAND_SVG('<path d="M12 20h.01"/><path d="M8.5 16.4a5 5 0 0 1 7 0"/><path d="M5 12.9a10 10 0 0 1 5.2-2.7"/><path d="M19 12.9a10 10 0 0 0-2-1.5"/><path d="M2 8.8a15 15 0 0 1 4.2-2.6"/><path d="M22 8.8a15 15 0 0 0-11.3-3.8"/><path d="m2 2 20 20"/>'),
   timer: ISLAND_SVG('<circle cx="12" cy="13.5" r="7.5"/><path d="M12 9.5v4l2.6 1.6"/><path d="M9.5 3h5"/>'),
+  classroom: ISLAND_SVG('<path d="M4 5.5A1.5 1.5 0 0 1 5.5 4H11v15H5.5A1.5 1.5 0 0 0 4 20.5Z"/><path d="M20 5.5A1.5 1.5 0 0 0 18.5 4H13v15h5.5a1.5 1.5 0 0 1 1.5 1.5Z"/>'),
   loading: '<span class="island-spin"></span>',
   progress: '<span class="island-spin"></span>',
 };
@@ -40,6 +43,9 @@ function islandKind(msg) {
   if (/สำเร็จ|แล้ว|เรียบร้อย/.test(msg)) return 'success';
   return 'info';
 }
+
+const islandMinuteHooks = [];
+function islandOnMinute(fn) { islandMinuteHooks.push(fn); }
 
 const IslandUI = (() => {
   const el = document.getElementById('island');
@@ -54,6 +60,10 @@ const IslandUI = (() => {
   const timerTxt = el.querySelector('.island-idle-timer-text'); // ชิปจับเวลา (อยู่ใน idleMain จึงถูกวัดความกว้างรวมให้เอง) · ไม่มีมาร์กอัป = ข้ามเงียบๆ (ไม่ให้ทั้งไฟล์พัง)
   const timerIco = el.querySelector('.island-idle-timer-ico');
   if (timerIco) timerIco.innerHTML = ISLAND_ICONS.timer;
+  const classTxt = el.querySelector('.island-idle-class-text'); // ชิปคาบสอน (ตอนพักเหมือนชิปจับเวลา) · ไม่มีมาร์กอัป = ข้ามเงียบๆ
+  const classIco = el.querySelector('.island-idle-class-ico');
+  if (classIco) classIco.innerHTML = ISLAND_ICONS.classroom;
+  const narrowMq = typeof window.matchMedia === 'function' ? window.matchMedia('(max-width: 640px)') : null;
   const pageSlot = el.querySelector('.island-idle-page');   // ช่องชื่อหน้า: กว้างตาม --pw
   const layers = pageSlot.querySelectorAll('.pg');          // 2 ชั้นสลับกัน (ชั้นเก่าออก ชั้นใหม่เข้า)
 
@@ -69,9 +79,11 @@ const IslandUI = (() => {
   let activeLayer = 0;   // ชั้นที่กำลังแสดงชื่อหน้าอยู่
   let pageKey = null;    // ชื่อหน้าที่แสดงอยู่ ('' = หน้าหลัก ไม่แสดง) · null = ยังไม่เคยตั้ง
   let pageW = 0;         // ความกว้างจริงของไอคอน + ชื่อหน้าที่แสดงอยู่
+  // มือถือ (≤640px) ที่ชิปคาบสอนขึ้นอยู่: เหลือแต่ชิป (CSS ซ่อนวันที่) → ย่อช่องชื่อหน้าเป็น 0 ไม่งั้นแคปซูลกว้างเกินจอแล้วโดนตัด
+  const chipOnly = () => !!(narrowMq && narrowMq.matches && el.classList.contains('has-class') && !el.classList.contains('has-timer'));
   function sizeIdle() {
     // วัดความกว้างจริงทุกครั้ง (ฟอนต์โหลดเสร็จ / ย่อขยายจอ / ออฟไลน์ / ขึ้นนาทีใหม่ ก็ถูกต้อง)
-    pageW = pageKey ? Math.ceil(layers[activeLayer].offsetWidth) : 0;
+    pageW = pageKey && !chipOnly() ? Math.ceil(layers[activeLayer].offsetWidth) : 0;
     const base = Math.ceil(idleMain.offsetWidth);
     el.style.setProperty('--pw', pageW + 'px');
     el.style.setProperty('--iw', (base + pageW + 30) + 'px'); // 30 = ขอบซ้าย-ขวาด้านละ 15
@@ -106,6 +118,7 @@ const IslandUI = (() => {
     const d = new Date();
     idleDate.textContent = d.toLocaleDateString('th-TH', { weekday: 'short', day: 'numeric', month: 'short' });
     idleTime.textContent = pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+    islandMinuteHooks.forEach(fn => { try { fn(d); } catch (e) { console.error(e); } });
     sizeIdle();
     clearTimeout(tick.t);
     tick.t = setTimeout(tick, 60000 - (Date.now() % 60000) + 80); // เปลี่ยนตอนขึ้นนาทีใหม่พอดี
@@ -126,6 +139,18 @@ const IslandUI = (() => {
     timerText = text;
     el.classList.toggle('has-timer', !!text);
     if (text) timerTxt.textContent = text;
+    sizeIdle();
+  }
+
+  // ---------- ชิปคาบสอนตอนพัก (คาบ 3 · ม.2/1 · อีก 12 นาที) — ข้อความเดิมซ้ำ = ไม่ทำอะไร (เรียกทุกนาทีได้) · ว่าง = ซ่อน ----------
+  let classText = '';
+  function setClass(text) {
+    if (!classTxt) return;
+    text = text ? String(text) : '';
+    if (text === classText) return;
+    classText = text;
+    el.classList.toggle('has-class', !!text);
+    if (text) classTxt.textContent = text;
     sizeIdle();
   }
 
@@ -234,7 +259,7 @@ const IslandUI = (() => {
   // ปิดข้อความของ key นั้นทันที (ใช้เมื่องานจบแล้วแต่ไม่อยากขึ้นข้อความซ้ำ)
   function clear(key) { if (cur && cur.key === key) end(); }
 
-  return { present, clear, setPage, setTimer, idle: () => !cur };
+  return { present, clear, setPage, setTimer, setClass, idle: () => !cur };
 })();
 
 // ---------- ชื่อ/ไอคอนหน้าที่เปิดอยู่ (แสดงตลอด) — ดึงจากปุ่มเมนูข้างตาม data-route จึงตรงกับเมนูเสมอ ----------
@@ -264,7 +289,11 @@ function showToast(msg, kind, customMs) {
 function islandSave(state, info) {
   if (!IslandUI) return;
   if (state === 'saving') IslandUI.present({ key: 'save', kind: 'loading', text: 'กำลังบันทึก...', prio: 'save', ms: 20000 });
-  else if (state === 'saved') IslandUI.present({ key: 'save', kind: 'success', text: 'บันทึกแล้ว', prio: 'save', ms: 1600 });
+  else if (state === 'saved') {
+    // missing = จำนวนคนที่ยังไม่มีคะแนนในช่องที่เพิ่งกรอก (ผู้เรียกนับมาให้) · ข้อความยาวขึ้นจึงค้างนานขึ้นให้อ่านทัน
+    const missing = info && info.missing > 0 ? Math.floor(info.missing) : 0;
+    IslandUI.present({ key: 'save', kind: 'success', text: missing ? `บันทึกแล้ว · เหลืออีก ${missing} คนที่ยังไม่มีคะแนน` : 'บันทึกแล้ว', prio: 'save', ms: missing ? 3000 : 1600 });
+  }
   else if (state === 'queued') IslandUI.present({ key: 'save', kind: 'warn', text: `บันทึกในเครื่องแล้ว · รอซิงค์ ${(info && info.count) || ''} ช่อง`.replace('  ', ' '), prio: 'save', ms: 4000 });
   else if (state === 'error') {
     IslandUI.present({
@@ -312,6 +341,8 @@ function islandProgress({ label, total = 0, unit = '' }) {
 
 // ---------- ชิปจับเวลา: อยู่ถาวรตอนพัก ไม่ขึ้นกับหน้าที่เปิดอยู่ ----------
 function islandTimer(text, warn) { if (IslandUI) IslandUI.setTimer(text, warn); }
+// ชิปคาบสอน: ตอนพักเหมือนชิปจับเวลา แต่ผู้เรียกต้องเรียกซ้ำเมื่อข้อความเปลี่ยน (ผ่าน islandOnMinute) · null = ซ่อน
+function islandClass(text) { if (IslandUI) IslandUI.setClass(text); }
 // ครบเวลา: เด้งแจ้งเตือนสีเตือนค้างไว้ 8 วินาที (สำคัญกว่าข้อความทั่วไป)
 function islandTimerDone(text) {
   if (!IslandUI) return;

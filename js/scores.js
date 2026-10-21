@@ -219,6 +219,20 @@ function wireScoreInputs(container, course, section, students, collectItems, mid
     if (!ackSlow) slowTimer = setTimeout(() => { if (awaitingAck > 0) { ackSlow = true; renderStatus(); } }, ACK_SLOW_MS);
   }
 
+  // ช่อง (รายการคะแนน) ที่เพิ่งกรอกตั้งแต่ครั้งล่าสุดที่ Island ขึ้น "บันทึกแล้ว" — ใช้นับคนที่ยังไม่มีคะแนนในช่องเหล่านั้น
+  // (กรอกช่องเดียวต่อรอบเป็นปกติ · วางหลายคอลัมน์ทีเดียว = นับคนที่ยังขาดอย่างน้อย 1 ช่องในนั้น) · ช่องว่าง = ยังไม่กรอก (0 ไม่นับว่าขาด)
+  const touchedCols = new Set();
+  function countMissing() {
+    if (!touchedCols.size || !container.isConnected) return 0; // ออกจากหน้านี้ไปแล้ว → ไม่ต้องบอก
+    let n = 0;
+    container.querySelectorAll('#score-tbody tr').forEach(row => {
+      for (const inp of row.querySelectorAll('.score-input')) {
+        if (touchedCols.has(inp.dataset.assessmentId) && parseScore(inp.value) === null) { n++; break; }
+      }
+    });
+    return n;
+  }
+
   let islandState = 'saved'; // สถานะล่าสุดที่ส่งให้ Dynamic Island (ส่งเฉพาะตอนเปลี่ยน ไม่รัวทุกตัวอักษร)
   function syncIsland() {
     const st = failed.size > 0 ? 'error' : (pendingCount > 0 ? (isQueued() ? 'queued' : 'saving') : 'saved');
@@ -226,7 +240,8 @@ function wireScoreInputs(container, course, section, students, collectItems, mid
     if ((st === 'saving' || st === 'queued') && isOffline()) { islandState = st; return; }
     if (st === islandState) return;
     islandState = st;
-    islandSave(st, { count: failed.size || awaitingAck, retry: retryFailed });
+    islandSave(st, { count: failed.size || awaitingAck, retry: retryFailed, missing: st === 'saved' ? countMissing() : 0 });
+    if (st === 'saved') touchedCols.clear();
   }
 
   function renderStatus() {
@@ -292,6 +307,7 @@ function wireScoreInputs(container, course, section, students, collectItems, mid
   function saveCell(studentId, assessmentId, value) {
     const key = `${studentId}:${assessmentId}`;
     const item = { key, studentId, assessmentId, value, seq: ++seqCounter };
+    touchedCols.add(assessmentId);
     latestSeq.set(key, item.seq);
     failed.delete(key);
     const existing = pendingSaves.get(key);
