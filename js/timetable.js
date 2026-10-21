@@ -1022,10 +1022,12 @@ function ttChipClip(s, max) {
   const t = Array.from(String(s == null ? '' : s));
   return t.length > max ? t.slice(0, max).join('').replace(/[เแโใไ]$/, '') + '…' : t.join(''); // ไม่ทิ้งสระหน้าห้อยท้ายคำ
 }
-function ttChipWho(e) { return ttChipClip(e.cls || e.title, 14); } // ห้อง/ชั้น (ม.2/1) · ไม่ได้ใส่ → ชื่อวิชา/กิจกรรม · ตัด 14 ตัวอักษร (ช่องห้องรับได้ 30 → ชิปจะล้นจอ 320px)
+function ttChipWho(e, max = 14) { return ttChipClip(e.cls || e.title, max); } // ห้อง/ชั้น (ม.2/1) · ไม่ได้ใส่ → ชื่อวิชา/กิจกรรม · ตัด 14 ตัวอักษร (ช่องห้องรับได้ 30 → ชิปจะล้นจอ 320px)
 function ttChipDur(min) { return min >= 60 ? `${Math.floor(min / 60)} ชม.${min % 60 ? ' ' + (min % 60) + ' นาที' : ''}` : `${min} นาที`; }
+// รูปย่อสำหรับมือถือ (ชิปต้องอยู่ร่วมกับวันที่ + ไอคอนหน้า): 12m · 1h 5m · 2h
+function ttChipDurShort(min) { return min >= 60 ? `${Math.floor(min / 60)}h${min % 60 ? ' ' + (min % 60) + 'm' : ''}` : `${min}m`; }
 
-// tt = { periods, entries } (ตารางของภาคเรียนที่ใช้งานอยู่) → { state: 'now' | 'next', entry, text } หรือ null (ไม่ต้องขึ้นชิป)
+// tt = { periods, entries } (ตารางของภาคเรียนที่ใช้งานอยู่) → { state: 'now' | 'next', entry, text, short } หรือ null (short = รูปย่อสำหรับมือถือ) (ไม่ต้องขึ้นชิป)
 function ttChipInfo(tt, now = new Date(), lead = TT_CHIP_LEAD_MIN) {
   if (!tt || !Array.isArray(tt.entries) || !tt.entries.length || !Array.isArray(tt.periods)) return null;
   const entries = [...ttLayoutDay(tt.entries, now.getDay()).values()].sort((a, b) => a.period - b.period); // เสาร์-อาทิตย์ = ว่าง
@@ -1035,11 +1037,11 @@ function ttChipInfo(tt, now = new Date(), lead = TT_CHIP_LEAD_MIN) {
   if (nowIdx >= 0) {
     const e = entries[nowIdx], left = ttMin(tt.periods[e.period + e.span - 1].end) - nowMin;
     const label = e.span > 1 ? `คาบ ${e.period + 1}-${e.period + e.span}` : `คาบ ${e.period + 1}`;
-    return { state: 'now', entry: e, text: `${label} · ${ttChipWho(e)} · อีก ${ttChipDur(left)}` };
+    return { state: 'now', entry: e, text: `${label} · ${ttChipWho(e)} · อีก ${ttChipDur(left)}`, short: `${label} · ${ttChipWho(e, 10)} · ${ttChipDurShort(left)}` };
   }
   if (nextIdx >= 0) {
     const e = entries[nextIdx], start = tt.periods[e.period].start;
-    if (ttMin(start) - nowMin <= lead) return { state: 'next', entry: e, text: `ถัดไป ${start} · ${ttChipWho(e)}` };
+    if (ttMin(start) - nowMin <= lead) return { state: 'next', entry: e, text: `ถัดไป ${start} · ${ttChipWho(e)}`, short: `ถัดไป ${start} · ${ttChipWho(e, 10)}` };
   }
   return null;
 }
@@ -1049,7 +1051,7 @@ function ttChipSync(now = new Date()) {
   if (typeof islandClass !== 'function') return;
   const ok = _ttChip && AppState.user && AppState.user.uid === _ttChip.uid;
   const hit = ok ? ttChipInfo(_ttChip.tt, now) : null;
-  islandClass(hit ? hit.text : null);
+  islandClass(hit ? hit.text : null, hit ? hit.short : undefined); // short = ข้อความย่อสำหรับมือถือ (island.js เลือกเองตามความกว้างจอ)
 }
 function ttChipSet(tt) {
   _ttChip = { tt, uid: AppState.user && AppState.user.uid };

@@ -736,16 +736,23 @@ table.sheet :is(th, td).sticky-right-2 { right: 0; width: var(--r2-w); min-width
 .island-idle-timer-ico svg { display: block; width: 100%; height: 100%; }
 @media (max-width: 640px) { .island-idle-sep, .island-idle-time, .island.has-timer .island-idle-date { display: none; } }
 /* ชิปคาบสอน (ใส่ผ่าน islandClass ใน js/island.js · ข้อความมาจาก ttChipInfo ใน js/timetable.js): "คาบ 3 · ม.2/1 · อีก 12 นาที" / "ถัดไป 13:20 · ม.4/2"
-   ซ่อนไว้จนอยู่ในคาบหรือใกล้คาบ · ชิปจับเวลาสำคัญกว่า (เดินอยู่ = ซ่อนชิปนี้) · มือถือ: ซ่อนวันที่ (JS ย่อช่องชื่อหน้าเป็น 0) เหลือแต่ชิปให้พอดีแคปซูล */
+   ซ่อนไว้จนอยู่ในคาบหรือใกล้คาบ · ชิปจับเวลาสำคัญกว่า (เดินอยู่ = ซ่อนชิปนี้) · มือถือ: ถ้ามีชื่อหน้า ชิป (ย่อ) สลับกับชื่อหน้าอัตโนมัติ (.alt) · ไม่มีชื่อหน้า/ออฟไลน์ = ซ่อนวันที่ (JS ย่อช่องชื่อหน้าเป็น 0) เหลือแต่ชิปให้พอดีแคปซูล */
 .island-idle-class { display: none; align-items: center; gap: 5px; margin-left: 12px; font-weight: 700; }
 .island.has-class .island-idle-class { display: inline-flex; }
 .island.has-timer .island-idle-class { display: none; }
 .island-idle-class-ico { flex: none; display: flex; width: 13px; height: 13px; }
 .island-idle-class-ico svg { display: block; width: 100%; height: 100%; }
 @media (max-width: 640px) {
-  .island.has-class:not(.has-timer) .island-idle-date { display: none; }
-  .island.has-class:not(.has-timer):not(.is-offline) .island-idle-class { margin-left: 0; }
+  .island.has-class:not(.has-timer):not(.alt) .island-idle-date { display: none; }
+  .island.has-class:not(.has-timer):not(.is-offline):not(.alt) .island-idle-class { margin-left: 0; }
+  /* มือถือ + ชิปคาบ + มีชื่อหน้า (.alt · js/island.js): วันที่ · ชิป | ไอคอนหน้า สลับกับ วันที่ | ไอคอนหน้า ชื่อหน้า (data-phase = class / page)
+     ช่องชื่อหน้าย่อเหลือไอคอนในจังหวะ class (JS ตั้ง --pw) · .tight = จอเล็กมากจนไม่พอที่ → ซ่อนวันที่ชั่วคราว */
+  .island.alt[data-phase="page"] .island-idle-class { display: none; }
+  .island.alt.tight .island-idle-date { display: none; }
+  .island.alt .island-idle-class { animation: island-swap .35s ease; }
 }
+@keyframes island-swap { from { opacity: 0; transform: translateY(6px); } }
+@media (prefers-reduced-motion: reduce) { .island.alt .island-idle-class { animation: none; } }
 
 /* ตอนขยาย: บรรทัดเดียว สูงเท่าตอนพัก ยาวเกินจะขยายด้านข้าง (สุดจอแล้วตัดด้วย …) */
 .island-body {

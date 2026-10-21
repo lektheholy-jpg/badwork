@@ -21,7 +21,7 @@ function makeEnv(docs, { courses = [] } = {}) {
   const db = { collection: () => ({ doc: () => ({ collection: n => (n === 'timetable' ? col : { orderBy: () => ({ get: async () => courseSnap }) }) }) }) };
   const nav = [];
   const ctx = {
-    window: dom.window, document: dom.window.document, console, db, writes, nav,
+    window: dom.window, navigator: dom.window.navigator, document: dom.window.document, console, db, writes, nav,
     AppState: { user: { uid: 'u1' }, courses: courses.map(c => ({ id: c.id })) },
     firebase: { firestore: { FieldValue: { serverTimestamp: () => 'TS' } } },
     islandSave() {}, islandUndo() {}, showToast() {}, showLoading() {}, clearLoading() {},

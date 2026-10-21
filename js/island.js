@@ -14,7 +14,8 @@
 //
 //   islandTimer('12:30', warn?) / islandTimer(null)   ชิปจับเวลาถาวรตอนพัก (⏱ 12:30) — เดินต่อแม้เปลี่ยนหน้า · islandTimerDone('หมดเวลาแล้ว') เด้งแจ้งเตือนตอนครบ
 //   const b = islandBusy('AI กำลังคิด…', 'ai'); b.done('เสร็จแล้ว'); b.fail('ไม่สำเร็จ'); b.clear()   แถบวิ่งไม่รู้ความยาว (คนละ key กับ islandProgress จึงไม่ทับกัน)
-//   islandClass('คาบ 3 · ม.2/1 · อีก 12 นาที') / islandClass(null)   ชิปคาบสอนตอนพัก (ข้อความมาจาก ttChipInfo ใน js/timetable.js) — ซ่อนเองเมื่อชิปจับเวลาเดินอยู่ · มือถือซ่อนวันที่+ชื่อหน้าให้ชิปพอดีแคปซูล
+//   islandClass('คาบ 3 · ม.2/1 · อีก 12 นาที', 'คาบ 3 · ม.2/1 · 12m') / islandClass(null)   ชิปคาบสอนตอนพัก (ข้อความมาจาก ttChipInfo ใน js/timetable.js · อันหลัง = รูปย่อสำหรับจอแคบ) — ซ่อนเองเมื่อชิปจับเวลาเดินอยู่
+//                มือถือ (≤640px): ชิป (ย่อ) สลับกับชื่อหน้าอัตโนมัติ ~5 วิ / ~3 วิ โดยวันที่ + ไอคอนหน้าอยู่ตลอด · เปลี่ยนหน้า = โชว์ชื่อหน้าก่อน · ถ้าไม่พอที่ซ่อนวันที่ชั่วคราว
 //   islandOnPage(route => …)   เรียกทุกครั้งที่เปลี่ยนหน้า (ใช้เช่น เตือนอัปเดตซ้ำ)
 //   islandOnMinute(now => …)   เรียกทุกครั้งที่ขึ้นนาทีใหม่ (และตอนกลับมาเปิดแท็บ) — ใช้ตัวนับเดียวกับนาฬิกาบนแคปซูล ไม่ต้องตั้ง setInterval เอง
 //
@@ -79,12 +80,47 @@ const IslandUI = (() => {
   let activeLayer = 0;   // ชั้นที่กำลังแสดงชื่อหน้าอยู่
   let pageKey = null;    // ชื่อหน้าที่แสดงอยู่ ('' = หน้าหลัก ไม่แสดง) · null = ยังไม่เคยตั้ง
   let pageW = 0;         // ความกว้างจริงของไอคอน + ชื่อหน้าที่แสดงอยู่
-  // มือถือ (≤640px) ที่ชิปคาบสอนขึ้นอยู่: เหลือแต่ชิป (CSS ซ่อนวันที่) → ย่อช่องชื่อหน้าเป็น 0 ไม่งั้นแคปซูลกว้างเกินจอแล้วโดนตัด
+  // มือถือ (≤640px) ที่ชิปคาบสอนขึ้นอยู่ แต่สลับกับชื่อหน้าไม่ได้ (ออฟไลน์ / ยังไม่มีชื่อหน้า): เหลือแต่ชิป (CSS ซ่อนวันที่) → ย่อช่องชื่อหน้าเป็น 0 ไม่งั้นแคปซูลกว้างเกินจอแล้วโดนตัด
   const chipOnly = () => !!(narrowMq && narrowMq.matches && el.classList.contains('has-class') && !el.classList.contains('has-timer'));
-  function sizeIdle() {
+
+  // ---------- มือถือ: ชิปคาบสอน ↔ ชื่อหน้า สลับกันเอง (วันที่ + ไอคอนหน้าอยู่ตลอด) ----------
+  //   จังหวะ 'class' (~5 วิ): วันที่ · ชิปคาบ | ไอคอนหน้า      จังหวะ 'page' (~3 วิ): วันที่ | ไอคอนหน้า ชื่อหน้า
+  //   สลับเมื่อ: จอแคบ + มีชิปคาบ + ไม่มีชิปจับเวลา + ไม่ออฟไลน์ + อยู่หน้าที่มีชื่อ (ไม่ใช่หน้าหลัก) · ไม่เข้าเงื่อนไข = แสดงแบบเดิม
+  //   เปลี่ยนหน้า = กระโดดไปจังหวะ 'page' ทันที (เห็นชื่อหน้าใหม่) แล้ววนต่อ · .alt/.tight/data-phase ให้ CSS ใช้
+  const PHASE_MS = { class: 5000, page: 3000 };
+  let phase = 'class', phaseT = 0;
+  const altOn = () => !!(narrowMq && narrowMq.matches && classText && pageKey && !el.classList.contains('has-timer') && !el.classList.contains('is-offline'));
+  function setPhase(p) {
+    phase = p; el.dataset.phase = p;
+    clearTimeout(phaseT);
+    phaseT = setTimeout(() => { setPhase(p === 'class' ? 'page' : 'class'); sizeIdle(); }, PHASE_MS[p]);
+  }
+  function syncAlt(toPage) {
+    const on = altOn(), was = el.classList.contains('alt');
+    el.classList.toggle('alt', on);
+    if (!on) { clearTimeout(phaseT); phaseT = 0; phase = 'class'; el.removeAttribute('data-phase'); return; }
+    if (!was) setPhase(toPage ? 'page' : 'class');   // เพิ่งเริ่มสลับ: ชิปก่อน (เว้นแต่เพิ่งเปลี่ยนหน้า)
+    else if (toPage) setPhase('page');
+  }
+  const availW = () => Math.max(0, (window.innerWidth || 0) - 24); // ตรงกับ max-width ของ .island บนจอแคบ (--island-shift = 0)
+  // ความกว้างช่องชื่อหน้าที่ต้องการ: เต็ม (ขีด+ไอคอน+ชื่อ) / เฉพาะไอคอน (ขีด+ไอคอน)
+  const pageFullW = () => Math.ceil(layers[activeLayer].offsetWidth);
+  const pageIconW = () => {
+    const ico = layers[activeLayer].querySelector('.pg-ico');
+    return ico ? Math.ceil(ico.offsetLeft + ico.offsetWidth) : pageFullW();
+  };
+  function sizeIdle(toPage) {
+    renderClass();
+    syncAlt(toPage === true);   // rAF/promise ส่งอาร์กิวเมนต์อื่นมาด้วย → นับเฉพาะ true จริงจาก setPage
+    const alt = el.classList.contains('alt');
+    el.classList.remove('tight');   // วัดตอนวันที่แสดงอยู่ก่อน
     // วัดความกว้างจริงทุกครั้ง (ฟอนต์โหลดเสร็จ / ย่อขยายจอ / ออฟไลน์ / ขึ้นนาทีใหม่ ก็ถูกต้อง)
-    pageW = pageKey && !chipOnly() ? Math.ceil(layers[activeLayer].offsetWidth) : 0;
-    const base = Math.ceil(idleMain.offsetWidth);
+    pageW = !pageKey ? 0 : alt ? (phase === 'page' ? pageFullW() : pageIconW()) : chipOnly() ? 0 : pageFullW();
+    let base = Math.ceil(idleMain.offsetWidth);
+    if (alt && base + pageW + 30 > availW()) { // ชื่อห้อง/ชั้นยาวบนจอเล็กมาก: ไม่พอที่ → ซ่อนวันที่ชั่วคราว (เหมือนแบบเดิม) ดีกว่าโดนตัดท้าย
+      el.classList.add('tight');
+      base = Math.ceil(idleMain.offsetWidth);
+    }
     el.style.setProperty('--pw', pageW + 'px');
     el.style.setProperty('--iw', (base + pageW + 30) + 'px'); // 30 = ขอบซ้าย-ขวาด้านละ 15
   }
@@ -111,7 +147,7 @@ const IslandUI = (() => {
     pageKey = key; activeLayer = 1 - activeLayer;
     prev.classList.remove('on'); prev.classList.add('out');   // ของเก่าเลื่อนขึ้นแล้วจาง
     if (info) next.classList.add('on');                       // ของใหม่เลื่อนขึ้นมาแทน
-    sizeIdle();                                               // แคปซูล + ช่องชื่อหน้ายืด/หดพร้อมกัน
+    sizeIdle(!!info);                                         // แคปซูล + ช่องชื่อหน้ายืด/หดพร้อมกัน · เปลี่ยนหน้า (บนมือถือที่ชิปสลับอยู่) = โชว์ชื่อหน้าก่อน
     if (instant) requestAnimationFrame(() => requestAnimationFrame(() => el.classList.remove('island-instant')));
   }
   function tick() {
@@ -143,15 +179,21 @@ const IslandUI = (() => {
   }
 
   // ---------- ชิปคาบสอนตอนพัก (คาบ 3 · ม.2/1 · อีก 12 นาที) — ข้อความเดิมซ้ำ = ไม่ทำอะไร (เรียกทุกนาทีได้) · ว่าง = ซ่อน ----------
-  let classText = '';
-  function setClass(text) {
+  //   short = ข้อความย่อ (คาบ 3 · ม.2/1 · 12m) ใช้บนจอแคบ (≤640px) แทนข้อความเต็ม · ไม่ส่ง = ใช้ข้อความเต็มทุกจอ
+  let classText = '', classShort = '', classShown = '';
+  function renderClass() {
+    if (!classTxt) return;
+    const want = narrowMq && narrowMq.matches && classShort ? classShort : classText;
+    if (want && want !== classShown) { classShown = want; classTxt.textContent = want; }
+  }
+  function setClass(text, short) {
     if (!classTxt) return;
     text = text ? String(text) : '';
-    if (text === classText) return;
-    classText = text;
+    short = text && short ? String(short) : '';
+    if (text === classText && short === classShort) return;
+    classText = text; classShort = short;
     el.classList.toggle('has-class', !!text);
-    if (text) classTxt.textContent = text;
-    sizeIdle();
+    sizeIdle();   // วาดข้อความ (เต็ม/ย่อ ตามจอ) + วัดความกว้างใหม่
   }
 
   // ---------- แสดงข้อความ ----------
@@ -342,7 +384,7 @@ function islandProgress({ label, total = 0, unit = '' }) {
 // ---------- ชิปจับเวลา: อยู่ถาวรตอนพัก ไม่ขึ้นกับหน้าที่เปิดอยู่ ----------
 function islandTimer(text, warn) { if (IslandUI) IslandUI.setTimer(text, warn); }
 // ชิปคาบสอน: ตอนพักเหมือนชิปจับเวลา แต่ผู้เรียกต้องเรียกซ้ำเมื่อข้อความเปลี่ยน (ผ่าน islandOnMinute) · null = ซ่อน
-function islandClass(text) { if (IslandUI) IslandUI.setClass(text); }
+function islandClass(text, short) { if (IslandUI) IslandUI.setClass(text, short); }
 // ครบเวลา: เด้งแจ้งเตือนสีเตือนค้างไว้ 8 วินาที (สำคัญกว่าข้อความทั่วไป)
 function islandTimerDone(text) {
   if (!IslandUI) return;
