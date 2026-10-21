@@ -435,7 +435,7 @@ function initBgCustom(view, onChange) {
 // ---------- เกี่ยวกับ (บนสุดของหน้าตั้งค่า): เวอร์ชันเว็บ · ผู้สร้าง ----------
 // version รูปแบบ v<รุ่นใหญ่>.<ฟีเจอร์>.<วันเวลา> เช่น v1.15.26OC201912 — **ห้ามแก้มือ**
 //   npm run build:version (รวมใน npm run build) เขียนให้ทั้งตรงนี้และ VERSION ใน sw.js · รายละเอียดดู tools/version.js
-const APP_INFO = { version: 'v1.15.26OC210828', creator: 'lektheholy', email: 'lektheholy@gmail.com' };
+const APP_INFO = { version: 'v1.15.26OC210844', creator: 'lektheholy', email: 'lektheholy@gmail.com' };
 
 function aboutHtml() {
   const a = APP_INFO;
@@ -502,9 +502,50 @@ function settingsLookHtml() {
     </div>`;
 }
 
+// ---------- ติดตั้งแอป (แท็บเกี่ยวกับ · เฉพาะมือถือ) ตรรกะอยู่ที่ js/pwa.js: PwaInstall ----------
+function installCardHtml(mode) {
+  const ios = mode === 'ios';
+  const steps = ios ? `
+      <ol class="install-steps hidden" id="pwa-ios-steps">
+        <li>แตะปุ่มแชร์ (ไอคอนสี่เหลี่ยมมีลูกศรชี้ขึ้น) ที่แถบของ Safari</li>
+        <li>เลื่อนลงแล้วเลือก “เพิ่มไปยังหน้าจอโฮม”</li>
+        <li>แตะ “เพิ่ม” ที่มุมขวาบน</li>
+      </ol>` : '';
+  return `
+    <div class="card card-pad set-install">
+      <h2 class="card-title">ติดตั้งแอป</h2>
+      <div class="u-note">เพิ่มไอคอนไว้ที่หน้าจอโฮม เปิดใช้ได้เหมือนแอปทั่วไป เต็มจอ ไม่มีแถบเบราว์เซอร์</div>
+      <div class="settings-actions"><button type="button" class="btn btn-primary btn-sm" id="pwa-install-btn"${ios ? ' aria-expanded="false" aria-controls="pwa-ios-steps"' : ''}>${ios ? 'ดูวิธีติดตั้ง' : 'ติดตั้งแอป'}</button></div>${steps}
+    </div>`;
+}
+
+function bindInstallCard(slot) {
+  if (!slot || typeof PwaInstall === 'undefined') return;
+  const draw = () => {
+    if (!slot.isConnected) { off(); return; } // ออกจากแท็บ/หน้านี้แล้ว → เลิกฟัง
+    const mode = PwaInstall.mode();
+    slot.innerHTML = mode === 'prompt' || mode === 'ios' ? installCardHtml(mode) : ''; // ติดตั้งแล้ว/ไม่รองรับ → ไม่แสดงการ์ด
+    const btn = slot.querySelector('#pwa-install-btn');
+    if (!btn) return;
+    btn.addEventListener('click', async () => {
+      if (mode === 'ios') {
+        const open = slot.querySelector('#pwa-ios-steps').classList.toggle('hidden') === false;
+        btn.setAttribute('aria-expanded', String(open));
+        btn.textContent = open ? 'ซ่อนวิธีติดตั้ง' : 'ดูวิธีติดตั้ง';
+        return;
+      }
+      btn.disabled = true;
+      if (await PwaInstall.prompt()) showToast('ติดตั้งแอปแล้ว', 'success');
+    });
+  };
+  const off = PwaInstall.onChange(draw);
+  draw();
+}
+
 function settingsAboutHtml() {
   const u = AppState.user;
   return `
+    <div id="install-slot"></div>
     <div class="settings-grid settings-grid-info">
     ${aboutHtml()}
     <div class="card card-pad set-acct">
@@ -543,6 +584,7 @@ function bindSettingsAbout(root) {
   };
   root.querySelector('#privacy-export-btn').addEventListener('click', withPrivacy('exportMyData'));
   root.querySelector('#privacy-delete-btn').addEventListener('click', withPrivacy('deleteMyAccount'));
+  bindInstallCard(root.querySelector('#install-slot'));
 }
 
 function bindSettingsLook(root) {

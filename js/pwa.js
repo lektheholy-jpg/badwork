@@ -5,6 +5,42 @@
 //     ไม่รีโหลดเองกลางคัน เพราะครูอาจกำลังกรอกคะแนนอยู่
 //   - ต้องรันผ่าน https หรือ localhost (เปิดแบบ file:// จะไม่ทำงาน)
 // ==========================================================================
+// ==========================================================================
+// ติดตั้งแอป (ปุ่มในตั้งค่า > เกี่ยวกับ): แสดงเฉพาะมือถือ (Android / iPhone / iPad)
+//   - Android (Chrome): เบราว์เซอร์ส่ง beforeinstallprompt มาตอนโหลดหน้า → เก็บไว้ แล้วเรียก prompt() ตอนผู้ใช้กดปุ่ม
+//   - iPhone/iPad (Safari): ไม่มีคำสั่งติดตั้งให้เว็บเรียก → ผู้ใช้ต้องทำเอง (แชร์ → เพิ่มไปยังหน้าจอโฮม) การ์ดจึงแสดงขั้นตอนแทน
+//   - ติดตั้งแล้ว / เปิดจากแอปที่ติดตั้ง (display-mode: standalone) → mode() = 'installed' หน้าตั้งค่าซ่อนการ์ด
+// PwaInstall.mode(): 'prompt' | 'ios' | 'installed' | 'none' · onChange(fn) คืนฟังก์ชันยกเลิกการฟัง
+// ==========================================================================
+(function () {
+  let deferred = null, installed = false;
+  const subs = [];
+  const ua = navigator.userAgent || '';
+  const isIos = /iP(hone|ad|od)/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const isMobile = isIos || /Android/i.test(ua);
+  const standalone = () => (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
+  const notify = () => subs.slice().forEach(fn => { try { fn(); } catch (e) { /* ผู้ฟังพังไม่กระทบตัวอื่น */ } });
+  window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferred = e; notify(); });
+  window.addEventListener('appinstalled', () => { deferred = null; installed = true; notify(); });
+  window.PwaInstall = {
+    mode() {
+      if (!isMobile) return 'none';
+      if (installed || standalone()) return 'installed';
+      if (deferred) return 'prompt';
+      return isIos ? 'ios' : 'none';
+    },
+    async prompt() { // คืน true ถ้าผู้ใช้กดยอมรับ · event ใช้ได้ครั้งเดียว (ถ้าปฏิเสธ ต้องรอเบราว์เซอร์ส่งใหม่)
+      if (!deferred) return false;
+      const d = deferred; deferred = null;
+      let accepted = false;
+      try { d.prompt(); accepted = (await d.userChoice).outcome === 'accepted'; } catch (e) { /* เบราว์เซอร์ไม่ให้เรียกซ้ำ */ }
+      notify();
+      return accepted;
+    },
+    onChange(fn) { subs.push(fn); return () => { const i = subs.indexOf(fn); if (i >= 0) subs.splice(i, 1); }; }
+  };
+})();
+
 (function () {
   if (!('serviceWorker' in navigator)) return;
   const secure = location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1';

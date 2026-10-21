@@ -2020,6 +2020,9 @@ table.sheet tbody tr:nth-child(n) td.over-max { background: var(--danger-tint); 
 .about-list dt { margin: 0; }
 .about-list dd { margin: 0; min-width: 0; overflow-wrap: anywhere; text-align: right; font-size: 14px; }
 .about-list a { color: var(--primary-dark, var(--primary)); text-decoration: underline; text-underline-offset: 2px; }
+/* ติดตั้งแอป (เฉพาะมือถือ · อยู่เหนือกริดของแท็บเกี่ยวกับ) + ขั้นตอนบน iPhone */
+.set-install { margin-bottom: 14px; }
+.install-steps { margin: 12px 0 0; padding-left: 22px; display: grid; gap: 6px; font-size: 14px; line-height: 1.6; }
 @media (min-width: 861px) {
   .settings-grid-look { grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); grid-template-rows: auto auto 1fr; grid-template-areas: "theme bg" "look bg" "preset bg"; gap: 16px; }
   .settings-grid-info { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "about acct" "priv priv"; gap: 16px; }
