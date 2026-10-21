@@ -151,6 +151,7 @@ async function saveTimetable(tt, term) {
   try {
     await ttCol().doc(ttTermKey(term)).set({ periods: tt.periods, entries: tt.entries, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
     AppState.timetable = null; // แคชของวิดเจ็ตหน้าแรกเก่าแล้ว — ให้โหลดใหม่ตอนกลับหน้าแรก
+    ttPushSync();              // แจ้งเตือนคาบสอน: ส่งตารางล่าสุดให้เซิร์ฟเวอร์ (เฉพาะเครื่องที่เปิดแจ้งเตือนไว้ · ไม่รอผล)
     ttChipReload();            // ชิปคาบสอนบน Island เก็บสำเนาของตัวเอง (ต้องใช้ได้ทุกหน้า) → โหลดตารางใหม่เบื้องหลัง
     islandSave('saved');
     return true;
@@ -161,6 +162,122 @@ async function saveTimetable(tt, term) {
       : 'บันทึกไม่สำเร็จ: ' + (err.message || err), 'error');
     return false;
   }
+}
+
+// ---------- แจ้งเตือนก่อนเริ่มคาบ (Web Push) ----------
+// ตัวส่งอยู่ที่ Cloudflare Worker (worker/worker.js · cron ทุกนาที) — ที่นี่ทำแค่ ขออนุญาต + สมัครรับ + ส่งตารางปัจจุบันไปเก็บ
+//   vapidKey ว่าง = ปิดฟีเจอร์ (ไม่แสดงการ์ด) · สร้างคีย์ด้วย node tools/gen-vapid.js แล้วใส่ public key ที่นี่และใน wrangler.toml
+//   url ต้องเป็นตัวเดียวกับ proxyUrl ใน js/badwork-ai-config.js (ไฟล์นี้ต้องใช้งานเดี่ยวได้ จึงไม่อ้างถึงค่านั้นตรงๆ)
+const TT_PUSH = { vapidKey: '', url: 'https://badwork-gemini-proxy.badwork.workers.dev', lead: 5 };
+
+const ttPushIsIos = () => /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const ttPushStandalone = () => (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
+function ttPushSupported() {
+  return !!TT_PUSH.vapidKey && 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+}
+// iPhone/iPad: เว็บรับ push ได้เฉพาะแอปที่ "เพิ่มลงหน้าจอโฮม" แล้ว (iOS 16.4+) — ถ้ายังไม่ได้เพิ่มจะไม่มี PushManager เลย
+const ttPushNeedsInstall = () => !!TT_PUSH.vapidKey && ttPushIsIos() && !ttPushStandalone() && !('PushManager' in window);
+
+function ttPushKeyBytes(b64) {
+  const s = atob(b64.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - b64.length % 4) % 4));
+  return Uint8Array.from(s, c => c.charCodeAt(0));
+}
+async function ttPushSub() {
+  const reg = await navigator.serviceWorker.ready;
+  return reg.pushManager.getSubscription();
+}
+async function ttPushPost(path, body) {
+  const user = firebase.auth().currentUser;
+  if (!user) throw new Error('ยังไม่ได้ล็อกอิน');
+  const res = await fetch(TT_PUSH.url + path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + await user.getIdToken() },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const j = await res.json().catch(() => ({}));
+    throw new Error(res.status === 503 ? 'เซิร์ฟเวอร์ยังไม่ได้ตั้งค่าแจ้งเตือน' : (j.error && j.error.message) || ('HTTP ' + res.status));
+  }
+}
+// ตารางที่ใช้งานอยู่ → รายการเริ่มคาบที่ Worker ใช้เทียบเวลา (ส่งเฉพาะที่จำเป็น: วัน/เวลาเริ่ม/ชื่อ/ห้อง)
+function ttPushItems(tt) {
+  return tt.entries.map(e => {
+    const p = tt.periods[e.period];
+    return p ? { day: e.day, start: p.start, title: e.title, cls: e.cls, room: e.room } : null;
+  }).filter(Boolean);
+}
+// ส่งตารางล่าสุดให้ Worker (เฉพาะเครื่องที่สมัครรับไว้แล้ว) · เงียบเมื่อพลาด — แค่การแจ้งเตือนจะเป็นตารางเก่าจนกว่าจะซิงก์ครั้งหน้า
+async function ttPushSync(tt) {
+  try {
+    if (!ttPushSupported() || Notification.permission !== 'granted') return;
+    const sub = await ttPushSub();
+    if (!sub) return;
+    await ttPushPost('/push/sync', { subscription: sub.toJSON(), lead: TT_PUSH.lead, items: ttPushItems(tt || await loadTimetable()) });
+  } catch (err) { console.warn('push sync:', err.message || err); }
+}
+async function ttPushEnable() {
+  if (await Notification.requestPermission() !== 'granted') return false;
+  const reg = await navigator.serviceWorker.ready;
+  const sub = (await reg.pushManager.getSubscription())
+    || await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: ttPushKeyBytes(TT_PUSH.vapidKey) });
+  try {
+    await ttPushPost('/push/sync', { subscription: sub.toJSON(), lead: TT_PUSH.lead, items: ttPushItems(await loadTimetable()) });
+  } catch (err) { await sub.unsubscribe().catch(() => {}); throw err; } // เซิร์ฟเวอร์ไม่รับ → ไม่ทิ้งการสมัครค้างไว้ที่เครื่อง
+  return true;
+}
+async function ttPushDisable() {
+  const sub = await ttPushSub();
+  if (!sub) return;
+  const endpoint = sub.endpoint;
+  await sub.unsubscribe();
+  await ttPushPost('/push/unsubscribe', { endpoint }).catch(() => {}); // ลบฝั่งเซิร์ฟเวอร์ไม่ได้ (ออฟไลน์) → ถึงเวลาส่งจะได้ 410 แล้วถูกลบเอง
+}
+
+// การ์ดเปิด/ปิดแจ้งเตือนในแท็บตารางสอน
+function ttPushCardHtml() {
+  if (!ttPushSupported() && !ttPushNeedsInstall()) return '';
+  return `
+    <div class="card card-pad" id="tt-push-card">
+      <div class="tt-toolbar">
+        <h2 class="card-title">แจ้งเตือนก่อนเริ่มคาบ</h2>
+        <div class="tt-toolbar-actions"><button type="button" class="btn btn-primary btn-sm" id="tt-push-btn" disabled>เปิดแจ้งเตือน</button></div>
+      </div>
+      <div class="u-note" id="tt-push-note"></div>
+    </div>`;
+}
+async function ttPushCardInit(body) {
+  const card = body.querySelector('#tt-push-card');
+  if (!card) return;
+  const btn = card.querySelector('#tt-push-btn'), note = card.querySelector('#tt-push-note');
+  if (!ttPushSupported()) { // iPhone ที่ยังไม่ได้เพิ่มลงหน้าจอโฮม
+    btn.hidden = true;
+    note.textContent = `บน iPhone/iPad ต้องเพิ่มแอปลงหน้าจอโฮมก่อน (ปุ่มแชร์ → เพิ่มลงหน้าจอโฮม) แล้วเปิดจากไอคอนบนหน้าจอโฮม จึงจะเปิดแจ้งเตือนก่อนเริ่มคาบ ${TT_PUSH.lead} นาทีได้`;
+    return;
+  }
+  const draw = async () => {
+    let on = false;
+    try { on = Notification.permission === 'granted' && !!(await ttPushSub()); } catch (e) { /* ยังไม่มี service worker */ }
+    const denied = Notification.permission === 'denied';
+    btn.disabled = denied;
+    btn.textContent = on ? 'ปิดแจ้งเตือน' : 'เปิดแจ้งเตือน';
+    btn.className = 'btn btn-sm ' + (on ? 'btn-ghost' : 'btn-primary');
+    note.textContent = denied
+      ? 'เบราว์เซอร์บล็อกการแจ้งเตือนของเว็บนี้ไว้ — ไปที่การตั้งค่าเว็บไซต์ของเบราว์เซอร์ แล้วอนุญาตการแจ้งเตือนก่อน'
+      : on ? `เครื่องนี้จะได้รับแจ้งเตือนก่อนเริ่มคาบ ${TT_PUSH.lead} นาที (จ.–ศ. ตามตารางภาคเรียนปัจจุบัน) · แก้ตารางแล้วระบบอัปเดตให้เอง`
+        : `รับแจ้งเตือนบนเครื่องนี้ก่อนเริ่มคาบ ${TT_PUSH.lead} นาที แม้ปิดหน้าเว็บอยู่ · เปิดแยกเป็นรายเครื่อง`;
+  };
+  btn.addEventListener('click', async () => {
+    btn.disabled = true;
+    try {
+      if (await ttPushSub() && Notification.permission === 'granted') { await ttPushDisable(); showToast('ปิดแจ้งเตือนคาบสอนแล้ว'); }
+      else if (await ttPushEnable()) showToast(`เปิดแจ้งเตือนแล้ว — จะเตือนก่อนเริ่มคาบ ${TT_PUSH.lead} นาที`);
+    } catch (err) {
+      console.error(err);
+      showToast('เปิดแจ้งเตือนไม่สำเร็จ: ' + (err.message || err), 'error');
+    }
+    draw();
+  });
+  draw();
 }
 
 // ---------- ไปหน้าบันทึกคะแนนจากชื่อวิชาในตาราง ----------
@@ -636,6 +753,7 @@ async function renderTimetableTab(body, isActive = () => true) {
       </div>
     </div>
     <div class="tt-stats" id="tt-stats"></div>
+    ${ttPushCardHtml()}
     <div class="card card-pad">
       <div class="tt-toolbar">
         <h2 class="card-title" id="tt-card-title">ตารางสอนประจำสัปดาห์</h2>
@@ -652,6 +770,7 @@ async function renderTimetableTab(body, isActive = () => true) {
       <div class="tt-legend" id="tt-legend"></div>
     </div>`;
 
+  ttPushCardInit(body);
   const gridEl = body.querySelector('#tt-grid');
   const yearEl = body.querySelector('#tt-year'), semEl = body.querySelector('#tt-sem');
   initNavPill(semEl, '.theme-opt', 'seg-pill', { activeSel: '[aria-pressed="true"]', watch: true });
@@ -854,6 +973,7 @@ async function initTimetableWidget(root) {
       const fresh = await loadTimetable();
       AppState.timetable = fresh; tt = fresh;
       ttChipSet(fresh); // ชิปคาบสอนบน Island (ทำงานทุกหน้า แม้วิดเจ็ตหน้าแรกถูกถอดออกไปแล้ว)
+      if (!AppState.ttPushSynced) { AppState.ttPushSynced = true; ttPushSync(fresh); } // เปิดแอปครั้งแรกของรอบ: ซิงก์ตารางให้ตัวส่งแจ้งเตือน (เปลี่ยนภาคเรียนเองก็ตามทัน · ต่ออายุ subscription)
       if (!root.isConnected) return;
       clearLoading(listEl);
       draw();

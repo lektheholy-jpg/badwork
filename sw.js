@@ -16,7 +16,7 @@
 // ตัวหน้าเว็บ (js/pwa.js) จะแจ้ง "มีเวอร์ชันใหม่" ให้กดอัปเดตเอง ไม่รีโหลดกลางคันตอนครูกำลังกรอกคะแนน
 // ==========================================================================
 
-const VERSION = 'v1.15.26OC210945';
+const VERSION = 'v1.15.26OC211004';
 const CORE = `myscore-core-${VERSION}`; // ไฟล์แอป (เปลี่ยนเวอร์ชัน = ทิ้งของเก่า)
 const RUNTIME = 'myscore-rt';           // รูป/ไฟล์ที่แคชตอนใช้งาน (คงอยู่ข้ามเวอร์ชัน)
 
@@ -133,6 +133,29 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') self.skipWaiting();
+});
+
+// ---------- แจ้งเตือนก่อนเริ่มคาบสอน (Web Push · ส่งจาก worker/worker.js) ----------
+// payload = { t: หัวข้อ, b: ข้อความ, tag } — เบราว์เซอร์บังคับให้ push ทุกครั้งต้องแสดงการแจ้งเตือน (userVisibleOnly)
+self.addEventListener('push', (event) => {
+  let d = {};
+  try { d = event.data ? event.data.json() : {}; } catch (e) { d = {}; }
+  event.waitUntil(self.registration.showNotification(String(d.t || 'ตารางสอน'), {
+    body: String(d.b || ''),
+    tag: d.tag ? String(d.tag) : undefined, // tag เดียวกัน = แทนที่อันเดิม ไม่เด้งซ้ำ
+    icon: abs('assets/icons/android-chrome-192x192.png'),
+    badge: abs('assets/icons/favicon-32x32.png'),
+  }));
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  event.waitUntil((async () => {
+    const wins = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    const mine = wins.find(c => c.url.startsWith(SCOPE));
+    if (mine) return mine.focus();
+    return self.clients.openWindow(SCOPE);
+  })());
 });
 
 // ---------- ดึงไฟล์ ----------
