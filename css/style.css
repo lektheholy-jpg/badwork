@@ -1120,7 +1120,7 @@ table.sheet tbody tr:nth-child(even) td.grp-sub-total { background: var(--col-co
 /* สลับแท็บ PA: เนื้อหาเดิมถูกหรี่ไว้ที่ .5 อยู่แล้ว เนื้อหาใหม่ต้องจางเข้าต่อจาก .5 (เริ่มที่ 0 จะวูบหายก่อนแล้วค่อยขึ้น) */
 @keyframes view-enter-dim { from { opacity: .5; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 #doc-tab-body.tab-swap-dim { animation: view-enter-dim .22s ease-out; }
-#view.view-enter, #rc-body.rc-swap, #course-tab-body.tab-swap, #profile-tab-body.tab-swap, #doc-tab-body.tab-swap { animation: view-enter .22s ease-out; }
+#view.view-enter, #rc-body.rc-swap, #course-tab-body.tab-swap, #profile-tab-body.tab-swap, #settings-tab-body.tab-swap, #doc-tab-body.tab-swap { animation: view-enter .22s ease-out; }
 /* เปลี่ยนหน้าตามทิศทาง: เดินหน้าเลื่อนเข้าจากขวา · ย้อนกลับเข้าจากซ้าย (24px + จางเข้า · ใช้แค่ opacity/transform) · iOS มีอนิเมชันย้อนกลับของระบบอยู่แล้ว จึงจางเข้าอย่างเดียว */
 @keyframes view-in-fwd { from { opacity: 0; transform: translateX(24px); } to { opacity: 1; transform: none; } }
 @keyframes view-in-back { from { opacity: 0; transform: translateX(-24px); } to { opacity: 1; transform: none; } }
@@ -1164,7 +1164,7 @@ table.sheet tbody tr:nth-child(even) td.grp-sub-total { background: var(--col-co
 .rc-pill { --seg-pill-bg: var(--w, var(--primary)); --seg-pill-shadow: none; }
 .seg-pill { position: absolute; left: 0; top: 0; z-index: 0; border-radius: var(--radius-pill); pointer-events: none; opacity: 0; background: var(--seg-pill-bg, var(--card)); box-shadow: var(--seg-pill-shadow, 0 1px 6px var(--shadow-ink-md)); transition: transform .28s cubic-bezier(.3, .9, .3, 1), width .28s cubic-bezier(.3, .9, .3, 1), height .28s cubic-bezier(.3, .9, .3, 1), background-color .28s ease, opacity .2s ease; }
 .seg-pill.no-anim { transition: none; }
-@media (prefers-reduced-motion: reduce) { .bg-opt { transition: none; } #view.view-enter, #rc-body.rc-swap, #course-tab-body.tab-swap, #profile-tab-body.tab-swap, #doc-tab-body.tab-swap, #doc-tab-body.tab-swap-dim { animation: none; } #view.view-pending { transition: none; } .loader, .loader-cat, .loader-dots i, .sk, .sk-list, .sk-dash { animation: none; } #view.view-enter-fwd, #view.view-enter-back, .is-ios #view.view-enter-back { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .bg-opt { transition: none; } #view.view-enter, #rc-body.rc-swap, #course-tab-body.tab-swap, #profile-tab-body.tab-swap, #settings-tab-body.tab-swap, #doc-tab-body.tab-swap, #doc-tab-body.tab-swap-dim { animation: none; } #view.view-pending { transition: none; } .loader, .loader-cat, .loader-dots i, .sk, .sk-list, .sk-dash { animation: none; } #view.view-enter-fwd, #view.view-enter-back, .is-ios #view.view-enter-back { animation: none; } }
 
 /* ----- หน้าแรกแบบ One UI: หัวใหญ่ + การ์ดตัวเลขเล็กสีขาว (แทนปกหนังสือ) ----- */
 
@@ -1999,7 +1999,7 @@ table.sheet tbody tr:nth-child(n) td.over-max { background: var(--danger-tint); 
 .bg-opt-pat .bg-check { top: 6px; right: 6px; bottom: auto; width: 20px; height: 20px; }
 .bg-cap { position: absolute; left: 6px; bottom: 6px; max-width: calc(100% - 12px); padding: 0 8px; border-radius: var(--radius-pill); background: var(--card); color: var(--ink); font-size: 11px; font-weight: 600; line-height: 1.7; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-/* ----- หน้าตั้งค่า: จอกว้าง 2 คอลัมน์ (บัญชี·ธีม·ความเป็นส่วนตัว ซ้าย / พื้นหลัง ขวา) · มือถือ 1 คอลัมน์ตามลำดับเดิม ----- */
+/* ----- หน้าตั้งค่า 2 แท็บ: รูปแบบหน้าเว็บ (ธีม·สีหลัก·ชุดของฉัน ซ้าย / พื้นหลัง ขวา) · เกี่ยวกับ (เวอร์ชัน|บัญชี แล้วความเป็นส่วนตัวเต็มแถว) · มือถือ 1 คอลัมน์ ----- */
 .settings-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; align-items: start; }
 .look-swatches { display: flex; flex-wrap: wrap; gap: 10px; padding: 4px; margin-top: 6px; }
 .look-sw { position: relative; width: 38px; height: 38px; padding: 0; border: 2px solid var(--border); border-radius: 50%; background: var(--sw); cursor: pointer; transition: transform .12s ease, border-color .2s ease; }
@@ -2021,7 +2021,8 @@ table.sheet tbody tr:nth-child(n) td.over-max { background: var(--danger-tint); 
 .about-list dd { margin: 0; min-width: 0; overflow-wrap: anywhere; text-align: right; font-size: 14px; }
 .about-list a { color: var(--primary-dark, var(--primary)); text-decoration: underline; text-underline-offset: 2px; }
 @media (min-width: 861px) {
-  .settings-grid { grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); grid-template-rows: auto auto auto auto auto 1fr; grid-template-areas: "about bg" "acct bg" "theme bg" "look bg" "preset bg" "priv bg"; gap: 16px; }
+  .settings-grid-look { grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); grid-template-rows: auto auto 1fr; grid-template-areas: "theme bg" "look bg" "preset bg"; gap: 16px; }
+  .settings-grid-info { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "about acct" "priv priv"; gap: 16px; }
   .set-about { grid-area: about; }
   .set-acct { grid-area: acct; }
   .set-theme { grid-area: theme; }

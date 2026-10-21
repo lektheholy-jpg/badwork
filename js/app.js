@@ -214,7 +214,7 @@ function bgPanelHtml(mode, cfg) {
 }
 
 // ---------- สีหลัก + ความโปร่งใสของส่วนต่างๆ (ตรรกะสี/การบันทึกอยู่ที่ js/theme.js: getLookPref / setLookPref / resetLookPref) ----------
-const LOOK_COLORS = [['#0381fe', 'น้ำเงิน'], ['#7b52e6', 'ม่วง'], ['#0f9f88', 'เขียวอมฟ้า'], ['#f0731f', 'ส้ม'], ['#e83e7a', 'ชมพู'], ['#e5484d', 'แดง']];
+const LOOK_COLORS = [['#7b52e6', 'ม่วง'], ['#0f9f88', 'เขียวอมฟ้า'], ['#f0731f', 'ส้ม'], ['#e83e7a', 'ชมพู'], ['#e5484d', 'แดง']];
 const LOOK_SLIDERS = [['card', 'การ์ดและกล่องเนื้อหา', 0, 90], ['menu', 'เมนูข้างและแถบเมนูล่าง', 0, 90]];
 
 function lookHtml() {
@@ -224,7 +224,7 @@ function lookHtml() {
     + bgSlider('blur', 'ความเบลอหลังเมนู', 0, 40, 2, 0);
   return `
     <div class="card card-pad set-look">
-      <h2 class="card-title">สีและความโปร่งใส</h2>
+      <h2 class="card-title">สีหลักและความโปร่งใส</h2>
       <div class="u-note">เลือกสีหลักของแอป (ปุ่ม เมนูที่เลือก ไฮไลต์) และปรับความโปร่งใสของแต่ละส่วน 0% = ทึบ ยิ่งมากยิ่งเห็นพื้นหลังทะลุ</div>
       <div class="u-note u-semibold u-mt-12">สีหลัก</div>
       <div class="look-swatches" role="group" aria-label="สีหลัก">
@@ -435,7 +435,7 @@ function initBgCustom(view, onChange) {
 // ---------- เกี่ยวกับ (บนสุดของหน้าตั้งค่า): เวอร์ชันเว็บ · ผู้สร้าง ----------
 // version รูปแบบ v<รุ่นใหญ่>.<ฟีเจอร์>.<วันเวลา> เช่น v1.15.26OC201912 — **ห้ามแก้มือ**
 //   npm run build:version (รวมใน npm run build) เขียนให้ทั้งตรงนี้และ VERSION ใน sw.js · รายละเอียดดู tools/version.js
-const APP_INFO = { version: 'v1.15.26OC201921', creator: 'lektheholy', email: 'lektheholy@gmail.com' };
+const APP_INFO = { version: 'v1.15.26OC210828', creator: 'lektheholy', email: 'lektheholy@gmail.com' };
 
 function aboutHtml() {
   const a = APP_INFO;
@@ -450,12 +450,62 @@ function aboutHtml() {
     </div>`;
 }
 
-function renderSettings() {
-  const view = document.getElementById('view');
+// ---------- หน้าตั้งค่า: 2 แท็บ (รูปแบบหน้าเว็บ · เกี่ยวกับ) ----------
+// แท็บ "เกี่ยวกับ" รวมเรื่องที่ไม่เกี่ยวกับหน้าตา: เวอร์ชัน/ผู้สร้าง · บัญชี · ความเป็นส่วนตัว
+const SETTINGS_TABS = [['look', 'รูปแบบหน้าเว็บ'], ['about', 'เกี่ยวกับ']];
+
+// พื้นหลังที่โชว์ให้เลือก — คัดจาก BG_OPTIONS (js/theme.js) ให้แต่ละช่องต่างโทนกันชัด ไม่มีสีใกล้เคียงซ้ำ
+// id อื่นใน BG_OPTIONS ยังใช้งานได้ตามเดิม (ค่าที่เคยบันทึก/ซิงค์ไว้ไม่หาย) แค่ไม่โชว์ให้เลือกใหม่
+const BG_SHOWN = [
+  ['สว่างและนุ่ม', ['default', 'sky', 'mint', 'lemon', 'uipeach', 'uirose', 'lilac', 'uigraphite']],
+  ['ไล่สี', ['ocean', 'dusk', 'sunsetpop']],
+  ['เข้ม', ['midnight', 'forest', 'berry']]
+];
+
+function bgShownGroupsHtml() {
+  const label = { default: 'ค่าเริ่มต้น' };
+  Object.values(BG_OPTIONS).forEach(g => g.forEach(([id, l]) => { label[id] = l; }));
+  const groups = BG_SHOWN.map(([title, ids]) => [title, ids.map(id => [id, label[id]])]);
+  const cur = getBgPref();
+  // ผู้ใช้ที่เคยเลือกชุดที่เลิกโชว์แล้ว: เพิ่มช่องนั้นให้ยังเห็นว่าใช้อยู่ (ไม่ให้เลือกใหม่ได้ ถ้าเปลี่ยนไปแล้ว)
+  if (label[cur] && !BG_SHOWN.some(g => g[1].includes(cur))) groups.push(['ชุดเดิมที่ใช้อยู่', [[cur, label[cur]]]]);
+  return groups.map(([title, opts]) => bgGroupHtml(title, opts)).join('');
+}
+
+function settingsLookHtml() {
+  return `
+    <div class="u-note u-mb-12">การตั้งค่าหน้าตาทั้งหมดบันทึกตามบัญชี Google ของคุณ จึงเหมือนเดิมเมื่อเปิดจากเครื่องอื่น</div>
+    <div class="settings-grid settings-grid-look">
+    <div class="card card-pad set-theme">
+      <h2 class="card-title">ธีม</h2>
+      <div class="u-note">เลือกโหมดสว่าง โหมดมืด หรือให้ตามการตั้งค่าของอุปกรณ์</div>
+      <div class="theme-seg" role="group" aria-label="ธีม">
+        <button type="button" class="theme-opt" data-theme-pref="auto">${icon('contrast')}ตามระบบ</button>
+        <button type="button" class="theme-opt" data-theme-pref="light">${icon('sun')}สว่าง</button>
+        <button type="button" class="theme-opt" data-theme-pref="dark">${icon('moon')}มืด</button>
+      </div>
+    </div>
+    <div class="card card-pad set-bg">
+      <h2 class="card-title">พื้นหลัง</h2>
+      <div class="u-note">เลือกชุดสำเร็จรูป หรือสร้างเองด้านล่าง ตัวหนังสือบนพื้นจะปรับสีให้อ่านชัดเอง</div>
+      ${bgShownGroupsHtml()}
+      <div class="u-note u-semibold u-mt-16">สร้างพื้นหลังเอง</div>
+      <div class="theme-seg bg-mode u-mt-6" role="group" aria-label="ชนิดพื้นหลังที่สร้างเอง">
+        <button type="button" class="theme-opt" data-bg-mode="solid" aria-pressed="false">สีเดียว</button>
+        <button type="button" class="theme-opt" data-bg-mode="grad" aria-pressed="false">ไล่สี</button>
+        <button type="button" class="theme-opt" data-bg-mode="pattern" aria-pressed="false">ลาย</button>
+      </div>
+      <div id="bg-custom-panel" class="hidden"></div>
+    </div>
+    ${lookHtml()}
+    ${presetsHtml()}
+    </div>`;
+}
+
+function settingsAboutHtml() {
   const u = AppState.user;
-  view.innerHTML = `
-    ${pageHeaderHtml('ตั้งค่า')}
-    <div class="settings-grid">
+  return `
+    <div class="settings-grid settings-grid-info">
     ${aboutHtml()}
     <div class="card card-pad set-acct">
       <h2 class="card-title">บัญชี</h2>
@@ -470,34 +520,6 @@ function renderSettings() {
         ข้อมูลรายวิชา ห้องเรียน นักเรียน และคะแนนของคุณจะถูกเก็บแยกจากครูคนอื่นโดยอัตโนมัติ ผ่านบัญชี Google ของคุณ
       </div>
     </div>
-    <div class="card card-pad set-theme">
-      <h2 class="card-title">ธีม</h2>
-      <div class="u-note">เลือกโหมดสว่าง โหมดมืด หรือให้ตามการตั้งค่าของอุปกรณ์</div>
-      <div class="theme-seg" role="group" aria-label="ธีม">
-        <button type="button" class="theme-opt" data-theme-pref="auto">${icon('contrast')}ตามระบบ</button>
-        <button type="button" class="theme-opt" data-theme-pref="light">${icon('sun')}สว่าง</button>
-        <button type="button" class="theme-opt" data-theme-pref="dark">${icon('moon')}มืด</button>
-      </div>
-    </div>
-    <div class="card card-pad set-bg">
-      <h2 class="card-title">พื้นหลัง</h2>
-      <div class="u-note">เลือกจากชุดสำเร็จรูป หรือปรับเองอิสระ: สีเดียว ไล่สีหลายสี และลายพื้นหลัง ชื่อแอปและตัวหนังสือบนพื้นจะเปลี่ยนสีให้อ่านชัดตามพื้นหลังเอง · การตั้งค่าหน้าตาทั้งหมดในหน้านี้บันทึกตามบัญชี Google ของคุณ จึงเหมือนเดิมเมื่อเปิดจากเครื่องอื่น</div>
-      ${bgGroupHtml('ค่าเริ่มต้น', [['default', 'ค่าเริ่มต้น']])}
-      ${bgGroupHtml('สีทึบ', BG_OPTIONS.solid)}
-      ${bgGroupHtml('ไล่สี', BG_OPTIONS.gradient)}
-      ${bgGroupHtml('ชุดสีเพิ่มเติม', BG_OPTIONS.preset)}
-      ${bgGroupHtml('สไตล์ One UI (พาสเทลนุ่ม)', BG_OPTIONS.oneui)}
-      ${bgGroupHtml('เข้มและสดใส', BG_OPTIONS.vivid)}
-      <div class="u-note u-semibold u-mt-16">ปรับเองอิสระ</div>
-      <div class="theme-seg bg-mode u-mt-6" role="group" aria-label="ชนิดพื้นหลังที่ปรับเอง">
-        <button type="button" class="theme-opt" data-bg-mode="solid" aria-pressed="false">สีเดียว</button>
-        <button type="button" class="theme-opt" data-bg-mode="grad" aria-pressed="false">ไล่สี</button>
-        <button type="button" class="theme-opt" data-bg-mode="pattern" aria-pressed="false">ลาย</button>
-      </div>
-      <div id="bg-custom-panel" class="hidden"></div>
-    </div>
-    ${lookHtml()}
-    ${presetsHtml()}
     <div class="card card-pad set-priv">
       <h2 class="card-title">ความเป็นส่วนตัวและข้อมูลของฉัน</h2>
       <div class="u-note u-lh-165 u-mt-4">
@@ -510,21 +532,26 @@ function renderSettings() {
         <button type="button" class="btn btn-danger-ghost btn-sm" id="privacy-delete-btn">ลบบัญชีและข้อมูลทั้งหมด</button>
       </div>
     </div>
-    </div>
-  `;
+    </div>`;
+}
+
+function bindSettingsAbout(root) {
   // privacy.js โหลดเมื่อกดปุ่มครั้งแรกเท่านั้น
   const withPrivacy = (fnName) => async () => {
     try { await loadModule('privacy'); } catch (err) { showToast(err.message); return; }
     window[fnName]();
   };
-  document.getElementById('privacy-export-btn').addEventListener('click', withPrivacy('exportMyData'));
-  document.getElementById('privacy-delete-btn').addEventListener('click', withPrivacy('deleteMyAccount'));
+  root.querySelector('#privacy-export-btn').addEventListener('click', withPrivacy('exportMyData'));
+  root.querySelector('#privacy-delete-btn').addEventListener('click', withPrivacy('deleteMyAccount'));
+}
+
+function bindSettingsLook(root) {
   const syncThemeButtons = () => {
     const cur = getThemePref();
-    view.querySelectorAll('.theme-opt[data-theme-pref]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.themePref === cur)));
+    root.querySelectorAll('.theme-opt[data-theme-pref]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.themePref === cur)));
   };
-  const look = initLook(view);
-  view.querySelectorAll('.theme-opt[data-theme-pref]').forEach(b => b.addEventListener('click', () => {
+  const look = initLook(root);
+  root.querySelectorAll('.theme-opt[data-theme-pref]').forEach(b => b.addEventListener('click', () => {
     setThemePref(b.dataset.themePref);
     syncThemeButtons();
     look.sync(); // ค่าเริ่มต้นของการ์ด/สีหลักต่างกันตามโหมดสว่าง-มืด
@@ -532,17 +559,45 @@ function renderSettings() {
   syncThemeButtons();
   const syncBgButtons = () => {
     const cur = getBgPref();
-    view.querySelectorAll('.bg-opt[data-bg-pref]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.bgPref === cur)));
+    root.querySelectorAll('.bg-opt[data-bg-pref]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.bgPref === cur)));
   };
-  const bgCustom = initBgCustom(view, syncBgButtons);
-  view.querySelectorAll('.bg-opt[data-bg-pref]').forEach(b => b.addEventListener('click', () => {
+  const bgCustom = initBgCustom(root, syncBgButtons);
+  root.querySelectorAll('.bg-opt[data-bg-pref]').forEach(b => b.addEventListener('click', () => {
     setBgPref(b.dataset.bgPref);
     syncBgButtons();
     bgCustom.reset();
   }));
   syncBgButtons();
-  initPresets(view, renderSettings);
-  initNavPill(view.querySelector('.theme-seg[aria-label="ธีม"]'), '.theme-opt', 'seg-pill', { activeSel: '[aria-pressed="true"]', watch: true });
+  initPresets(root, renderSettings);
+  initNavPill(root.querySelector('.theme-seg[aria-label="ธีม"]'), '.theme-opt', 'seg-pill', { activeSel: '[aria-pressed="true"]', watch: true });
+}
+
+function renderSettings() {
+  const view = document.getElementById('view');
+  if (!SETTINGS_TABS.some(t => t[0] === AppState.settingsTab)) AppState.settingsTab = 'look';
+  view.innerHTML = `
+    ${pageHeaderHtml('ตั้งค่า')}
+    <div class="tabs" id="settings-tabs">
+      ${SETTINGS_TABS.map(([id, label]) => `<div class="tab ${AppState.settingsTab === id ? 'active' : ''}" data-tab="${id}">${label}</div>`).join('')}
+    </div>
+    <div id="settings-tab-body"></div>`;
+  const tabs = view.querySelector('#settings-tabs');
+  const body = view.querySelector('#settings-tab-body');
+  initNavPill(tabs, '.tab', 'seg-pill');
+
+  const draw = animate => {
+    if (AppState.settingsTab === 'about') { body.innerHTML = settingsAboutHtml(); bindSettingsAbout(body); }
+    else { body.innerHTML = settingsLookHtml(); bindSettingsLook(body); }
+    if (animate) { body.classList.remove('tab-swap'); void body.offsetWidth; body.classList.add('tab-swap'); }
+  };
+  tabs.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => {
+    if (t.dataset.tab === AppState.settingsTab) return;
+    AppState.settingsTab = t.dataset.tab;
+    tabs.querySelectorAll('.tab').forEach(x => x.classList.toggle('active', x === t));
+    tabs.__pillPlace?.(true);
+    draw(true);
+  }));
+  draw(false);
 }
 
 initNavPill(document.querySelector('.nav-list'), '.nav-item', 'nav-pill', { global: true });
