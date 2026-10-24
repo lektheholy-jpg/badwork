@@ -48,7 +48,7 @@ npm run test:docprint    # ตัวช่วยพิมพ์กลาง (doc
 npm run test:cssb        # แยก CSS: กฎครบทั้งสองก้อน · กฎหน้าหลักไม่หลุดเข้า docs · ตัวโหลดสไตล์ (รอสไตล์ · ไม่แทรกสคริปต์ซ้ำ)
 npm run test:docprofile  # ตัวช่วยกลางข้อมูลส่วนตัว (docGetProfile · docProfileInfo ใน doc-shell.js) + กันไม่ให้แต่ละระบบ/เทมเพลตเขียนสำเนาเอง
 npm run test:ttscope     # ตารางสอน: ขอบเขตรายวิชาตามปี/ภาคเรียน
-npm run test:islandclass # Island: ชิปคาบสอน (กำลังสอน/ถัดไป) + "บันทึกแล้ว · เหลืออีก N คน"
+npm run test:islandclass # Island: ชิปคาบสอน (กำลังสอน/ถัดไป) + "บันทึกแล้ว · เหลืออีก N คน" + มือถือสลับชิป↔ชื่อหน้าในช่องเดียว (แคปซูลนิ่ง ไม่หดกลับ) + วันที่แสดงตลอด
 npm run test:idp         # ID-Plan: รายการ/แผน และไม่ปนกับ PA
 npm run test:idpai       # ตัวต่อ AI ของ ID-Plan (js/idp-ai.js)
 npm run test:sarai       # ตัวต่อ AI ของ SAR ส่วนที่ 2 (js/sar-ai.js)

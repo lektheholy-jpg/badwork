@@ -680,7 +680,7 @@ table.sheet :is(th, td).sticky-right-2 { right: 0; width: var(--r2-w); min-width
    ไม่ลอยกลางบนจออีกแล้ว (ชนเกาะจริงของ iPhone) · มือถือ: ฐานลิ้นแนบขอบบน .tabbar (--island-dock) · จอใหญ่ (ไม่มีเมนูล่าง): แนบขอบล่างจอ
    พื้นทึบสีกลับด้านกับธีม (--island-bg / --island-fg) · ตอนมีแจ้งเตือนย้อมสีตามชนิด (เขียว=สำเร็จ แดง=ลบ/ผิดพลาด เหลือง=เตือน/ออฟไลน์) ใช้ token ธีม จึงตามธีมมืดเอง
    ความสูงคงที่เสมอ (--island-h) — เปลี่ยนสถานะ/แจ้งเตือน = เปลี่ยนข้อความ ถ้ายาวก็ขยายออกด้านข้างเท่านั้น (ไม่สูงขึ้น ไม่ขึ้นบรรทัดใหม่)
-   ความกว้างตอนพัก (--iw) ตอนขยาย (--ow) และช่องชื่อหน้า (--pw) js/island.js วัดจากเนื้อหาจริงแล้วใส่ให้ */
+   ความกว้างตอนพัก (--iw) ตอนขยาย (--ow) และช่องชื่อหน้า (--pw) js/island.js วัดจากเนื้อหาจริงแล้วใส่ให้ · วันที่แสดงตลอด (หน้าหลัก/ชิปจับเวลา/ชิปคาบ/ออฟไลน์) */
 .island {
   --island-h: 30px; --island-t: .55s cubic-bezier(.3, 1.4, .5, 1);
   --island-dock: 0px; /* ระยะจากขอบล่างจอถึงฐานลิ้น: จอใหญ่ = 0 · มือถือ (ล็อกอินแล้ว) = ลอยเหนือ .tabbar ตั้งในบล็อก @media (max-width: 860px) ข้างล่าง */
@@ -723,36 +723,35 @@ table.sheet :is(th, td).sticky-right-2 { right: 0; width: var(--r2-w); min-width
 .pg-div { flex: none; width: 1px; height: 12px; margin: 0 9px; background: color-mix(in srgb, currentColor 22%, transparent); }
 .pg-ico { flex: none; display: flex; align-items: center; margin-right: 6px; }
 .pg-ico svg { display: block; width: 14px; height: 14px; color: var(--primary-dark); }
-.pg-name { flex: none; font-weight: 700; color: inherit; }
-.island-idle-off { display: none; align-items: center; gap: 7px; color: var(--warning); }
+.pg-name { flex: none; min-width: var(--sw, 0px); max-width: var(--sm, none); font-weight: 700; color: inherit; }
+/* ไม่พอที่ (JS ใส่ .slot-cut + --sm): ตัดข้อความด้วย … · เปิด overflow เฉพาะตอนนี้ เพราะสระ/วรรณยุกต์ไทยบนบรรทัดสูง 1 อาจโดนตัด จึงให้บรรทัดสูงเท่าช่อง (18px) */
+.island.slot-cut .pg-name { overflow: hidden; text-overflow: ellipsis; line-height: 18px; }
+.island-idle-off { display: none; align-items: center; gap: 7px; margin-left: 12px; color: var(--warning); }
 .island-idle-off i { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
 .island.is-offline .island-idle-off { display: inline-flex; }
-.island.is-offline .island-idle-date, .island.is-offline .island-idle-sep, .island.is-offline .island-idle-time { display: none; }
-/* ชิปจับเวลา (ใส่ผ่าน islandTimer ใน js/island.js): ซ่อนไว้จนมีเวลาเดิน · 10 วินาทีสุดท้ายเปลี่ยนเป็นสีเตือน · มือถือ: มีชิปแล้วซ่อนวันที่เพื่อให้พอดีแคปซูล */
+/* ชิปจับเวลา (ใส่ผ่าน islandTimer ใน js/island.js): ซ่อนไว้จนมีเวลาเดิน · 10 วินาทีสุดท้ายเปลี่ยนเป็นสีเตือน · วันที่แสดงตลอด (ทั้งมือถือ/จอกว้าง/ออฟไลน์) ไม่ซ่อนตอนมีชิป */
 .island-idle-timer { display: none; align-items: center; gap: 5px; margin-left: 12px; font-weight: 700; }
 .island.has-timer .island-idle-timer { display: inline-flex; }
 .island.timer-warn .island-idle-timer { color: var(--danger); }
 .island-idle-timer-ico { flex: none; display: flex; width: 13px; height: 13px; }
 .island-idle-timer-ico svg { display: block; width: 100%; height: 100%; }
-@media (max-width: 640px) { .island-idle-sep, .island-idle-time, .island.has-timer .island-idle-date { display: none; } }
+@media (max-width: 640px) { .island-idle-sep, .island-idle-time { display: none; } } /* มือถือ: แถบสถานะของเครื่องมีเวลาอยู่แล้ว จึงซ่อนเฉพาะเวลา · วันที่อยู่ตลอด */
 /* ชิปคาบสอน (ใส่ผ่าน islandClass ใน js/island.js · ข้อความมาจาก ttChipInfo ใน js/timetable.js): "คาบ 3 · ม.2/1 · อีก 12 นาที" / "ถัดไป 13:20 · ม.4/2"
-   ซ่อนไว้จนอยู่ในคาบหรือใกล้คาบ · ชิปจับเวลาสำคัญกว่า (เดินอยู่ = ซ่อนชิปนี้) · มือถือ: ถ้ามีชื่อหน้า ชิป (ย่อ) สลับกับชื่อหน้าอัตโนมัติ (.alt) · ไม่มีชื่อหน้า/ออฟไลน์ = ซ่อนวันที่ (JS ย่อช่องชื่อหน้าเป็น 0) เหลือแต่ชิปให้พอดีแคปซูล */
+   ซ่อนไว้จนอยู่ในคาบหรือใกล้คาบ · ชิปจับเวลาสำคัญกว่า (เดินอยู่ = ซ่อนชิปนี้) · วันที่แสดงตลอด · มือถือ: ถ้ามีชื่อหน้า ชิป (ย่อ) สลับกับชื่อหน้าอัตโนมัติ (.alt) ในช่องข้อความช่องเดียว (.pg-name) — ชิปตัวนี้ถูกซ่อนตอนสลับ */
 .island-idle-class { display: none; align-items: center; gap: 5px; margin-left: 12px; font-weight: 700; }
+.island-idle-class-text { min-width: var(--cw, 0px); } /* JS ล็อกความกว้างข้อความที่ยาวสุด ไม่หดกลับเมื่อข้อความสั้นลง (อีก 10 นาที → อีก 9 นาที) */
 .island.has-class .island-idle-class { display: inline-flex; }
 .island.has-timer .island-idle-class { display: none; }
 .island-idle-class-ico { flex: none; display: flex; width: 13px; height: 13px; }
 .island-idle-class-ico svg { display: block; width: 100%; height: 100%; }
 @media (max-width: 640px) {
-  .island.has-class:not(.has-timer):not(.alt) .island-idle-date { display: none; }
-  .island.has-class:not(.has-timer):not(.is-offline):not(.alt) .island-idle-class { margin-left: 0; }
-  /* มือถือ + ชิปคาบ + มีชื่อหน้า (.alt · js/island.js): วันที่ · ชิป | ไอคอนหน้า สลับกับ วันที่ | ไอคอนหน้า ชื่อหน้า (data-phase = class / page)
-     ช่องชื่อหน้าย่อเหลือไอคอนในจังหวะ class (JS ตั้ง --pw) · .tight = จอเล็กมากจนไม่พอที่ → ซ่อนวันที่ชั่วคราว */
-  .island.alt[data-phase="page"] .island-idle-class { display: none; }
-  .island.alt.tight .island-idle-date { display: none; }
-  .island.alt .island-idle-class { animation: island-swap .35s ease; }
+  /* มือถือ + ชิปคาบ + มีชื่อหน้า (.alt · js/island.js): วันที่ | ไอคอนหน้า [ข้อความ] — วันที่และไอคอนอยู่ที่เดิมตลอด สลับเฉพาะ "ข้อความ" ในช่อง .pg-name ช่องเดียว
+     ระหว่างชิป (ย่อ) กับชื่อหน้า (data-phase = class / page) · ความกว้างช่อง = ข้อความที่ยาวสุด (--sw) แคปซูลจึงไม่หด/ขยายตอนสลับ · ชิปตัวเดิมในกลุ่มวันที่จึงซ่อนไว้ */
+  .island.alt .island-idle-class { display: none; }
+  .island.alt .pg-name.swap { animation: island-swap .35s ease; }
 }
 @keyframes island-swap { from { opacity: 0; transform: translateY(6px); } }
-@media (prefers-reduced-motion: reduce) { .island.alt .island-idle-class { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .island.alt .pg-name.swap { animation: none; } }
 
 /* ตอนขยาย: บรรทัดเดียว สูงเท่าตอนพัก ยาวเกินจะขยายด้านข้าง (สุดจอแล้วตัดด้วย …) */
 .island-body {
