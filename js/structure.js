@@ -8,10 +8,16 @@
 const MIDTERM_NAME = 'สอบกลางภาค';
 const FINAL_NAME = 'สอบปลายภาค';
 
+// ที่อยู่ข้อมูลของ "วิชา" ที่กำลังแก้โครงสร้าง: แม่แบบวิชา (course.isTemplate) อยู่ที่ courseTemplates
+// ส่วนรายวิชาที่เปิดสอนในเทอมอยู่ที่ courses — โครงสร้างย่อยหน้าตาเหมือนกัน (assessments + settings/structure)
+function courseBaseRef(course) {
+  return db.collection('users').doc(AppState.user.uid)
+    .collection(course.isTemplate ? 'courseTemplates' : 'courses').doc(course.id);
+}
+
 async function renderStructureTab(container, course) {
   showLoading('cat-sm', container);
-  const uid = AppState.user.uid;
-  const courseRef = db.collection('users').doc(uid).collection('courses').doc(course.id);
+  const courseRef = courseBaseRef(course);
   const colRef = courseRef.collection('assessments');
   const structRef = courseRef.collection('settings').doc('structure');
   const [snap, structDoc] = await Promise.all([colRef.orderBy('order', 'asc').get(), structRef.get()]);
@@ -374,6 +380,8 @@ async function saveStructure(course, collectItems, groups, midterm, final, colRe
 
   await batch.commit();
   invalidateCourseData(course.id);
-  showToast('บันทึกโครงสร้างวิชาสำเร็จ');
+  showToast(course.isTemplate ? 'บันทึกแม่แบบโครงสร้างวิชาสำเร็จ' : 'บันทึกโครงสร้างวิชาสำเร็จ');
   renderStructureTab(document.getElementById('course-tab-body') || document.getElementById('structure-page-body'), course);
+  // แก้แม่แบบ → ถามว่าจะอัปเดตรายวิชาของเทอมที่เปิดไปแล้วตามแม่แบบด้วยไหม (ไม่ถามถ้ายังไม่เคยเปิดสอน)
+  if (course.isTemplate) offerTemplateSync(course);
 }

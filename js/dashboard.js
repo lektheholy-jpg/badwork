@@ -234,8 +234,8 @@ async function renderDashboard() {
     ${courses.length === 0 ? `
       <div class="card"><div class="empty-state">
         <div class="icon">${icon('book')}</div>
-        <div>ยังไม่มีรายวิชา เริ่มจากสร้างรายวิชาแรกของคุณ</div>
-        <button class="btn btn-primary u-mt-16" data-go="structure-page">สร้างรายวิชา</button>
+        <div>ยังไม่มีรายวิชา เริ่มจากสร้างรายวิชาแรกของคุณ (เลือกจากโครงสร้างวิชาที่ตั้งไว้ ถ้ายังไม่มีระบบจะพาไปสร้างก่อน)</div>
+        <button class="btn btn-primary u-mt-16" data-go="courses">สร้างรายวิชา</button>
       </div></div>
     ` : ''}
     </section>
