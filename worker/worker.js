@@ -83,7 +83,9 @@ export async function takeDaily(env, uid, now = Date.now()) {
 
 // ---- Web Push: แจ้งเตือนก่อนเริ่มคาบสอน ---------------------------------------------
 const MAX_PUSH_BODY = 20 * 1024;
-const SUB_TTL = 60 * 86400;   // subscription ที่ไม่ได้ซิงก์เกิน 60 วัน (เลิกใช้แล้ว) ลบเอง · แอปซิงก์ใหม่ทุกครั้งที่เปิดหน้าแรก
+const SUB_TTL = 60 * 86400;   // subscription ที่ไม่ได้ซิงก์เกิน 60 วัน (เลิกใช้แล้ว) ลบเอง
+const RESYNC_MS = 7 * 86400e3; // ข้อมูลเดิมที่ซิงก์มาซ้ำ: ไม่เขียน KV (write ฟรีแค่ 1,000 ครั้ง/วัน) ยกเว้นเก่าเกิน 7 วัน → เขียนใหม่เพื่อต่ออายุ SUB_TTL
+const IDX_KEY = 'idx';         // ดัชนีนาทีที่ต้องแจ้ง (ไม่ขึ้นต้น s: จึงไม่ปนในผล list ของ subscription)
 // ยอมส่งเฉพาะบริการ push ของเบราว์เซอร์จริง (กันผู้ใช้ยัด endpoint แปลกๆ ให้ Worker ยิงไปหา)
 const PUSH_HOST_RE = /(^|\.)(fcm\.googleapis\.com|push\.services\.mozilla\.com|push\.apple\.com|notify\.windows\.com)$/;
 const te = new TextEncoder();
@@ -134,7 +136,44 @@ export function thaiNow(now) {
 }
 export function addMin(hm, n) {
   const m = +hm.slice(0, 2) * 60 + +hm.slice(3, 5) + n;
-  return m >= 1440 ? null : pad2(Math.floor(m / 60)) + ':' + pad2(m % 60);
+  return m < 0 || m >= 1440 ? null : pad2(Math.floor(m / 60)) + ':' + pad2(m % 60);
+}
+// วันที่ไทย 'YYYY-MM-DD' ของ ms ที่ให้ — ใช้บอกว่าดัชนีถูกสร้างวันนี้หรือยัง
+export function thaiDate(now) {
+  return new Date(Math.floor(now / 60000) * 60000 + 7 * 3600 * 1000).toISOString().slice(0, 10);
+}
+
+// ---- ดัชนีนาทีที่ต้องแจ้ง: สแกนตารางทุกเครื่องครั้งเดียว/วัน แล้วเก็บเป็น { d: วันที่สร้าง, f: ['1@08:35', …] } (day@เวลาที่ต้องส่ง = เวลาเริ่มคาบ − lead) ----
+// cron ทุกนาทีแค่ get ดัชนี 1 คีย์ (read: โควตา 100,000/วัน) และ list จริงเฉพาะนาทีที่อยู่ในดัชนี (~10–15 ครั้ง/วัน แทน ~660) · list/write/delete ใช้โควตาร่วมกัน 1,000/วัน
+const fireKey = (t, lead) => { const [d, st] = String(t).split('@'), f = addMin(st || '', -lead); return f ? d + '@' + f : null; };
+export function fireKeys(rec) {
+  return [...new Set(rec.items.map(i => fireKey(i.day + '@' + i.start, rec.lead)).filter(Boolean))];
+}
+export async function rebuildIndex(env, date) {
+  const f = new Set();
+  let cursor;
+  do {
+    const page = await env.PUSH.list({ prefix: 's:', cursor, limit: 1000 });
+    await Promise.all(page.keys.map(async k => {
+      const m = k.metadata;
+      if (m && Array.isArray(m.t)) { m.t.forEach(t => { const x = fireKey(t, m.lead || 5); if (x) f.add(x); }); return; }
+      const rec = await env.PUSH.get(k.name, 'json');                // ไม่มี metadata (ตารางใหญ่) → อ่านเต็ม
+      if (rec && Array.isArray(rec.items)) fireKeys(rec).forEach(x => f.add(x));
+    }));
+    cursor = page.list_complete ? undefined : page.cursor;
+  } while (cursor);
+  const idx = { d: date, f: [...f].sort() };
+  await env.PUSH.put(IDX_KEY, JSON.stringify(idx));                   // 1 write/วัน
+  return idx;
+}
+// เครื่องที่เพิ่งซิงก์: เติมเวลาใหม่เข้าดัชนีที่มีอยู่ (เขียนเฉพาะเมื่อมีเวลาใหม่จริง · ยังไม่มีดัชนี = ไม่ต้องทำ cron สร้างจากทุกเครื่องเอง)
+async function indexAdd(env, rec) {
+  try {
+    const idx = await env.PUSH.get(IDX_KEY, 'json');
+    if (!idx || !Array.isArray(idx.f)) return;
+    const have = new Set(idx.f), add = fireKeys(rec).filter(x => !have.has(x));
+    if (add.length) await env.PUSH.put(IDX_KEY, JSON.stringify({ d: idx.d, f: [...have, ...add].sort() }));
+  } catch (e) { console.warn('push index', String(e && e.message || e)); }  // ดัชนีพลาด ≠ ซิงก์พลาด: cron สร้างใหม่ให้ตอนเช้า
 }
 
 async function hkdf(salt, ikm, info, len) {
@@ -184,11 +223,16 @@ async function sendPush(env, sub, payload) {
   });
 }
 
-// cron: ทุกนาที → หาคนที่มีคาบเริ่มในอีก N นาทีพอดี แล้วส่ง push (ตรงนาทีเท่านั้น · ไม่เก็บประวัติส่งซ้ำ เพื่อไม่เปลืองโควตาเขียน KV)
+// cron: ทุกนาที → ดูดัชนีก่อน แล้วค่อยหาคนที่มีคาบเริ่มในอีก N นาทีพอดีเพื่อส่ง push (ตรงนาทีเท่านั้น · ไม่เก็บประวัติส่งซ้ำ เพื่อไม่เปลืองโควตาเขียน KV)
 export async function runReminders(env, now = Date.now(), send = sendPush) {
   if (!env.PUSH || !env.VAPID_PUBLIC_KEY || !env.VAPID_PRIVATE_KEY) return { sent: 0 };
   const { day, hm } = thaiNow(now);
   if (day < 1 || day > 5) return { sent: 0 };
+  // ดัชนีนาทีที่ต้องแจ้ง: ไม่ใช่นาทีที่มีใครต้องแจ้ง → จบเลย (ไม่ list) · ยังไม่มี/ไม่ใช่ของวันนี้ → สแกนสร้างใหม่ (วันละครั้ง)
+  let idx = await env.PUSH.get(IDX_KEY, 'json').catch(() => null);   // ค่าเสีย/อ่านไม่ได้ = ถือว่ายังไม่มี → สร้างใหม่ (ห้ามทำให้ cron ล้มทุกนาที)
+  const today = thaiDate(now);
+  if (!idx || idx.d !== today || !Array.isArray(idx.f)) idx = await rebuildIndex(env, today);
+  if (!idx.f.includes(day + '@' + hm)) return { sent: 0 };
   let cursor, sent = 0;
   do {
     const page = await env.PUSH.list({ prefix: 's:', cursor, limit: 1000 });
@@ -233,8 +277,12 @@ async function handlePush(req, env, user, path, h) {
   if (path === '/push/sync') {
     const rec = cleanSync(body);
     if (!rec) return reply(400, { error: { message: 'bad subscription' } }, h);
-    await env.PUSH.put(await pushKey(user.sub, rec.sub.endpoint), JSON.stringify(rec), { expirationTtl: SUB_TTL, metadata: pushMeta(rec) });
-    return reply(200, { ok: true, items: rec.items.length }, h);
+    const key = await pushKey(user.sub, rec.sub.endpoint), now = Date.now();
+    const prev = await env.PUSH.get(key, 'json');   // read (โควตา 100,000/วัน) แลกกับไม่เสีย write (1,000/วัน) เมื่อข้อมูลไม่เปลี่ยน
+    const same = prev && prev.ts && now - prev.ts < RESYNC_MS && JSON.stringify([prev.sub, prev.lead, prev.items]) === JSON.stringify([rec.sub, rec.lead, rec.items]);
+    if (!same) await env.PUSH.put(key, JSON.stringify({ ...rec, ts: now }), { expirationTtl: SUB_TTL, metadata: pushMeta(rec) });
+    await indexAdd(env, rec);
+    return reply(200, { ok: true, items: rec.items.length, unchanged: !!same }, h);
   }
   return reply(404, { error: { message: 'not found' } }, h);
 }

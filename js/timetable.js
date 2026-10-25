@@ -206,13 +206,35 @@ function ttPushItems(tt) {
     return p ? { day: e.day, start: p.start, title: e.title, cls: e.cls, room: e.room } : null;
   }).filter(Boolean);
 }
+// ซิงก์ซ้ำข้อมูลเดิมไม่มีประโยชน์ แต่เสียโควตาเขียน KV ของ Worker (แผนฟรี 1,000 ครั้ง/วัน ใช้ร่วมกับ cron) → จำ hash ของสิ่งที่ส่งล่าสุดไว้ในเครื่อง
+// ส่งใหม่เมื่อ: ตาราง/เครื่อง/บัญชีเปลี่ยน หรือครบ 7 วัน (ต่ออายุ subscription ฝั่งเซิร์ฟเวอร์ที่หมดอายุเองใน 60 วัน)
+const TT_PUSH_SYNC_KEY = 'tt-push-sync-v1', TT_PUSH_RESYNC_MS = 7 * 86400e3;
+async function ttPushDigest(body) {
+  try {
+    const user = firebase.auth().currentUser;
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode((user ? user.uid : '') + '|' + JSON.stringify(body)));
+    return Array.from(new Uint8Array(buf), b => b.toString(16).padStart(2, '0')).join('');
+  } catch (e) { return ''; } // ไม่มี crypto.subtle (ไม่ใช่ https) → ไม่มี hash = ส่งทุกครั้งเหมือนเดิม
+}
+function ttPushLast(digest) {
+  try {
+    if (digest === undefined) return JSON.parse(localStorage.getItem(TT_PUSH_SYNC_KEY) || 'null') || {};
+    if (digest === null) localStorage.removeItem(TT_PUSH_SYNC_KEY);
+    else localStorage.setItem(TT_PUSH_SYNC_KEY, JSON.stringify({ h: digest, at: Date.now() }));
+  } catch (e) { /* โหมดส่วนตัว/เต็ม: ข้าม = ส่งทุกครั้งเหมือนเดิม */ }
+  return {};
+}
 // ส่งตารางล่าสุดให้ Worker (เฉพาะเครื่องที่สมัครรับไว้แล้ว) · เงียบเมื่อพลาด — แค่การแจ้งเตือนจะเป็นตารางเก่าจนกว่าจะซิงก์ครั้งหน้า
 async function ttPushSync(tt) {
   try {
     if (!ttPushSupported() || Notification.permission !== 'granted') return;
     const sub = await ttPushSub();
     if (!sub) return;
-    await ttPushPost('/push/sync', { subscription: sub.toJSON(), lead: TT_PUSH.lead, items: ttPushItems(tt || await loadTimetable()) });
+    const body = { subscription: sub.toJSON(), lead: TT_PUSH.lead, items: ttPushItems(tt || await loadTimetable()) };
+    const digest = await ttPushDigest(body), last = ttPushLast();
+    if (digest && last.h === digest && Date.now() - last.at < TT_PUSH_RESYNC_MS) return; // เหมือนที่ส่งไปแล้วและยังไม่ถึงเวลาต่ออายุ
+    await ttPushPost('/push/sync', body);
+    ttPushLast(digest);
   } catch (err) { console.warn('push sync:', err.message || err); }
 }
 async function ttPushEnable() {
@@ -221,7 +243,9 @@ async function ttPushEnable() {
   const sub = (await reg.pushManager.getSubscription())
     || await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: ttPushKeyBytes(TT_PUSH.vapidKey) });
   try {
-    await ttPushPost('/push/sync', { subscription: sub.toJSON(), lead: TT_PUSH.lead, items: ttPushItems(await loadTimetable()) });
+    const body = { subscription: sub.toJSON(), lead: TT_PUSH.lead, items: ttPushItems(await loadTimetable()) };
+    await ttPushPost('/push/sync', body);
+    ttPushLast(await ttPushDigest(body));
   } catch (err) { await sub.unsubscribe().catch(() => {}); throw err; } // เซิร์ฟเวอร์ไม่รับ → ไม่ทิ้งการสมัครค้างไว้ที่เครื่อง
   return true;
 }
@@ -230,6 +254,7 @@ async function ttPushDisable() {
   if (!sub) return;
   const endpoint = sub.endpoint;
   await sub.unsubscribe();
+  ttPushLast(null); // เปิดใหม่ภายหลังต้องส่งครั้งแรกเสมอ
   await ttPushPost('/push/unsubscribe', { endpoint }).catch(() => {}); // ลบฝั่งเซิร์ฟเวอร์ไม่ได้ (ออฟไลน์) → ถึงเวลาส่งจะได้ 410 แล้วถูกลบเอง
 }
 

@@ -101,13 +101,14 @@ async function decrypt(body, uaPriv, uaPubRaw, authSecret) {
     return new Response(null, { status: pushStatus });
   };
   const kv = () => {
-    const m = new Map();
-    return { m,
-      get: async (k, t) => m.has(k) ? (t === 'json' ? JSON.parse(m.get(k).v) : m.get(k).v) : null,
-      put: async (k, v, o) => { m.set(k, { v, o }); },
-      delete: async k => { m.delete(k); },
-      list: async ({ prefix }) => ({ keys: [...m].filter(([k]) => k.startsWith(prefix)).map(([name, x]) => ({ name, metadata: x.o && x.o.metadata })), list_complete: true }) };
+    const m = new Map(), ops = { get: 0, put: 0, delete: 0, list: 0 };   // ops = จำนวนครั้งที่ Worker เรียก KV (ตรงกับที่ Cloudflare นับโควตา)
+    return { m, ops,
+      get: async (k, t) => { ops.get++; return m.has(k) ? (t === 'json' ? JSON.parse(m.get(k).v) : m.get(k).v) : null; },
+      put: async (k, v, o) => { ops.put++; m.set(k, { v, o }); },
+      delete: async k => { ops.delete++; m.delete(k); },
+      list: async ({ prefix }) => { ops.list++; return { keys: [...m].filter(([k]) => k.startsWith(prefix)).map(([name, x]) => ({ name, metadata: x.o && x.o.metadata })), list_complete: true }; } };
   };
+  const subKeys = P => [...P.m.keys()].filter(k => k.startsWith('s:'));   // คีย์ดัชนี (idx) ไม่นับเป็น subscription
   const PUSH = kv();
   const env = { ALLOWED_ORIGINS: O, FIREBASE_PROJECT_ID: PID, GEMINI_API_KEY: 'S', PUSH, ...VENV };
   const call = async (p, body, tok, e = env) => worker.fetch(new Request('https://w.example' + p, { method: 'POST', headers: { Origin: O, Authorization: 'Bearer ' + tok, 'Content-Type': 'application/json' }, body: JSON.stringify(body) }), e);
@@ -170,7 +171,7 @@ async function decrypt(body, uaPriv, uaPubRaw, authSecret) {
   // เครื่องที่เลิกรับ (410) ถูกลบ
   pushStatus = 410; sent.length = 0;
   await W.runReminders(env, th(2026, 10, 21, 8, 35));
-  ok(PUSH.m.size === 0, 'push service ตอบ 410 → ลบ subscription ทิ้ง');
+  ok(subKeys(PUSH).length === 0, 'push service ตอบ 410 → ลบ subscription ทิ้ง');
   pushStatus = 201;
 
   // scheduled() ใช้เวลาของ cron
@@ -205,6 +206,124 @@ async function decrypt(body, uaPriv, uaPubRaw, authSecret) {
   const pubInToml = (toml.match(/^VAPID_PUBLIC_KEY\s*=\s*"([^"]+)"/m) || [])[1];
   ok(pubInToml && tt.includes(pubInToml), 'VAPID public key ใน wrangler.toml ตรงกับ TT_PUSH.vapidKey');
   ok(!/VAPID_PRIVATE_KEY\s*=/.test(toml), 'private key ไม่อยู่ในไฟล์ตั้งค่า');
+
+
+  console.log('ลดโควตา KV: ซิงก์ซ้ำไม่เขียน · cron ดูดัชนีก่อนค่อย list');
+  ok(W.addMin('08:40', -5) === '08:35' && W.addMin('00:03', -5) === null, 'ลบนาที: ถอยหลังข้ามเที่ยงคืน = null');
+  ok(W.thaiDate(th(2026, 10, 21, 8, 35)) === '2026-10-21' && W.thaiDate(Date.UTC(2026, 9, 20, 18, 0)) === '2026-10-21', 'วันที่ไทย (ข้ามเที่ยงคืน UTC แล้วเป็นวันถัดไป)');
+  ok(W.fireKeys({ lead: 5, items: [{ day: 3, start: '08:40' }, { day: 3, start: '08:40' }, { day: 4, start: '00:02' }] }).join() === '3@08:35', 'เวลาที่ต้องส่ง = เริ่มคาบ − lead · ไม่ซ้ำ · ทิ้งที่ติดลบ');
+
+  const P2 = kv(), env2 = { ...env, PUSH: P2 };
+  const tab = { ...good, items: [{ day: 3, start: '08:40', title: 'คณิต' }, { day: 3, start: '09:30', title: 'ไทย' }, { day: 4, start: '10:00', title: 'วิทย์' }] };
+  r = await call('/push/sync', tab, await token(), env2);
+  ok(r.status === 200 && P2.ops.put === 1 && P2.m.size === 1, 'ซิงก์ครั้งแรก = เขียน 1 ครั้ง (ยังไม่มีดัชนี → ไม่เขียนดัชนี)');
+  r = await call('/push/sync', tab, await token(), env2);
+  ok(P2.ops.put === 1 && (await r.json()).unchanged === true, 'ซิงก์ซ้ำข้อมูลเดิม (เปิดแอปอีกรอบ) → ไม่เขียน KV');
+  for (let i = 0; i < 20; i++) await call('/push/sync', tab, await token(), env2);
+  ok(P2.ops.put === 1, 'เปิดแอปอีก 20 ครั้ง → ยังเขียนรวม 1 ครั้ง');
+  await call('/push/sync', { ...tab, items: [...tab.items, { day: 5, start: '13:00', title: 'ศิลปะ' }] }, await token(), env2);
+  ok(P2.ops.put === 2, 'ตารางเปลี่ยน → เขียนใหม่');
+  const k2 = subKeys(P2)[0], rec2 = JSON.parse(P2.m.get(k2).v); rec2.ts -= 8 * 86400e3; P2.m.get(k2).v = JSON.stringify(rec2);
+  await call('/push/sync', { ...tab, items: [...tab.items, { day: 5, start: '13:00', title: 'ศิลปะ' }] }, await token(), env2);
+  ok(P2.ops.put === 3 && JSON.parse(P2.m.get(k2).v).ts > rec2.ts, 'ข้อมูลเดิมแต่เก่าเกิน 7 วัน → เขียนใหม่เพื่อต่ออายุ TTL');
+  await call('/push/sync', { ...tab, lead: 10, items: [...tab.items, { day: 5, start: '13:00', title: 'ศิลปะ' }] }, await token(), env2);
+  ok(P2.ops.put === 4, 'เปลี่ยนเวลาเตือนล่วงหน้า (lead) → เขียนใหม่');
+  await call('/push/sync', { ...tab, lead: 5, items: [...tab.items, { day: 5, start: '13:00', title: 'ศิลปะ' }] }, await token(), env2);
+  ok(P2.ops.put === 5, 'กลับเป็น 5 นาที → เขียนใหม่ (ไม่ใช้ข้อมูลเก่าที่เปลี่ยนไปแล้ว)');
+
+  sent.length = 0; P2.ops.list = 0;
+  res = await W.runReminders(env2, th(2026, 10, 21, 8, 30));               // นาทีที่ไม่มีใครต้องแจ้ง · ยังไม่มีดัชนี → สแกนสร้าง
+  const idx2 = JSON.parse(P2.m.get('idx').v);
+  ok(P2.ops.list === 1 && idx2.d === '2026-10-21' && idx2.f.join() === '3@08:35,3@09:25,4@09:55,5@12:55', 'ยังไม่มีดัชนี → สแกนครั้งเดียวแล้วเก็บนาทีที่ต้องแจ้งของทุกเครื่อง', [P2.ops.list, idx2]);
+  ok(res.sent === 0 && sent.length === 0, 'นาทีที่ไม่มีใครต้องแจ้งไม่ส่ง');
+  P2.ops.list = 0;
+  for (const [hh, mm] of [[8, 31], [8, 34], [8, 36], [8, 40], [9, 24], [12, 0], [17, 59]]) await W.runReminders(env2, th(2026, 10, 21, hh, mm));
+  ok(P2.ops.list === 0 && sent.length === 0, 'นาทีที่ไม่อยู่ในดัชนี → ไม่ list ไม่ส่ง', P2.ops.list);
+  await W.runReminders(env2, th(2026, 10, 21, 8, 35));
+  ok(P2.ops.list === 1 && sent.length === 1, 'นาทีที่อยู่ในดัชนี (08:35) → list 1 ครั้งแล้วส่งตามปกติ', [P2.ops.list, sent.length]);
+
+  const putBefore = P2.ops.put;
+  await call('/push/sync', { ...tab, items: [...tab.items, { day: 3, start: '14:10', title: 'พละ' }] }, await token(), env2);
+  ok(P2.ops.put === putBefore + 2 && JSON.parse(P2.m.get('idx').v).f.includes('3@14:05'), 'ตารางมีเวลาใหม่ → เติมเข้าดัชนีทันที (เขียนดัชนี 1 ครั้ง) ไม่ต้องรอพรุ่งนี้');
+  sent.length = 0;
+  await W.runReminders(env2, th(2026, 10, 21, 14, 5));
+  ok(sent.length === 1, 'เวลาใหม่ที่เพิ่งเติมเข้าดัชนีถูกส่งตรงนาที');
+  const putMid = P2.ops.put;
+  await call('/push/sync', { ...tab, items: [...tab.items, { day: 3, start: '14:10', title: 'พละ' }] }, await token(), env2);
+  ok(P2.ops.put === putMid, 'ซิงก์ซ้ำที่เวลาอยู่ในดัชนีแล้ว → ไม่เขียนทั้งข้อมูลและดัชนี');
+
+  P2.ops.list = 0;
+  await W.runReminders(env2, th(2026, 10, 22, 7, 0));
+  const l1 = P2.ops.list;
+  await W.runReminders(env2, th(2026, 10, 22, 7, 1));
+  await W.runReminders(env2, th(2026, 10, 22, 7, 2));
+  const idx3 = JSON.parse(P2.m.get('idx').v);
+  ok(l1 === 1 && P2.ops.list === 1 && idx3.d === '2026-10-22' && idx3.f.includes('3@14:05') && !idx3.f.includes('5@12:55'), 'ขึ้นวันใหม่ → สแกนสร้างดัชนีใหม่ครั้งเดียว (เวลาที่ไม่มีใครใช้แล้วหายไป) นาทีถัดไปไม่ list อีก', [l1, P2.ops.list, idx3]);
+  P2.m.set('idx', { v: 'ไม่ใช่ json{', o: undefined });
+  sent.length = 0; P2.ops.list = 0;
+  await W.runReminders(env2, th(2026, 10, 22, 9, 55));                       // พฤหัส 10:00 − 5
+  ok(sent.length === 1 && P2.ops.list === 2 && JSON.parse(P2.m.get('idx').v).d === '2026-10-22', 'ดัชนีเสีย → สร้างใหม่เอง แล้วส่งตามปกติ (cron ไม่ล้ม)', [sent.length, P2.ops.list]);
+
+  // ทั้งวันจริง: 5 เครื่อง × cron ทุกนาที 07:00–17:59 (660 ครั้ง) · เดิมกิน list 660 ครั้ง/วัน + write ทุกครั้งที่เปิดแอป
+  const P3 = kv(), env3 = { ...env, PUSH: P3 };
+  for (let u = 0; u < 5; u++) await call('/push/sync', { ...tab, subscription: { ...sub, endpoint: EP + u } }, await token('u' + u), env3);
+  sent.length = 0; P3.ops.list = P3.ops.put = P3.ops.delete = 0; P3.ops.get = 0;
+  let runs = 0;
+  for (let mn = 7 * 60; mn < 18 * 60; mn++) { await W.runReminders(env3, th(2026, 10, 21, Math.floor(mn / 60), mn % 60)); runs++; }
+  const pool = P3.ops.list + P3.ops.put + P3.ops.delete;
+  ok(runs === 660 && P3.ops.list === 3 && P3.ops.put === 1 && P3.ops.delete === 0, `ทั้งวัน 660 นาที: list ${P3.ops.list} (สร้างดัชนี 1 + นาทีแจ้งเตือน 2) · write ${P3.ops.put} (ดัชนี) · delete ${P3.ops.delete}`, P3.ops);
+  ok(pool <= 10, `โควตาก้อน list+write+delete ทั้งวันใช้ ${pool} จาก 1,000 ครั้ง (เดิม cron อย่างเดียว ~660)`);
+  ok(P3.ops.get >= 660 && P3.ops.get < 700, `อ่านดัชนีนาทีละครั้ง ${P3.ops.get} ครั้ง/วัน — read มีโควตา 100,000/วัน`);
+  ok(sent.length === 10, 'ทั้งวันส่งครบ: 5 เครื่อง × 2 คาบของวันพุธ ตรงนาที', sent.length);
+
+  console.log('แอป: ซิงก์ซ้ำข้อมูลเดิมไม่ส่ง (รันโค้ดจริงใน timetable.js)');
+  const ttSrc = fs.readFileSync(path.join(__dirname, '..', 'js', 'timetable.js'), 'utf8');
+  const seg = ttSrc.slice(ttSrc.indexOf('const TT_PUSH = '), ttSrc.indexOf('// การ์ดเปิด/ปิดแจ้งเตือนในแท็บตารางสอน'));
+  ok(seg.includes('ttPushSync') && seg.includes('ttPushDisable'), 'ตัดโค้ดซิงก์ของแอปมาทดสอบได้');
+  const vm = require('vm');
+  const mkApp = (over = {}) => {
+    const store = new Map(), calls = []; let uid = 'u1';
+    const subObj = { endpoint: EP, toJSON: () => ({ endpoint: EP, keys: { p256dh: sub.keys.p256dh, auth: sub.keys.auth } }), unsubscribe: async () => true };
+    const c = { console: { warn() {}, log() {} }, Date, JSON, Array, Uint8Array, TextEncoder, Promise, Error, atob, crypto: { subtle: crypto.subtle },
+      navigator: { userAgent: '', serviceWorker: { ready: Promise.resolve({ pushManager: { getSubscription: async () => subObj } }) } },
+      window: { PushManager: {}, Notification: {} }, Notification: { permission: 'granted' },
+      localStorage: { getItem: k => store.has(k) ? store.get(k) : null, setItem: (k, v) => store.set(k, String(v)), removeItem: k => store.delete(k) },
+      firebase: { auth: () => ({ currentUser: { uid, getIdToken: async () => 'tok' } }) },
+      fetch: async (url, init) => { calls.push({ url: String(url), body: JSON.parse(init.body) }); return { ok: true, json: async () => ({}) }; },
+      loadTimetable: async () => TTAB, ...over };
+    vm.createContext(c);
+    vm.runInContext(seg + '\nthis.__t = { sync: ttPushSync, disable: ttPushDisable };', c);
+    return { c, store, calls, api: c.__t, setUid: v => { uid = v; }, posts: () => calls.filter(x => x.url.endsWith('/push/sync')).length };
+  };
+  const TTAB = { periods: [{ start: '08:40' }, { start: '09:30' }], entries: [{ day: 3, period: 0, title: 'คณิต', cls: 'ม.2/1', room: '301' }, { day: 3, period: 1, title: 'ไทย' }] };
+  let app = mkApp();
+  await app.api.sync(); await app.api.sync(); await app.api.sync();
+  ok(app.posts() === 1, 'เปิดแอป 3 รอบ ตารางเดิม → ส่งครั้งเดียว', app.posts());
+  ok(/^[0-9a-f]{64}$/.test(JSON.parse(app.store.get('tt-push-sync-v1')).h), 'เก็บ hash SHA-256 ไว้ในเครื่อง (ไม่เก็บตารางซ้ำ)');
+  TTAB.entries.push({ day: 4, period: 0, title: 'วิทย์' });
+  await app.api.sync();
+  ok(app.posts() === 2, 'ตารางเปลี่ยน → ส่งใหม่');
+  await app.api.sync();
+  ok(app.posts() === 2, 'ส่งแล้วเหมือนเดิม → ไม่ส่งอีก');
+  app.setUid('u2'); await app.api.sync();
+  ok(app.posts() === 3, 'สลับบัญชีบนเครื่องเดียวกัน (uid ต่างกัน) → ส่งใหม่ (KV แยกตาม uid)');
+  app.setUid('u1');
+  const st = JSON.parse(app.store.get('tt-push-sync-v1')); st.at = Date.now() - 8 * 86400e3; app.store.set('tt-push-sync-v1', JSON.stringify(st));
+  await app.api.sync();
+  ok(app.posts() === 4, 'ครบ 7 วัน → ส่งใหม่เพื่อต่ออายุ');
+  await app.api.sync();
+  ok(app.posts() === 4, 'ต่ออายุแล้วไม่ส่งซ้ำ');
+  await app.api.disable();
+  ok(!app.store.has('tt-push-sync-v1') && app.calls.some(x => x.url.endsWith('/push/unsubscribe')), 'ปิดแจ้งเตือน → ล้าง hash (เปิดใหม่ต้องส่งครั้งแรกเสมอ) และแจ้งเซิร์ฟเวอร์ลบ');
+  await app.api.sync();
+  ok(app.posts() === 5, 'เปิดใหม่หลังปิด → ส่งครั้งแรก');
+
+  app = mkApp({ localStorage: { getItem() { throw new Error('denied'); }, setItem() { throw new Error('denied'); }, removeItem() { throw new Error('denied'); } } });
+  await app.api.sync(); await app.api.sync();
+  ok(app.posts() === 2, 'localStorage ใช้ไม่ได้ (โหมดส่วนตัว) → ส่งทุกครั้งเหมือนเดิม ไม่พัง');
+  app = mkApp({ crypto: {} });
+  await app.api.sync(); await app.api.sync();
+  ok(app.posts() === 2, 'ไม่มี crypto.subtle (ไม่ใช่ https) → ส่งทุกครั้งเหมือนเดิม ไม่พัง');
 
   console.log(`\n${pass} ผ่าน · ${fail} ไม่ผ่าน`);
   process.exit(fail ? 1 : 0);
