@@ -1031,7 +1031,7 @@ async function renderCourseOverview(container, course, sections) {
   const uid = AppState.user.uid;
   const base = db.collection('users').doc(uid).collection('courses').doc(course.id);
 
-  const [assessSnap, perSection] = await Promise.all([
+  const [assessSnap, perSection, desc] = await Promise.all([
     base.collection('assessments').get(),
     Promise.all(sections.map(async (s) => {
       const secBase = base.collection('sections').doc(s.id);
@@ -1041,6 +1041,7 @@ async function renderCourseOverview(container, course, sections) {
       ]);
       return { studentsSnap, scoresSnap, s };
     })),
+    loadCourseDescription(course),
   ]);
 
   const assessmentIds = assessSnap.docs.map(d => d.id);
@@ -1070,6 +1071,7 @@ async function renderCourseOverview(container, course, sections) {
       </div>
       ${sections.length === 0 ? `<div class="empty-state u-pt-10">ยังไม่มีห้องเรียนในวิชานี้ กด "+ เพิ่มห้อง" เพื่อเริ่มต้น</div>` : ''}
     </div>
+    ${courseDescCardHtml(desc, course)}
     <div class="stat-row">
       <div class="stat-card"><div class="label">จำนวนห้อง</div><div class="value">${sections.length}</div></div>
       <div class="stat-card"><div class="label">นักเรียนทั้งหมด</div><div class="value">${totalStudents}</div></div>
@@ -1108,4 +1110,60 @@ async function renderCourseOverview(container, course, sections) {
   container.querySelectorAll('#ov-room-pills .room-pill-del').forEach(btn => {
     btn.addEventListener('click', () => confirmDeleteSection(course, btn.dataset.sectionId, btn.dataset.roomLabel, refresh));
   });
+
+  // คำอธิบายรายวิชา: แก้ไข = พาไปแท็บ "คำอธิบายรายวิชา" ของแม่แบบวิชา · พิมพ์ = ใช้ตัวพิมพ์เดียวกับหน้าตัวอย่าง (js/course-desc.js)
+  container.querySelector('#ov-desc-edit-btn')?.addEventListener('click', () => {
+    AppState.structureOpenOnce = course.templateId; // renderRoute อ่านค่านี้ครั้งเดียวแล้วล้าง (ปกติเข้าหน้านี้จะเริ่มที่รายการวิชา)
+    AppState.structureTab = 'desc';
+    navigate('structure-page');
+  });
+  if (desc) {
+    // โหลดโมดูลพิมพ์รอไว้ก่อน — window.open ใน docPrintWindow ต้องมาจากการคลิกโดยตรง ถ้าต้องรอโหลดหลังคลิก เบราว์เซอร์บางตัวจะบล็อก pop-up
+    setTimeout(() => loadModules(LAZY_BUNDLES.cdesc).catch(() => { /* ไม่ได้โหลดล่วงหน้า → โหลดตอนกดพิมพ์ */ }), 0);
+    container.querySelector('#ov-desc-print-btn')?.addEventListener('click', async () => {
+      try { if (typeof cdPrint !== 'function') await loadModules(LAZY_BUNDLES.cdesc); }
+      catch (err) { showToast(err.message || 'โหลดหน้าพิมพ์ไม่สำเร็จ'); return; }
+      cdPrint({ ...desc, semester: desc.semester || String(course.semester || '') });
+    });
+  }
+}
+
+// คำอธิบายรายวิชา (อ่านอย่างเดียว) ของวิชาที่เปิดสอนในเทอมนี้ — เก็บที่แม่แบบวิชา courseTemplates/{templateId}/settings/description
+// (ทุกเทอมที่เปิดสอนวิชาเดียวกันใช้ร่วมกัน) · วิชาที่ยังไม่ผูกแม่แบบอ่านจาก courses/{id}/settings/description
+// คืน null เมื่อยังไม่เคยกรอก/ว่างทั้งหมด/อ่านไม่ได้ (ไม่ให้แท็บภาพรวมพังเพราะส่วนนี้)
+async function loadCourseDescription(course) {
+  try {
+    const root = db.collection('users').doc(AppState.user.uid);
+    const owner = course.templateId ? root.collection('courseTemplates').doc(course.templateId) : root.collection('courses').doc(course.id);
+    const snap = await owner.collection('settings').doc('description').get();
+    const d = snap.exists ? snap.data() : null;
+    return d && (d.descMain || d.descPurpose || (Array.isArray(d.indicators) && d.indicators.length)) ? d : null;
+  } catch (err) {
+    console.warn('โหลดคำอธิบายรายวิชาไม่สำเร็จ (ข้ามส่วนนี้):', err);
+    return null;
+  }
+}
+
+function courseDescCardHtml(d, course) {
+  const edit = course.templateId ? '<button class="btn btn-ghost btn-sm" id="ov-desc-edit-btn">' + (d ? 'แก้ไข' : 'กรอกคำอธิบายรายวิชา') + '</button>' : '';
+  const inds = d && Array.isArray(d.indicators) ? d.indicators.filter(r => r && (r.code || r.text)) : [];
+  const para = (t) => t ? `<p class="cdesc-text">${escapeHtml(t)}</p>` : '';
+  return `
+    <div class="card card-pad u-mb-16" id="ov-desc-card">
+      <div class="u-flex u-items-center u-between u-mb-10 u-wrap u-gap-8">
+        <div class="u-semibold u-fs-135">คำอธิบายรายวิชา</div>
+        <div class="u-flex u-gap-8">
+          ${d ? '<button class="btn btn-ghost btn-sm" id="ov-desc-print-btn">ดูตัวอย่าง / พิมพ์</button>' : ''}
+          ${edit}
+        </div>
+      </div>
+      ${d ? `
+        ${para(d.descMain)}${para(d.descPurpose)}
+        ${inds.length ? `
+          <details class="cdesc-ind">
+            <summary>ตัวชี้วัด ${inds.length} ข้อ</summary>
+            ${inds.map(r => `<div class="cdesc-ind-row"><div class="cdesc-ind-code">${escapeHtml(r.code || '')}</div><div>${escapeHtml(r.text || '')}</div></div>`).join('')}
+          </details>` : ''}
+      ` : '<div class="u-note">ยังไม่ได้กรอกคำอธิบายรายวิชา — กรอกครั้งเดียวที่ "ตั้งค่าโครงสร้างวิชา" แล้วจะแสดงที่นี่ทุกเทอมที่เปิดสอนวิชานี้</div>'}
+    </div>`;
 }

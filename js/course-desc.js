@@ -4,7 +4,9 @@
 //   • อยู่ในหน้า "ตั้งค่าโครงสร้างวิชา" → แท็บ "คำอธิบายรายวิชา" ของแม่แบบวิชาแต่ละวิชา (js/picker-pages.js)
 //   • Firestore: users/{uid}/courseTemplates/{templateId}/settings/description (อ้างผ่าน courseBaseRef ของ js/structure.js
 //     จึงใช้กับ courses/{id} ได้เหมือนกัน) — กฎ firestore.rules เดิมของ courseTemplates/{document=**} ครอบคลุมอยู่แล้ว
-//   • ยังไม่มีหน้าตัวอย่าง/พิมพ์ (ทำทีหลัง) — เอกสารที่เก็บไว้พร้อมใช้ทำหน้าพิมพ์ต่อได้เลย
+//   • ตัวอย่างก่อนพิมพ์: ปุ่ม "ตัวอย่างก่อนพิมพ์" ท้ายฟอร์ม → แผ่น A4 ตัดหน้าด้วยโครงกลางของ doc-shell (docSheetsHtml · docRenderSheets)
+//     อ่านจากค่าในฟอร์มตอนนั้น (รวมที่ยังไม่บันทึก) · พิมพ์/บันทึก PDF ผ่าน docPrintWindow · cdPrint(d) ใช้ซ้ำที่แท็บภาพรวมของหน้าวิชา (js/courses.js)
+//   • หน้าวิชาที่เปิดสอนในเทอม (แท็บภาพรวม) แสดงคำอธิบายนี้แบบอ่านอย่างเดียว โดยอ่านจากแม่แบบวิชาที่วิชานั้นผูกอยู่ (templateId)
 //   • lazy: โหลดผ่าน loadModules(LAZY_BUNDLES.cdesc) (doc-system → doc-shell → course-desc) — doc-shell ดึง docs.min.css ตามมาเอง
 // ==========================================================================
 
@@ -85,7 +87,7 @@ function cdFormHtml(d) {
   const txt = (id, label, val, max, extra = '') =>
     `<div class="field"><label for="${id}">${label}</label><input id="${id}" type="text" maxlength="${max}" value="${escapeHtml(val)}"${extra}></div>`;
   return `
-  <div class="u-note u-mb-12">กรอกข้อมูลรายวิชาตามคำอธิบายรายวิชาของหลักสูตร — ข้อมูลเก็บไว้กับแม่แบบวิชานี้ (ยังไม่มีหน้าตัวอย่างก่อนพิมพ์)</div>
+  <div class="u-note u-mb-12">กรอกข้อมูลรายวิชาตามคำอธิบายรายวิชาของหลักสูตร — ข้อมูลเก็บไว้กับแม่แบบวิชานี้ และแสดงในหน้ารายวิชาของทุกเทอมที่เปิดสอนวิชานี้ · กด “ตัวอย่างก่อนพิมพ์” เพื่อดูหน้ากระดาษก่อนพิมพ์</div>
   <form id="cd-form" class="doc-form" autocomplete="off" novalidate>
 
     <div class="doc-form-header">
@@ -147,6 +149,7 @@ function cdFormHtml(d) {
     </section>
 
     <div class="pa-form-footer">
+      <button type="button" class="btn btn-ghost" id="cd-preview-btn">${DOC_ICO_PRINT} ตัวอย่างก่อนพิมพ์</button>
       <button type="button" class="btn btn-primary" id="cd-save-btn">${CD_SAVE_LABEL}</button>
     </div>
   </form>`;
@@ -162,6 +165,110 @@ function cdCollect(form) {
   }, null);
 }
 
+// ---------------------------------------------------------------- ตัวอย่างก่อนพิมพ์ / พิมพ์
+// เอกสาร A4 แนวตั้ง ขอบ 2/2/2/2.5 ซม. (เหมือน แผนการอบรม) — ชื่อวิชา · ระดับชั้น/ภาคเรียน/หน่วยกิต · ย่อหน้าคำอธิบาย · ตารางตัวชี้วัด
+// CD1_CSS = สไตล์ของ "กระดาษ" (ใช้ทั้งในตัวอย่างและหน้าต่างพิมพ์) ไม่ใช่สไตล์ของหน้าเว็บ — ธรรมเนียมเดียวกับ TRA1_CSS / PA1_CSS
+const CD_SHEET = { port: { w: 210, h: 297, pad: [20, 20, 20, 25], label: 'A4 แนวตั้ง' } }; // mm [บน, ขวา, ล่าง, ซ้าย] — ต้องตรงกับ CD_PAGE
+const CD_PAGE = '@page{size:A4 portrait;margin:2cm 2cm 2cm 2.5cm}html,body{margin:0;background:#fff}';
+const CD_PARA_MAX = 900; // ย่อหน้ายาวกว่านี้ตัดเป็นท่อนๆ (ที่ช่องว่าง) — ตัวอย่างตัดหน้าทีละบล็อก บล็อกเดียวที่ยาวเกินหน้าจะถูกตัดขอบ (หน้าหนึ่งจุได้ราว 2,800 ตัวอักษร)
+
+const CD1_CSS = `
+.cd1{background:#fff;color:#000;font-family:'TH SarabunPSK','TH Sarabun PSK','THSarabunPSK','TH Sarabun New','THSarabunNew','PA Sarabun','Noto Sans Thai',Tahoma,sans-serif;font-size:16pt;line-height:1.22}
+.cd1 *{box-sizing:border-box}
+.cd1 .d1-c{text-align:center;overflow-wrap:anywhere}
+.cd1 .d1-title{font-weight:700;font-size:18pt;margin-bottom:.3em}
+.cd1 .d1-h{font-weight:700;margin-top:.8em;break-after:avoid;page-break-after:avoid}
+.cd1 .d1-p{margin-top:.6em;text-indent:1.25cm;text-align:justify;overflow-wrap:anywhere}
+.cd1 .d1-p.d1-cont{margin-top:0;text-indent:0}
+.cd1 .d1-p.d1-more{text-align-last:justify}
+.cd1 .d1-tbl{width:100%;border-collapse:collapse;margin-top:.4em}
+.cd1 .d1-tbl th,.cd1 .d1-tbl td{border:1px solid #000;padding:.1em .4em;vertical-align:top;text-align:left;overflow-wrap:anywhere}
+.cd1 .d1-tbl th{font-weight:700;text-align:center}
+.cd1 .d1-tbl .d1-code{width:3.8cm}
+.cd1 .d1-tbl thead{display:table-header-group}
+.cd1 .d1-tbl tr{break-inside:avoid;page-break-inside:avoid}
+.cd1 .d1-total{margin-top:.4em}
+`;
+
+// ตัดข้อความเป็นย่อหน้า (ตามบรรทัดใหม่) แล้วตัดย่อหน้ายาวเป็นท่อน ≤ max ที่ช่องว่างตัวสุดท้ายก่อนถึงขีด (ไม่มีช่องว่าง = ตัดตรงขีด)
+// คืน [{ text, cont: เป็นท่อนต่อ (ไม่เยื้อง), more: ยังมีท่อนถัดไป }]
+function cdChunks(text, max = CD_PARA_MAX) {
+  const out = [];
+  String(text || '').split(/\r?\n/).map(t => t.trim()).filter(Boolean).forEach(par => {
+    let rest = par, first = true;
+    while (rest.length > max) {
+      let at = rest.lastIndexOf(' ', max);
+      if (at < max / 2) at = max;
+      out.push({ text: rest.slice(0, at).trim(), cont: !first, more: true }); // more = ยังมีท่อนต่อ → บรรทัดสุดท้ายกระจายเต็มความกว้าง รอยต่อไม่เห็น
+      rest = rest.slice(at).trim();
+      first = false;
+    }
+    if (rest) out.push({ text: rest, cont: !first, more: false });
+  });
+  return out;
+}
+
+// เนื้อหากระดาษ (<section>) — ช่องที่ยังว่างแสดงจุดไข่ปลา เหมือนฟอร์มราชการที่รอกรอก
+function cdBuildBodyHtml(d) {
+  d = cdNormalize(d, null);
+  const e = escapeHtml, dots = n => '…'.repeat(n);
+  const para = t => cdChunks(t).map(c => `<div class="d1-p${c.cont ? ' d1-cont' : ''}${c.more ? ' d1-more' : ''}">${e(c.text)}</div>`).join('');
+  const meta = [
+    d.level && `ระดับชั้น ${e(d.level)}`,
+    d.semester && `ภาคเรียนที่ ${e(d.semester)}`,
+    d.credit && `จำนวน ${e(d.credit)} หน่วยกิต`,
+    `รายวิชา${e(d.type)}`,
+  ].filter(Boolean).join('&emsp;');
+  const en = d.codeEn || d.nameEn
+    ? `<div class="d1-c">Course Code ${e(d.codeEn) || dots(6)}&emsp;Course Title ${e(d.nameEn) || dots(12)}</div>` : '';
+  const inds = d.indicators.length ? `
+  <div class="d1-h">ตัวชี้วัด</div>
+  <table class="d1-tbl">
+    <colgroup><col class="d1-code"><col></colgroup>
+    <thead><tr><th>รหัสตัวชี้วัด</th><th>ตัวชี้วัด</th></tr></thead>
+    <tbody>${d.indicators.map(r => `<tr><td>${e(r.code)}</td><td>${e(r.text)}</td></tr>`).join('')}</tbody>
+  </table>
+  <div class="d1-total">รวมทั้งหมด ${d.indicators.length} ตัวชี้วัด</div>` : '';
+  return `<section class="pg-port">
+  <div class="d1-c d1-title">คำอธิบายรายวิชา</div>
+  <div class="d1-c">รหัสวิชา ${e(d.codeTh) || dots(6)}&emsp;ชื่อรายวิชา ${e(d.nameTh) || dots(20)}</div>
+  ${en}
+  <div class="d1-c">${meta}</div>
+  ${para(d.descMain) || `<div class="d1-p">${dots(60)}</div>`}
+  ${para(d.descPurpose)}${inds}
+</section>`;
+}
+
+function cdDocTitle(d) { return ['คำอธิบายรายวิชา', d.codeTh, d.nameTh].filter(Boolean).join(' '); }
+
+// พิมพ์ / บันทึกเป็น PDF ผ่านหน้าต่างใหม่ (docPrintWindow ต้องถูกเรียกจากการคลิกโดยตรง) — ใช้ซ้ำที่หน้าวิชา
+function cdPrint(d) {
+  d = cdNormalize(d, null);
+  return docPrintWindow({ title: cdDocTitle(d), css: CD1_CSS, page: CD_PAGE, html: `<div class="cd1">${cdBuildBodyHtml(d)}</div>` });
+}
+
+// หน้าตัวอย่างแทนที่ฟอร์มในกล่องเดิม: แผ่น A4 ตัดหน้าด้วยโครงกลาง (docRenderSheets) · "กลับไปแก้ไข" วาดฟอร์มกลับด้วยค่าเดิม
+//   โครงกลางเรียกดูแท็บจาก sys.state.tab เพื่อเลิกฟัง resize — หน้านี้ไม่ใช่ระบบเอกสาร จึงส่ง sys จำลอง (ฟังจนกรอบหลุดจากหน้า)
+const CD_PREVIEW_SYS = { state: { tab: 'cdesc' } };
+function cdShowPreview(container, course, d) {
+  container.innerHTML = `
+    <div class="doc-preview-bar">
+      <button type="button" class="btn btn-ghost btn-sm" id="cd-prev-back">${DOC_ICO_EDIT} กลับไปแก้ไข</button>
+      <div class="doc-preview-actions">
+        <button type="button" class="btn btn-primary btn-sm" id="cd-prev-print">${DOC_ICO_PRINT} พิมพ์ / บันทึกเป็น PDF</button>
+      </div>
+    </div>
+    <div class="u-note doc-preview-hint">ตัวอย่างจากค่าในฟอร์มตอนนี้ (รวมส่วนที่ยังไม่ได้บันทึก) · กดพิมพ์แล้วเลือก "บันทึกเป็น PDF" ในหน้าต่างพิมพ์ได้ · ใช้ Chrome/Edge จะแบ่งหน้าได้ถูกต้องที่สุด</div>
+    <div class="doc-preview-frame-wrap"><iframe class="doc-preview-frame is-fit" title="ตัวอย่างคำอธิบายรายวิชา"></iframe></div>`;
+  container.querySelector('#cd-prev-back').addEventListener('click', () => cdShowForm(container, course, d));
+  container.querySelector('#cd-prev-print').addEventListener('click', () => cdPrint(d));
+  const body = cdBuildBodyHtml(d);
+  docRenderSheets(CD_PREVIEW_SYS, 'cdesc', container, null, { // ไม่รอ — แถบแสดงไปก่อน กระดาษตามมา
+    html: () => docSheetsHtml(CD1_CSS, `<div class="cd1">${body}</div>`),
+    specs: CD_SHEET, bodyClass: 'cd1', keep: '.d1-h', kindOf: () => 'port',
+  }).catch(err => console.error('cdShowPreview:', err));
+}
+
 async function renderCourseDescTab(container, course) {
   showLoading('cat-sm', container);
   _cdDirty = false;
@@ -175,7 +282,11 @@ async function renderCourseDescTab(container, course) {
     return;
   }
   if (!container.isConnected) return; // ผู้ใช้สลับแท็บ/ออกจากหน้าไปแล้ว
+  cdShowForm(container, course, data);
+}
 
+// วาดฟอร์มลงกล่อง — ใช้ทั้งตอนเปิดแท็บ และตอนกลับจากหน้าตัวอย่าง (data = ค่าที่พิมพ์ค้างไว้ ไม่ทิ้ง · ธงค่าค้าง _cdDirty ไม่ถูกแตะ)
+function cdShowForm(container, course, data) {
   container.innerHTML = cdFormHtml(data);
   const form = container.querySelector('#cd-form');
   const rows = form.querySelector('#cd-ind-rows');
@@ -207,6 +318,8 @@ async function renderCourseDescTab(container, course) {
     if (!list.length) { box.focus(); return; }
     if (addRows(list)) { box.value = ''; showToast(`เพิ่มตัวชี้วัด ${list.length} รายการแล้ว`); }
   });
+
+  form.querySelector('#cd-preview-btn').addEventListener('click', () => cdShowPreview(container, course, cdCollect(form)));
 
   const saveBtn = form.querySelector('#cd-save-btn');
   saveBtn.addEventListener('click', async () => {

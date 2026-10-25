@@ -2,7 +2,9 @@
 // วิธีรัน: node tests/course-desc.test.js   (หรือ npm run test:cdesc)
 // ตรวจ: normalize (ค่าเริ่มต้นจากวิชา · ตัดช่องว่าง · จำกัดจำนวน) · แยกตัวชี้วัดที่วางมา · โครงฟอร์มแบบ PA ·
 //        เพิ่ม/ลบ/วางแถว · เก็บค่า → บันทึกที่ settings/description ของแม่แบบ/รายวิชา · ธง "ยังไม่บันทึก" ·
-//        ลงทะเบียนครบ (utils.js · sw.js · แท็บในหน้าโครงสร้างวิชา · CSS ใน bundle docs) · ไม่มี CSS ใน JS
+//        ตัวอย่างก่อนพิมพ์ (ปุ่ม · เนื้อหากระดาษ · ตัดย่อหน้ายาว · กลับไปแก้ไขค่าไม่หาย · พิมพ์ผ่าน docPrintWindow) ·
+//        การ์ดคำอธิบายรายวิชาที่แท็บภาพรวมของหน้าวิชา (js/courses.js: โหลดจากแม่แบบ · อ่านอย่างเดียว · escape) ·
+//        ลงทะเบียนครบ (utils.js · sw.js · แท็บในหน้าโครงสร้างวิชา · CSS ใน bundle docs) · ไม่มี CSS ของหน้าเว็บใน JS
 const fs = require('fs'), vm = require('vm'), path = require('path');
 const { JSDOM } = require('jsdom');
 const ROOT = process.env.PA_ROOT ? path.resolve(process.env.PA_ROOT) : path.join(__dirname, '..');
@@ -23,7 +25,7 @@ const dom = new JSDOM('<!doctype html><body><div id="host"></div></body>', { url
 const w = dom.window;
 const toasts = [];
 const ctx = {
-  window: w, document: w.document, console, setTimeout, clearTimeout, Promise, JSON, Date, Math, Object, Array, Set, Map, String, Number, Error, RegExp,
+  window: w, document: w.document, console, setTimeout, clearTimeout, Promise, URL, JSON, Date, Math, Object, Array, Set, Map, String, Number, Error, RegExp,
   AppState: { user: { uid: 'u1' } },
   firebase: { firestore: { FieldValue: { serverTimestamp: () => 'TS' } } },
   escapeHtml: s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])),
@@ -141,6 +143,99 @@ const $ = id => d.getElementById(id);
   await settle();
   console.error = realErr;
   ok(/โหลดคำอธิบายรายวิชาไม่สำเร็จ/.test(host.textContent) && !$('cd-form'), 'โหลดไม่สำเร็จ: แสดงข้อความแทนฟอร์ม (ไม่ค้างหน้าโหลด)');
+
+  // ---------------- ตัวอย่างก่อนพิมพ์ ----------------
+  ctx.courseBaseRef = c => ref('users/u1/' + (c.isTemplate ? 'courseTemplates' : 'courses') + '/' + c.id); // คืนค่าที่เทสต์โหลดล้มเหลวทับไว้
+  host.innerHTML = '';
+  await R(`renderCourseDescTab(document.getElementById('host'), ${JSON.stringify(course)})`);
+  await settle();
+  const pbtn = $('cd-preview-btn');
+  ok(!!pbtn && pbtn.type === 'button' && pbtn.closest('.pa-form-footer') && /ตัวอย่างก่อนพิมพ์/.test(pbtn.textContent), 'ท้ายฟอร์มมีปุ่ม "ตัวอย่างก่อนพิมพ์" (type=button)');
+  ok(!/ยังไม่มีหน้าตัวอย่าง/.test(host.textContent), 'ข้อความเก่า "ยังไม่มีหน้าตัวอย่าง" ถูกเอาออก');
+
+  const fd = { codeTh: 'ท21102', nameTh: 'ภาษาไทย 2', codeEn: 'TH21102', nameEn: 'Thai 2', level: 'มัธยมศึกษาปีที่ 1', semester: '1', credit: '1.5', type: 'พื้นฐาน',
+    descMain: 'ศึกษาหลักการอ่าน <b>x</b>\nย่อหน้าสอง', descPurpose: 'เพื่ออ่านออกเสียง', indicators: [{ code: 'ท 1.1 ม.1/1', text: 'อ่านออกเสียง' }, { code: 'ท 1.1 ม.1/2', text: 'จับใจความ' }] };
+  const body = R(`cdBuildBodyHtml(${JSON.stringify(fd)})`);
+  const bd = new JSDOM('<body>' + body + '</body>').window.document;
+  ok(bd.querySelectorAll('section.pg-port').length === 1 && bd.querySelector('.d1-title').textContent === 'คำอธิบายรายวิชา', 'เอกสาร: 1 section · หัวเรื่อง "คำอธิบายรายวิชา"');
+  const lines = [...bd.querySelectorAll('.d1-c')].map(e => e.textContent);
+  ok(lines.some(t => /รหัสวิชา ท21102\s+ชื่อรายวิชา ภาษาไทย 2/.test(t)) && lines.some(t => /Course Code TH21102\s+Course Title Thai 2/.test(t)), 'บรรทัดรหัส/ชื่อวิชา ไทย + อังกฤษ');
+  ok(lines.some(t => /ระดับชั้น มัธยมศึกษาปีที่ 1\s+ภาคเรียนที่ 1\s+จำนวน 1\.5 หน่วยกิต\s+รายวิชาพื้นฐาน/.test(t)), 'บรรทัดระดับชั้น · ภาคเรียน · หน่วยกิต · ประเภท');
+  ok(bd.querySelectorAll('.d1-p').length === 3 && !bd.querySelector('.d1-p b'), 'คำอธิบาย 2 ย่อหน้า + จุดประสงค์ 1 ย่อหน้า · ข้อความถูก escape (ไม่ตีความ HTML)');
+  ok(bd.querySelectorAll('.d1-tbl tbody tr').length === 2 && bd.querySelector('.d1-tbl thead') && /รวมทั้งหมด 2 ตัวชี้วัด/.test(bd.querySelector('.d1-total').textContent), 'ตารางตัวชี้วัด: มีหัวตาราง · 2 แถว · สรุปจำนวน');
+  const empty = new JSDOM('<body>' + R('cdBuildBodyHtml({})') + '</body>').window.document;
+  ok(!empty.querySelector('.d1-tbl') && /…/.test(empty.querySelector('.d1-p').textContent) && /……/.test(empty.querySelector('.d1-c:nth-child(2)').textContent), 'เอกสารว่าง: ไม่มีตารางตัวชี้วัด · ช่องว่างเป็นจุดไข่ปลา');
+  const long = ('คำ ').repeat(900).trim();
+  const ch = JSON.parse(R(`JSON.stringify(cdChunks(${JSON.stringify(long)}))`));
+  ok(ch.length > 2 && ch.every(c => c.text.length <= R('CD_PARA_MAX')) && ch[0].cont === false && ch.slice(1).every(c => c.cont === true), 'ย่อหน้ายาวถูกตัดเป็นท่อน ≤ CD_PARA_MAX (ท่อนต่อไม่เยื้อง)');
+  ok(JSON.parse(R(`JSON.stringify(cdChunks('x'.repeat(1500)))`)).every(c => c.text.length <= R('CD_PARA_MAX')), 'ไม่มีช่องว่างเลย: ตัดตรงขีดไม่ค้าง');
+  ok(ch.slice(0, -1).every(c => c.more === true) && ch[ch.length - 1].more === false && R(`cdChunks('สั้น')`)[0].more === false, 'ท่อนที่ยังมีท่อนต่อถูกทำเครื่องหมาย more (ท่อนสุดท้าย/ย่อหน้าสั้น = ไม่ใช่)');
+  const lb = new JSDOM('<body>' + R(`cdBuildBodyHtml({ descMain: ${JSON.stringify(long)} })`) + '</body>').window.document;
+  ok(lb.querySelectorAll('.d1-p.d1-more').length === ch.length - 1 && lb.querySelectorAll('.d1-p.d1-cont').length === ch.length - 1 && /d1-more\{text-align-last:justify\}/.test(R('CD1_CSS')), 'เอกสาร: ท่อนที่มีท่อนต่อใช้ .d1-more (กระจายบรรทัดท้าย) · ท่อนต่อใช้ .d1-cont');
+  const paged = new JSDOM(R(`docSheetsHtml(CD1_CSS, '<div class="cd1">' + cdBuildBodyHtml(${JSON.stringify(fd)}) + '</div>')`)).window.document;
+  const sheets = R(`(d => docPaginate(d, { specs: CD_SHEET, bodyClass: 'cd1', keep: '.d1-h', kindOf: () => 'port' }))`)(paged);
+  ok(sheets === 1 && paged.querySelectorAll('.doc-sheet').length === 1 && paged.querySelector('.doc-sheet-body.cd1 .d1-tbl'), 'โครงกลางตัดหน้าได้: แผ่น A4 พร้อมตารางตัวชี้วัด');
+  ok(/210|297/.test(paged.querySelector('.doc-sheet').getAttribute('style')) && /20mm 20mm 20mm 25mm/.test(paged.querySelector('.doc-sheet').getAttribute('style')), 'ขนาดแผ่น A4 ขอบ 20/20/20/25 มม. ตรงกับ @page ตอนพิมพ์');
+
+  // กดปุ่ม → หน้าตัวอย่างแทนฟอร์ม (อ่านค่าที่ยังไม่บันทึกด้วย)
+  $('cd-nameEn').value = 'Unsaved Title';
+  $('cd-descMain').value = 'ค่าที่ยังไม่บันทึก';
+  d.querySelector('#cd-form').dispatchEvent(new w.Event('input'));
+  const dirtyBefore = R('cdIsDirty()');
+  pbtn.click();
+  await settle();
+  ok(!$('cd-form') && !!host.querySelector('.doc-preview-frame') && !!$('cd-prev-back') && !!$('cd-prev-print'), 'กด "ตัวอย่างก่อนพิมพ์": ฟอร์มถูกแทนที่ด้วยกรอบตัวอย่าง + ปุ่มกลับ/พิมพ์');
+  ok(host.querySelector('.doc-preview-frame').classList.contains('is-fit') && host.querySelector('.doc-preview-frame-wrap'), 'กรอบตัวอย่างใช้คลาสโครงเดียวกับระบบเอกสารอื่น (.doc-preview-frame.is-fit)');
+  ok(dirtyBefore === true && R('cdIsDirty()') === true, 'อยู่หน้าตัวอย่าง: ธงค่าค้างยังอยู่ (สลับแท็บแล้วยังถามก่อนทิ้ง)');
+  $('cd-prev-back').click();
+  ok(!!$('cd-form') && $('cd-nameEn').value === 'Unsaved Title' && $('cd-descMain').value === 'ค่าที่ยังไม่บันทึก', 'กลับไปแก้ไข: ค่าที่พิมพ์ค้างไว้ไม่หาย');
+  ok(R('cdIsDirty()') === true, 'กลับมาที่ฟอร์ม: ธงค่าค้างยังเป็นจริง');
+  ok(!!$('cd-preview-btn') && !!$('cd-save-btn'), 'กลับมาที่ฟอร์ม: ปุ่มตัวอย่าง/บันทึกใช้งานได้อีก');
+
+  // พิมพ์: เปิดหน้าต่างใหม่ → เขียนเอกสาร (ต้องเรียก window.open ก่อน await ใดๆ)
+  const written = []; let opened = 0;
+  w.open = () => { opened++; return { document: { write: h => written.push(h), close() {} }, focus() {}, print() {}, close() {} }; };
+  const pr = R(`cdPrint(${JSON.stringify(fd)})`);
+  ok(opened === 1, 'cdPrint: เรียก window.open ทันที (ไม่รอ await ก่อน)');
+  await pr; await settle();
+  const html = written.join('');
+  ok(/<title>คำอธิบายรายวิชา ท21102 ภาษาไทย 2<\/title>/.test(html) && /size:A4 portrait;margin:2cm 2cm 2cm 2\.5cm/.test(html), 'หน้าต่างพิมพ์: ชื่อเอกสาร + @page A4 ขอบ 2/2/2/2.5 ซม.');
+  ok(/class="cd1"/.test(html) && /อ่านออกเสียง/.test(html) && /\.cd1 \.d1-tbl/.test(html), 'หน้าต่างพิมพ์: มีเนื้อหา + สไตล์ของกระดาษ (CD1_CSS)');
+
+  // ---------------- แท็บภาพรวมของหน้าวิชา (js/courses.js) ----------------
+  const cstore = new Map();
+  const cref = path => ({ path, collection: n => ({ doc: id => cref(path + '/' + n + '/' + id) }), get: async () => { if (cref.fail) throw new Error('offline'); return { exists: cstore.has(path), data: () => cstore.get(path) }; } });
+  const cctx = { db: { collection: n => ({ doc: id => cref(n + '/' + id) }) }, AppState: { user: { uid: 'u1' } }, console: { warn() {}, log() {}, error() {} },
+    escapeHtml: ctx.escapeHtml, showToast() {}, firebase: ctx.firebase };
+  vm.createContext(cctx);
+  vm.runInContext(read('js/courses.js').replace(/^const /gm, 'var '), cctx, { filename: 'js/courses.js' });
+  const C = code => vm.runInContext(code, cctx);
+  const T = 'users/u1/courseTemplates/t1/settings/description', X = 'users/u1/courses/c1/settings/description';
+  ok(await C(`loadCourseDescription({ id: 'c1', templateId: 't1' })`) === null, 'ยังไม่เคยกรอก → null (ไม่มีเอกสาร)');
+  cstore.set(T, { descMain: '', descPurpose: '', indicators: [] });
+  ok(await C(`loadCourseDescription({ id: 'c1', templateId: 't1' })`) === null, 'เอกสารว่างทั้งหมด → null (แสดงสถานะยังไม่กรอก)');
+  cstore.set(T, { descMain: 'ศึกษาจากแม่แบบ', indicators: [{ code: 'ก', text: 'ข' }] });
+  cstore.set(X, { descMain: 'ของรายวิชาเอง' });
+  let got = await C(`loadCourseDescription({ id: 'c1', templateId: 't1' })`);
+  ok(got && got.descMain === 'ศึกษาจากแม่แบบ', 'วิชาที่ผูกแม่แบบ: อ่านคำอธิบายจากแม่แบบ (ใช้ร่วมกันทุกเทอม)');
+  got = await C(`loadCourseDescription({ id: 'c1' })`);
+  ok(got && got.descMain === 'ของรายวิชาเอง', 'วิชาที่ไม่มี templateId: อ่านจาก courses/{id}/settings/description');
+  cref.fail = true;
+  ok(await C(`loadCourseDescription({ id: 'c1', templateId: 't1' })`) === null, 'อ่านไม่ได้ → null (ไม่ทำให้แท็บภาพรวมพัง)');
+  cref.fail = false;
+
+  let card = C(`courseDescCardHtml(null, { id: 'c1', templateId: 't1' })`);
+  ok(/ยังไม่ได้กรอกคำอธิบายรายวิชา/.test(card) && /id="ov-desc-edit-btn"[^>]*>กรอกคำอธิบายรายวิชา</.test(card) && !/ov-desc-print-btn/.test(card), 'ยังไม่มีคำอธิบาย: บอกสถานะ + ปุ่มกรอก · ไม่มีปุ่มพิมพ์');
+  card = C(`courseDescCardHtml(${JSON.stringify({ descMain: 'ศึกษา <script>x</script>', descPurpose: 'เพื่อ…', indicators: [{ code: 'ท 1.1', text: 'a' }, { code: '', text: '' }, { code: 'ท 1.2', text: 'b' }] })}, { id: 'c1', templateId: 't1' })`);
+  ok(/id="ov-desc-print-btn"/.test(card) && />แก้ไข</.test(card) && /ศึกษา &lt;script&gt;/.test(card) && !/<script>/.test(card), 'มีคำอธิบาย: ปุ่มดูตัวอย่าง/พิมพ์ + แก้ไข · ข้อความถูก escape');
+  ok(/ตัวชี้วัด 2 ข้อ/.test(card) && (card.match(/class="cdesc-ind-row"/g) || []).length === 2, 'ตัวชี้วัด: ซ่อนในรายการพับ · นับเฉพาะแถวที่มีข้อมูล');
+  ok(!/ov-desc-edit-btn/.test(C(`courseDescCardHtml(null, { id: 'c1' })`)), 'วิชาที่ไม่มี templateId: ไม่มีปุ่มแก้ (ไม่มีแม่แบบให้ไปแก้)');
+  const cs = read('js/courses.js'), ap = read('js/app.js');
+  ok(/loadCourseDescription\(course\)/.test(cs) && /\$\{courseDescCardHtml\(desc, course\)\}/.test(cs), 'แท็บภาพรวม: โหลดพร้อมข้อมูลอื่น แล้ววาดการ์ด');
+  ok(/structureOpenOnce\s*=\s*course\.templateId/.test(cs) && /AppState\.structureTab\s*=\s*'desc'/.test(cs) && /structureEditingTemplateId\s*=\s*AppState\.structureOpenOnce\s*\|\|\s*null/.test(ap) && /structureOpenOnce\s*=\s*null/.test(ap), 'ปุ่มแก้: ข้ามไปแท็บคำอธิบายของแม่แบบ (ใช้ครั้งเดียวแล้วล้าง) · เข้าหน้าตั้งค่าโครงสร้างตามปกติยังเริ่มที่รายการ');
+  ok(/cdPrint\(/.test(cs) && /LAZY_BUNDLES\.cdesc/.test(cs), 'ปุ่มพิมพ์ที่หน้าวิชา: โหลดโมดูล cdesc แล้วใช้ cdPrint ตัวเดียวกับหน้าตัวอย่าง');
+  const cssAll = read('css/style.css'), bundleAt = cssAll.indexOf('/* @bundle docs');
+  ok(cssAll.indexOf('.cdesc-text') > 0 && cssAll.indexOf('.cdesc-text') < bundleAt && read('css/style.min.css').includes('.cdesc-ind-row'), 'CSS การ์ดคำอธิบายอยู่ในส่วนหลัก (core) — หน้าวิชาไม่ต้องรอโหลด docs.min.css');
 
   // ---------------- ลงทะเบียนครบ + กฎโปรเจกต์ ----------------
   const src = read('js/course-desc.js');

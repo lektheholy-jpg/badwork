@@ -143,7 +143,12 @@ function renderRoute(route) {
   if (route === 'dashboard') return renderDashboard();
   else if (route === 'courses') return renderCoursesList();
   else if (route === 'archive-page') return renderArchivePage();
-  else if (route === 'structure-page') { AppState.structureEditingTemplateId = null; return renderStructurePage(); }
+  else if (route === 'structure-page') {
+    // เข้าหน้านี้ปกติเริ่มที่รายการวิชา · structureOpenOnce = ข้ามไปแก้แม่แบบวิชาที่ระบุเลย (ใช้ครั้งเดียว — เช่นปุ่มแก้คำอธิบายรายวิชาที่หน้าวิชา)
+    AppState.structureEditingTemplateId = AppState.structureOpenOnce || null;
+    AppState.structureOpenOnce = null;
+    return renderStructurePage();
+  }
   else if (route === 'scores-page') return renderScoresPage();
   else if (route === 'report-page') return renderReportPage();
   else if (route === 'tools') return renderToolsPage();
@@ -440,7 +445,7 @@ function initBgCustom(view, onChange) {
 // ---------- เกี่ยวกับ (บนสุดของหน้าตั้งค่า): เวอร์ชันเว็บ · ผู้สร้าง ----------
 // version รูปแบบ v<รุ่นใหญ่>.<ฟีเจอร์>.<วันเวลา> เช่น v1.15.26OC201912 — **ห้ามแก้มือ**
 //   npm run build:version (รวมใน npm run build) เขียนให้ทั้งตรงนี้และ VERSION ใน sw.js · รายละเอียดดู tools/version.js
-const APP_INFO = { version: 'v1.15.26OC251523', creator: 'lektheholy', email: 'lektheholy@gmail.com' };
+const APP_INFO = { version: 'v1.15.26OC251540', creator: 'lektheholy', email: 'lektheholy@gmail.com' };
 
 function aboutHtml() {
   const a = APP_INFO;

@@ -2357,6 +2357,17 @@ table.tt tr.is-today td.tt-cell { background: color-mix(in srgb, var(--hue-orang
   .preset-actions { flex: 1 1 100%; justify-content: flex-start; }
 }
 
+/* คำอธิบายรายวิชาในแท็บภาพรวมของหน้าวิชา (js/courses.js · courseDescCardHtml) — อ่านอย่างเดียว */
+.cdesc-text { margin: 0 0 10px; line-height: 1.7; white-space: pre-line; overflow-wrap: anywhere; }
+.cdesc-ind { margin-top: 4px; }
+.cdesc-ind > summary { cursor: pointer; font-weight: 600; font-size: 13.5px; color: var(--ink-soft); }
+.cdesc-ind-row { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 4px 12px; padding: 8px 0; border-top: 1px solid var(--border); font-size: 13.5px; line-height: 1.6; }
+.cdesc-ind > summary + .cdesc-ind-row { margin-top: 8px; }
+.cdesc-ind-code { font-weight: 600; color: var(--ink-soft); }
+@media (max-width: 540px) {
+  .cdesc-ind-row { grid-template-columns: 1fr; }
+}
+
 /* @bundle docs — ส่วนนี้แยกเป็น css/docs.min.css โหลดเมื่อเปิดหน้าระบบเอกสาร (PA · ID-Plan · วิจัยในชั้นเรียน · …) — กฎในนี้ต้องไม่ใช้ class ที่หน้าหลักใช้ (tools/split-css.js ตรวจให้) · วางกฎใหม่ของระบบเอกสารไว้ในบล็อกนี้ */
 /* ==========================================================================
    ผู้ช่วย AI ในฟอร์มเอกสาร (แกน js/badwork-ai.js · ใช้ร่วมทุกระบบ) — การ์ดบนสุด · แถวปุ่มใต้ช่อง · หน้าต่างตรวจทาน
