@@ -71,12 +71,13 @@ put(U+'courses/c3', { code:'ค2', name:'คณิต', level:'ม.2', semester:
   const tItemKeys = tItems.map(([k, v]) => [k, v]);
   const work = tItemKeys.find(([, v]) => v.name === 'งาน1')[0];
   const fin = tItemKeys.find(([, v]) => v.name === 'ปลายภาค')[0];
-  store.set(work, { ...store.get(work), max: 25 });
+  store.set(work, { ...store.get(work), max: 25, attachments: [{ id: 'q', kind: 'link', url: 'https://forms.gle/q', title: 'แบบทดสอบ' }] });
   store.delete(fin);
   put(U+'courseTemplates/'+t+'/assessments/newX', { name:'งานใหม่', max:5, category:'collect', order:5 });
   await ctx.syncTemplateToCourse(ref(U+'courseTemplates/'+t), ref(U+'courses/c2'));
   const after = [...store.entries()].filter(([k]) => k.startsWith(U+'courses/c2/assessments/')).map(([k, v]) => [k.split('/').pop(), v]);
   assert.strictEqual(store.get(U+'courses/c2/assessments/b1').max, 25, 'id เดิมคงอยู่ (คะแนนไม่หลุด) และค่าอัปเดต');
+  assert.strictEqual(store.get(U+'courses/c2/assessments/b1').attachments[0].url, 'https://forms.gle/q', 'สื่อที่แนบในแม่แบบตามไปที่รายวิชา');
   assert.ok(!store.has(U+'courses/c2/assessments/b3'), 'รายการที่ลบจากแม่แบบถูกลบ');
   assert.ok(after.some(([, v]) => v.name === 'งานใหม่'), 'เพิ่มรายการใหม่');
   assert.strictEqual(after.length, 3);

@@ -190,6 +190,7 @@ async function recDeleteAllFiles(uid) {
     for (const p of list.prefixes) await walk(p);
   };
   await walk(st.ref(`users/${uid}/records`));
+  await walk(st.ref(`users/${uid}/attachments`)); // ใบงานที่แนบกับรายการคะแนน (js/structure.js)
 }
 
 // ---------- หน้าต่างรายละเอียด (ดูต้นฉบับ) ----------

@@ -221,6 +221,7 @@ const ICONS = {
   moon: '<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z"/>',
   check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
+  clip: '<path d="M20 11.5l-8 8a5 5 0 0 1-7-7l8.5-8.5a3.3 3.3 0 0 1 4.7 4.7L9.5 17a1.7 1.7 0 0 1-2.4-2.4L14.5 7"/>',
   contrast: '<circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v17a8.5 8.5 0 0 0 0-17Z" fill="currentColor"/>',
   folder: '<g fill="currentColor" stroke="none"><path opacity=".55" d="M3 7.5A2.5 2.5 0 0 1 5.5 5H9l2 2.5h7.5A2.5 2.5 0 0 1 21 10v8a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 18Z"/><path d="M3 11.5A2.5 2.5 0 0 1 5.5 9h13a2.5 2.5 0 0 1 2.5 2.5V18a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 18Z"/></g>',
 };
@@ -250,6 +251,76 @@ function levelSelectOptionsHtml(selected) {
   return `<option value="">— เลือกระดับชั้น —</option>` +
     LEVEL_OPTIONS.map(l => `<option value="${l}" ${l === selected ? 'selected' : ''}>${l}</option>`).join('');
 }
+
+// ---------- สื่อ/ใบงานที่แนบกับรายการคะแนน (ส่วนที่ใช้ร่วม: ตรวจลิงก์ · จำแนกประเภท · แสดงผล) ----------
+// ฟิลด์ assessment.attachments = [{ id, kind: 'link' | 'file', title, url, path?, size?, type? }] — ส่วนแก้ไข/อัปโหลดอยู่ที่ js/structure.js
+// @att-helpers begin
+const ATT_MAX_PER_ITEM = 10;
+
+// ลิงก์ต้องเป็น http(s) เท่านั้น (กัน javascript: ฯลฯ) · พิมพ์ไม่มี https:// ได้ · ไม่ผ่าน = ''
+function attSafeUrl(raw) {
+  const v = String(raw || '').trim();
+  if (!v) return '';
+  try {
+    const u = new URL(/^https?:\/\//i.test(v) ? v : (/^[a-z][a-z0-9+.-]*:/i.test(v) && !/^[^/]*\.[^/]*:\d/.test(v) ? v : 'https://' + v));
+    return (u.protocol === 'https:' || u.protocol === 'http:') && u.hostname.includes('.') ? u.href : '';
+  } catch (e) { return ''; }
+}
+
+function attKind(a) {
+  if (a.kind === 'file') return a.type === 'application/pdf' ? 'ไฟล์ PDF' : 'รูปภาพ';
+  let h = '', p = '';
+  try { const u = new URL(a.url); h = u.hostname.replace(/^www\./, ''); p = u.pathname; } catch (e) { return 'ลิงก์'; }
+  if (h === 'forms.gle' || (h === 'docs.google.com' && p.startsWith('/forms'))) return 'Google Form';
+  if (h === 'drive.google.com') return 'Google Drive';
+  if (h === 'docs.google.com') return 'Google Docs';
+  if (h === 'youtube.com' || h === 'm.youtube.com' || h === 'youtu.be') return 'YouTube';
+  return 'ลิงก์';
+}
+
+// สำเนาที่สะอาดสำหรับบันทึกลง Firestore (ตัดอันที่ลิงก์ไม่ถูกต้อง · ตัดความยาว · จำกัดจำนวน)
+function cleanAttachments(list) {
+  return (Array.isArray(list) ? list : []).map(a => {
+    const url = a && a.kind === 'file' ? String(a.url || '') : attSafeUrl(a && a.url);
+    if (!url || !/^https?:\/\//i.test(url)) return null;
+    const out = { id: String(a.id || uid4()), kind: a.kind === 'file' ? 'file' : 'link', title: String(a.title || '').trim().slice(0, 120) || 'สื่อ', url };
+    if (out.kind === 'file') {
+      out.path = String(a.path || '').slice(0, 300);
+      out.size = Number(a.size) || 0;
+      out.type = String(a.type || '').slice(0, 80);
+    }
+    return out;
+  }).filter(Boolean).slice(0, ATT_MAX_PER_ITEM);
+}
+
+function attListHtml(list, { removable }) {
+  if (!list.length) return `<div class="field-hint">ยังไม่มีสื่อที่แนบไว้</div>`;
+  return list.map(a => `
+    <div class="att-row u-flex u-items-center u-gap-8">
+      <span class="badge badge-neutral">${escapeHtml(attKind(a))}</span>
+      <a class="att-title" href="${escapeHtml(a.url)}" target="_blank" rel="noopener noreferrer" title="${escapeHtml(a.title)}">${escapeHtml(a.title)}</a>
+      ${removable ? `<button type="button" class="btn btn-danger-ghost btn-sm att-remove" data-att-id="${escapeHtml(a.id)}">เอาออก</button>` : ''}
+    </div>`).join('');
+}
+
+// ปุ่มเล็กข้างหัวคอลัมน์ในหน้าบันทึกคะแนน (ไม่มีสื่อ = ไม่แสดง)
+function attChipHtml(item) {
+  const n = Array.isArray(item.attachments) ? item.attachments.length : 0;
+  if (!n) return '';
+  return `<button type="button" class="att-chip" data-att-id="${escapeHtml(item.id)}" title="สื่อ/ใบงานของรายการนี้ ${n} อัน">${icon('clip')}${n}</button>`;
+}
+
+// ดูอย่างเดียว (หน้าบันทึกคะแนน): กดชื่อเพื่อเปิดลิงก์/ไฟล์ในแท็บใหม่
+function openAttachmentsViewer(item) {
+  openModal(`
+    <h2>สื่อ / ใบงาน: ${escapeHtml(item.name || 'รายการ')}</h2>
+    <div class="modal-sub">กดชื่อเพื่อเปิดในแท็บใหม่ — แก้ไขที่แท็บ "โครงสร้างคะแนน" หรือหน้า "ตั้งค่าโครงสร้างวิชา"</div>
+    ${attListHtml(cleanAttachments(item.attachments), { removable: false })}
+    <div class="modal-actions"><button class="btn btn-primary" id="att-view-close">ปิด</button></div>
+  `);
+  document.getElementById('att-view-close').addEventListener('click', closeModal);
+}
+// @att-helpers end
 
 // ช่องคะแนนถือว่า "กรอกแล้ว" เมื่อไม่ใช่ undefined / null / สตริงว่าง (เลข 0 นับว่ากรอกแล้ว)
 function hasScoreValue(v) { return v !== undefined && v !== null && v !== ''; }

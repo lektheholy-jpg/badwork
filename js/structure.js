@@ -8,6 +8,113 @@
 const MIDTERM_NAME = 'สอบกลางภาค';
 const FINAL_NAME = 'สอบปลายภาค';
 
+// ==========================================================================
+// สื่อ/ใบงานที่แนบกับรายการคะแนน (assessment.attachments) — ไว้จำว่าคะแนนช่องนี้ใช้สื่อไหน
+//   [{ id, kind: 'link' | 'file', title, url, path?, size?, type? }]  (สูงสุด ATT_MAX_PER_ITEM อันต่อรายการ)
+//   link = ลิงก์ (Google Form / Drive / YouTube ฯลฯ) · file = ใบงาน PDF/รูป ใน Firebase Storage: users/{uid}/attachments/{แม่แบบหรือวิชา}/{ไฟล์}
+//   แนบที่แม่แบบ → ถูกคัดลอกไปกับโครงสร้างตอนสร้างรายวิชา/อัปเดตตามแม่แบบ (ใช้ไฟล์เดียวกัน)
+//   จึง "ไม่ลบไฟล์ใน Storage" ตอนเอาออกจากรายการ — อาจมีรายวิชาอื่นยังอ้างถึงอยู่ (ไฟล์ทั้งหมดถูกลบตอนลบบัญชี: recDeleteAllFiles)
+// ==========================================================================
+const ATT_MAX_FILE = 10 * 1024 * 1024; // ต้องตรงกับ storage.rules
+
+let _attStoragePromise = null;
+function attStorage() {
+  if (!_attStoragePromise) {
+    _attStoragePromise = new Promise((resolve, reject) => {
+      if (firebase.storage) { resolve(firebase.storage()); return; }
+      const s = document.createElement('script');
+      s.src = 'https://www.gstatic.com/firebasejs/13.0.0/firebase-storage-compat.js';
+      s.onload = () => resolve(firebase.storage());
+      s.onerror = () => { _attStoragePromise = null; reject(new Error('โหลดตัวส่งไฟล์ไม่สำเร็จ (ต้องมีอินเทอร์เน็ต)')); };
+      document.head.appendChild(s);
+    });
+  }
+  return _attStoragePromise;
+}
+
+async function attUpload(ownerKey, file, onProgress) {
+  const isPdf = file.type === 'application/pdf';
+  if (!isPdf && !/^image\//.test(file.type)) throw new Error('แนบได้เฉพาะไฟล์ PDF หรือรูปภาพ');
+  if (file.size > ATT_MAX_FILE) throw new Error('ไฟล์ใหญ่เกิน 10 MB');
+  const st = await attStorage();
+  const ext = ((/\.([a-z0-9]{1,5})$/i.exec(file.name || '') || [])[1] || (isPdf ? 'pdf' : 'jpg')).toLowerCase();
+  const path = `users/${AppState.user.uid}/attachments/${ownerKey}/${Date.now()}-${uid4()}.${ext}`;
+  const task = st.ref(path).put(file, { contentType: file.type });
+  await new Promise((resolve, reject) => task.on('state_changed',
+    s => { if (onProgress && s.totalBytes) onProgress(s.bytesTransferred / s.totalBytes); }, reject, resolve));
+  const url = await st.ref(path).getDownloadURL();
+  return { path, url, size: file.size, type: file.type };
+}
+
+// แก้ไขสื่อของรายการ (หน้าโครงสร้าง) — แก้ item.attachments ในหน่วยความจำ แล้วเรียก onChange() ให้หน้าวาดใหม่
+// ต้องกด "บันทึกโครงสร้างวิชา" จึงเขียนลง Firestore (ไฟล์ที่อัปโหลดแล้วอยู่ใน Storage ทันที)
+function openAttachmentsModal(item, ownerKey, onChange) {
+  if (!Array.isArray(item.attachments)) item.attachments = [];
+  openModal(`
+    <h2>สื่อ / ใบงาน: ${escapeHtml(item.name || 'รายการ')}</h2>
+    <div class="modal-sub">แนบลิงก์ (Google Form, Drive, YouTube ฯลฯ) หรืออัปโหลดใบงาน PDF/รูป ไม่เกิน 10 MB ได้สูงสุด ${ATT_MAX_PER_ITEM} อัน — แนบเสร็จแล้วอย่าลืมกด "บันทึกโครงสร้างวิชา"</div>
+    <div id="att-list"></div>
+    <div class="field">
+      <label>เพิ่มลิงก์</label>
+      <div class="field-row">
+        <div class="field"><input id="att-link-title" maxlength="120" placeholder="ชื่อที่จะแสดง เช่น แบบทดสอบหลังเรียน"></div>
+        <div class="field"><input id="att-link-url" inputmode="url" placeholder="https://forms.gle/..."></div>
+      </div>
+      <button type="button" class="btn btn-ghost btn-sm" id="att-add-link">+ เพิ่มลิงก์</button>
+    </div>
+    <div class="field">
+      <label>อัปโหลดใบงาน (PDF หรือรูป)</label>
+      <input type="file" id="att-file" accept="application/pdf,image/*">
+      <div class="field-hint" id="att-status"></div>
+    </div>
+    <div class="modal-actions"><button class="btn btn-primary" id="att-done">เสร็จสิ้น</button></div>
+  `);
+  const $ = (id) => document.getElementById(id);
+  const full = () => item.attachments.length >= ATT_MAX_PER_ITEM;
+  const refresh = () => {
+    $('att-list').innerHTML = attListHtml(item.attachments, { removable: true });
+    $('att-list').querySelectorAll('.att-remove').forEach(btn => btn.addEventListener('click', () => {
+      item.attachments = item.attachments.filter(a => a.id !== btn.dataset.attId);
+      refresh(); if (onChange) onChange();
+    }));
+  };
+  refresh();
+
+  $('att-add-link').addEventListener('click', () => {
+    if (full()) { showToast(`แนบได้สูงสุด ${ATT_MAX_PER_ITEM} อันต่อรายการ`); return; }
+    const url = attSafeUrl($('att-link-url').value);
+    if (!url) { showToast('กรุณาใส่ลิงก์ที่ถูกต้อง (ขึ้นต้นด้วย https://)'); return; }
+    const a = { id: uid4(), kind: 'link', url, title: '' };
+    a.title = $('att-link-title').value.trim() || attKind(a);
+    item.attachments.push(a);
+    $('att-link-title').value = ''; $('att-link-url').value = '';
+    refresh(); if (onChange) onChange();
+  });
+
+  $('att-file').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (full()) { showToast(`แนบได้สูงสุด ${ATT_MAX_PER_ITEM} อันต่อรายการ`); e.target.value = ''; return; }
+    const status = $('att-status');
+    e.target.disabled = true;
+    status.textContent = 'กำลังอัปโหลด...';
+    try {
+      const up = await attUpload(ownerKey, file, p => { status.textContent = `กำลังอัปโหลด ${Math.round(p * 100)}%`; });
+      item.attachments.push({ id: uid4(), kind: 'file', title: file.name.slice(0, 120), ...up });
+      status.textContent = 'อัปโหลดแล้ว';
+      refresh(); if (onChange) onChange();
+    } catch (err) {
+      console.error(err);
+      status.textContent = '';
+      showToast(err.message && !/^(storage|Firebase)/i.test(err.message) ? err.message : 'อัปโหลดไม่สำเร็จ ลองใหม่อีกครั้ง');
+    } finally {
+      e.target.value = '';
+      e.target.disabled = false;
+    }
+  });
+  $('att-done').addEventListener('click', closeModal);
+}
+
 // ที่อยู่ข้อมูลของ "วิชา" ที่กำลังแก้โครงสร้าง: แม่แบบวิชา (course.isTemplate) อยู่ที่ courseTemplates
 // ส่วนรายวิชาที่เปิดสอนในเทอมอยู่ที่ courses — โครงสร้างย่อยหน้าตาเหมือนกัน (assessments + settings/structure)
 function courseBaseRef(course) {
@@ -48,7 +155,7 @@ async function renderStructureTab(container, course) {
   function draw() {
     const gt = grandTotal();
     const hasGroups = groups.length > 0;
-    const cols = hasGroups ? 7 : 6;
+    const cols = hasGroups ? 8 : 7;
     const ordered = displayItems();
 
     const itemRow = (it, idx) => `
@@ -57,6 +164,7 @@ async function renderStructureTab(container, course) {
         <td>${idx + 1}</td>
         <td><input class="row-name" data-id="${it.id}" data-field="name" value="${escapeHtml(it.name)}" placeholder="ชื่อรายการ"></td>
         <td><input class="row-detail" data-id="${it.id}" data-field="detail" value="${escapeHtml(it.detail || '')}" placeholder="รายละเอียด/จุดประสงค์ (ถ้ามี)"></td>
+        <td class="att-col"><button type="button" class="btn btn-ghost btn-sm att-btn" data-id="${it.id}" title="แนบลิงก์/ใบงาน">${icon('clip')} ${(it.attachments || []).length || 'แนบ'}</button></td>
         ${hasGroups ? `<td class="group-col">
           <select class="row-group" data-id="${it.id}" aria-label="หมวดหมู่ของรายการนี้">
             <option value="">— ยังไม่จัดหมวด —</option>
@@ -114,10 +222,12 @@ async function renderStructureTab(container, course) {
         <div class="struct-summary-box">
           <div class="lbl">สอบกลางภาค</div>
           <input type="number" id="mid-max-input" value="${midterm.max}">
+          <button type="button" class="btn btn-ghost btn-sm att-btn" data-id="mid" title="แนบลิงก์/ใบงาน">${icon('clip')} ${(midterm.attachments || []).length || 'แนบ'}</button>
         </div>
         <div class="struct-summary-box">
           <div class="lbl">สอบปลายภาค</div>
           <input type="number" id="final-max-input" value="${final.max}">
+          <button type="button" class="btn btn-ghost btn-sm att-btn" data-id="final" title="แนบลิงก์/ใบงาน">${icon('clip')} ${(final.attachments || []).length || 'แนบ'}</button>
         </div>
       </div>
 
@@ -144,6 +254,7 @@ async function renderStructureTab(container, course) {
                 <th>#</th>
                 <th>รหัส/ชื่อรายการ</th>
                 <th>รายละเอียด / จุดประสงค์</th>
+                <th class="att-col">สื่อ/ใบงาน</th>
                 ${hasGroups ? `<th class="group-col">หมวดหมู่</th>` : ''}
                 <th class="num-col">คะแนนเก็บ</th>
                 <th class="del-col"></th>
@@ -225,6 +336,14 @@ async function renderStructureTab(container, course) {
         const it = collectItems.find(x => x.id === sel.dataset.id);
         it.groupId = sel.value || null;
         draw();
+      });
+    });
+
+    // ----- สื่อ/ใบงานที่แนบ -----
+    container.querySelectorAll('.att-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const it = btn.dataset.id === 'mid' ? midterm : btn.dataset.id === 'final' ? final : collectItems.find(x => x.id === btn.dataset.id);
+        if (it) openAttachmentsModal(it, course.id, draw);
       });
     });
 
@@ -364,13 +483,14 @@ async function saveStructure(course, collectItems, groups, midterm, final, colRe
       name: it.name || `รายการที่ ${idx + 1}`,
       max: Number(it.max) || 0,
       detail: it.detail || '',
+      attachments: cleanAttachments(it.attachments),
       category: 'collect',
       groupId: groupIds.has(it.groupId) ? it.groupId : null,
       order: idx,
     });
   });
-  write(midterm, { name: midterm.name || MIDTERM_NAME, max: Number(midterm.max) || 0, category: 'midterm', order: collectItems.length });
-  write(final, { name: final.name || FINAL_NAME, max: Number(final.max) || 0, category: 'final', order: collectItems.length + 1 });
+  write(midterm, { name: midterm.name || MIDTERM_NAME, max: Number(midterm.max) || 0, category: 'midterm', attachments: cleanAttachments(midterm.attachments), order: collectItems.length });
+  write(final, { name: final.name || FINAL_NAME, max: Number(final.max) || 0, category: 'final', attachments: cleanAttachments(final.attachments), order: collectItems.length + 1 });
 
   existingSnap.docs.forEach(d => { if (!keepIds.has(d.id)) batch.delete(d.ref); });
 

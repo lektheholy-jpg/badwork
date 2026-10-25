@@ -609,6 +609,14 @@ table.sheet :is(th, td).sticky-right-2 { right: 0; width: var(--r2-w); min-width
 .struct-table input.row-max { width: 70px; border: 1.5px solid var(--border); padding: 6px 8px; font-family: var(--font-mono); font-weight: 600; text-align: right; border-radius: var(--radius-xs); border-width: 1.5px; }
 .struct-table tr.dragging { opacity: 0.4; }
 .struct-table td.handle-col { width: 24px; color: var(--ink-soft); cursor: grab; text-align: center; }
+.struct-table td.att-col { width: 92px; white-space: nowrap; }
+.struct-summary-box .att-btn { margin-top: 6px; }
+.att-btn .ico { width: 15px; height: 15px; }
+.att-chip { display: inline-flex; align-items: center; gap: 3px; margin-left: 6px; padding: 1px 7px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface-sunken); color: var(--ink-soft); font-size: 11px; font-weight: 600; cursor: pointer; vertical-align: middle; }
+.att-chip:hover { color: var(--primary); border-color: var(--primary); }
+.att-chip .ico { width: 12px; height: 12px; }
+.att-row { padding: 8px 0; border-bottom: 1px solid var(--border); }
+.att-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--primary); }
 
 .save-status { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--ink-soft); font-weight: 600; padding: 7px 14px; border-radius: var(--radius-pill); background: var(--card-glass); }
 .save-status .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--success); }

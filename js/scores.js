@@ -95,10 +95,10 @@ async function renderScoresTab(container, course, section) {
             <th rowspan="2" class="grp-collect-total">รวมเก็บ<span class="max">/${collectMax}</span></th>
           </tr>
           <tr>
-            ${collectRuns.map(r => r.items.map(a => `<th class="grp-collect">${escapeHtml(a.name)}<span class="max">/${a.max}</span></th>`).join('')
+            ${collectRuns.map(r => r.items.map(a => `<th class="grp-collect">${escapeHtml(a.name)}<span class="max">/${a.max}</span>${attChipHtml(a)}</th>`).join('')
               + `<th class="grp-sub-total">รวม<span class="max">/${runMax(r)}</span></th>`).join('')}
-            ${midItems.map(a => `<th class="grp-mid">${escapeHtml(a.name)}<span class="max">/${a.max}</span></th>`).join('')}
-            ${finalItems.map(a => `<th class="grp-final">${escapeHtml(a.name)}<span class="max">/${a.max}</span></th>`).join('')}
+            ${midItems.map(a => `<th class="grp-mid">${escapeHtml(a.name)}<span class="max">/${a.max}</span>${attChipHtml(a)}</th>`).join('')}
+            ${finalItems.map(a => `<th class="grp-final">${escapeHtml(a.name)}<span class="max">/${a.max}</span>${attChipHtml(a)}</th>`).join('')}
           </tr>
           ` : `
           <tr>
@@ -112,10 +112,10 @@ async function renderScoresTab(container, course, section) {
             <th rowspan="2" class="sticky-right-2">เกรด</th>
           </tr>
           <tr>
-            ${collectItems.map(a => `<th class="grp-collect">${escapeHtml(a.name)}<span class="max">/${a.max}</span></th>`).join('')}
+            ${collectItems.map(a => `<th class="grp-collect">${escapeHtml(a.name)}<span class="max">/${a.max}</span>${attChipHtml(a)}</th>`).join('')}
             ${collectItems.length ? `<th class="grp-collect-total">รวมเก็บ<span class="max">/${collectMax}</span></th>` : ''}
-            ${midItems.map(a => `<th class="grp-mid">${escapeHtml(a.name)}<span class="max">/${a.max}</span></th>`).join('')}
-            ${finalItems.map(a => `<th class="grp-final">${escapeHtml(a.name)}<span class="max">/${a.max}</span></th>`).join('')}
+            ${midItems.map(a => `<th class="grp-mid">${escapeHtml(a.name)}<span class="max">/${a.max}</span>${attChipHtml(a)}</th>`).join('')}
+            ${finalItems.map(a => `<th class="grp-final">${escapeHtml(a.name)}<span class="max">/${a.max}</span>${attChipHtml(a)}</th>`).join('')}
           </tr>
           `}
         </thead>
@@ -125,6 +125,15 @@ async function renderScoresTab(container, course, section) {
       </table>
     </div>
   `;
+
+  // ไอคอนสื่อ/ใบงานที่หัวคอลัมน์ → เปิดรายการลิงก์/ไฟล์ที่แนบไว้
+  container.querySelectorAll('.att-chip').forEach(chip => {
+    chip.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const a = assessments.find(x => x.id === chip.dataset.attId);
+      if (a) openAttachmentsViewer(a);
+    });
+  });
 
   document.getElementById('student-search').addEventListener('input', debounce((e) => {
     const q = e.target.value.trim().toLowerCase();
