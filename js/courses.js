@@ -347,14 +347,14 @@ async function openCreateCourseModal(onCreated, preset = null) {
 
     <div id="cc-step-3" class="hidden">
       <div class="field">
-        <label>ห้องที่สอน (เลือกได้ 1-13)</label>
+        <label>ห้องที่สอน (เลือกได้ 1-${MAX_ROOMS})</label>
         <div class="room-mode-toggle">
           <button type="button" class="room-mode-btn active" data-mode="count">ระบุจำนวนห้อง</button>
           <button type="button" class="room-mode-btn" data-mode="list">เลือกเลขห้องเอง</button>
         </div>
         <div id="room-mode-count">
-          <input id="f-room-count" type="number" min="1" max="13" value="${Math.min(p.roomCount || 1, 13)}" placeholder="เช่น 5">
-          <div class="field-hint">ระบบจะสร้างห้อง 1, 2, 3 ... ให้อัตโนมัติตามจำนวนที่ใส่ (สูงสุด 13 ห้อง)</div>
+          <input id="f-room-count" type="number" min="1" max="${MAX_ROOMS}" value="${Math.min(p.roomCount || 1, MAX_ROOMS)}" placeholder="เช่น 5">
+          <div class="field-hint">ระบบจะสร้างห้อง 1, 2, 3 ... ให้อัตโนมัติตามจำนวนที่ใส่ (สูงสุด ${MAX_ROOMS} ห้อง)</div>
         </div>
         <div id="room-mode-list" class="hidden">
           <div class="room-number-grid" id="f-room-pick-grid">
@@ -443,7 +443,7 @@ async function openCreateCourseModal(onCreated, preset = null) {
     const tpl = selectedTemplate();
     let rooms = [];
     if (roomMode === 'count') {
-      const n = Math.min(13, Math.max(1, Number($('f-room-count').value) || 1));
+      const n = Math.min(MAX_ROOMS, Math.max(1, Number($('f-room-count').value) || 1));
       rooms = Array.from({ length: n }, (_, i) => String(i + 1));
     } else {
       rooms = ROOM_OPTIONS.filter(n => selectedRooms.has(n));
@@ -794,12 +794,53 @@ async function renderCourseShellInner() {
   }
 }
 
+// คลังรายวิชา: แยกกลุ่มตามปีการศึกษา/ภาคเรียน (ใหม่สุดก่อน) · ลบรายวิชาออกจากคลังได้ (กู้คืนผ่านปุ่มเลิกทำได้ช่วงสั้นๆ)
+const semesterRank = (s) => ({ '1': 1, '2': 2, 'ฤดูร้อน': 3 }[String(s)] || 0);
+function archiveTermGroups(courses) {
+  const map = new Map();
+  courses.forEach(c => {
+    const key = c.year ? `${c.year}|${c.semester || ''}` : 'none';
+    if (!map.has(key)) map.set(key, { year: c.year || '', semester: c.semester || '', items: [] });
+    map.get(key).items.push(c);
+  });
+  const groups = [...map.values()];
+  groups.forEach(g => g.items.sort((a, b) => (a.code || '').localeCompare(b.code || '', 'th') || (a.name || '').localeCompare(b.name || '', 'th')));
+  groups.sort((a, b) => {
+    if (!a.year !== !b.year) return a.year ? -1 : 1; // วิชาที่ไม่ระบุเทอมไว้ท้ายสุด
+    return (Number(b.year) || 0) - (Number(a.year) || 0) || semesterRank(b.semester) - semesterRank(a.semester);
+  });
+  return groups;
+}
+
 async function renderArchivePage() {
   const view = document.getElementById('view');
   showLoading('list');
   const uid = AppState.user.uid;
   const snap = await db.collection('users').doc(uid).collection('courses').orderBy('createdAt', 'desc').get();
   const courses = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(c => c.archived);
+
+  const rowHtml = (c) => `
+    <div class="course-row u-cursor-default" data-course-id="${c.id}">
+      <div class="course-dot" style="--c:${courseColor(c) || 'var(--primary)'}"></div>
+      <div class="info">
+        <div class="name">${escapeHtml(c.name)}</div>
+        <div class="meta">${escapeHtml(c.code || '')} • ${escapeHtml(c.level || '')} • ${c.roomCount || 0} ห้อง</div>
+      </div>
+      <button class="btn btn-ghost btn-sm view-archived-btn" data-course-id="${c.id}">ดูรายละเอียด</button>
+      <button class="btn btn-primary btn-sm duplicate-course-btn" data-course-id="${c.id}">คัดลอกไปเทอมใหม่</button>
+      <button class="btn btn-danger-ghost btn-sm delete-archived-btn" data-course-id="${c.id}">ลบ</button>
+    </div>`;
+  const termHtml = (g) => {
+    const col = getLevelColor(null);
+    return `
+      <div class="struct-group">
+        <div class="struct-group-header" style="--c:${col.strong}">
+          <span class="struct-group-title">${g.year ? `ภาคเรียน ${escapeHtml(g.semester || '-')}/${escapeHtml(g.year)}` : 'ไม่ระบุภาคเรียน/ปีการศึกษา'}</span>
+          <span class="struct-group-count">${g.items.length} วิชา</span>
+        </div>
+        <div class="course-list">${g.items.map(rowHtml).join('')}</div>
+      </div>`;
+  };
 
   view.innerHTML = `
     ${pageHeaderHtml('คลังรายวิชา')}
@@ -808,21 +849,7 @@ async function renderArchivePage() {
         <div class="icon">${icon('archive')}</div>
         <div>ยังไม่มีวิชาในคลัง — จบเทอมแล้วกดปุ่ม "จบเทอมนี้แล้ว เก็บเข้าคลัง" ที่หน้ารายวิชานั้นได้เลย</div>
       </div></div>
-    ` : `
-      <div class="course-list">
-        ${courses.map(c => `
-          <div class="course-row u-cursor-default" data-course-id="${c.id}">
-            <div class="course-dot" style="--c:${courseColor(c) || 'var(--primary)'}"></div>
-            <div class="info">
-              <div class="name">${escapeHtml(c.name)}</div>
-              <div class="meta">${escapeHtml(c.code || '')} • ${escapeHtml(c.level || '')} • ${c.roomCount || 0} ห้อง • ภาคเรียน ${escapeHtml(c.semester || '-')}/${escapeHtml(c.year || '-')}</div>
-            </div>
-            <button class="btn btn-ghost btn-sm view-archived-btn" data-course-id="${c.id}">ดูรายละเอียด</button>
-            <button class="btn btn-primary btn-sm duplicate-course-btn" data-course-id="${c.id}">คัดลอกไปเทอมใหม่</button>
-          </div>
-        `).join('')}
-      </div>
-    `}
+    ` : `<div class="struct-groups">${archiveTermGroups(courses).map(termHtml).join('')}</div>`}
   `;
 
   view.querySelectorAll('.view-archived-btn').forEach(btn => {
@@ -835,6 +862,13 @@ async function renderArchivePage() {
       openCreateCourseModal(null, { templateId: source.templateId, roomCount: source.roomCount });
     });
   });
+  view.querySelectorAll('.delete-archived-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const course = courses.find(c => c.id === btn.dataset.courseId);
+      confirmDeleteCourse(course, () => renderArchivePage());
+    });
+  });
 }
 
 function openAddRoomModal(course, onDone) {
@@ -844,7 +878,7 @@ function openAddRoomModal(course, onDone) {
   if (availableRooms.length === 0) {
     openModal(`
       <h2>เพิ่มห้องเรียน</h2>
-      <div class="modal-sub">วิชา ${escapeHtml(course.name)} ใช้ห้อง 1-13 ครบทุกห้องแล้ว</div>
+      <div class="modal-sub">วิชา ${escapeHtml(course.name)} ใช้ห้อง 1-${MAX_ROOMS} ครบทุกห้องแล้ว</div>
       <div class="modal-actions"><button class="btn btn-primary" id="cancel-add-room">ปิด</button></div>
     `);
     document.getElementById('cancel-add-room').addEventListener('click', closeModal);

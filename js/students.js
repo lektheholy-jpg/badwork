@@ -121,12 +121,12 @@ function openAddOneStudentModal(course, section) {
 
 // ==========================================================================
 // นำเข้ารายชื่อทั้งวิชา — แยกห้องอัตโนมัติจากไฟล์เดียว (คอลัมน์ห้อง/ชั้น-ห้อง
-// เช่น "มัธยมศึกษาปีที่ 2/1") ห้องที่ยังไม่มีในวิชาจะถูกสร้างให้อัตโนมัติ (1-13)
+// เช่น "มัธยมศึกษาปีที่ 2/1") ห้องที่ยังไม่มีในวิชาจะถูกสร้างให้อัตโนมัติ (1-20)
 // ==========================================================================
 function openImportAllRoomsModal(course, existingSections, onDone) {
   openModal(`
     <h2>นำเข้ารายชื่อ — แยกห้องอัตโนมัติ</h2>
-    <div class="modal-sub">อัปโหลดไฟล์รายชื่อนักเรียนหลายห้องของวิชา "${escapeHtml(course.name)}" ในไฟล์เดียว ระบบจะอ่านคอลัมน์ห้อง/ชั้น-ห้อง แล้วแยกนักเรียนลงห้องที่ตรงกันให้อัตโนมัติ ห้องที่ยังไม่มีในวิชานี้จะถูกสร้างใหม่ให้ (รองรับห้อง 1-13)</div>
+    <div class="modal-sub">อัปโหลดไฟล์รายชื่อนักเรียนหลายห้องของวิชา "${escapeHtml(course.name)}" ในไฟล์เดียว ระบบจะอ่านคอลัมน์ห้อง/ชั้น-ห้อง แล้วแยกนักเรียนลงห้องที่ตรงกันให้อัตโนมัติ ห้องที่ยังไม่มีในวิชานี้จะถูกสร้างใหม่ให้ (รองรับห้อง 1-${MAX_ROOMS})</div>
     <div class="field">
       <input type="file" id="import-all-file" accept=".xlsx,.xls,.csv">
       <div class="field-hint">ต้องมีคอลัมน์ห้อง เช่น "ห้อง" หรือ "ชั้น/ห้อง" (เช่น มัธยมศึกษาปีที่ 2/1) — ระบบจะดึงเลขห้องท้ายสุดออกมาให้เอง</div>
@@ -181,7 +181,7 @@ function openImportAllRoomsModal(course, existingSections, onDone) {
         { ok: emptyNames === 0, text: emptyNames === 0 ? 'ไม่มีชื่อว่าง' : `พบชื่อว่าง ${emptyNames} รายการ` },
       ];
       if (newRooms.length > 0) checks.push({ ok: true, text: `จะสร้างห้องใหม่ ${newRooms.length} ห้อง: ${newRooms.map(r => 'ห้อง ' + r).join(', ')}` });
-      if (invalidRows.length > 0) checks.push({ ok: false, text: `ข้าม ${invalidRows.length} แถวที่ระบุเลขห้อง (1-13) ไม่ได้` });
+      if (invalidRows.length > 0) checks.push({ ok: false, text: `ข้าม ${invalidRows.length} แถวที่ระบุเลขห้อง (1-${MAX_ROOMS}) ไม่ได้` });
 
       previewEl.innerHTML = `<div class="card card-pad u-mb-10">${checks.map(c => `<div class="check-row ${c.ok ? 'ok' : 'warn'}">${c.ok ? '✓' : '✕'} ${c.text}</div>`).join('')}</div>`;
 
