@@ -600,6 +600,7 @@ const LAZY_MODULES = {
   profile: 'js/profile.js', // หน้าข้อมูลส่วนตัวของครู (ตำแหน่ง/สังกัด/ผู้ลงนามในเอกสาร)
   timetable: 'js/timetable.js', // แท็บตารางสอนในหน้าข้อมูลส่วนตัว
   records: 'js/records.js', // แท็บอบรม/เกียรติบัตร/รางวัล (รูปย่อใน Firestore + ต้นฉบับใน Storage)
+  'course-desc': 'js/course-desc.js', // ฟอร์มคำอธิบายรายวิชา (แท็บในหน้า "ตั้งค่าโครงสร้างวิชา") — ใช้ตัวช่วย/สไตล์ของ doc-shell
   // กลุ่ม Personal Agreement — ต้องโหลดตามลำดับนี้ (doc-system.js → pa-config.js → pa.js …) ใช้ loadModules(LAZY_BUNDLES.pa)
   'doc-system': 'js/doc-system.js', // บริบทของระบบเอกสาร: config + state + collection ต่อระบบ (ใช้ร่วมกับระบบเอกสารอื่นในอนาคต)
   'doc-shell': 'js/doc-shell.js', // โครงหน้า/แท็บ/ตัวช่วยร่วมของทุกระบบเอกสาร — โหลดหลัง doc-system ก่อนไฟล์ของแต่ละระบบ
@@ -630,6 +631,8 @@ const LAZY_BUNDLES = {
   idp: ['doc-system', 'doc-shell', 'idp-config', 'idp', 'sar', 'badwork-ai-config', 'badwork-ai', 'idp-ai', 'sar-ai'],
   tra: ['doc-system', 'doc-shell', 'tra-config', 'tra', 'badwork-ai-config', 'badwork-ai', 'tra-ai'],
   car: ['doc-system', 'doc-shell', 'car-config', 'car', 'badwork-ai-config', 'badwork-ai', 'car-ai'],
+  // ฟอร์มคำอธิบายรายวิชา (แท็บในหน้า "ตั้งค่าโครงสร้างวิชา") — ไม่ใช่ระบบเอกสารเต็มรูปแบบ (ไม่มี config/AI/ลิสต์) แต่ใช้คลาสฟอร์มของ PA จึงต้องโหลดพร้อม doc-shell (ได้ docs.min.css ตามมา)
+  cdesc: ['doc-system', 'doc-shell', 'course-desc'],
   // เฉพาะ config ของทุกระบบเอกสาร (เบา · ไม่มี UI) — privacy.js ใช้รู้ชื่อ collection · ระบบเอกสารใหม่ต้องเพิ่มไฟล์ config ของตัวเองที่นี่
   docConfigs: ['doc-system', 'pa-config', 'idp-config', 'tra-config', 'car-config'],
 };

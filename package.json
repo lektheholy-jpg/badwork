@@ -46,7 +46,8 @@
     "test:island": "node tests/island-ambient.test.js",
     "test:islandclass": "node tests/island-class.test.js",
     "test:settings": "node tests/settings-tabs.test.js",
-    "test:push": "node tests/push.test.js"
+    "test:push": "node tests/push.test.js",
+    "test:cdesc": "node tests/course-desc.test.js"
   },
   "devDependencies": {
     "csso-cli": "4.0.2",

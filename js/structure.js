@@ -501,7 +501,9 @@ async function saveStructure(course, collectItems, groups, midterm, final, colRe
   await batch.commit();
   invalidateCourseData(course.id);
   showToast(course.isTemplate ? 'บันทึกแม่แบบโครงสร้างวิชาสำเร็จ' : 'บันทึกโครงสร้างวิชาสำเร็จ');
-  renderStructureTab(document.getElementById('course-tab-body') || document.getElementById('structure-page-body'), course);
+  // หน้าแก้แม่แบบมีสองแท็บ — ถ้าระหว่างบันทึกผู้ใช้สลับไปแท็บคำอธิบายรายวิชาแล้ว ไม่วาดโครงสร้างทับ
+  const target = document.getElementById('course-tab-body') || document.getElementById('structure-page-body');
+  if (target && !(course.isTemplate && AppState.structureTab === 'desc')) renderStructureTab(target, course);
   // แก้แม่แบบ → ถามว่าจะอัปเดตรายวิชาของเทอมที่เปิดไปแล้วตามแม่แบบด้วยไหม (ไม่ถามถ้ายังไม่เคยเปิดสอน)
   if (course.isTemplate) offerTemplateSync(course);
 }

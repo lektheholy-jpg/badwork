@@ -16,7 +16,7 @@
 // ตัวหน้าเว็บ (js/pwa.js) จะแจ้ง "มีเวอร์ชันใหม่" ให้กดอัปเดตเอง ไม่รีโหลดกลางคันตอนครูกำลังกรอกคะแนน
 // ==========================================================================
 
-const VERSION = 'v1.15.26OC251433';
+const VERSION = 'v1.15.26OC251523';
 const CORE = `myscore-core-${VERSION}`; // ไฟล์แอป (เปลี่ยนเวอร์ชัน = ทิ้งของเก่า)
 const RUNTIME = 'myscore-rt';           // รูป/ไฟล์ที่แคชตอนใช้งาน (คงอยู่ข้ามเวอร์ชัน)
 
@@ -63,6 +63,7 @@ const PRECACHE = [
   'js/profile.js',
   'js/timetable.js',
   'js/records.js',
+  'js/course-desc.js',
   'js/vendor/xlsx.mini.min.js',
   // ไอคอน + รูปขนาดเล็ก (รูปเต็มแคชตอนใช้งานจริง)
   'assets/icons/android-chrome-192x192.png',

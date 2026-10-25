@@ -84,6 +84,7 @@ async function renderStructureList(view) {
   document.getElementById('struct-new-course-btn').addEventListener('click', () => {
     openTemplateInfoModal(null, (newTemplateId) => {
       AppState.structureEditingTemplateId = newTemplateId;
+      AppState.structureTab = 'score';
       renderStructurePage();
     });
   });
@@ -100,6 +101,7 @@ async function renderStructureList(view) {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       AppState.structureEditingTemplateId = btn.dataset.templateId;
+      AppState.structureTab = 'score';
       renderStructurePage();
     });
   });
@@ -115,10 +117,13 @@ async function renderStructureList(view) {
   view.querySelectorAll('.struct-row').forEach(row => {
     row.addEventListener('click', () => {
       AppState.structureEditingTemplateId = row.dataset.templateId;
+      AppState.structureTab = 'score';
       renderStructurePage();
     });
   });
 }
+
+const STRUCT_TABS = [['score', 'โครงสร้างคะแนน'], ['desc', 'คำอธิบายรายวิชา']];
 
 async function renderStructureEditor(view, templateId) {
   const tplDoc = await templatesCol().doc(templateId).get();
@@ -128,6 +133,7 @@ async function renderStructureEditor(view, templateId) {
   }
   // isTemplate = ให้ renderStructureTab/saveStructure อ่าน-เขียนที่ courseTemplates (ไม่ใช่ courses)
   const tpl = { id: tplDoc.id, isTemplate: true, ...tplDoc.data() };
+  if (!STRUCT_TABS.some(([id]) => id === AppState.structureTab)) AppState.structureTab = 'score';
   const usedCount = (await coursesCol().where('templateId', '==', tpl.id).get()).size;
 
   view.innerHTML = `
@@ -139,6 +145,9 @@ async function renderStructureEditor(view, templateId) {
       sub: `${tpl.level || 'ไม่ระบุระดับชั้น'}${tpl.credit ? ' • ' + tpl.credit + ' หน่วยกิต' : ''} • ${usedCount > 0 ? `เปิดสอนแล้ว ${usedCount} เทอม` : 'ยังไม่เคยเปิดสอน'}`,
       actions: '<button class="btn btn-ghost btn-sm" id="struct-edit-info-btn">แก้ไขข้อมูลวิชา</button> <button class="btn btn-danger-ghost btn-sm" id="struct-del-course-btn">ลบวิชานี้</button>',
     })}
+    <div class="tabs" id="struct-tabs">
+      ${STRUCT_TABS.map(([id, label]) => `<div class="tab ${AppState.structureTab === id ? 'active' : ''}" data-tab="${id}">${label}</div>`).join('')}
+    </div>
     <div id="structure-page-body"></div>
   `;
 
@@ -159,7 +168,39 @@ async function renderStructureEditor(view, templateId) {
     });
   });
 
-  renderStructureTab(document.getElementById('structure-page-body'), tpl);
+  // แท็บในหน้าแก้แม่แบบ: โครงสร้างคะแนน · คำอธิบายรายวิชา — แต่ละแท็บวาดลงกล่องของตัวเอง (วาดค้างจากแท็บเดิมไม่ทับแท็บใหม่)
+  const body = document.getElementById('structure-page-body');
+  const drawTab = async () => {
+    const tab = AppState.structureTab;
+    const pane = document.createElement('div');
+    body.replaceChildren(pane);
+    if (tab === 'desc') {
+      showLoading('cat-sm', pane);
+      try { await loadModules(LAZY_BUNDLES.cdesc); } catch (err) {
+        if (pane.isConnected) pane.innerHTML = `<div class="card"><div class="empty-state">${escapeHtml(err.message)}</div></div>`;
+        return;
+      }
+      if (pane.isConnected && AppState.structureTab === 'desc') await renderCourseDescTab(pane, tpl);
+    } else {
+      await renderStructureTab(pane, tpl);
+    }
+  };
+  const tabsEl = document.getElementById('struct-tabs');
+  initNavPill(tabsEl, '.tab', 'seg-pill', { key: 'struct-tabs' });
+  tabsEl.querySelectorAll('.tab').forEach(t => {
+    t.addEventListener('click', () => {
+      if (t.dataset.tab === AppState.structureTab) return;
+      if (AppState.structureTab === 'desc' && typeof cdIsDirty === 'function' && cdIsDirty()
+        && !confirm('คำอธิบายรายวิชามีที่ยังไม่ได้บันทึก — ออกจากแท็บนี้และทิ้งที่แก้ไว้?')) return;
+      AppState.structureTab = t.dataset.tab;
+      tabsEl.querySelectorAll(':scope > .active').forEach(x => x.classList.remove('active'));
+      t.classList.add('active');
+      tabsEl.__pillPlace?.(true);
+      pillSlideNext('struct-tabs');
+      drawTab();
+    });
+  });
+  drawTab();
 }
 
 // ==========================================================================
