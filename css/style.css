@@ -2642,19 +2642,19 @@ td.doc-ai-target::before { inset: 0; }
 
 /* ฟอร์มคำอธิบายรายวิชา (js/course-desc.js · แท็บในหน้า "ตั้งค่าโครงสร้างวิชา") — ใช้ .doc-form / .doc-section / .doc-lblock ร่วมกับ PA · ที่นี่มีเฉพาะส่วนที่ต่างออกไป */
 .cd-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 14px; }
-.cd-ind { --doc-cols: 150px minmax(0, 1fr) 44px; margin-top: 0; }
-.cd-ind .doc-lhead span:nth-child(2) { text-align: left; }
-.cd-ind .doc-lrow { align-items: start; }
+.cd-ind, .cd-std { --doc-cols: 150px minmax(0, 1fr) 44px; margin-top: 0; }
+:is(.cd-ind, .cd-std) .doc-lhead span:nth-child(2) { text-align: left; }
+:is(.cd-ind, .cd-std) .doc-lrow { align-items: start; }
 .cd-paste { margin-top: 18px; }
 .cd-paste > summary { cursor: pointer; font-weight: 600; font-size: 13.5px; color: var(--ink-soft); }
 @media (max-width: 540px) {
   .cd-grid { grid-template-columns: 1fr; }
-  .cd-ind { --doc-cols: minmax(0, 1fr) 44px; }
-  .cd-ind .doc-lhead { display: none; }
-  .cd-ind .doc-lrows { gap: 16px; }
-  .cd-ind .doc-lrow { grid-template-areas: "code del" "text del"; }
-  .cd-ind .cd-ind-code { grid-area: code; }
-  .cd-ind .cd-ind-text { grid-area: text; }
-  .cd-ind .cd-ind-del { grid-area: del; }
+  .cd-ind, .cd-std { --doc-cols: minmax(0, 1fr) 44px; }
+  :is(.cd-ind, .cd-std) .doc-lhead { display: none; }
+  :is(.cd-ind, .cd-std) .doc-lrows { gap: 16px; }
+  :is(.cd-ind, .cd-std) .doc-lrow { grid-template-areas: "code del" "text del"; }
+  .cd-ind .cd-ind-code, .cd-std .cd-std-code { grid-area: code; }
+  .cd-ind .cd-ind-text, .cd-std .cd-std-text { grid-area: text; }
+  .cd-ind .cd-ind-del, .cd-std .cd-std-del { grid-area: del; }
 }
 /* @endbundle */

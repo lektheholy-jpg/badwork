@@ -1137,7 +1137,7 @@ async function loadCourseDescription(course) {
     const owner = course.templateId ? root.collection('courseTemplates').doc(course.templateId) : root.collection('courses').doc(course.id);
     const snap = await owner.collection('settings').doc('description').get();
     const d = snap.exists ? snap.data() : null;
-    return d && (d.descMain || d.descPurpose || (Array.isArray(d.indicators) && d.indicators.length)) ? d : null;
+    return d && (d.descMain || d.descPurpose || (Array.isArray(d.standards) && d.standards.length) || (Array.isArray(d.indicators) && d.indicators.length)) ? d : null;
   } catch (err) {
     console.warn('โหลดคำอธิบายรายวิชาไม่สำเร็จ (ข้ามส่วนนี้):', err);
     return null;
@@ -1147,6 +1147,8 @@ async function loadCourseDescription(course) {
 function courseDescCardHtml(d, course) {
   const edit = course.templateId ? '<button class="btn btn-ghost btn-sm" id="ov-desc-edit-btn">' + (d ? 'แก้ไข' : 'กรอกคำอธิบายรายวิชา') + '</button>' : '';
   const inds = d && Array.isArray(d.indicators) ? d.indicators.filter(r => r && (r.code || r.text)) : [];
+  const stds = d && Array.isArray(d.standards) ? d.standards.filter(r => r && (r.code || r.text)) : [];
+  const rowsHtml = (list) => list.map(r => `<div class="cdesc-ind-row"><div class="cdesc-ind-code">${escapeHtml(r.code || '')}</div><div>${escapeHtml(r.text || '')}</div></div>`).join('');
   const para = (t) => t ? `<p class="cdesc-text">${escapeHtml(t)}</p>` : '';
   return `
     <div class="card card-pad u-mb-16" id="ov-desc-card">
@@ -1159,10 +1161,15 @@ function courseDescCardHtml(d, course) {
       </div>
       ${d ? `
         ${para(d.descMain)}${para(d.descPurpose)}
+        ${stds.length ? `
+          <details class="cdesc-ind">
+            <summary>มาตรฐานการเรียนรู้ ${stds.length} มาตรฐาน</summary>
+            ${rowsHtml(stds)}
+          </details>` : ''}
         ${inds.length ? `
           <details class="cdesc-ind">
             <summary>ตัวชี้วัด ${inds.length} ข้อ</summary>
-            ${inds.map(r => `<div class="cdesc-ind-row"><div class="cdesc-ind-code">${escapeHtml(r.code || '')}</div><div>${escapeHtml(r.text || '')}</div></div>`).join('')}
+            ${rowsHtml(inds)}
           </details>` : ''}
       ` : '<div class="u-note">ยังไม่ได้กรอกคำอธิบายรายวิชา — กรอกครั้งเดียวที่ "ตั้งค่าโครงสร้างวิชา" แล้วจะแสดงที่นี่ทุกเทอมที่เปิดสอนวิชานี้</div>'}
     </div>`;

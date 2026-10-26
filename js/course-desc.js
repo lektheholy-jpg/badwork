@@ -1,6 +1,6 @@
 // ==========================================================================
 // คำอธิบายรายวิชา — ฟอร์มกรอกข้อมูลตามหน้า "คำอธิบายรายวิชา" ของหลักสูตร (ชื่อวิชา · ระดับชั้น · หน่วยกิต ·
-//   ย่อหน้าคำอธิบาย · จุดประสงค์ · ตัวชี้วัด) หน้าตาและตัวช่วยเดียวกับฟอร์ม PA (doc-form · doc-section · doc-lblock)
+//   ย่อหน้าคำอธิบาย · จุดประสงค์ · มาตรฐานการเรียนรู้ · ตัวชี้วัด) หน้าตาและตัวช่วยเดียวกับฟอร์ม PA (doc-form · doc-section · doc-lblock)
 //   • อยู่ในหน้า "ตั้งค่าโครงสร้างวิชา" → แท็บ "คำอธิบายรายวิชา" ของแม่แบบวิชาแต่ละวิชา (js/picker-pages.js)
 //   • Firestore: users/{uid}/courseTemplates/{templateId}/settings/description (อ้างผ่าน courseBaseRef ของ js/structure.js
 //     จึงใช้กับ courses/{id} ได้เหมือนกัน) — กฎ firestore.rules เดิมของ courseTemplates/{document=**} ครอบคลุมอยู่แล้ว
@@ -16,7 +16,7 @@
 const CD_SAVE_LABEL = 'บันทึกคำอธิบายรายวิชา'; // ป้ายปุ่มบันทึก (ข้อความล้วน)
 const CD_DOC_ID = 'description';              // settings/description
 const CD_TYPES = ['พื้นฐาน', 'เพิ่มเติม'];
-const CD_MAX = { code: 20, name: 150, level: 40, credit: 8, desc: 4000, indCode: 40, indText: 500, indRows: 60, ctx: 500, ctxKeys: 10 };
+const CD_MAX = { code: 20, name: 150, level: 40, credit: 8, desc: 4000, indCode: 40, indText: 500, indRows: 60, stdCode: 40, stdText: 500, stdRows: 20, ctx: 500, ctxKeys: 10 };
 
 // มีค่าที่พิมพ์ค้างยังไม่บันทึกหรือไม่ — หน้าที่สลับแท็บเรียกถามก่อนทิ้ง (js/picker-pages.js)
 let _cdDirty = false;
@@ -46,6 +46,13 @@ function cdCleanCtx(c) {
   return out;
 }
 
+// แถว [{ code, text }] (มาตรฐาน/ตัวชี้วัด): ตัดช่องว่าง · ตัดความยาว · ทิ้งแถวว่าง/ค่า null · จำกัดจำนวนแถว
+function cdCleanRows(list, maxCode, maxText, maxRows) {
+  return (Array.isArray(list) ? list : []).slice(0, maxRows)
+    .map(r => ({ code: cdStr(r && r.code, maxCode).trim(), text: cdStr(r && r.text, maxText).trim() }))
+    .filter(r => r.code || r.text);
+}
+
 // ทำให้ข้อมูลครบทุกช่อง (เอกสารเก่า/ว่าง → ค่าเริ่มต้น) · รับค่าเริ่มต้นจากข้อมูลวิชาเมื่อยังไม่เคยบันทึก
 function cdNormalize(d, course) {
   d = d && typeof d === 'object' ? d : {};
@@ -64,9 +71,8 @@ function cdNormalize(d, course) {
     type: CD_TYPES.includes(d.type) ? d.type : CD_TYPES[0],
     descMain: cdStr(d.descMain, CD_MAX.desc),
     descPurpose: cdStr(d.descPurpose, CD_MAX.desc),
-    indicators: (Array.isArray(d.indicators) ? d.indicators : []).slice(0, CD_MAX.indRows)
-      .map(r => ({ code: cdStr(r && r.code, CD_MAX.indCode).trim(), text: cdStr(r && r.text, CD_MAX.indText).trim() }))
-      .filter(r => r.code || r.text),
+    indicators: cdCleanRows(d.indicators, CD_MAX.indCode, CD_MAX.indText, CD_MAX.indRows),
+    standards: cdCleanRows(d.standards, CD_MAX.stdCode, CD_MAX.stdText, CD_MAX.stdRows),
     aiCtx: cdCleanCtx(d.aiCtx),
   };
 }
@@ -89,6 +95,21 @@ function cdIndRowHtml(r = {}) {
 function cdReadIndicators(form) {
   return [...form.querySelectorAll('.cd-ind-row')]
     .map(r => ({ code: r.querySelector('.cd-ind-code').value.trim(), text: r.querySelector('.cd-ind-text').value.trim() }))
+    .filter(r => r.code || r.text);
+}
+
+// มาตรฐานการเรียนรู้ (ก่อนตัวชี้วัด): แถวรหัส + ข้อความ โครงเดียวกับตัวชี้วัด แต่คลาส cd-std-* (CSS ใช้ชุดเดียวกันที่ .cd-ind / .cd-std)
+function cdStdRowHtml(r = {}) {
+  return `<div class="doc-lrow cd-std-row">
+    <input class="input-sm cd-std-code" type="text" maxlength="${CD_MAX.stdCode}" placeholder="เช่น ว 4.2" value="${escapeHtml(r.code || '')}" aria-label="รหัสมาตรฐาน">
+    <textarea class="input-sm cd-std-text" rows="2" maxlength="${CD_MAX.stdText}" placeholder="ข้อความมาตรฐานการเรียนรู้" aria-label="ข้อความมาตรฐานการเรียนรู้">${escapeHtml(r.text || '')}</textarea>
+    <button type="button" class="btn btn-danger-ghost btn-sm doc-l-del cd-std-del" title="ลบแถว" aria-label="ลบแถว">${DOC_ICO_DEL}</button>
+  </div>`;
+}
+
+function cdReadStandards(form) {
+  return [...form.querySelectorAll('.cd-std-row')]
+    .map(r => ({ code: r.querySelector('.cd-std-code').value.trim(), text: r.querySelector('.cd-std-text').value.trim() }))
     .filter(r => r.code || r.text);
 }
 
@@ -158,7 +179,24 @@ function cdFormHtml(d) {
     </section>
 
     <section class="doc-section">
-      <h2 class="doc-sec-title">ส่วนที่ 3  ตัวชี้วัด</h2>
+      <h2 class="doc-sec-title">ส่วนที่ 3  มาตรฐานการเรียนรู้</h2>
+      <div class="doc-lblock cd-std">
+        <div class="doc-lhead" aria-hidden="true"><span>รหัสมาตรฐาน</span><span>มาตรฐานการเรียนรู้</span><span></span></div>
+        <div class="doc-lrows" id="cd-std-rows">${d.standards.map(cdStdRowHtml).join('')}</div>
+        <button type="button" class="btn btn-ghost btn-sm doc-l-add" id="cd-std-add">${DOC_ICO_ADD} เพิ่มมาตรฐาน</button>
+      </div>
+      <details class="cd-paste">
+        <summary>วางมาตรฐานการเรียนรู้ทั้งชุดจากเอกสารหลักสูตร</summary>
+        <div class="field u-mt-6">
+          <textarea id="cd-std-paste-text" class="idp-ta" rows="4" aria-label="วางมาตรฐานทั้งชุด" placeholder="วางทีละบรรทัด เช่น&#10;ว 4.2 : เข้าใจและใช้แนวคิดเชิงคำนวณในการแก้ปัญหา…"></textarea>
+          <div class="field-hint">ใช้ “:” คั่นระหว่างรหัสกับข้อความ · บรรทัดที่ไม่มี “:” จะต่อท้ายข้อความของข้อก่อนหน้า</div>
+        </div>
+        <button type="button" class="btn btn-ghost btn-sm" id="cd-std-paste-add">เพิ่มเป็นแถว</button>
+      </details>
+    </section>
+
+    <section class="doc-section">
+      <h2 class="doc-sec-title">ส่วนที่ 4  ตัวชี้วัด</h2>
       <div class="doc-lblock cd-ind">
         <div class="doc-lhead" aria-hidden="true"><span>รหัสตัวชี้วัด</span><span>ตัวชี้วัด</span><span></span></div>
         <div class="doc-lrows" id="cd-ind-rows">${d.indicators.map(cdIndRowHtml).join('')}</div>
@@ -188,6 +226,7 @@ function cdCollect(form) {
     codeTh: get('cd-codeTh'), nameTh: get('cd-nameTh'), codeEn: get('cd-codeEn'), nameEn: get('cd-nameEn'),
     level: get('cd-level'), semester: get('cd-semester'), credit: get('cd-credit'), type: get('cd-type'),
     descMain: get('cd-descMain'), descPurpose: get('cd-descPurpose'),
+    standards: cdReadStandards(form),
     indicators: cdReadIndicators(form),
     aiCtx: ctxNow || (CD_STATE.doc && CD_STATE.doc.aiCtx) || {},
   }, null);
@@ -249,6 +288,14 @@ function cdBuildBodyHtml(d) {
   ].filter(Boolean).join('&emsp;');
   const en = d.codeEn || d.nameEn
     ? `<div class="d1-c">Course Code ${e(d.codeEn) || dots(6)}&emsp;Course Title ${e(d.nameEn) || dots(12)}</div>` : '';
+  const stds = d.standards.length ? `
+  <div class="d1-h">มาตรฐานการเรียนรู้</div>
+  <table class="d1-tbl">
+    <colgroup><col class="d1-code"><col></colgroup>
+    <thead><tr><th>รหัสมาตรฐาน</th><th>มาตรฐานการเรียนรู้</th></tr></thead>
+    <tbody>${d.standards.map(r => `<tr><td>${e(r.code)}</td><td>${e(r.text)}</td></tr>`).join('')}</tbody>
+  </table>
+  <div class="d1-total">รวมทั้งหมด ${d.standards.length} มาตรฐาน</div>` : '';
   const inds = d.indicators.length ? `
   <div class="d1-h">ตัวชี้วัด</div>
   <table class="d1-tbl">
@@ -263,7 +310,7 @@ function cdBuildBodyHtml(d) {
   ${en}
   <div class="d1-c">${meta}</div>
   ${para(d.descMain) || `<div class="d1-p">${dots(60)}</div>`}
-  ${para(d.descPurpose)}${inds}
+  ${para(d.descPurpose)}${stds}${inds}
 </section>`;
 }
 
@@ -346,7 +393,6 @@ async function renderCourseDescPreviewTab(container, course, onEdit) {
 function cdShowForm(container, course, data) {
   container.innerHTML = cdFormHtml(data);
   const form = container.querySelector('#cd-form');
-  const rows = form.querySelector('#cd-ind-rows');
   CD_STATE.doc = data; CD_STATE.docId = course.id; CD_STATE.course = course; // ผู้ช่วย AI อ่านจากที่นี่ (ดู CD_STATE)
 
   // การ์ดผู้ช่วย AI ด้านบน (ช่องบริบท · เลือกรุ่น) ไม่ใช่เนื้อหาของฟอร์ม — บริบทบันทึกอัตโนมัติเอง จึงไม่ตั้งธง "ยังไม่บันทึก"
@@ -355,30 +401,36 @@ function cdShowForm(container, course, data) {
   form.addEventListener('input', e => { if (mine(e)) _cdDirty = true; });
   form.addEventListener('change', e => { if (mine(e)) _cdDirty = true; });
 
-  const addRows = (list) => {
-    const room = CD_MAX.indRows - rows.querySelectorAll('.cd-ind-row').length;
-    if (room <= 0) { showToast(`เพิ่มตัวชี้วัดได้สูงสุด ${CD_MAX.indRows} รายการ`); return 0; }
-    const use = list.slice(0, room);
-    rows.insertAdjacentHTML('beforeend', use.map(cdIndRowHtml).join(''));
-    if (use.length < list.length) showToast(`เพิ่มได้เพียง ${use.length} จาก ${list.length} รายการ (สูงสุด ${CD_MAX.indRows})`);
-    _cdDirty = true;
-    return use.length;
+  // เพิ่ม/ลบ/วางแถว ใช้ร่วมกันระหว่างตัวชี้วัดกับมาตรฐาน: cfg = { rowsId, rowSel, delSel, addId, pasteId, pasteAddId, max, rowHtml, noun }
+  const bindRows = (cfg) => {
+    const box = form.querySelector('#' + cfg.rowsId);
+    const addRows = (list) => {
+      const room = cfg.max - box.querySelectorAll(cfg.rowSel).length;
+      if (room <= 0) { showToast(`เพิ่ม${cfg.noun}ได้สูงสุด ${cfg.max} รายการ`); return 0; }
+      const use = list.slice(0, room);
+      box.insertAdjacentHTML('beforeend', use.map(cfg.rowHtml).join(''));
+      if (use.length < list.length) showToast(`เพิ่มได้เพียง ${use.length} จาก ${list.length} รายการ (สูงสุด ${cfg.max})`);
+      _cdDirty = true;
+      return use.length;
+    };
+    form.querySelector('#' + cfg.addId).addEventListener('click', () => {
+      if (addRows([{}])) box.lastElementChild.querySelector('input').focus();
+    });
+    box.addEventListener('click', (e) => {
+      const del = e.target.closest(cfg.delSel);
+      if (!del) return;
+      del.closest(cfg.rowSel).remove();
+      _cdDirty = true;
+    });
+    form.querySelector('#' + cfg.pasteAddId).addEventListener('click', () => {
+      const area = form.querySelector('#' + cfg.pasteId);
+      const list = cdParseIndicators(area.value);
+      if (!list.length) { area.focus(); return; }
+      if (addRows(list)) { area.value = ''; showToast(`เพิ่ม${cfg.noun} ${list.length} รายการแล้ว`); }
+    });
   };
-  form.querySelector('#cd-ind-add').addEventListener('click', () => {
-    if (addRows([{}])) rows.lastElementChild.querySelector('input').focus();
-  });
-  rows.addEventListener('click', (e) => {
-    const del = e.target.closest('.cd-ind-del');
-    if (!del) return;
-    del.closest('.cd-ind-row').remove();
-    _cdDirty = true;
-  });
-  form.querySelector('#cd-paste-add').addEventListener('click', () => {
-    const box = form.querySelector('#cd-paste-text');
-    const list = cdParseIndicators(box.value);
-    if (!list.length) { box.focus(); return; }
-    if (addRows(list)) { box.value = ''; showToast(`เพิ่มตัวชี้วัด ${list.length} รายการแล้ว`); }
-  });
+  bindRows({ rowsId: 'cd-ind-rows', rowSel: '.cd-ind-row', delSel: '.cd-ind-del', addId: 'cd-ind-add', pasteId: 'cd-paste-text', pasteAddId: 'cd-paste-add', max: CD_MAX.indRows, rowHtml: cdIndRowHtml, noun: 'ตัวชี้วัด' });
+  bindRows({ rowsId: 'cd-std-rows', rowSel: '.cd-std-row', delSel: '.cd-std-del', addId: 'cd-std-add', pasteId: 'cd-std-paste-text', pasteAddId: 'cd-std-paste-add', max: CD_MAX.stdRows, rowHtml: cdStdRowHtml, noun: 'มาตรฐาน' });
 
   const saveBtn = form.querySelector('#cd-save-btn');
   saveBtn.addEventListener('click', async () => {

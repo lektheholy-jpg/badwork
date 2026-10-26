@@ -87,10 +87,10 @@ const open = async (c) => { $('host').innerHTML = ''; await R(`renderCourseDescT
   ok(d.querySelector('.doc-ai-top [data-doc-ai="all"]').textContent.includes('ร่างช่องที่ว่างของส่วนที่ 2'), 'ป้ายปุ่มบนสุด');
   const rowsOf = id => $(id).closest('.field').querySelector('.doc-item-h').querySelectorAll('.doc-ai-row [data-doc-ai]');
   ok(['cd-descMain', 'cd-descPurpose'].every(id => rowsOf(id).length === 3 && [...rowsOf(id)].map(b => b.dataset.docAi).join() === 'write,polish,shorten'), 'ช่องคำอธิบาย + จุดประสงค์: แถวปุ่ม 3 ปุ่ม (เขียน/ปรับสำนวน/ย่อ) อยู่ใน .doc-item-h ขวามือของชื่อช่อง');
-  ok(d.querySelectorAll('.doc-ai-row').length === 2, 'มีแถวปุ่มแค่ 2 ช่อง — ไม่ติดที่ตัวชี้วัด/รหัส/ชื่อวิชา (ข้อมูลทางการจากหลักสูตร ไม่ให้ AI สร้าง)');
-  ok(!d.querySelector('#cd-ind-rows .doc-ai-row') && !d.querySelector('.cd-grid .doc-ai-row'), 'ไม่มีปุ่ม AI ในแถวตัวชี้วัดและช่องชื่อ/รหัสวิชา');
+  ok(d.querySelectorAll('.doc-ai-row').length === 2, 'มีแถวปุ่มแค่ 2 ช่อง — ไม่ติดที่มาตรฐาน/ตัวชี้วัด/รหัส/ชื่อวิชา (ข้อมูลทางการจากหลักสูตร ไม่ให้ AI สร้าง)');
+  ok(!d.querySelector('#cd-ind-rows .doc-ai-row, #cd-std-rows .doc-ai-row') && !d.querySelector('.cd-grid .doc-ai-row'), 'ไม่มีปุ่ม AI ในแถวตัวชี้วัดและช่องชื่อ/รหัสวิชา');
   ok(['topics', 'skills', 'traits'].every(k => $('cd-ctx-' + k)) && !d.querySelector('[id^="pa-ctx-"],[id^="idp-ctx-"],[id^="sar-ctx-"],[id^="tra-ctx-"],[id^="car-ctx-"]'), 'การ์ดบริบทมีช่อง cd-ctx-* 3 ช่อง · ไม่มีช่องบริบทของระบบอื่นปนมา');
-  ok(form.querySelectorAll('.doc-sec-title').length === 4 && form.querySelectorAll('[style]').length === 0, 'ส่วนของฟอร์มเดิม 3 + การ์ด AI 1 · ไม่มี inline style');
+  ok(form.querySelectorAll('.doc-sec-title').length === 5 && form.querySelectorAll('[style]').length === 0, 'ส่วนของฟอร์มเดิม 4 + การ์ด AI 1 · ไม่มี inline style');
   ok($('cd-codeTh').value === 'ท21102' && $('cd-nameTh').value === 'ภาษาไทย 2', 'ติด AI แล้ว ค่าเริ่มต้นจากข้อมูลวิชายังถูกเติมเหมือนเดิม');
 
   // ---------------- ปุ่มทำอะไร ----------------
@@ -109,6 +109,8 @@ const open = async (c) => { $('host').innerHTML = ''; await R(`renderCourseDescT
 
   // ---------------- พร้อต์ ----------------
   $('cd-semester').value = '2';
+  $('cd-std-paste-text').value = 'ท 1.1 : เข้าใจการอ่านเพื่อสร้างความรู้';
+  $('cd-std-paste-add').click();
   $('cd-paste-text').value = 'ท 1.1 ม.1/1 : อ่านออกเสียงบทร้อยแก้วและบทร้อยกรองได้ถูกต้อง\nท 1.1 ม.1/2 : จับใจความสำคัญจากเรื่องที่อ่าน';
   $('cd-paste-add').click();
   $('cd-nameTh').value = 'ภาษาไทย 2 (วรรณคดีวิจักษ์)'; // ยังไม่ได้บันทึก — AI ต้องเห็นค่านี้
@@ -119,6 +121,7 @@ const open = async (c) => { $('host').innerHTML = ''; await R(`renderCourseDescT
   ok(p.includes('วิชา: ท21102 ภาษาไทย 2 (วรรณคดีวิจักษ์)'), 'พร้อต์ใช้ค่าที่พิมพ์อยู่ในฟอร์มโดยไม่ต้องบันทึกก่อน (ชื่อวิชาที่เพิ่งแก้)');
   ok(p.includes('ระดับชั้น: ม.1 · ภาคเรียนที่ 2 · 1.5 หน่วยกิต · รายวิชาพื้นฐาน'), 'พร้อต์ส่ง ระดับชั้น · ภาคเรียน · หน่วยกิต · ประเภทวิชา');
   ok(p.includes('ตัวชี้วัด (2 ข้อ):') && p.includes('- ท 1.1 ม.1/1: อ่านออกเสียงบทร้อยแก้ว') && p.includes('- ท 1.1 ม.1/2: จับใจความสำคัญ'), 'พร้อต์ส่งตัวชี้วัดที่ครูวางไว้ (รหัส: ข้อความ)');
+  ok(p.includes('มาตรฐานการเรียนรู้ (1 มาตรฐาน):\n- ท 1.1: เข้าใจการอ่านเพื่อสร้างความรู้') && p.indexOf('มาตรฐานการเรียนรู้ (') < p.indexOf('ตัวชี้วัด ('), 'พร้อต์ส่งมาตรฐานการเรียนรู้ที่ครูวางไว้ ก่อนตัวชี้วัด');
   ok(p.includes('หัวข้อ/หน่วยการเรียนรู้หลักที่สอน: วรรณคดีไทย · การอ่านวิเคราะห์') && p.includes('ทักษะ/กระบวนการที่เน้น: การคิดอย่างมีวิจารณญาณ'), 'คำอธิบาย: เห็นหัวข้อ + ทักษะจากบริบทงาน');
   ok(!p.includes('คุณลักษณะ/สมรรถนะที่ต้องการให้เกิด') && !p.includes('ใฝ่เรียนรู้'), 'คำอธิบาย: ไม่เห็นคุณลักษณะ (ส่งเฉพาะบริบทที่เกี่ยวกับช่องที่กด)');
   ok(p.includes('- .descMain (คำอธิบายรายวิชา):') && p.includes('ขึ้นต้นด้วย “ศึกษา”') && !p.includes('.descPurpose'), 'แนวทางส่งเฉพาะช่องที่อยู่ในคำขอ (ไม่มีแนวทางของจุดประสงค์)');
