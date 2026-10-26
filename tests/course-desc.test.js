@@ -2,7 +2,7 @@
 // วิธีรัน: node tests/course-desc.test.js   (หรือ npm run test:cdesc)
 // ตรวจ: normalize (ค่าเริ่มต้นจากวิชา · ตัดช่องว่าง · จำกัดจำนวน) · แยกตัวชี้วัดที่วางมา · โครงฟอร์มแบบ PA ·
 //        เพิ่ม/ลบ/วางแถว · เก็บค่า → บันทึกที่ settings/description ของแม่แบบ/รายวิชา · ธง "ยังไม่บันทึก" ·
-//        ตัวอย่างก่อนพิมพ์ (ปุ่ม · เนื้อหากระดาษ · ตัดย่อหน้ายาว · กลับไปแก้ไขค่าไม่หาย · พิมพ์ผ่าน docPrintWindow) ·
+//        ตัวอย่างก่อนพิมพ์ (แท็บถัดจากฟอร์ม · เนื้อหากระดาษ · ตัดย่อหน้ายาว · ร่างข้ามแท็บไม่หาย · พิมพ์ผ่าน docPrintWindow) ·
 //        การ์ดคำอธิบายรายวิชาที่แท็บภาพรวมของหน้าวิชา (js/courses.js: โหลดจากแม่แบบ · อ่านอย่างเดียว · escape) ·
 //        ลงทะเบียนครบ (utils.js · sw.js · แท็บในหน้าโครงสร้างวิชา · CSS ใน bundle docs) · ไม่มี CSS ของหน้าเว็บใน JS
 const fs = require('fs'), vm = require('vm'), path = require('path');
@@ -149,9 +149,8 @@ const $ = id => d.getElementById(id);
   host.innerHTML = '';
   await R(`renderCourseDescTab(document.getElementById('host'), ${JSON.stringify(course)})`);
   await settle();
-  const pbtn = $('cd-preview-btn');
-  ok(!!pbtn && pbtn.type === 'button' && pbtn.closest('.pa-form-footer') && /ตัวอย่างก่อนพิมพ์/.test(pbtn.textContent), 'ท้ายฟอร์มมีปุ่ม "ตัวอย่างก่อนพิมพ์" (type=button)');
-  ok(!/ยังไม่มีหน้าตัวอย่าง/.test(host.textContent), 'ข้อความเก่า "ยังไม่มีหน้าตัวอย่าง" ถูกเอาออก');
+  ok(!$('cd-preview-btn') && !/ยังไม่มีหน้าตัวอย่าง/.test(host.textContent), 'ฟอร์มไม่มีปุ่มตัวอย่างแล้ว (ย้ายเป็นแท็บ) · ข้อความเก่า "ยังไม่มีหน้าตัวอย่าง" ถูกเอาออก');
+  ok(/แท็บ “ตัวอย่างก่อนพิมพ์”/.test(host.textContent), 'ข้อความแนะนำบนฟอร์มชี้ไปที่แท็บ "ตัวอย่างก่อนพิมพ์"');
 
   const fd = { codeTh: 'ท21102', nameTh: 'ภาษาไทย 2', codeEn: 'TH21102', nameEn: 'Thai 2', level: 'มัธยมศึกษาปีที่ 1', semester: '1', credit: '1.5', type: 'พื้นฐาน',
     descMain: 'ศึกษาหลักการอ่าน <b>x</b>\nย่อหน้าสอง', descPurpose: 'เพื่ออ่านออกเสียง', indicators: [{ code: 'ท 1.1 ม.1/1', text: 'อ่านออกเสียง' }, { code: 'ท 1.1 ม.1/2', text: 'จับใจความ' }] };
@@ -177,20 +176,37 @@ const $ = id => d.getElementById(id);
   ok(sheets === 1 && paged.querySelectorAll('.doc-sheet').length === 1 && paged.querySelector('.doc-sheet-body.cd1 .d1-tbl'), 'โครงกลางตัดหน้าได้: แผ่น A4 พร้อมตารางตัวชี้วัด');
   ok(/210|297/.test(paged.querySelector('.doc-sheet').getAttribute('style')) && /20mm 20mm 20mm 25mm/.test(paged.querySelector('.doc-sheet').getAttribute('style')), 'ขนาดแผ่น A4 ขอบ 20/20/20/25 มม. ตรงกับ @page ตอนพิมพ์');
 
-  // กดปุ่ม → หน้าตัวอย่างแทนฟอร์ม (อ่านค่าที่ยังไม่บันทึกด้วย)
+  // แท็บตัวอย่าง: ร่างที่ยังไม่บันทึกข้ามแท็บได้ · ไม่มีร่างก็อ่านที่บันทึกไว้
   $('cd-nameEn').value = 'Unsaved Title';
   $('cd-descMain').value = 'ค่าที่ยังไม่บันทึก';
   d.querySelector('#cd-form').dispatchEvent(new w.Event('input'));
-  const dirtyBefore = R('cdIsDirty()');
-  pbtn.click();
+  R('cdStashDraft()');
+  const pv = d.createElement('div'); d.body.appendChild(pv);
+  let edited = 0;
+  await R(`renderCourseDescPreviewTab`)(pv, course, () => edited++);
   await settle();
-  ok(!$('cd-form') && !!host.querySelector('.doc-preview-frame') && !!$('cd-prev-back') && !!$('cd-prev-print'), 'กด "ตัวอย่างก่อนพิมพ์": ฟอร์มถูกแทนที่ด้วยกรอบตัวอย่าง + ปุ่มกลับ/พิมพ์');
-  ok(host.querySelector('.doc-preview-frame').classList.contains('is-fit') && host.querySelector('.doc-preview-frame-wrap'), 'กรอบตัวอย่างใช้คลาสโครงเดียวกับระบบเอกสารอื่น (.doc-preview-frame.is-fit)');
-  ok(dirtyBefore === true && R('cdIsDirty()') === true, 'อยู่หน้าตัวอย่าง: ธงค่าค้างยังอยู่ (สลับแท็บแล้วยังถามก่อนทิ้ง)');
-  $('cd-prev-back').click();
-  ok(!!$('cd-form') && $('cd-nameEn').value === 'Unsaved Title' && $('cd-descMain').value === 'ค่าที่ยังไม่บันทึก', 'กลับไปแก้ไข: ค่าที่พิมพ์ค้างไว้ไม่หาย');
-  ok(R('cdIsDirty()') === true, 'กลับมาที่ฟอร์ม: ธงค่าค้างยังเป็นจริง');
-  ok(!!$('cd-preview-btn') && !!$('cd-save-btn'), 'กลับมาที่ฟอร์ม: ปุ่มตัวอย่าง/บันทึกใช้งานได้อีก');
+  ok(!!pv.querySelector('.doc-preview-frame.is-fit') && !!pv.querySelector('.doc-preview-frame-wrap') && !!pv.querySelector('#cd-prev-print'), 'แท็บตัวอย่าง: กรอบตัวอย่างใช้คลาสโครงเดียวกับระบบเอกสารอื่น + ปุ่มพิมพ์');
+  ok(/ยังไม่ได้บันทึก/.test(pv.querySelector('.doc-preview-hint').textContent), 'ใช้ร่างที่พิมพ์ค้าง: ข้อความแนะนำบอกว่ารวมส่วนที่ยังไม่บันทึก');
+  pv.querySelector('#cd-prev-edit').click();
+  ok(edited === 1, 'ปุ่ม "แก้ไข" เรียก onEdit (พากลับแท็บฟอร์ม)');
+  ok(R('cdIsDirty()') === true, 'อยู่แท็บตัวอย่าง: ธงค่าค้างยังอยู่ (ออกจากกลุ่มแท็บแล้วยังถามก่อนทิ้ง)');
+  host.innerHTML = '';
+  await R(`renderCourseDescTab(document.getElementById('host'), ${JSON.stringify(course)})`);
+  ok($('cd-nameEn').value === 'Unsaved Title' && $('cd-descMain').value === 'ค่าที่ยังไม่บันทึก' && R('cdIsDirty()') === true, 'กลับมาแท็บฟอร์ม: ค่าที่พิมพ์ค้างไว้ไม่หาย · ธงค่าค้างยังเป็นจริง');
+  ok(!!$('cd-save-btn'), 'กลับมาแท็บฟอร์ม: ปุ่มบันทึกใช้งานได้');
+  const other = JSON.stringify({ ...course, id: 'other' });
+  pv.innerHTML = '';
+  await R(`renderCourseDescPreviewTab`)(pv, JSON.parse(other), () => {});
+  await settle();
+  ok(!/ยังไม่ได้บันทึก/.test(pv.querySelector('.doc-preview-hint').textContent), 'ร่างของวิชาหนึ่งไม่ถูกเอาไปแสดงเป็นตัวอย่างของอีกวิชา');
+  R('cdDiscardDraft()');
+  pv.innerHTML = '';
+  await R(`renderCourseDescPreviewTab`)(pv, course, () => {});
+  await settle();
+  ok(R('cdIsDirty()') === false && !/ยังไม่ได้บันทึก/.test(pv.querySelector('.doc-preview-hint').textContent), 'ทิ้งร่างแล้ว: ตัวอย่างอ่านจากที่บันทึกไว้ · ไม่มีธงค้าง');
+  host.innerHTML = '';
+  await R(`renderCourseDescTab(document.getElementById('host'), ${JSON.stringify(course)})`);
+  await settle();
 
   // พิมพ์: เปิดหน้าต่างใหม่ → เขียนเอกสาร (ต้องเรียก window.open ก่อน await ใดๆ)
   const written = []; let opened = 0;
@@ -243,7 +259,7 @@ const $ = id => d.getElementById(id);
   ok(/cdesc:\s*\[[^\]]*'doc-shell'[^\]]*'course-desc'\]/.test(read('js/utils.js')), 'utils.js: LAZY_BUNDLES.cdesc โหลด doc-shell ก่อน course-desc (ได้ docs.min.css)');
   ok(/'js\/course-desc\.js'/.test(read('sw.js')), 'sw.js: PRECACHE มี js/course-desc.js');
   const pk = read('js/picker-pages.js');
-  ok(/STRUCT_TABS[^;]*'desc'[^;]*คำอธิบายรายวิชา/.test(pk) && /loadModules\(LAZY_BUNDLES\.cdesc\)/.test(pk) && /renderCourseDescTab\(/.test(pk), 'หน้าโครงสร้างวิชา: มีแท็บ "คำอธิบายรายวิชา" ที่โหลดโมดูลแล้ววาดฟอร์ม');
+  ok(/STRUCT_TABS[^;]*'desc'[^;]*คำอธิบายรายวิชา[^;]*'descprev'[^;]*ตัวอย่างก่อนพิมพ์/.test(pk) && /renderCourseDescPreviewTab\(/.test(pk) && /cdStashDraft\(\)/.test(pk) && /loadModules\(LAZY_BUNDLES\.cdesc\)/.test(pk) && /renderCourseDescTab\(/.test(pk), 'หน้าโครงสร้างวิชา: มีแท็บ "คำอธิบายรายวิชา" แล้วตามด้วยแท็บ "ตัวอย่างก่อนพิมพ์" (โหลดโมดูลแล้ววาด · เก็บร่างก่อนสลับแท็บ)');
   ok(!/<style|createElement\(['"]style|insertRule|\.style\./.test(src) && !/style="[^"$]/.test(src), 'ไม่เขียน CSS ใน JS (ไม่มี <style> · el.style · style="ค่าคงที่")');
   const css = read('css/style.css'), at = css.indexOf('/* @bundle docs'), ci = css.indexOf('.cd-ind {');
   ok(ci > at && at > 0 && read('css/docs.min.css').includes('.cd-ind'), 'CSS ของฟอร์มอยู่ในบล็อก bundle docs และถูกสร้างลง docs.min.css');

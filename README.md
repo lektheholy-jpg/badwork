@@ -57,7 +57,7 @@ npm run test:cache       # แคชวาดทันทีของหน้�
 npm run check:sw         # PRECACHE ใน sw.js ตรงกับไฟล์จริง
 npm run build:version    # เลขเวอร์ชัน v<ใหญ่>.<ฟีเจอร์>.<วันเวลา> → APP_INFO + sw.js VERSION (อยู่ใน npm run build แล้ว)
 npm run check:version    # ตรวจว่าเลขเวอร์ชันตรงกับต้นทาง (อยู่ใน npm run ci แล้ว)
-npm run test:cdesc       # ฟอร์มคำอธิบายรายวิชา (js/course-desc.js): ค่าเริ่มต้นจากวิชา · แยกตัวชี้วัดที่วางมา · เพิ่ม/ลบแถว · บันทึกที่ settings/description · ตัวอย่างก่อนพิมพ์/พิมพ์ · การ์ดคำอธิบายที่แท็บภาพรวมของหน้าวิชา · ลงทะเบียนครบ (utils · sw · แท็บหน้าโครงสร้างวิชา · CSS bundle docs)
+npm run test:cdesc       # ฟอร์มคำอธิบายรายวิชา (js/course-desc.js): ค่าเริ่มต้นจากวิชา · แยกตัวชี้วัดที่วางมา · เพิ่ม/ลบแถว · บันทึกที่ settings/description · ตัวอย่างก่อนพิมพ์ (แท็บ) /พิมพ์ · ร่างข้ามแท็บ · การ์ดคำอธิบายที่แท็บภาพรวมของหน้าวิชา · ลงทะเบียนครบ (utils · sw · แท็บหน้าโครงสร้างวิชา · CSS bundle docs)
 npm run test:docprev     # โครงหน้าตัวอย่างกลาง (docRenderPreview · docPaginate · docFitSheets · docWatchResize) + หน้าตัวอย่าง ID-Plan จริง + กันโค้ด resize/zoom/ตัดหน้า/CSS แถบตัวอย่างหลุดเข้าไฟล์ระบบ
 ```
 
@@ -84,7 +84,7 @@ js/dashboard.js       หน้าหลัก + loadCoursesWithGrades (มี�
 js/courses.js         รายวิชา ห้องเรียน ภาพรวม
 js/students.js        นักเรียนรายห้อง (เพิ่มทีละคน / นำเข้า CSV-Excel)
 js/structure.js       โครงสร้างคะแนนระดับวิชา (ใช้ร่วมทุกห้อง ลากจัดลำดับได้)
-js/course-desc.js     [lazy] ฟอร์มคำอธิบายรายวิชา (แท็บ "คำอธิบายรายวิชา" ในหน้า ตั้งค่าโครงสร้างวิชา) — หน้าตา/ตัวช่วยเดียวกับฟอร์ม PA (doc-form · doc-section · doc-lblock) · โหลดผ่าน LAZY_BUNDLES.cdesc · มีปุ่ม "ตัวอย่างก่อนพิมพ์" (แผ่น A4 ผ่านโครงกลาง doc-shell) และ cdPrint(d) สำหรับพิมพ์ — หน้าวิชาที่เปิดสอนในเทอม (แท็บภาพรวม ใน js/courses.js) แสดงคำอธิบายนี้อ่านอย่างเดียวจากแม่แบบวิชา
+js/course-desc.js     [lazy] ฟอร์มคำอธิบายรายวิชา (แท็บ "คำอธิบายรายวิชา" ในหน้า ตั้งค่าโครงสร้างวิชา) — หน้าตา/ตัวช่วยเดียวกับฟอร์ม PA (doc-form · doc-section · doc-lblock) · โหลดผ่าน LAZY_BUNDLES.cdesc · มีแท็บ "ตัวอย่างก่อนพิมพ์" ต่อจากแท็บฟอร์ม (แผ่น A4 ผ่านโครงกลาง doc-shell · ร่างที่ยังไม่บันทึกข้ามแท็บได้) และ cdPrint(d) สำหรับพิมพ์ — หน้าวิชาที่เปิดสอนในเทอม (แท็บภาพรวม ใน js/courses.js) แสดงคำอธิบายนี้อ่านอย่างเดียวจากแม่แบบวิชา
 js/scores.js          บันทึกคะแนนแบบสเปรดชีต + autosave
 js/picker-pages.js    หน้าเลือกวิชา/ห้อง
 js/report-page.js     หน้ารายงาน

@@ -4,8 +4,8 @@
 //   • อยู่ในหน้า "ตั้งค่าโครงสร้างวิชา" → แท็บ "คำอธิบายรายวิชา" ของแม่แบบวิชาแต่ละวิชา (js/picker-pages.js)
 //   • Firestore: users/{uid}/courseTemplates/{templateId}/settings/description (อ้างผ่าน courseBaseRef ของ js/structure.js
 //     จึงใช้กับ courses/{id} ได้เหมือนกัน) — กฎ firestore.rules เดิมของ courseTemplates/{document=**} ครอบคลุมอยู่แล้ว
-//   • ตัวอย่างก่อนพิมพ์: ปุ่ม "ตัวอย่างก่อนพิมพ์" ท้ายฟอร์ม → แผ่น A4 ตัดหน้าด้วยโครงกลางของ doc-shell (docSheetsHtml · docRenderSheets)
-//     อ่านจากค่าในฟอร์มตอนนั้น (รวมที่ยังไม่บันทึก) · พิมพ์/บันทึก PDF ผ่าน docPrintWindow · cdPrint(d) ใช้ซ้ำที่แท็บภาพรวมของหน้าวิชา (js/courses.js)
+//   • ตัวอย่างก่อนพิมพ์: แท็บ "ตัวอย่างก่อนพิมพ์" ต่อจากแท็บฟอร์ม (picker-pages.js · renderCourseDescPreviewTab) → แผ่น A4 ตัดหน้าด้วยโครงกลางของ doc-shell
+//     อ่านจากค่าที่พิมพ์ค้างในฟอร์ม (ข้ามแท็บได้โดยไม่ต้องบันทึก — ร่างเก็บใน _cdDraft) ไม่มีร่างค้างก็อ่านที่บันทึกไว้ · พิมพ์/บันทึก PDF ผ่าน docPrintWindow · cdPrint(d) ใช้ซ้ำที่แท็บภาพรวมของหน้าวิชา (js/courses.js)
 //   • หน้าวิชาที่เปิดสอนในเทอม (แท็บภาพรวม) แสดงคำอธิบายนี้แบบอ่านอย่างเดียว โดยอ่านจากแม่แบบวิชาที่วิชานั้นผูกอยู่ (templateId)
 //   • lazy: โหลดผ่าน loadModules(LAZY_BUNDLES.cdesc) (doc-system → doc-shell → course-desc) — doc-shell ดึง docs.min.css ตามมาเอง
 // ==========================================================================
@@ -18,6 +18,14 @@ const CD_MAX = { code: 20, name: 150, level: 40, credit: 8, desc: 4000, indCode:
 // มีค่าที่พิมพ์ค้างยังไม่บันทึกหรือไม่ — หน้าที่สลับแท็บเรียกถามก่อนทิ้ง (js/picker-pages.js)
 let _cdDirty = false;
 function cdIsDirty() { return _cdDirty; }
+// ร่างที่พิมพ์ค้าง (ยังไม่บันทึก) — เก็บไว้ข้ามแท็บ ฟอร์ม ↔ ตัวอย่างก่อนพิมพ์ · ผูกกับวิชา (_cdDraftId) กันข้ามไปใช้กับวิชาอื่น
+let _cdDraft = null, _cdDraftId = null;
+function cdStashDraft() { // เรียกก่อนออกจากแท็บฟอร์ม
+  const form = document.getElementById('cd-form');
+  if (form && _cdDirty) _cdDraft = cdCollect(form);
+}
+function cdDiscardDraft() { _cdDraft = null; _cdDraftId = null; _cdDirty = false; } // ออกจากกลุ่มแท็บคำอธิบาย (ยืนยันทิ้งแล้ว)
+function cdDraftFor(course) { return _cdDirty && _cdDraft && _cdDraftId === course.id ? _cdDraft : null; }
 
 const cdStr = (v, n) => String(v == null ? '' : v).slice(0, n);
 
@@ -87,7 +95,7 @@ function cdFormHtml(d) {
   const txt = (id, label, val, max, extra = '') =>
     `<div class="field"><label for="${id}">${label}</label><input id="${id}" type="text" maxlength="${max}" value="${escapeHtml(val)}"${extra}></div>`;
   return `
-  <div class="u-note u-mb-12">กรอกข้อมูลรายวิชาตามคำอธิบายรายวิชาของหลักสูตร — ข้อมูลเก็บไว้กับแม่แบบวิชานี้ และแสดงในหน้ารายวิชาของทุกเทอมที่เปิดสอนวิชานี้ · กด “ตัวอย่างก่อนพิมพ์” เพื่อดูหน้ากระดาษก่อนพิมพ์</div>
+  <div class="u-note u-mb-12">กรอกข้อมูลรายวิชาตามคำอธิบายรายวิชาของหลักสูตร — ข้อมูลเก็บไว้กับแม่แบบวิชานี้ และแสดงในหน้ารายวิชาของทุกเทอมที่เปิดสอนวิชานี้ · ดูหน้ากระดาษก่อนพิมพ์ได้ที่แท็บ “ตัวอย่างก่อนพิมพ์”</div>
   <form id="cd-form" class="doc-form" autocomplete="off" novalidate>
 
     <div class="doc-form-header">
@@ -149,7 +157,6 @@ function cdFormHtml(d) {
     </section>
 
     <div class="pa-form-footer">
-      <button type="button" class="btn btn-ghost" id="cd-preview-btn">${DOC_ICO_PRINT} ตัวอย่างก่อนพิมพ์</button>
       <button type="button" class="btn btn-primary" id="cd-save-btn">${CD_SAVE_LABEL}</button>
     </div>
   </form>`;
@@ -247,20 +254,20 @@ function cdPrint(d) {
   return docPrintWindow({ title: cdDocTitle(d), css: CD1_CSS, page: CD_PAGE, html: `<div class="cd1">${cdBuildBodyHtml(d)}</div>` });
 }
 
-// หน้าตัวอย่างแทนที่ฟอร์มในกล่องเดิม: แผ่น A4 ตัดหน้าด้วยโครงกลาง (docRenderSheets) · "กลับไปแก้ไข" วาดฟอร์มกลับด้วยค่าเดิม
+// หน้าตัวอย่าง: แผ่น A4 ตัดหน้าด้วยโครงกลาง (docRenderSheets) · fromDraft = ใช้ค่าที่ยังไม่บันทึก (บอกในข้อความแนะนำ)
 //   โครงกลางเรียกดูแท็บจาก sys.state.tab เพื่อเลิกฟัง resize — หน้านี้ไม่ใช่ระบบเอกสาร จึงส่ง sys จำลอง (ฟังจนกรอบหลุดจากหน้า)
 const CD_PREVIEW_SYS = { state: { tab: 'cdesc' } };
-function cdShowPreview(container, course, d) {
+function cdShowPreview(container, d, fromDraft, onEdit) {
   container.innerHTML = `
     <div class="doc-preview-bar">
-      <button type="button" class="btn btn-ghost btn-sm" id="cd-prev-back">${DOC_ICO_EDIT} กลับไปแก้ไข</button>
       <div class="doc-preview-actions">
+        <button type="button" class="btn btn-ghost btn-sm" id="cd-prev-edit">${DOC_ICO_EDIT} แก้ไข</button>
         <button type="button" class="btn btn-primary btn-sm" id="cd-prev-print">${DOC_ICO_PRINT} พิมพ์ / บันทึกเป็น PDF</button>
       </div>
     </div>
-    <div class="u-note doc-preview-hint">ตัวอย่างจากค่าในฟอร์มตอนนี้ (รวมส่วนที่ยังไม่ได้บันทึก) · กดพิมพ์แล้วเลือก "บันทึกเป็น PDF" ในหน้าต่างพิมพ์ได้ · ใช้ Chrome/Edge จะแบ่งหน้าได้ถูกต้องที่สุด</div>
+    <div class="u-note doc-preview-hint">${fromDraft ? 'ตัวอย่างนี้รวมส่วนที่ยังไม่ได้บันทึก (ยังไม่ถูกเก็บลงแม่แบบ) · ' : ''}กดพิมพ์แล้วเลือก "บันทึกเป็น PDF" ในหน้าต่างพิมพ์ได้ · ใช้ Chrome/Edge จะแบ่งหน้าได้ถูกต้องที่สุด</div>
     <div class="doc-preview-frame-wrap"><iframe class="doc-preview-frame is-fit" title="ตัวอย่างคำอธิบายรายวิชา"></iframe></div>`;
-  container.querySelector('#cd-prev-back').addEventListener('click', () => cdShowForm(container, course, d));
+  container.querySelector('#cd-prev-edit').addEventListener('click', () => { if (onEdit) onEdit(); });
   container.querySelector('#cd-prev-print').addEventListener('click', () => cdPrint(d));
   const body = cdBuildBodyHtml(d);
   docRenderSheets(CD_PREVIEW_SYS, 'cdesc', container, null, { // ไม่รอ — แถบแสดงไปก่อน กระดาษตามมา
@@ -270,19 +277,38 @@ function cdShowPreview(container, course, d) {
 }
 
 async function renderCourseDescTab(container, course) {
+  const draft = cdDraftFor(course);
+  if (draft) { cdShowForm(container, course, draft); return; } // กลับจากแท็บตัวอย่าง: ค่าที่พิมพ์ค้างไว้ยังอยู่ (ธงค่าค้างไม่ถูกแตะ)
   showLoading('cat-sm', container);
-  _cdDirty = false;
-  let data;
+  cdDiscardDraft();
+  _cdDraftId = course.id;
+  const data = await cdLoad(container, course);
+  if (data) cdShowForm(container, course, data);
+}
+
+// โหลดเอกสารที่บันทึกไว้ → ข้อมูลครบทุกช่อง · โหลดไม่ได้ = แสดงข้อความแทนในกล่อง แล้วคืน null
+async function cdLoad(container, course) {
   try {
     const snap = await cdRef(course).get();
-    data = cdNormalize(snap.exists ? snap.data() : {}, course);
+    const data = cdNormalize(snap.exists ? snap.data() : {}, course);
+    return container.isConnected ? data : null; // ผู้ใช้สลับแท็บ/ออกจากหน้าไปแล้ว
   } catch (err) {
     console.error(err);
     if (container.isConnected) container.innerHTML = `<div class="card"><div class="empty-state">โหลดคำอธิบายรายวิชาไม่สำเร็จ: ${escapeHtml(err.message || '')}</div></div>`;
-    return;
+    return null;
   }
-  if (!container.isConnected) return; // ผู้ใช้สลับแท็บ/ออกจากหน้าไปแล้ว
-  cdShowForm(container, course, data);
+}
+
+// แท็บ "ตัวอย่างก่อนพิมพ์" — ร่างที่พิมพ์ค้างถ้ามี ไม่งั้นที่บันทึกไว้ · onEdit() = ปุ่ม "แก้ไข" พากลับแท็บฟอร์ม
+async function renderCourseDescPreviewTab(container, course, onEdit) {
+  const draft = cdDraftFor(course);
+  let data = draft;
+  if (!data) {
+    showLoading('cat-sm', container);
+    data = await cdLoad(container, course);
+    if (!data) return;
+  }
+  cdShowPreview(container, data, !!draft, onEdit);
 }
 
 // วาดฟอร์มลงกล่อง — ใช้ทั้งตอนเปิดแท็บ และตอนกลับจากหน้าตัวอย่าง (data = ค่าที่พิมพ์ค้างไว้ ไม่ทิ้ง · ธงค่าค้าง _cdDirty ไม่ถูกแตะ)
@@ -319,8 +345,6 @@ function cdShowForm(container, course, data) {
     if (addRows(list)) { box.value = ''; showToast(`เพิ่มตัวชี้วัด ${list.length} รายการแล้ว`); }
   });
 
-  form.querySelector('#cd-preview-btn').addEventListener('click', () => cdShowPreview(container, course, cdCollect(form)));
-
   const saveBtn = form.querySelector('#cd-save-btn');
   saveBtn.addEventListener('click', async () => {
     const doc = cdCollect(form);
@@ -329,6 +353,7 @@ function cdShowForm(container, course, data) {
     try {
       await cdRef(course).set({ ...doc, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
       _cdDirty = false;
+      _cdDraft = null;
       showToast('บันทึกคำอธิบายรายวิชาสำเร็จ');
     } catch (err) {
       console.error(err);

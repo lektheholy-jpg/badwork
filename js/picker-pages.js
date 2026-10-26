@@ -21,6 +21,7 @@ async function renderStructurePage() {
   if (AppState.structureEditingTemplateId) {
     return renderStructureEditor(view, AppState.structureEditingTemplateId);
   }
+  if (typeof cdDiscardDraft === 'function') cdDiscardDraft(); // กลับมารายการวิชา = ออกจากการแก้แล้ว ร่างคำอธิบายที่ค้างไม่ถูกเก็บต่อ
   return renderStructureList(view);
 }
 
@@ -123,7 +124,8 @@ async function renderStructureList(view) {
   });
 }
 
-const STRUCT_TABS = [['score', 'โครงสร้างคะแนน'], ['desc', 'คำอธิบายรายวิชา']];
+const STRUCT_TABS = [['score', 'โครงสร้างคะแนน'], ['desc', 'คำอธิบายรายวิชา'], ['descprev', 'ตัวอย่างก่อนพิมพ์']];
+const DESC_TABS = ['desc', 'descprev']; // แท็บในกลุ่มคำอธิบายรายวิชา — สลับกันเองได้โดยไม่ถามทิ้งร่าง (js/course-desc.js เก็บร่างข้ามแท็บ)
 
 async function renderStructureEditor(view, templateId) {
   const tplDoc = await templatesCol().doc(templateId).get();
@@ -174,13 +176,15 @@ async function renderStructureEditor(view, templateId) {
     const tab = AppState.structureTab;
     const pane = document.createElement('div');
     body.replaceChildren(pane);
-    if (tab === 'desc') {
+    if (DESC_TABS.includes(tab)) {
       showLoading('cat-sm', pane);
       try { await loadModules(LAZY_BUNDLES.cdesc); } catch (err) {
         if (pane.isConnected) pane.innerHTML = `<div class="card"><div class="empty-state">${escapeHtml(err.message)}</div></div>`;
         return;
       }
-      if (pane.isConnected && AppState.structureTab === 'desc') await renderCourseDescTab(pane, tpl);
+      if (!pane.isConnected || AppState.structureTab !== tab) return;
+      if (tab === 'desc') await renderCourseDescTab(pane, tpl);
+      else await renderCourseDescPreviewTab(pane, tpl, () => tabsEl.querySelector('.tab[data-tab="desc"]').click());
     } else {
       await renderStructureTab(pane, tpl);
     }
@@ -190,8 +194,14 @@ async function renderStructureEditor(view, templateId) {
   tabsEl.querySelectorAll('.tab').forEach(t => {
     t.addEventListener('click', () => {
       if (t.dataset.tab === AppState.structureTab) return;
-      if (AppState.structureTab === 'desc' && typeof cdIsDirty === 'function' && cdIsDirty()
-        && !confirm('คำอธิบายรายวิชามีที่ยังไม่ได้บันทึก — ออกจากแท็บนี้และทิ้งที่แก้ไว้?')) return;
+      const cur = AppState.structureTab, leavingDesc = DESC_TABS.includes(cur) && !DESC_TABS.includes(t.dataset.tab);
+      if (DESC_TABS.includes(cur) && typeof cdIsDirty === 'function') {
+        if (cur === 'desc') cdStashDraft(); // ไปแท็บตัวอย่าง/แท็บอื่น: เก็บค่าที่พิมพ์ค้างไว้ก่อน
+        if (leavingDesc && cdIsDirty()) {
+          if (!confirm('คำอธิบายรายวิชามีที่ยังไม่ได้บันทึก — ออกจากแท็บนี้และทิ้งที่แก้ไว้?')) return;
+          cdDiscardDraft();
+        }
+      }
       AppState.structureTab = t.dataset.tab;
       tabsEl.querySelectorAll(':scope > .active').forEach(x => x.classList.remove('active'));
       t.classList.add('active');
