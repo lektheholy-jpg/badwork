@@ -601,6 +601,7 @@ const LAZY_MODULES = {
   timetable: 'js/timetable.js', // แท็บตารางสอนในหน้าข้อมูลส่วนตัว
   records: 'js/records.js', // แท็บอบรม/เกียรติบัตร/รางวัล (รูปย่อใน Firestore + ต้นฉบับใน Storage)
   'course-desc': 'js/course-desc.js', // ฟอร์มคำอธิบายรายวิชา (แท็บในหน้า "ตั้งค่าโครงสร้างวิชา") — ใช้ตัวช่วย/สไตล์ของ doc-shell
+  'course-desc-ai': 'js/course-desc-ai.js', // ตัวต่อผู้ช่วย AI ของฟอร์มคำอธิบายรายวิชา (registerDocAi 'cdesc') — โหลดหลัง course-desc + badwork-ai · เฉพาะตอนเปิดแท็บฟอร์ม
   // กลุ่ม Personal Agreement — ต้องโหลดตามลำดับนี้ (doc-system.js → pa-config.js → pa.js …) ใช้ loadModules(LAZY_BUNDLES.pa)
   'doc-system': 'js/doc-system.js', // บริบทของระบบเอกสาร: config + state + collection ต่อระบบ (ใช้ร่วมกับระบบเอกสารอื่นในอนาคต)
   'doc-shell': 'js/doc-shell.js', // โครงหน้า/แท็บ/ตัวช่วยร่วมของทุกระบบเอกสาร — โหลดหลัง doc-system ก่อนไฟล์ของแต่ละระบบ
@@ -633,6 +634,8 @@ const LAZY_BUNDLES = {
   car: ['doc-system', 'doc-shell', 'car-config', 'car', 'badwork-ai-config', 'badwork-ai', 'car-ai'],
   // ฟอร์มคำอธิบายรายวิชา (แท็บในหน้า "ตั้งค่าโครงสร้างวิชา") — ไม่ใช่ระบบเอกสารเต็มรูปแบบ (ไม่มี config/AI/ลิสต์) แต่ใช้คลาสฟอร์มของ PA จึงต้องโหลดพร้อม doc-shell (ได้ docs.min.css ตามมา)
   cdesc: ['doc-system', 'doc-shell', 'course-desc'],
+  // ฟอร์มคำอธิบายรายวิชา + ผู้ช่วย AI — โหลดเฉพาะตอนเปิดแท็บฟอร์ม (js/course-desc.js · cdLoadAi) · หน้าที่ใช้แค่พิมพ์ (ภาพรวมวิชา) โหลด cdesc อย่างเดียว ไม่แบกโค้ด AI · โมดูลที่โหลดแล้ว (เช่น badwork-ai จาก PA) ไม่ถูกโหลดซ้ำ
+  cdescAi: ['doc-system', 'doc-shell', 'course-desc', 'badwork-ai-config', 'badwork-ai', 'course-desc-ai'],
   // เฉพาะ config ของทุกระบบเอกสาร (เบา · ไม่มี UI) — privacy.js ใช้รู้ชื่อ collection · ระบบเอกสารใหม่ต้องเพิ่มไฟล์ config ของตัวเองที่นี่
   docConfigs: ['doc-system', 'pa-config', 'idp-config', 'tra-config', 'car-config'],
 };

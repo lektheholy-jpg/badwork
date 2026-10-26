@@ -8,12 +8,15 @@
 //     อ่านจากค่าที่พิมพ์ค้างในฟอร์ม (ข้ามแท็บได้โดยไม่ต้องบันทึก — ร่างเก็บใน _cdDraft) ไม่มีร่างค้างก็อ่านที่บันทึกไว้ · พิมพ์/บันทึก PDF ผ่าน docPrintWindow · cdPrint(d) ใช้ซ้ำที่แท็บภาพรวมของหน้าวิชา (js/courses.js)
 //   • หน้าวิชาที่เปิดสอนในเทอม (แท็บภาพรวม) แสดงคำอธิบายนี้แบบอ่านอย่างเดียว โดยอ่านจากแม่แบบวิชาที่วิชานั้นผูกอยู่ (templateId)
 //   • lazy: โหลดผ่าน loadModules(LAZY_BUNDLES.cdesc) (doc-system → doc-shell → course-desc) — doc-shell ดึง docs.min.css ตามมาเอง
+//   • ผู้ช่วย AI (ไม่บังคับ): js/course-desc-ai.js (LAZY_BUNDLES.cdescAi) เขียน/ปรับสำนวน/ย่อ "คำอธิบายรายวิชา" กับ "จุดประสงค์" — โหลดเฉพาะตอนเปิดแท็บฟอร์ม (หน้าภาพรวมวิชาที่โหลด cdesc เพื่อพิมพ์ไม่ต้องแบกโค้ด AI)
+//     ไฟล์นี้เป็นเจ้าของ "สถานะฟอร์ม" (CD_STATE) ที่ตัวต่อ AI อ่านเป็น sys.state และเก็บบริบทงานของ AI ไว้ที่ settings/description.aiCtx
+//     ทุกจุดที่แตะ AI เช็ก typeof ก่อนเสมอ — ไม่มี/โหลดไม่ได้ = ฟอร์มทำงานตามเดิมไม่มีปุ่ม AI (tests/course-desc.test.js รันโดยไม่โหลดแกน AI)
 // ==========================================================================
 
 const CD_SAVE_LABEL = 'บันทึกคำอธิบายรายวิชา'; // ป้ายปุ่มบันทึก (ข้อความล้วน)
 const CD_DOC_ID = 'description';              // settings/description
 const CD_TYPES = ['พื้นฐาน', 'เพิ่มเติม'];
-const CD_MAX = { code: 20, name: 150, level: 40, credit: 8, desc: 4000, indCode: 40, indText: 500, indRows: 60 };
+const CD_MAX = { code: 20, name: 150, level: 40, credit: 8, desc: 4000, indCode: 40, indText: 500, indRows: 60, ctx: 500, ctxKeys: 10 };
 
 // มีค่าที่พิมพ์ค้างยังไม่บันทึกหรือไม่ — หน้าที่สลับแท็บเรียกถามก่อนทิ้ง (js/picker-pages.js)
 let _cdDirty = false;
@@ -27,13 +30,27 @@ function cdStashDraft() { // เรียกก่อนออกจากแท
 function cdDiscardDraft() { _cdDraft = null; _cdDraftId = null; _cdDirty = false; } // ออกจากกลุ่มแท็บคำอธิบาย (ยืนยันทิ้งแล้ว)
 function cdDraftFor(course) { return _cdDirty && _cdDraft && _cdDraftId === course.id ? _cdDraft : null; }
 
+// สถานะของฟอร์มที่เปิดอยู่ — ผู้ช่วย AI (js/course-desc-ai.js) อ่านเป็น sys.state: doc = ค่าที่กำลังแก้ (มี aiCtx) · docId = id วิชา (บริบท AI บันทึกอัตโนมัติได้เสมอ) ·
+//   course = วิชา/แม่แบบที่เปิดอยู่ (ใช้หา settings/description) · list = [] (แกนไม่ใช้ แต่ต้องมี) — ตั้งใหม่ทุกครั้งที่วาดฟอร์ม (cdShowForm)
+const CD_STATE = { doc: null, docId: null, course: null, list: [] };
+
 const cdStr = (v, n) => String(v == null ? '' : v).slice(0, n);
+
+// บริบทงานของผู้ช่วย AI (aiCtx) — ชื่อช่อง/ความยาวต่อช่องกำหนดที่ CD_AI_CONFIG (js/course-desc-ai.js · lazy) ที่นี่กรองรูปแบบกว้าง ๆ เท่านั้น
+//   (ไม่เก็บเกินจำนวน/ความยาวต่อเอกสาร · ไม่ผูกชื่อช่องไว้ในไฟล์หลักที่ต้องใช้ได้โดยไม่มี AI)
+function cdCleanCtx(c) {
+  const out = {};
+  if (c && typeof c === 'object' && !Array.isArray(c)) {
+    Object.keys(c).filter(k => /^[A-Za-z][A-Za-z0-9]{0,15}$/.test(k)).slice(0, CD_MAX.ctxKeys).forEach(k => { out[k] = cdStr(c[k], CD_MAX.ctx); });
+  }
+  return out;
+}
 
 // ทำให้ข้อมูลครบทุกช่อง (เอกสารเก่า/ว่าง → ค่าเริ่มต้น) · รับค่าเริ่มต้นจากข้อมูลวิชาเมื่อยังไม่เคยบันทึก
 function cdNormalize(d, course) {
   d = d && typeof d === 'object' ? d : {};
   const c = course || {};
-  const fresh = !Object.keys(d).length; // ยังไม่เคยบันทึก → ดึงจากข้อมูลวิชา
+  const fresh = !Object.keys(d).some(k => k !== 'aiCtx'); // ยังไม่เคยบันทึก → ดึงจากข้อมูลวิชา (เอกสารที่มีแต่บริบท AI ที่บันทึกอัตโนมัติ ยังนับว่าไม่เคยบันทึก)
   const pick = (k, fallback, n) => cdStr(d[k] != null ? d[k] : (fresh ? fallback : ''), n);
   const sem = String(d.semester != null ? d.semester : (fresh ? c.semester : '') || '');
   return {
@@ -50,6 +67,7 @@ function cdNormalize(d, course) {
     indicators: (Array.isArray(d.indicators) ? d.indicators : []).slice(0, CD_MAX.indRows)
       .map(r => ({ code: cdStr(r && r.code, CD_MAX.indCode).trim(), text: cdStr(r && r.text, CD_MAX.indText).trim() }))
       .filter(r => r.code || r.text),
+    aiCtx: cdCleanCtx(d.aiCtx),
   };
 }
 
@@ -164,11 +182,14 @@ function cdFormHtml(d) {
 
 function cdCollect(form) {
   const get = id => (document.getElementById(id)?.value || '').trim();
+  // บริบท AI: อ่านจากช่องบนหน้า (ถ้าติดผู้ช่วย AI แล้ว) ไม่งั้นคงค่าที่โหลดมา — บันทึกด้วย set() ทับทั้งเอกสาร จึงต้องส่ง aiCtx ไปด้วยทุกครั้ง ไม่งั้นบริบทหาย
+  const ctxNow = typeof cdAiCtxNow === 'function' ? cdAiCtxNow() : null;
   return cdNormalize({
     codeTh: get('cd-codeTh'), nameTh: get('cd-nameTh'), codeEn: get('cd-codeEn'), nameEn: get('cd-nameEn'),
     level: get('cd-level'), semester: get('cd-semester'), credit: get('cd-credit'), type: get('cd-type'),
     descMain: get('cd-descMain'), descPurpose: get('cd-descPurpose'),
     indicators: cdReadIndicators(form),
+    aiCtx: ctxNow || (CD_STATE.doc && CD_STATE.doc.aiCtx) || {},
   }, null);
 }
 
@@ -276,14 +297,24 @@ function cdShowPreview(container, d, fromDraft, onEdit) {
   }).catch(err => console.error('cdShowPreview:', err));
 }
 
+// โหลดผู้ช่วย AI (lazy) ก่อนวาดฟอร์ม — จะได้ติดปุ่มพร้อมฟอร์มในครั้งเดียว ไม่ให้หน้าขยับตอนโหลดเสร็จ · โหลดไม่ได้/ไม่มีไฟล์ = ใช้ฟอร์มได้ตามปกติ ไม่มีปุ่ม AI
+async function cdLoadAi() {
+  if (typeof loadModules !== 'function' || typeof LAZY_BUNDLES === 'undefined' || !LAZY_BUNDLES.cdescAi) return;
+  try { await loadModules(LAZY_BUNDLES.cdescAi); } catch (err) { console.warn('ผู้ช่วย AI ของคำอธิบายรายวิชาโหลดไม่สำเร็จ (ใช้ฟอร์มได้ตามปกติ):', err); }
+}
+
 async function renderCourseDescTab(container, course) {
   const draft = cdDraftFor(course);
-  if (draft) { cdShowForm(container, course, draft); return; } // กลับจากแท็บตัวอย่าง: ค่าที่พิมพ์ค้างไว้ยังอยู่ (ธงค่าค้างไม่ถูกแตะ)
+  if (draft) { // กลับจากแท็บตัวอย่าง: ค่าที่พิมพ์ค้างไว้ยังอยู่ (ธงค่าค้างไม่ถูกแตะ)
+    await cdLoadAi();
+    if (container.isConnected) cdShowForm(container, course, draft);
+    return;
+  }
   showLoading('cat-sm', container);
   cdDiscardDraft();
   _cdDraftId = course.id;
-  const data = await cdLoad(container, course);
-  if (data) cdShowForm(container, course, data);
+  const [data] = await Promise.all([cdLoad(container, course), cdLoadAi()]);
+  if (data && container.isConnected) cdShowForm(container, course, data);
 }
 
 // โหลดเอกสารที่บันทึกไว้ → ข้อมูลครบทุกช่อง · โหลดไม่ได้ = แสดงข้อความแทนในกล่อง แล้วคืน null
@@ -316,9 +347,13 @@ function cdShowForm(container, course, data) {
   container.innerHTML = cdFormHtml(data);
   const form = container.querySelector('#cd-form');
   const rows = form.querySelector('#cd-ind-rows');
+  CD_STATE.doc = data; CD_STATE.docId = course.id; CD_STATE.course = course; // ผู้ช่วย AI อ่านจากที่นี่ (ดู CD_STATE)
 
-  form.addEventListener('input', () => { _cdDirty = true; });
-  form.addEventListener('change', () => { _cdDirty = true; });
+  // การ์ดผู้ช่วย AI ด้านบน (ช่องบริบท · เลือกรุ่น) ไม่ใช่เนื้อหาของฟอร์ม — บริบทบันทึกอัตโนมัติเอง จึงไม่ตั้งธง "ยังไม่บันทึก"
+  //   (ข้อความที่ AI ใส่ลงช่องส่ง input event จากช่องนั้นเอง จึงยังนับว่าแก้ฟอร์ม)
+  const mine = e => !e.target.closest('.doc-ai-top');
+  form.addEventListener('input', e => { if (mine(e)) _cdDirty = true; });
+  form.addEventListener('change', e => { if (mine(e)) _cdDirty = true; });
 
   const addRows = (list) => {
     const room = CD_MAX.indRows - rows.querySelectorAll('.cd-ind-row').length;
@@ -362,4 +397,7 @@ function cdShowForm(container, course, data) {
     saveBtn.disabled = false;
     saveBtn.textContent = CD_SAVE_LABEL;
   });
+
+  // ปุ่มผู้ช่วย AI (js/badwork-ai.js + ตัวต่อ js/course-desc-ai.js) — ไม่มีไฟล์เหล่านี้ฟอร์มก็ทำงานตามเดิม
+  if (typeof badworkAiMount === 'function' && typeof cdAiSys === 'function') badworkAiMount(container, form, cdAiSys());
 }

@@ -58,6 +58,7 @@ npm run check:sw         # PRECACHE ใน sw.js ตรงกับไฟล์�
 npm run build:version    # เลขเวอร์ชัน v<ใหญ่>.<ฟีเจอร์>.<วันเวลา> → APP_INFO + sw.js VERSION (อยู่ใน npm run build แล้ว)
 npm run check:version    # ตรวจว่าเลขเวอร์ชันตรงกับต้นทาง (อยู่ใน npm run ci แล้ว)
 npm run test:cdesc       # ฟอร์มคำอธิบายรายวิชา (js/course-desc.js): ค่าเริ่มต้นจากวิชา · แยกตัวชี้วัดที่วางมา · เพิ่ม/ลบแถว · บันทึกที่ settings/description · ตัวอย่างก่อนพิมพ์ (แท็บ) /พิมพ์ · ร่างข้ามแท็บ · การ์ดคำอธิบายที่แท็บภาพรวมของหน้าวิชา · ลงทะเบียนครบ (utils · sw · แท็บหน้าโครงสร้างวิชา · CSS bundle docs)
+npm run test:cdescai     # ผู้ช่วย AI ของฟอร์มคำอธิบายรายวิชา (js/course-desc-ai.js + แกน badwork-ai.js): การ์ด/ปุ่มเฉพาะช่องคำอธิบาย+จุดประสงค์ (ไม่แตะตัวชี้วัด) · พร้อต์ใช้ค่าที่ยังไม่บันทึก/จำกัดขนาดตัวชี้วัด/ไม่ส่งชื่อครู · ผ่านหน้าต่างตรวจทานแล้วตั้งธงยังไม่บันทึก · บริบท aiCtx บันทึกอัตโนมัติ (ไม่ทำให้ค่าเริ่มต้นจากวิชาหาย · ไม่ปนข้ามวิชา · บันทึกฟอร์มแล้วไม่หาย) · โหลด AI ล้มเหลวฟอร์มยังใช้ได้ · ลงทะเบียนไฟล์ครบ
 npm run test:docprev     # โครงหน้าตัวอย่างกลาง (docRenderPreview · docPaginate · docFitSheets · docWatchResize) + หน้าตัวอย่าง ID-Plan จริง + กันโค้ด resize/zoom/ตัดหน้า/CSS แถบตัวอย่างหลุดเข้าไฟล์ระบบ
 ```
 
@@ -85,6 +86,7 @@ js/courses.js         รายวิชา ห้องเรียน ภา�
 js/students.js        นักเรียนรายห้อง (เพิ่มทีละคน / นำเข้า CSV-Excel)
 js/structure.js       โครงสร้างคะแนนระดับวิชา (ใช้ร่วมทุกห้อง ลากจัดลำดับได้)
 js/course-desc.js     [lazy] ฟอร์มคำอธิบายรายวิชา (แท็บ "คำอธิบายรายวิชา" ในหน้า ตั้งค่าโครงสร้างวิชา) — หน้าตา/ตัวช่วยเดียวกับฟอร์ม PA (doc-form · doc-section · doc-lblock) · โหลดผ่าน LAZY_BUNDLES.cdesc · มีแท็บ "ตัวอย่างก่อนพิมพ์" ต่อจากแท็บฟอร์ม (แผ่น A4 ผ่านโครงกลาง doc-shell · ร่างที่ยังไม่บันทึกข้ามแท็บได้) และ cdPrint(d) สำหรับพิมพ์ — หน้าวิชาที่เปิดสอนในเทอม (แท็บภาพรวม ใน js/courses.js) แสดงคำอธิบายนี้อ่านอย่างเดียวจากแม่แบบวิชา
+js/course-desc-ai.js  [lazy] ตัวต่อผู้ช่วย AI ของฟอร์มคำอธิบายรายวิชา (registerDocAi 'cdesc') — ช่องที่ให้ AI เขียน: คำอธิบายรายวิชา · จุดประสงค์/ผลที่คาดหวัง (ไม่สร้างตัวชี้วัด — เป็นข้อมูลทางการจากหลักสูตร) · อ่านตัวชี้วัดที่ครูวางไว้เป็นข้อมูลประกอบ · config/พร้อต์อยู่ในไฟล์นี้ (ฟอร์มนี้ไม่ใช่ระบบเอกสารที่ลงทะเบียนใน doc-system เหมือน SAR) · โหลดผ่าน LAZY_BUNDLES.cdescAi เฉพาะตอนเปิดแท็บฟอร์ม (หน้าภาพรวมวิชาที่โหลด cdesc เพื่อพิมพ์ไม่แบกโค้ด AI)
 js/scores.js          บันทึกคะแนนแบบสเปรดชีต + autosave
 js/picker-pages.js    หน้าเลือกวิชา/ห้อง
 js/report-page.js     หน้ารายงาน
@@ -167,7 +169,7 @@ npx wrangler deploy                      # แล้วนำ URL ที่ไ�
 users/{uid}                                  profile (map) ข้อมูลส่วนตัวครู
 users/{uid}/courses/{courseId}               วิชา + โครงสร้างคะแนน
   /assessments/{id}                          รายการคะแนนเก็บ/กลางภาค/ปลายภาค (ใช้ร่วมทุกห้อง)
-  /settings/description                      คำอธิบายรายวิชา { codeTh, nameTh, codeEn, nameEn, level, semester, credit, type, descMain, descPurpose, indicators: [{ code, text }] } (ก็อยู่ใต้ courseTemplates/{tid} ด้วย — ฟอร์มอยู่ที่แม่แบบ)
+  /settings/description                      คำอธิบายรายวิชา { codeTh, nameTh, codeEn, nameEn, level, semester, credit, type, descMain, descPurpose, indicators: [{ code, text }], aiCtx: { topics, skills, traits } } (ก็อยู่ใต้ courseTemplates/{tid} ด้วย — ฟอร์มอยู่ที่แม่แบบ) · `aiCtx` = บริบทงานของผู้ช่วย AI เก็บเฉพาะวิชานี้ บันทึกอัตโนมัติด้วย `set(merge)` จึงอาจมีเอกสารที่มีแต่ `aiCtx` (ยังนับว่าไม่เคยบันทึกฟอร์ม: `cdNormalize` ดึงค่าเริ่มต้นจากวิชา · หน้าภาพรวมวิชาถือว่าไม่มีคำอธิบาย) · บันทึกฟอร์มด้วย `set()` ทับทั้งเอกสาร จึงต้องส่ง `aiCtx` ไปด้วยทุกครั้ง (`cdCollect` ทำให้) · rules ไม่ต้องแก้ (`validDoc(100)`)
   /settings/grading                          เกณฑ์เกรด (ใช้ร่วมทุกห้อง)
   /sections/{sectionId}                      ห้อง { room, order }
     /students/{id}                           นักเรียนของห้อง
