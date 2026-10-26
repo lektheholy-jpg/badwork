@@ -48,6 +48,8 @@ const $ = id => d.getElementById(id);
   let n = R(`cdNormalize({}, ${JSON.stringify(course)})`);
   ok(n.codeTh === 'ท21102' && n.nameTh === 'ภาษาไทย 2' && n.level === 'ม.1' && n.credit === '1.5', 'ยังไม่เคยบันทึก: ดึงรหัส/ชื่อ/ระดับชั้น/หน่วยกิตจากข้อมูลวิชา');
   ok(n.type === 'พื้นฐาน' && n.semester === '' && Array.isArray(n.indicators) && !n.indicators.length, 'ค่าเริ่มต้น: ประเภท = พื้นฐาน · ไม่ระบุภาคเรียน · ไม่มีตัวชี้วัด');
+  ok(n.hours === '' && n.area === '', 'ค่าเริ่มต้น: เวลาเรียน (ชั่วโมง) และกลุ่มสาระการเรียนรู้ ว่าง (ไม่มีในข้อมูลวิชา) · เอกสารเก่าที่ไม่มีช่องนี้ก็ใช้ได้');
+  ok(R(`cdNormalize({ hours: '9'.repeat(30), area: 'ก'.repeat(300) }, null)`).hours.length === R('CD_MAX.hours') && R(`cdNormalize({ area: 'ก'.repeat(300) }, null)`).area.length === R('CD_MAX.area'), 'เวลาเรียน/กลุ่มสาระ: ตัดตามขีดจำกัด');
   n = R(`cdNormalize({ codeTh: '', nameTh: 'ก', type: 'อื่น', semester: '3' }, ${JSON.stringify(course)})`);
   ok(n.codeTh === '' && n.nameTh === 'ก', 'เคยบันทึกแล้ว: ช่องที่ผู้ใช้เว้นว่างไม่ถูกเติมจากข้อมูลวิชากลับมา');
   ok(n.type === 'พื้นฐาน' && n.semester === '', 'ประเภท/ภาคเรียนที่ไม่อยู่ในตัวเลือก → กลับค่าปลอดภัย');
@@ -113,16 +115,18 @@ const $ = id => d.getElementById(id);
   // ---------------- เก็บค่า → บันทึก ----------------
   $('cd-nameEn').value = ' Thai Language 2 ';
   $('cd-semester').value = '2';
+  $('cd-hours').value = ' 60 ';
+  $('cd-area').value = ' ภาษาไทย ';
   $('cd-type').value = 'เพิ่มเติม';
   $('cd-descMain').value = 'ศึกษาหลักการอ่านออกเสียง';
   $('cd-descPurpose').value = 'เพื่ออ่านออกเสียงบทร้อยแก้ว';
   const col = R('cdCollect(document.getElementById("cd-form"))');
-  ok(col.nameEn === 'Thai Language 2' && col.semester === '2' && col.type === 'เพิ่มเติม' && col.indicators.length === 3, 'Collect: ตัดช่องว่าง · อ่านภาคเรียน/ประเภท/ตัวชี้วัดครบ');
+  ok(col.nameEn === 'Thai Language 2' && col.semester === '2' && col.type === 'เพิ่มเติม' && col.indicators.length === 3 && col.hours === '60' && col.area === 'ภาษาไทย', 'Collect: ตัดช่องว่าง · อ่านภาคเรียน/ประเภท/ตัวชี้วัด/เวลาเรียน/กลุ่มสาระครบ');
   $('cd-save-btn').click();
   await settle();
   const saved = store.get('users/u1/courseTemplates/t1/settings/description');
   ok(!!saved, 'แม่แบบวิชา: บันทึกที่ courseTemplates/{id}/settings/description');
-  ok(saved && saved.descMain === 'ศึกษาหลักการอ่านออกเสียง' && saved.indicators.length === 3 && saved.standards.length === 2 && saved.updatedAt === 'TS', 'เนื้อหา + มาตรฐาน + ตัวชี้วัด + เวลาแก้ไข ถูกเขียนครบ');
+  ok(saved && saved.descMain === 'ศึกษาหลักการอ่านออกเสียง' && saved.indicators.length === 3 && saved.standards.length === 2 && saved.hours === '60' && saved.area === 'ภาษาไทย' && saved.updatedAt === 'TS', 'เนื้อหา + มาตรฐาน + ตัวชี้วัด + เวลาเรียน + กลุ่มสาระ + เวลาแก้ไข ถูกเขียนครบ');
   ok(R('cdIsDirty()') === false && toasts.some(t => /บันทึกคำอธิบายรายวิชาสำเร็จ/.test(t[0])), 'บันทึกสำเร็จ: ล้างธงค่าค้าง + แจ้งผล');
   ok(!$('cd-save-btn').disabled && $('cd-save-btn').textContent.trim() === R('CD_SAVE_LABEL'), 'ปุ่มบันทึกกลับมากดได้หลังบันทึก');
 
@@ -164,22 +168,36 @@ const $ = id => d.getElementById(id);
   ok(!$('cd-preview-btn') && !/ยังไม่มีหน้าตัวอย่าง/.test(host.textContent), 'ฟอร์มไม่มีปุ่มตัวอย่างแล้ว (ย้ายเป็นแท็บ) · ข้อความเก่า "ยังไม่มีหน้าตัวอย่าง" ถูกเอาออก');
   ok(/แท็บ “ตัวอย่างก่อนพิมพ์”/.test(host.textContent), 'ข้อความแนะนำบนฟอร์มชี้ไปที่แท็บ "ตัวอย่างก่อนพิมพ์"');
 
-  const fd = { codeTh: 'ท21102', nameTh: 'ภาษาไทย 2', codeEn: 'TH21102', nameEn: 'Thai 2', level: 'มัธยมศึกษาปีที่ 1', semester: '1', credit: '1.5', type: 'พื้นฐาน',
+  const fd = { codeTh: 'ท21102', nameTh: 'ภาษาไทย 2', codeEn: 'TH21102', nameEn: 'Thai 2', level: 'มัธยมศึกษาปีที่ 1', semester: '1', credit: '1.5', hours: '60', area: 'ภาษาไทย', type: 'พื้นฐาน',
     descMain: 'ศึกษาหลักการอ่าน <b>x</b>\nย่อหน้าสอง', descPurpose: 'เพื่ออ่านออกเสียง', indicators: [{ code: 'ท 1.1 ม.1/1', text: 'อ่านออกเสียง' }, { code: 'ท 1.1 ม.1/2', text: 'จับใจความ' }] };
   const body = R(`cdBuildBodyHtml(${JSON.stringify(fd)})`);
   const bd = new JSDOM('<body>' + body + '</body>').window.document;
-  ok(bd.querySelectorAll('section.pg-port').length === 1 && bd.querySelector('.d1-title').textContent === 'คำอธิบายรายวิชา', 'เอกสาร: 1 section · หัวเรื่อง "คำอธิบายรายวิชา"');
-  const lines = [...bd.querySelectorAll('.d1-c')].map(e => e.textContent);
-  ok(lines.some(t => /รหัสวิชา ท21102\s+ชื่อรายวิชา ภาษาไทย 2/.test(t)) && lines.some(t => /Course Code TH21102\s+Course Title Thai 2/.test(t)), 'บรรทัดรหัส/ชื่อวิชา ไทย + อังกฤษ');
-  ok(lines.some(t => /ระดับชั้น มัธยมศึกษาปีที่ 1\s+ภาคเรียนที่ 1\s+จำนวน 1\.5 หน่วยกิต\s+รายวิชาพื้นฐาน/.test(t)), 'บรรทัดระดับชั้น · ภาคเรียน · หน่วยกิต · ประเภท');
+  ok(bd.querySelectorAll('section.pg-port').length === 1 && bd.querySelector('.d1-title').textContent === 'คำอธิบายรายวิชาพื้นฐาน', 'เอกสาร: 1 section · หัวเรื่อง \"คำอธิบายรายวิชา\" ตามด้วยประเภทวิชา (พื้นฐาน)');
+  ok(new JSDOM('<body>' + R(`cdBuildBodyHtml(${JSON.stringify({ ...fd, type: 'เพิ่มเติม' })})`) + '</body>').window.document.querySelector('.d1-title').textContent === 'คำอธิบายรายวิชาเพิ่มเติม', 'ประเภทเพิ่มเติม: หัวเรื่อง \"คำอธิบายรายวิชาเพิ่มเติม\"');
+  const hl = [...bd.querySelectorAll('.d1-l')].map(e => e.textContent.replace(/\s+/g, ' ').trim());
+  ok(hl[0] === 'ท21102 ภาษาไทย 2 กลุ่มสาระการเรียนรู้ภาษาไทย', 'บรรทัดที่ 2: รหัส ชื่อวิชา กลุ่มสาระการเรียนรู้… (ไม่มีคำว่า \"รหัสวิชา\" / \"ชื่อรายวิชา\" นำหน้า)');
+  ok(hl[1] === 'ชั้นมัธยมศึกษาปีที่ 1 เวลา 60 ชั่วโมง จำนวน 1.5 หน่วยกิต', 'บรรทัดที่ 3: ชั้น… เวลา … ชั่วโมง จำนวน … หน่วยกิต');
+  ok(bd.querySelector('.d1-title + .d1-l') && bd.querySelectorAll('.d1-l + .d1-l + .d1-rule').length === 1 && bd.querySelector('.d1-rule + .d1-p'), 'ลำดับ: หัวเรื่อง → 2 บรรทัดข้อมูล → เส้นจุดไข่ปลา → ย่อหน้าคำอธิบาย');
+  ok(!/ภาคเรียนที่|Course Code|Course Title|TH21102/.test(bd.body.textContent), 'ไม่พิมพ์ภาคเรียน · ชื่อ/รหัสภาษาอังกฤษ (ไม่อยู่ในแบบฟอร์ม)');
   ok(bd.querySelectorAll('.d1-p').length === 3 && !bd.querySelector('.d1-p b'), 'คำอธิบาย 2 ย่อหน้า + จุดประสงค์ 1 ย่อหน้า · ข้อความถูก escape (ไม่ตีความ HTML)');
-  ok(bd.querySelectorAll('.d1-tbl tbody tr').length === 2 && bd.querySelector('.d1-tbl thead') && /รวมทั้งหมด 2 ตัวชี้วัด/.test(bd.querySelector('.d1-total').textContent), 'ตารางตัวชี้วัด: มีหัวตาราง · 2 แถว · สรุปจำนวน');
+  ok(!bd.querySelector('table') && bd.querySelector('.d1-h').textContent === 'รหัสตัวชี้วัด', 'ตัวชี้วัด: หัว \"รหัสตัวชี้วัด\" · ไม่ใช้ตาราง');
+  const indLines = [...bd.querySelectorAll('.d1-ind')].map(e => e.textContent);
+  ok(indLines.length === 1 && indLines[0] === 'ท 1.1 ม.1/1, ม.1/2' && /รวมทั้งหมด 2 ตัวชี้วัด/.test(bd.querySelector('.d1-total').textContent), 'ตัวชี้วัดมาตรฐานเดียวกันรวมเป็นบรรทัดเดียว (\"ท 1.1 ม.1/1, ม.1/2\") · สรุปจำนวนเป็นตัวชี้วัด ไม่ใช่จำนวนบรรทัด');
+  const gi = JSON.parse(R(`JSON.stringify(cdGroupIndicators([
+    { code: 'ต1.1 ป1/1' }, { code: 'ต 1.2  ป.1/1' }, { code: 'ต1.1 ป1/2' }, { code: 'ต 1.2 ป.1/2', text: 'x' }, { code: 'ท 1.1' }, { code: '', text: 'ไม่มีรหัส' }, null, { code: 'ว 1.1 ม.2/10' } ]))`));
+  ok(gi.length === 4 && gi[0].head === 'ต1.1' && gi[0].subs.join('|') === 'ป1/1|ป1/2' && gi[1].head === 'ต 1.2' && gi[1].subs.join('|') === 'ป.1/1|ป.1/2', 'จัดกลุ่มตามมาตรฐานเรียงตามที่พบก่อน · รหัสย่อยเรียงตามที่ใส่ · ใช้ข้อความตามที่พิมพ์ (ต1.1 กับ ต 1.2 ไม่ปนกัน)');
+  ok(gi[2].head === 'ท 1.1' && gi[2].subs.length === 0 && gi[3].head === 'ว 1.1' && gi[3].subs[0] === 'ม.2/10', 'รหัสที่ไม่มีรหัสย่อยแสดงเป็นบรรทัดของตัวเอง · แถวไม่มีรหัส/null ถูกข้าม');
+  const mixed = new JSDOM('<body>' + R(`cdBuildBodyHtml({ indicators: [ { code: 'ท 1.1 ม.1/1' }, { code: 'ท 1.1' }, { text: 'ไม่มีรหัส' } ] })`) + '</body>').window.document;
+  ok(/รวมทั้งหมด 2 ตัวชี้วัด/.test(mixed.querySelector('.d1-total').textContent), 'จำนวนรวมนับเฉพาะแถวที่มีรหัส (ตรงกับที่เห็นในรายการ)');
+  ok(R(`cdLevelText('มัธยมศึกษาปีที่ 1')`) === 'ชั้นมัธยมศึกษาปีที่ 1' && R(`cdLevelText('ชั้นประถมศึกษาปีที่ 4')`) === 'ชั้นประถมศึกษาปีที่ 4' && R(`cdLevelText('ม.1')`) === 'ชั้น ม.1' && R(`cdLevelText('')`) === '', 'คำว่า \"ชั้น\" นำหน้าระดับชั้น: ไม่ซ้ำ · ติดกับ ประถม/มัธยม · เว้นวรรคกับรูปย่อ');
+  const ar = new JSDOM('<body>' + R(`cdBuildBodyHtml({ area: 'กลุ่มสาระการเรียนรู้ภาษาต่างประเทศ' })`) + '</body>').window.document;
+  ok(/กลุ่มสาระการเรียนรู้ภาษาต่างประเทศ/.test(ar.querySelector('.d1-l').textContent) && !/กลุ่มสาระการเรียนรู้\s*กลุ่มสาระ/.test(ar.querySelector('.d1-l').textContent), 'กลุ่มสาระ: พิมพ์คำนำมาเองก็ไม่ซ้ำสองรอบ');
   const empty = new JSDOM('<body>' + R('cdBuildBodyHtml({})') + '</body>').window.document;
-  ok(!empty.querySelector('.d1-tbl') && /…/.test(empty.querySelector('.d1-p').textContent) && /……/.test(empty.querySelector('.d1-c:nth-child(2)').textContent), 'เอกสารว่าง: ไม่มีตารางตัวชี้วัด · ช่องว่างเป็นจุดไข่ปลา');
+  const el = [...empty.querySelectorAll('.d1-l')].map(e => e.textContent);
+  ok(!empty.querySelector('.d1-ind') && !empty.querySelector('.d1-h') && /…/.test(empty.querySelector('.d1-p').textContent) && /……/.test(el[0]) && /กลุ่มสาระการเรียนรู้…/.test(el[0]) && /ชั้น…/.test(el[1]) && /เวลา …+ ชั่วโมง จำนวน …+ หน่วยกิต/.test(el[1]), 'เอกสารว่าง: ไม่มีรายการตัวชี้วัด · ช่องว่างเป็นจุดไข่ปลา');
   const sd = new JSDOM('<body>' + R(`cdBuildBodyHtml(${JSON.stringify({ ...fd, standards: [{ code: 'ว 4.2', text: 'เข้าใจและใช้แนวคิดเชิงคำนวณ' }] })})`) + '</body>').window.document;
-  const heads = [...sd.querySelectorAll('.d1-h')].map(e => e.textContent), tbls = sd.querySelectorAll('.d1-tbl');
-  ok(heads.join('|') === 'มาตรฐานการเรียนรู้|ตัวชี้วัด' && tbls.length === 2 && tbls[0].querySelector('tbody td').textContent === 'ว 4.2' && /รวมทั้งหมด 1 มาตรฐาน/.test(sd.body.textContent) && /รวมทั้งหมด 2 ตัวชี้วัด/.test(sd.body.textContent), 'เอกสาร: ตารางมาตรฐานการเรียนรู้ มาก่อนตารางตัวชี้วัด · แต่ละตารางสรุปจำนวนของตัวเอง');
-  ok(!bd.body.textContent.includes('มาตรฐานการเรียนรู้'), 'ไม่มีมาตรฐาน: ไม่แสดงหัว/ตารางมาตรฐาน (เอกสารเดิมพิมพ์เหมือนเดิม)');
+  ok(!/มาตรฐานการเรียนรู้|ว 4\.2|เข้าใจและใช้แนวคิด/.test(sd.body.textContent) && !sd.querySelector('table'), 'มาตรฐานการเรียนรู้ที่กรอกไว้ ไม่พิมพ์ในแบบนี้ (เก็บไว้ในฟอร์ม)');
+  ok(!bd.body.textContent.includes('มาตรฐานการเรียนรู้'), 'ไม่มีมาตรฐาน: ไม่แสดงหัว/ตารางมาตรฐาน');
   const long = ('คำ ').repeat(900).trim();
   const ch = JSON.parse(R(`JSON.stringify(cdChunks(${JSON.stringify(long)}))`));
   ok(ch.length > 2 && ch.every(c => c.text.length <= R('CD_PARA_MAX')) && ch[0].cont === false && ch.slice(1).every(c => c.cont === true), 'ย่อหน้ายาวถูกตัดเป็นท่อน ≤ CD_PARA_MAX (ท่อนต่อไม่เยื้อง)');
@@ -189,7 +207,7 @@ const $ = id => d.getElementById(id);
   ok(lb.querySelectorAll('.d1-p.d1-more').length === ch.length - 1 && lb.querySelectorAll('.d1-p.d1-cont').length === ch.length - 1 && /d1-more\{text-align-last:justify\}/.test(R('CD1_CSS')), 'เอกสาร: ท่อนที่มีท่อนต่อใช้ .d1-more (กระจายบรรทัดท้าย) · ท่อนต่อใช้ .d1-cont');
   const paged = new JSDOM(R(`docSheetsHtml(CD1_CSS, '<div class="cd1">' + cdBuildBodyHtml(${JSON.stringify(fd)}) + '</div>')`)).window.document;
   const sheets = R(`(d => docPaginate(d, { specs: CD_SHEET, bodyClass: 'cd1', keep: '.d1-h', kindOf: () => 'port' }))`)(paged);
-  ok(sheets === 1 && paged.querySelectorAll('.doc-sheet').length === 1 && paged.querySelector('.doc-sheet-body.cd1 .d1-tbl'), 'โครงกลางตัดหน้าได้: แผ่น A4 พร้อมตารางตัวชี้วัด');
+  ok(sheets === 1 && paged.querySelectorAll('.doc-sheet').length === 1 && paged.querySelector('.doc-sheet-body.cd1 .d1-ind'), 'โครงกลางตัดหน้าได้: แผ่น A4 พร้อมรายการรหัสตัวชี้วัด');
   ok(/210|297/.test(paged.querySelector('.doc-sheet').getAttribute('style')) && /20mm 20mm 20mm 25mm/.test(paged.querySelector('.doc-sheet').getAttribute('style')), 'ขนาดแผ่น A4 ขอบ 20/20/20/25 มม. ตรงกับ @page ตอนพิมพ์');
 
   // แท็บตัวอย่าง: ร่างที่ยังไม่บันทึกข้ามแท็บได้ · ไม่มีร่างก็อ่านที่บันทึกไว้
@@ -232,7 +250,7 @@ const $ = id => d.getElementById(id);
   await pr; await settle();
   const html = written.join('');
   ok(/<title>คำอธิบายรายวิชา ท21102 ภาษาไทย 2<\/title>/.test(html) && /size:A4 portrait;margin:2cm 2cm 2cm 2\.5cm/.test(html), 'หน้าต่างพิมพ์: ชื่อเอกสาร + @page A4 ขอบ 2/2/2/2.5 ซม.');
-  ok(/class="cd1"/.test(html) && /อ่านออกเสียง/.test(html) && /\.cd1 \.d1-tbl/.test(html), 'หน้าต่างพิมพ์: มีเนื้อหา + สไตล์ของกระดาษ (CD1_CSS)');
+  ok(/class="cd1"/.test(html) && /อ่านออกเสียง/.test(html) && /\.cd1 \.d1-ind/.test(html) && /\.cd1 \.d1-rule\{border-bottom:1\.5pt dotted/.test(html), 'หน้าต่างพิมพ์: มีเนื้อหา + สไตล์ของกระดาษ (CD1_CSS)');
 
   // ---------------- แท็บภาพรวมของหน้าวิชา (js/courses.js) ----------------
   const cstore = new Map();

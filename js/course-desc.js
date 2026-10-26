@@ -16,7 +16,7 @@
 const CD_SAVE_LABEL = 'บันทึกคำอธิบายรายวิชา'; // ป้ายปุ่มบันทึก (ข้อความล้วน)
 const CD_DOC_ID = 'description';              // settings/description
 const CD_TYPES = ['พื้นฐาน', 'เพิ่มเติม'];
-const CD_MAX = { code: 20, name: 150, level: 40, credit: 8, desc: 4000, indCode: 40, indText: 500, indRows: 60, stdCode: 40, stdText: 500, stdRows: 20, ctx: 500, ctxKeys: 10 };
+const CD_MAX = { code: 20, name: 150, level: 40, credit: 8, hours: 8, area: 80, desc: 4000, indCode: 40, indText: 500, indRows: 60, stdCode: 40, stdText: 500, stdRows: 20, ctx: 500, ctxKeys: 10 };
 
 // มีค่าที่พิมพ์ค้างยังไม่บันทึกหรือไม่ — หน้าที่สลับแท็บเรียกถามก่อนทิ้ง (js/picker-pages.js)
 let _cdDirty = false;
@@ -68,6 +68,8 @@ function cdNormalize(d, course) {
     level: pick('level', c.level, CD_MAX.level),
     semester: sem === '1' || sem === '2' ? sem : '',
     credit: pick('credit', c.credit, CD_MAX.credit),
+    hours: pick('hours', '', CD_MAX.hours),   // เวลาเรียนรวม (ชั่วโมง) — แสดงในหัวกระดาษ "เวลา … ชั่วโมง"
+    area: pick('area', '', CD_MAX.area),      // กลุ่มสาระการเรียนรู้ — แสดงในหัวกระดาษ "กลุ่มสาระการเรียนรู้…"
     type: CD_TYPES.includes(d.type) ? d.type : CD_TYPES[0],
     descMain: cdStr(d.descMain, CD_MAX.desc),
     descPurpose: cdStr(d.descPurpose, CD_MAX.desc),
@@ -149,6 +151,9 @@ function cdFormHtml(d) {
             <option value="2"${sel('2', d.semester)}>2</option>
           </select>
         </label>
+        <label>เวลาเรียน (ชั่วโมง)
+          <input id="cd-hours" type="text" inputmode="decimal" maxlength="${CD_MAX.hours}" placeholder="เช่น 60" value="${escapeHtml(d.hours)}">
+        </label>
         <label>จำนวนหน่วยกิต
           <input id="cd-credit" type="text" inputmode="decimal" maxlength="${CD_MAX.credit}" placeholder="เช่น 1.5" value="${escapeHtml(d.credit)}">
         </label>
@@ -164,13 +169,14 @@ function cdFormHtml(d) {
         ${txt('cd-codeTh', 'รหัสวิชา (ภาษาไทย)', d.codeTh, CD_MAX.code, ' placeholder="เช่น ท21102"')}
         ${txt('cd-nameTh', 'ชื่อวิชา (ภาษาไทย)', d.nameTh, CD_MAX.name, ' placeholder="เช่น ภาษาไทย 2 (วรรณคดีวิจักษ์ 1)"')}
         ${txt('cd-codeEn', 'รหัสวิชา (ภาษาอังกฤษ)', d.codeEn, CD_MAX.code, ' placeholder="เช่น TH21102"')}
+        ${txt('cd-area', 'กลุ่มสาระการเรียนรู้', d.area, CD_MAX.area, ' placeholder="เช่น ภาษาต่างประเทศ"')}
         ${txt('cd-nameEn', 'ชื่อวิชา (ภาษาอังกฤษ)', d.nameEn, CD_MAX.name, ' placeholder="เช่น Thai Language 2 (Thai Literary Appreciation 1)"')}
       </div>
     </section>
 
     <section class="doc-section">
       <h2 class="doc-sec-title">ส่วนที่ 2  คำอธิบายรายวิชา</h2>
-      <div class="field"><div class="doc-item-h"><label for="cd-descMain">คำอธิบายรายวิชา <span class="doc-sec-note">ย่อหน้าที่ 1 · มักขึ้นต้นด้วย “ศึกษา…”</span></label></div>
+      <div class="field"><div class="doc-item-h"><label for="cd-descMain">คำอธิบายรายวิชา <span class="doc-sec-note">ย่อหน้าที่ 1 · มักขึ้นต้นด้วย “ศึกษา…” · ขึ้นบรรทัดใหม่เพื่อแยกย่อหน้า (เช่น ย่อหน้า “โดยใช้กระบวนการ…”)</span></label></div>
         <textarea id="cd-descMain" class="idp-ta" rows="8" maxlength="${CD_MAX.desc}">${escapeHtml(d.descMain)}</textarea>
       </div>
       <div class="field u-mt-4"><div class="doc-item-h"><label for="cd-descPurpose">จุดประสงค์ / ผลที่คาดหวัง <span class="doc-sec-note">ย่อหน้าที่ 2 · มักขึ้นต้นด้วย “เพื่อ…”</span></label></div>
@@ -224,7 +230,7 @@ function cdCollect(form) {
   const ctxNow = typeof cdAiCtxNow === 'function' ? cdAiCtxNow() : null;
   return cdNormalize({
     codeTh: get('cd-codeTh'), nameTh: get('cd-nameTh'), codeEn: get('cd-codeEn'), nameEn: get('cd-nameEn'),
-    level: get('cd-level'), semester: get('cd-semester'), credit: get('cd-credit'), type: get('cd-type'),
+    level: get('cd-level'), semester: get('cd-semester'), credit: get('cd-credit'), hours: get('cd-hours'), area: get('cd-area'), type: get('cd-type'),
     descMain: get('cd-descMain'), descPurpose: get('cd-descPurpose'),
     standards: cdReadStandards(form),
     indicators: cdReadIndicators(form),
@@ -233,7 +239,7 @@ function cdCollect(form) {
 }
 
 // ---------------------------------------------------------------- ตัวอย่างก่อนพิมพ์ / พิมพ์
-// เอกสาร A4 แนวตั้ง ขอบ 2/2/2/2.5 ซม. (เหมือน แผนการอบรม) — ชื่อวิชา · ระดับชั้น/ภาคเรียน/หน่วยกิต · ย่อหน้าคำอธิบาย · ตารางตัวชี้วัด
+// เอกสาร A4 แนวตั้ง ขอบ 2/2/2/2.5 ซม. (เหมือน แผนการอบรม) — รูปแบบตามแบบ "คำอธิบายรายวิชา" ของหลักสูตร: หัวเรื่อง · รหัส/ชื่อวิชา/กลุ่มสาระ · ชั้น/เวลา/หน่วยกิต · ย่อหน้าคำอธิบาย · รหัสตัวชี้วัดรวมตามมาตรฐาน
 // CD1_CSS = สไตล์ของ "กระดาษ" (ใช้ทั้งในตัวอย่างและหน้าต่างพิมพ์) ไม่ใช่สไตล์ของหน้าเว็บ — ธรรมเนียมเดียวกับ TRA1_CSS / PA1_CSS
 const CD_SHEET = { port: { w: 210, h: 297, pad: [20, 20, 20, 25], label: 'A4 แนวตั้ง' } }; // mm [บน, ขวา, ล่าง, ซ้าย] — ต้องตรงกับ CD_PAGE
 const CD_PAGE = '@page{size:A4 portrait;margin:2cm 2cm 2cm 2.5cm}html,body{margin:0;background:#fff}';
@@ -244,17 +250,14 @@ const CD1_CSS = `
 .cd1 *{box-sizing:border-box}
 .cd1 .d1-c{text-align:center;overflow-wrap:anywhere}
 .cd1 .d1-title{font-weight:700;font-size:18pt;margin-bottom:.3em}
+.cd1 .d1-l{text-align:left;overflow-wrap:anywhere}
+.cd1 .d1-rule{border-bottom:1.5pt dotted #000;height:0;margin:.1em 0 .2em}
 .cd1 .d1-h{font-weight:700;margin-top:.8em;break-after:avoid;page-break-after:avoid}
 .cd1 .d1-p{margin-top:.6em;text-indent:1.25cm;text-align:justify;overflow-wrap:anywhere}
 .cd1 .d1-p.d1-cont{margin-top:0;text-indent:0}
 .cd1 .d1-p.d1-more{text-align-last:justify}
-.cd1 .d1-tbl{width:100%;border-collapse:collapse;margin-top:.4em}
-.cd1 .d1-tbl th,.cd1 .d1-tbl td{border:1px solid #000;padding:.1em .4em;vertical-align:top;text-align:left;overflow-wrap:anywhere}
-.cd1 .d1-tbl th{font-weight:700;text-align:center}
-.cd1 .d1-tbl .d1-code{width:3.8cm}
-.cd1 .d1-tbl thead{display:table-header-group}
-.cd1 .d1-tbl tr{break-inside:avoid;page-break-inside:avoid}
-.cd1 .d1-total{margin-top:.4em}
+.cd1 .d1-ind{text-align:left;overflow-wrap:anywhere}
+.cd1 .d1-total{margin-top:.2em}
 `;
 
 // ตัดข้อความเป็นย่อหน้า (ตามบรรทัดใหม่) แล้วตัดย่อหน้ายาวเป็นท่อน ≤ max ที่ช่องว่างตัวสุดท้ายก่อนถึงขีด (ไม่มีช่องว่าง = ตัดตรงขีด)
@@ -275,42 +278,50 @@ function cdChunks(text, max = CD_PARA_MAX) {
   return out;
 }
 
-// เนื้อหากระดาษ (<section>) — ช่องที่ยังว่างแสดงจุดไข่ปลา เหมือนฟอร์มราชการที่รอกรอก
+// รวมรหัสตัวชี้วัดตามมาตรฐาน: "ต 1.1 ป.1/1" + "ต 1.1 ป.1/2" → { head: 'ต 1.1', subs: ['ป.1/1', 'ป.1/2'] } (เรียงตามที่พบก่อน · ใช้ข้อความรหัสตามที่ครูพิมพ์ ไม่จัดรูปใหม่)
+//   รหัสสุดท้ายต้องเป็นโทเคนเดียวที่มี \"/\" และตัวเลข (เช่น ม.1/1 · ป1/1) — รหัสที่ไม่เข้ารูปแบบนี้แสดงเป็นบรรทัดของตัวเอง · แถวที่ไม่มีรหัส (มีแต่ข้อความ) ไม่มีอะไรให้แสดงในรายการรหัส จึงข้าม
+function cdGroupIndicators(list) {
+  const groups = [], at = new Map();
+  (Array.isArray(list) ? list : []).forEach(r => {
+    const code = String((r && r.code) || '').trim().replace(/\s+/g, ' ');
+    if (!code) return;
+    const m = /^(.+?) (\S*\d\S*\/\S*\d\S*)$/.exec(code);
+    const head = m ? m[1] : code, sub = m ? m[2] : '';
+    if (!at.has(head)) { at.set(head, groups.length); groups.push({ head, subs: [] }); }
+    if (sub) groups[at.get(head)].subs.push(sub);
+  });
+  return groups;
+}
+
+// "ชั้น" + ระดับชั้น (ไม่ซ้ำคำ \"ชั้น\" ถ้าพิมพ์มาแล้ว · ติดกันเมื่อขึ้นต้น ประถม/มัธยม ตามแบบฟอร์ม · อย่างอื่นเว้นวรรค เช่น ชั้น ม.1)
+function cdLevelText(level) {
+  const v = String(level || '').trim();
+  if (!v) return '';
+  if (/^ชั้น/.test(v)) return v;
+  return /^(ประถม|มัธยม)/.test(v) ? 'ชั้น' + v : 'ชั้น ' + v;
+}
+
+// เนื้อหากระดาษ (<section>) — รูปแบบเดียวกับ \"คำอธิบายรายวิชา\" ของหลักสูตร:
+//   คำอธิบายรายวิชา{พื้นฐาน|เพิ่มเติม} → รหัส ชื่อวิชา กลุ่มสาระฯ → ชั้น เวลา หน่วยกิต → เส้นจุดไข่ปลา → ย่อหน้าคำอธิบาย → รหัสตัวชี้วัด (รวมตามมาตรฐาน) → รวมทั้งหมด N ตัวชี้วัด
+//   ช่องที่ยังว่างแสดงจุดไข่ปลา เหมือนฟอร์มราชการที่รอกรอก · ภาคเรียน/ชื่ออังกฤษ/ตารางมาตรฐานการเรียนรู้ ไม่อยู่ในแบบฟอร์มนี้ จึงไม่พิมพ์ (ข้อมูลยังอยู่ในฟอร์มและหน้าภาพรวมวิชา)
 function cdBuildBodyHtml(d) {
   d = cdNormalize(d, null);
   const e = escapeHtml, dots = n => '…'.repeat(n);
   const para = t => cdChunks(t).map(c => `<div class="d1-p${c.cont ? ' d1-cont' : ''}${c.more ? ' d1-more' : ''}">${e(c.text)}</div>`).join('');
-  const meta = [
-    d.level && `ระดับชั้น ${e(d.level)}`,
-    d.semester && `ภาคเรียนที่ ${e(d.semester)}`,
-    d.credit && `จำนวน ${e(d.credit)} หน่วยกิต`,
-    `รายวิชา${e(d.type)}`,
-  ].filter(Boolean).join('&emsp;');
-  const en = d.codeEn || d.nameEn
-    ? `<div class="d1-c">Course Code ${e(d.codeEn) || dots(6)}&emsp;Course Title ${e(d.nameEn) || dots(12)}</div>` : '';
-  const stds = d.standards.length ? `
-  <div class="d1-h">มาตรฐานการเรียนรู้</div>
-  <table class="d1-tbl">
-    <colgroup><col class="d1-code"><col></colgroup>
-    <thead><tr><th>รหัสมาตรฐาน</th><th>มาตรฐานการเรียนรู้</th></tr></thead>
-    <tbody>${d.standards.map(r => `<tr><td>${e(r.code)}</td><td>${e(r.text)}</td></tr>`).join('')}</tbody>
-  </table>
-  <div class="d1-total">รวมทั้งหมด ${d.standards.length} มาตรฐาน</div>` : '';
-  const inds = d.indicators.length ? `
-  <div class="d1-h">ตัวชี้วัด</div>
-  <table class="d1-tbl">
-    <colgroup><col class="d1-code"><col></colgroup>
-    <thead><tr><th>รหัสตัวชี้วัด</th><th>ตัวชี้วัด</th></tr></thead>
-    <tbody>${d.indicators.map(r => `<tr><td>${e(r.code)}</td><td>${e(r.text)}</td></tr>`).join('')}</tbody>
-  </table>
-  <div class="d1-total">รวมทั้งหมด ${d.indicators.length} ตัวชี้วัด</div>` : '';
+  const area = d.area.replace(/^กลุ่มสาระการเรียนรู้\s*/, '').trim(); // กันพิมพ์คำนำมาซ้ำกับที่กระดาษใส่ให้
+  const groups = cdGroupIndicators(d.indicators);
+  const total = d.indicators.filter(r => r.code.trim()).length; // นับตามแถวที่มีรหัส (ตรงกับที่แสดงในรายการ)
+  const inds = groups.length ? `
+  <div class="d1-h">รหัสตัวชี้วัด</div>
+  ${groups.map(g => `<div class="d1-ind">${e(g.head)}${g.subs.length ? ' ' + g.subs.map(e).join(', ') : ''}</div>`).join('\n  ')}
+  <div class="d1-total">รวมทั้งหมด ${total} ตัวชี้วัด</div>` : '';
   return `<section class="pg-port">
-  <div class="d1-c d1-title">คำอธิบายรายวิชา</div>
-  <div class="d1-c">รหัสวิชา ${e(d.codeTh) || dots(6)}&emsp;ชื่อรายวิชา ${e(d.nameTh) || dots(20)}</div>
-  ${en}
-  <div class="d1-c">${meta}</div>
+  <div class="d1-c d1-title">คำอธิบายรายวิชา${e(d.type)}</div>
+  <div class="d1-l">${e(d.codeTh) || dots(6)} ${e(d.nameTh) || dots(20)}&emsp;กลุ่มสาระการเรียนรู้${e(area) || dots(12)}</div>
+  <div class="d1-l">${e(cdLevelText(d.level)) || 'ชั้น' + dots(12)} เวลา ${e(d.hours) || dots(3)} ชั่วโมง จำนวน ${e(d.credit) || dots(3)} หน่วยกิต</div>
+  <div class="d1-rule"></div>
   ${para(d.descMain) || `<div class="d1-p">${dots(60)}</div>`}
-  ${para(d.descPurpose)}${stds}${inds}
+  ${para(d.descPurpose)}${inds}
 </section>`;
 }
 
