@@ -239,25 +239,28 @@ function cdCollect(form) {
 }
 
 // ---------------------------------------------------------------- ตัวอย่างก่อนพิมพ์ / พิมพ์
-// เอกสาร A4 แนวตั้ง ขอบ 2/2/2/2.5 ซม. (เหมือน แผนการอบรม) — รูปแบบตามแบบ "คำอธิบายรายวิชา" ของหลักสูตร: หัวเรื่อง · รหัส/ชื่อวิชา/กลุ่มสาระ · ชั้น/เวลา/หน่วยกิต · ย่อหน้าคำอธิบาย · รหัสตัวชี้วัดรวมตามมาตรฐาน
+// เอกสาร A4 แนวตั้ง ขอบ 2/1.5/2/3 ซม. (ตามแบบคำอธิบายรายวิชา) — รูปแบบตามแบบ "คำอธิบายรายวิชา" ของหลักสูตร: หัวเรื่อง · รหัส/ชื่อวิชา/กลุ่มสาระ · ชั้น/เวลา/หน่วยกิต · ย่อหน้าคำอธิบาย · รหัสตัวชี้วัดรวมตามมาตรฐาน
 // CD1_CSS = สไตล์ของ "กระดาษ" (ใช้ทั้งในตัวอย่างและหน้าต่างพิมพ์) ไม่ใช่สไตล์ของหน้าเว็บ — ธรรมเนียมเดียวกับ TRA1_CSS / PA1_CSS
-const CD_SHEET = { port: { w: 210, h: 297, pad: [20, 20, 20, 25], label: 'A4 แนวตั้ง' } }; // mm [บน, ขวา, ล่าง, ซ้าย] — ต้องตรงกับ CD_PAGE
-const CD_PAGE = '@page{size:A4 portrait;margin:2cm 2cm 2cm 2.5cm}html,body{margin:0;background:#fff}';
+const CD_SHEET = { port: { w: 210, h: 297, pad: [20, 15, 20, 30], label: 'A4 แนวตั้ง' } }; // mm [บน, ขวา, ล่าง, ซ้าย] — ต้องตรงกับ CD_PAGE
+const CD_PAGE = '@page{size:A4 portrait;margin:2cm 1.5cm 2cm 3cm}html,body{margin:0;background:#fff}';
 const CD_PARA_MAX = 900; // ย่อหน้ายาวกว่านี้ตัดเป็นท่อนๆ (ที่ช่องว่าง) — ตัวอย่างตัดหน้าทีละบล็อก บล็อกเดียวที่ยาวเกินหน้าจะถูกตัดขอบ (หน้าหนึ่งจุได้ราว 2,800 ตัวอักษร)
 
 const CD1_CSS = `
-.cd1{background:#fff;color:#000;font-family:'TH SarabunPSK','TH Sarabun PSK','THSarabunPSK','TH Sarabun New','THSarabunNew','PA Sarabun','Noto Sans Thai',Tahoma,sans-serif;font-size:16pt;line-height:1.22}
+.cd1{background:#fff;color:#000;font-family:'TH SarabunPSK','TH Sarabun PSK','THSarabunPSK','TH Sarabun New','THSarabunNew','PA Sarabun','Noto Sans Thai',Tahoma,sans-serif;font-size:16pt;line-height:1.28}
 .cd1 *{box-sizing:border-box}
 .cd1 .d1-c{text-align:center;overflow-wrap:anywhere}
 .cd1 .d1-title{font-weight:700;font-size:18pt;margin-bottom:.3em}
-.cd1 .d1-l{text-align:left;overflow-wrap:anywhere}
-.cd1 .d1-rule{border-bottom:1.5pt dotted #000;height:0;margin:.1em 0 .2em}
-.cd1 .d1-h{font-weight:700;margin-top:.8em;break-after:avoid;page-break-after:avoid}
-.cd1 .d1-p{margin-top:.6em;text-indent:1.25cm;text-align:justify;overflow-wrap:anywhere}
+.cd1 .d1-l{display:flex;justify-content:space-between;gap:1em;font-weight:700;padding:0 2mm;overflow-wrap:anywhere}
+.cd1 .d1-l>span:last-child{text-align:right}
+.cd1 .d1-rule{border-bottom:1.5pt dotted #000;height:0;margin:.3em 0 .5em}
+.cd1 .d1-h{font-weight:700;margin-top:0;break-after:avoid;page-break-after:avoid}
+.cd1 .d1-p{margin-top:0;text-indent:1.25cm;text-align:justify;overflow-wrap:anywhere}
 .cd1 .d1-p.d1-cont{margin-top:0;text-indent:0}
 .cd1 .d1-p.d1-more{text-align-last:justify}
+.cd1 .d1-irow{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);padding-left:1.25cm}
 .cd1 .d1-ind{text-align:left;overflow-wrap:anywhere}
-.cd1 .d1-total{margin-top:.2em}
+.cd1 .d1-ih{display:inline-block;min-width:1.2cm}
+.cd1 .d1-total{font-weight:700}
 `;
 
 // ตัดข้อความเป็นย่อหน้า (ตามบรรทัดใหม่) แล้วตัดย่อหน้ายาวเป็นท่อน ≤ max ที่ช่องว่างตัวสุดท้ายก่อนถึงขีด (ไม่มีช่องว่าง = ตัดตรงขีด)
@@ -285,7 +288,7 @@ function cdGroupIndicators(list) {
   (Array.isArray(list) ? list : []).forEach(r => {
     const code = String((r && r.code) || '').trim().replace(/\s+/g, ' ');
     if (!code) return;
-    const m = /^(.+?) (\S*\d\S*\/\S*\d\S*)$/.exec(code);
+    const m = /^(.+?) ((?:[ก-ฮ]{1,3}\.? )?\S*\d\S*\/\S*\d\S*)$/.exec(code);
     const head = m ? m[1] : code, sub = m ? m[2] : '';
     if (!at.has(head)) { at.set(head, groups.length); groups.push({ head, subs: [] }); }
     if (sub) groups[at.get(head)].subs.push(sub);
@@ -311,14 +314,16 @@ function cdBuildBodyHtml(d) {
   const area = d.area.replace(/^กลุ่มสาระการเรียนรู้\s*/, '').trim(); // กันพิมพ์คำนำมาซ้ำกับที่กระดาษใส่ให้
   const groups = cdGroupIndicators(d.indicators);
   const total = d.indicators.filter(r => r.code.trim()).length; // นับตามแถวที่มีรหัส (ตรงกับที่แสดงในรายการ)
+  const item = g => `<span class="d1-ind"><span class="d1-ih">${e(g.head)}</span>${g.subs.length ? ' ' + g.subs.map(e).join(', ') : ''}</span>`;
+  const half = Math.ceil(groups.length / 2); // สองคอลัมน์ เรียงลงตามคอลัมน์ (ซ้ายก่อน แล้วต่อด้วยขวา) · แต่ละแถวเป็นบล็อกของตัวเอง ตัดหน้าได้
   const inds = groups.length ? `
   <div class="d1-h">รหัสตัวชี้วัด</div>
-  ${groups.map(g => `<div class="d1-ind">${e(g.head)}${g.subs.length ? ' ' + g.subs.map(e).join(', ') : ''}</div>`).join('\n  ')}
+  ${Array.from({ length: half }, (_, i) => `<div class="d1-irow">${item(groups[i])}${groups[i + half] ? item(groups[i + half]) : ''}</div>`).join('\n  ')}
   <div class="d1-total">รวมทั้งหมด ${total} ตัวชี้วัด</div>` : '';
   return `<section class="pg-port">
   <div class="d1-c d1-title">คำอธิบายรายวิชา${e(d.type)}</div>
-  <div class="d1-l">${e(d.codeTh) || dots(6)} ${e(d.nameTh) || dots(20)}&emsp;กลุ่มสาระการเรียนรู้${e(area) || dots(12)}</div>
-  <div class="d1-l">${e(cdLevelText(d.level)) || 'ชั้น' + dots(12)} เวลา ${e(d.hours) || dots(3)} ชั่วโมง จำนวน ${e(d.credit) || dots(3)} หน่วยกิต</div>
+  <div class="d1-l"><span>${e(d.codeTh) || dots(6)} ${e(d.nameTh) || dots(20)}</span> <span>กลุ่มสาระการเรียนรู้${e(area) || dots(12)}</span></div>
+  <div class="d1-l"><span>${e(cdLevelText(d.level)) || 'ชั้น' + dots(12)}</span> <span>เวลา ${e(d.hours) || dots(3)} ชั่วโมง จำนวน ${e(d.credit) || dots(3)} หน่วยกิต</span></div>
   <div class="d1-rule"></div>
   ${para(d.descMain) || `<div class="d1-p">${dots(60)}</div>`}
   ${para(d.descPurpose)}${inds}
