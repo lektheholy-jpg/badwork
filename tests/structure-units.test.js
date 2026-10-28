@@ -157,6 +157,9 @@ const groupNames = (c) => [...c.querySelectorAll('input.group-name')].map(i => i
     ok(c.textContent.includes('30'), 'ยังแสดงยอดรวมคะแนนเก็บ');
     const editors = 'input.row-name, input.row-detail, input.row-max, input.group-name, input.unit-name, select.row-group, #new-group-name, #add-group-btn, #add-item-btn, #save-structure-btn, .del-item, .group-del, .unit-del, .group-add, .unit-add, .unit-new, .group-up, .group-down, .handle-col, .quick-group';
     ok(c.querySelectorAll(editors).length === 0, 'ไม่มีช่องกรอก/ปุ่มเพิ่ม-ลบ-บันทึก-ลาก-ย้ายใด ๆ เหลืออยู่');
+    ok(!c.querySelector('.group-col'), 'ไม่แสดงคอลัมน์ "ที่อยู่ (หมวด / หน่วย)"');
+    const nameCell = (id) => c.querySelector(`tr[data-id="${id}"] td:nth-child(2)`);
+    ok(nameCell('a1').style.paddingLeft && !nameCell('a2').style.paddingLeft, 'ชิ้นงานในหน่วยเยื้องเข้ามา ส่วนงานนอกหน่วยไม่เยื้อง')
     ok(c.querySelector('#mid-max-input').readOnly && c.querySelector('#final-max-input').readOnly, 'ช่องคะแนนกลางภาค/ปลายภาคเป็น readonly');
     ok(c.querySelectorAll('input:not([readonly])').length === 0, 'ไม่มี input ที่พิมพ์ได้เลย');
     ok(!c.querySelector('.att-btn[data-id="a2"]'), 'งานที่ไม่มีสื่อไม่แสดงปุ่มแนบ');

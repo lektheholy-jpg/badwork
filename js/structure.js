@@ -182,7 +182,7 @@ async function renderStructureTab(container, course, opts = {}) {
   function draw() {
     const gt = grandTotal();
     const hasGroups = groups.length > 0 || units.length > 0; // มีหมวดหรือหน่วย → แสดงหัวข้อ + ช่อง "ที่อยู่"
-    const cols = (hasGroups ? 8 : 7) - (ro ? 2 : 0); // โหมดอ่านอย่างเดียวไม่มีคอลัมน์ลาก/ลบ
+    const cols = (hasGroups ? 8 : 7) - (ro ? (hasGroups ? 3 : 2) : 0); // โหมดอ่านอย่างเดียวไม่มีคอลัมน์ลาก/ลบ/ที่อยู่
     const ordered = displayItems();
 
     // ตัวเลือก "ที่อยู่" ของงาน: ยังไม่จัดหมวด / หมวด / หน่วยในหมวด (ค่า '' | 'g:<id>' | 'u:<id>')
@@ -200,19 +200,12 @@ async function renderStructureTab(container, course, opts = {}) {
       if (ro && !n) return '';
       return `<button type="button" class="btn btn-ghost btn-sm att-btn" data-id="${id}" title="${ro ? 'ดูลิงก์/ใบงาน' : 'แนบลิงก์/ใบงาน'}">${icon('clip')} ${n || 'แนบ'}</button>`;
     };
-    const locText = (it) => {
-      const u = it.unitId ? unitById(it.unitId) : null;
-      const g = groups.find(x => x.id === it.groupId);
-      if (u) return (g ? groupLabel(g) + ' › ' : '') + unitLabel(u);
-      return g ? groupLabel(g) : 'ยังไม่จัดหมวด';
-    };
     const itemRowRo = (it, idx) => `
       <tr data-type="item" data-id="${it.id}">
         <td>${idx + 1}</td>
-        <td>${escapeHtml(it.name || '—')}</td>
+        <td${it.unitId ? ' style="padding-left:28px"' : ''}>${escapeHtml(it.name || '—')}</td>
         <td class="muted">${escapeHtml(it.detail || '')}</td>
         <td class="att-col">${attBtnHtml(it.id, it)}</td>
-        ${hasGroups ? `<td class="group-col">${escapeHtml(locText(it))}</td>` : ''}
         <td class="num-col">${Number(it.max) || 0}</td>
       </tr>`;
 
@@ -357,7 +350,7 @@ async function renderStructureTab(container, course, opts = {}) {
                 <th>รหัส/ชื่อรายการ</th>
                 <th>รายละเอียด / จุดประสงค์</th>
                 <th class="att-col">สื่อ/ใบงาน</th>
-                ${hasGroups ? `<th class="group-col">ที่อยู่ (หมวด / หน่วย)</th>` : ''}
+                ${hasGroups && !ro ? `<th class="group-col">ที่อยู่ (หมวด / หน่วย)</th>` : ''}
                 <th class="num-col">คะแนนเก็บ</th>
                 ${ro ? '' : '<th class="del-col"></th>'}
               </tr></thead>
