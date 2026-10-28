@@ -944,7 +944,15 @@ table.sheet :is(th, td).sticky-right-2 { right: 0; width: var(--r2-w); min-width
 .struct-table input.group-name:focus { outline: none; border-color: var(--primary); background: var(--card); color: var(--ink); }
 .group-stat { font-size: 12px; color: var(--ink-soft); }
 .group-actions { margin-left: auto; display: flex; gap: 6px; }
-.struct-table td.group-col { width: 170px; }
+.struct-table tr.group-row.unit-row td { background: var(--surface-sunken); }
+.group-bar.unit-bar { padding-left: 28px; border-left: 3px solid var(--primary); }
+.struct-table input.unit-name {
+  flex: 1 1 180px; min-width: 120px; border: 1.5px solid transparent; border-radius: 6px;
+  background: transparent; font-size: 13.5px; font-weight: 600; color: var(--ink); padding: 4px 6px;
+}
+.struct-table input.unit-name:hover { border-color: var(--border); background: var(--card); }
+.struct-table input.unit-name:focus { outline: none; border-color: var(--primary); background: var(--card); }
+.struct-table td.group-col { width: 210px; }
 .struct-table select.row-group { width: 100%; font-size: 13px; min-height: 40px; padding-block: 8px; }
 .struct-table tr[data-type="item"] td.handle-col:active { cursor: grabbing; }
 .struct-table.has-groups tr[data-type="item"] td:first-child { border-left: 3px solid var(--col-collect-strong); }

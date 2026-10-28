@@ -3,10 +3,15 @@
 // + editable list of รายการคะแนนเก็บ, drag to reorder
 // + หมวดหมู่หลัก (เช่น ก่อนกลางภาค / หลังกลางภาค) — เลื่อนงานเข้าไปเป็นหมวดหมู่ย่อยได้
 //   เก็บรายชื่อหมวดหมู่ไว้ที่ settings/structure และให้แต่ละงานอ้างด้วย groupId
+// + หน่วยการเรียนรู้ (units) ซ้อนอยู่ในหมวดหมู่: หมวด → หน่วย → ชิ้นงาน
+//   เก็บที่ settings/structure.units = [{ id, name, groupId }] และให้แต่ละงานอ้างด้วย unitId (ไม่ใส่ = งานอยู่ใต้หมวดโดยตรง เหมือนเดิม)
+//   งานที่มี unitId ต้องมี groupId ตรงกับหมวดของหน่วยเสมอ
+// + วิชาที่ยังไม่เคยบันทึกโครงสร้างจะได้หมวด ก่อนกลางภาค / หลังกลางภาค ให้อัตโนมัติ (วิชาเก่าที่บันทึกไว้แล้วไม่ถูกแตะ)
 // ==========================================================================
 
 const MIDTERM_NAME = 'สอบกลางภาค';
 const FINAL_NAME = 'สอบปลายภาค';
+const DEFAULT_GROUP_NAMES = ['ก่อนกลางภาค', 'หลังกลางภาค']; // หมวดหมู่หลักมาตรฐานของวิชาที่ยังไม่เคยบันทึกโครงสร้าง
 
 // ==========================================================================
 // สื่อ/ใบงานที่แนบกับรายการคะแนน (assessment.attachments) — ไว้จำว่าคะแนนช่องนี้ใช้สื่อไหน
@@ -131,32 +136,60 @@ async function renderStructureTab(container, course) {
   const allItems = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
   // หมวดหมู่หลัก: [{ id, name }] เรียงตามลำดับที่แสดง
-  let groups = structDoc.exists ? (structDoc.data().groups || []).map(g => ({ id: g.id, name: g.name || '' })) : [];
+  // วิชาที่ยังไม่เคยบันทึกหมวดหมู่ (ไม่มีเอกสาร structure หรือไม่มีฟิลด์ groups) → สร้างหมวดมาตรฐานให้ในหน้าจอ (บันทึกลงฐานข้อมูลเมื่อกดบันทึก)
+  // วิชาที่เคยบันทึกแล้ว (แม้ groups ว่าง) คงตามเดิม ไม่เติมให้เอง
+  const sd = structDoc.exists ? structDoc.data() : null;
+  let groups = sd && Array.isArray(sd.groups)
+    ? sd.groups.map(g => ({ id: g.id, name: g.name || '' }))
+    : DEFAULT_GROUP_NAMES.map(name => ({ id: 'g' + uid4(), name }));
   const validGroup = (gid) => groups.some(g => g.id === gid);
 
+  // หน่วยการเรียนรู้: [{ id, name, groupId }] groupId = null → อยู่ใต้ "ยังไม่จัดหมวดหมู่"
+  let units = sd && Array.isArray(sd.units)
+    ? sd.units.map(u => ({ id: u.id, name: u.name || '', groupId: validGroup(u.groupId) ? u.groupId : null }))
+    : [];
+  const unitById = (uid) => units.find(u => u.id === uid);
+
   let collectItems = allItems.filter(i => i.category === 'collect')
-    .map(i => ({ ...i, groupId: validGroup(i.groupId) ? i.groupId : null }));
+    .map(i => {
+      const u = unitById(i.unitId);
+      return { ...i, unitId: u ? u.id : null, groupId: u ? u.groupId : (validGroup(i.groupId) ? i.groupId : null) };
+    });
   let midterm = allItems.find(i => i.category === 'midterm') || { id: 'new-mid', name: MIDTERM_NAME, max: 20, category: 'midterm' };
   let final = allItems.find(i => i.category === 'final') || { id: 'new-final', name: FINAL_NAME, max: 30, category: 'final' };
 
-  const itemsOf = (gid) => collectItems.filter(i => (i.groupId || null) === gid);
-  // ลำดับแสดงผล: งานที่ยังไม่จัดหมวด → แต่ละหมวดตามลำดับหมวด
-  const displayItems = () => [...itemsOf(null), ...groups.flatMap(g => itemsOf(g.id))];
+  const itemsOf = (gid) => collectItems.filter(i => (i.groupId || null) === gid);            // ทุกงานในหมวด (รวมที่อยู่ในหน่วย)
+  const looseOf = (gid) => itemsOf(gid).filter(i => !i.unitId);                                // งานที่อยู่ใต้หมวดโดยตรง
+  const unitsOf = (gid) => units.filter(u => (u.groupId || null) === gid);
+  const itemsOfUnit = (uid) => collectItems.filter(i => i.unitId === uid);
+  // ลำดับแสดงผล: ยังไม่จัดหมวด → แต่ละหมวดตามลำดับหมวด · ในหมวด: งานที่ไม่อยู่หน่วยก่อน แล้วตามด้วยแต่ละหน่วยพร้อมชิ้นงาน
+  const displayItems = () => [null, ...groups.map(g => g.id)].flatMap(gid => [...looseOf(gid), ...unitsOf(gid).flatMap(u => itemsOfUnit(u.id))]);
   const sumMax = (items) => items.reduce((s, i) => s + (Number(i.max) || 0), 0);
   const groupLabel = (g) => g.name.trim() || 'หมวดหมู่ (ยังไม่ตั้งชื่อ)';
+  const unitLabel = (u) => u.name.trim() || 'หน่วยการเรียนรู้ (ยังไม่ตั้งชื่อ)';
 
   function collectTotal() { return sumMax(collectItems); }
   function grandTotal() { return collectTotal() + (Number(midterm.max) || 0) + (Number(final.max) || 0); }
 
-  function statText(items) {
-    return items.length ? `${items.length} รายการ · ${sumMax(items)} คะแนน` : 'ยังไม่มีรายการ — ลากงานมาวางใต้หัวข้อนี้ หรือเลือกหมวดที่ช่อง "หมวดหมู่" ของงาน';
+  function statText(items, isUnit) {
+    return items.length ? `${items.length} ชิ้นงาน · ${sumMax(items)} คะแนน`
+      : (isUnit ? 'ยังไม่มีชิ้นงาน — กด "+ ชิ้นงาน" หรือลากงานมาวางใต้หน่วยนี้' : 'ยังไม่มีรายการ — ลากงานมาวางใต้หัวข้อนี้ หรือเลือกที่ช่อง "ที่อยู่" ของงาน');
   }
 
   function draw() {
     const gt = grandTotal();
-    const hasGroups = groups.length > 0;
+    const hasGroups = groups.length > 0 || units.length > 0; // มีหมวดหรือหน่วย → แสดงหัวข้อ + ช่อง "ที่อยู่"
     const cols = hasGroups ? 8 : 7;
     const ordered = displayItems();
+
+    // ตัวเลือก "ที่อยู่" ของงาน: ยังไม่จัดหมวด / หมวด / หน่วยในหมวด (ค่า '' | 'g:<id>' | 'u:<id>')
+    const locationOptions = (it) => {
+      const cur = it.unitId ? 'u:' + it.unitId : it.groupId ? 'g:' + it.groupId : '';
+      const opt = (val, text) => `<option value="${val}" ${cur === val ? 'selected' : ''}>${escapeHtml(text)}</option>`;
+      const unitOpts = (gid) => unitsOf(gid).map(u => opt('u:' + u.id, '\u3000└ ' + unitLabel(u))).join('');
+      return opt('', '— ยังไม่จัดหมวด —') + unitOpts(null)
+        + groups.map(g => opt('g:' + g.id, groupLabel(g)) + unitOpts(g.id)).join('');
+    };
 
     const itemRow = (it, idx) => `
       <tr draggable="false" data-type="item" data-id="${it.id}">
@@ -166,9 +199,8 @@ async function renderStructureTab(container, course) {
         <td><input class="row-detail" data-id="${it.id}" data-field="detail" value="${escapeHtml(it.detail || '')}" placeholder="รายละเอียด/จุดประสงค์ (ถ้ามี)"></td>
         <td class="att-col"><button type="button" class="btn btn-ghost btn-sm att-btn" data-id="${it.id}" title="แนบลิงก์/ใบงาน">${icon('clip')} ${(it.attachments || []).length || 'แนบ'}</button></td>
         ${hasGroups ? `<td class="group-col">
-          <select class="row-group" data-id="${it.id}" aria-label="หมวดหมู่ของรายการนี้">
-            <option value="">— ยังไม่จัดหมวด —</option>
-            ${groups.map(g => `<option value="${g.id}" ${it.groupId === g.id ? 'selected' : ''}>${escapeHtml(groupLabel(g))}</option>`).join('')}
+          <select class="row-group" data-id="${it.id}" aria-label="หมวดหมู่/หน่วยของรายการนี้">
+            ${locationOptions(it)}
           </select>
         </td>` : ''}
         <td class="num-col"><input class="row-max" type="number" data-id="${it.id}" value="${it.max}"></td>
@@ -180,7 +212,7 @@ async function renderStructureTab(container, course) {
         <div class="group-bar">
           <span class="group-title muted">ยังไม่จัดหมวดหมู่</span>
           <span class="group-stat" data-stat-for="">${statText(itemsOf(null))}</span>
-          <span class="group-actions"><button class="btn btn-ghost btn-sm group-add" data-gid="">+ เพิ่มรายการ</button></span>
+          <span class="group-actions"><button class="btn btn-ghost btn-sm unit-new" data-gid="">+ หน่วยการเรียนรู้</button><button class="btn btn-ghost btn-sm group-add" data-gid="">+ เพิ่มรายการ</button></span>
         </div>
       </td></tr>`;
 
@@ -191,6 +223,7 @@ async function renderStructureTab(container, course) {
           <input class="group-name" data-gid="${g.id}" value="${escapeHtml(g.name)}" placeholder="ชื่อหมวดหมู่ เช่น ก่อนกลางภาค" aria-label="ชื่อหมวดหมู่">
           <span class="group-stat" data-stat-for="${g.id}">${statText(itemsOf(g.id))}</span>
           <span class="group-actions">
+            <button class="btn btn-ghost btn-sm unit-new" data-gid="${g.id}">+ หน่วยการเรียนรู้</button>
             <button class="btn btn-ghost btn-sm group-add" data-gid="${g.id}">+ เพิ่มรายการ</button>
             <button class="btn btn-ghost btn-sm group-up" data-gid="${g.id}" title="เลื่อนหมวดขึ้น" ${gi === 0 ? 'disabled' : ''}>↑</button>
             <button class="btn btn-ghost btn-sm group-down" data-gid="${g.id}" title="เลื่อนหมวดลง" ${gi === groups.length - 1 ? 'disabled' : ''}>↓</button>
@@ -199,15 +232,31 @@ async function renderStructureTab(container, course) {
         </div>
       </td></tr>`;
 
-    // เรียงแถว: ไม่มีหมวด → แถวงานเรียงตามปกติ / มีหมวด → หัวข้อหมวด + งานของหมวดนั้น
+    const unitHeader = (u, ui, siblings) => `
+      <tr class="group-row unit-row" data-type="unit" data-uid="${u.id}" data-gid="${u.groupId || ''}"><td colspan="${cols}">
+        <div class="group-bar unit-bar">
+          <span class="group-icon">${icon('folder')}</span>
+          <input class="unit-name" data-uid="${u.id}" value="${escapeHtml(u.name)}" placeholder="ชื่อหน่วยการเรียนรู้ เช่น หน่วยที่ 1" aria-label="ชื่อหน่วยการเรียนรู้">
+          <span class="group-stat unit-stat" data-unit-stat-for="${u.id}">${statText(itemsOfUnit(u.id), true)}</span>
+          <span class="group-actions">
+            <button class="btn btn-ghost btn-sm unit-add" data-uid="${u.id}">+ ชิ้นงาน</button>
+            <button class="btn btn-ghost btn-sm unit-up" data-uid="${u.id}" title="เลื่อนหน่วยขึ้น" ${ui === 0 ? 'disabled' : ''}>↑</button>
+            <button class="btn btn-ghost btn-sm unit-down" data-uid="${u.id}" title="เลื่อนหน่วยลง" ${ui === siblings - 1 ? 'disabled' : ''}>↓</button>
+            <button class="btn btn-danger-ghost btn-sm unit-del" data-uid="${u.id}" title="ลบหน่วย (ชิ้นงานในหน่วยจะไม่ถูกลบ)">ลบหน่วย</button>
+          </span>
+        </div>
+      </td></tr>`;
+
+    // เรียงแถว: ไม่มีหมวด → แถวงานเรียงตามปกติ / มีหมวด → หัวข้อหมวด + งานของหมวดนั้น (งานใต้หมวดโดยตรงก่อน แล้วตามด้วยแต่ละหน่วย)
     let bodyRows = '';
     if (!hasGroups) {
       bodyRows = ordered.map((it, i) => itemRow(it, i)).join('');
     } else {
       let n = 0;
-      bodyRows += ungroupedHeader() + itemsOf(null).map(it => itemRow(it, n++)).join('');
+      const unitBlocks = (gid) => { const us = unitsOf(gid); return us.map((u, ui) => unitHeader(u, ui, us.length) + itemsOfUnit(u.id).map(it => itemRow(it, n++)).join('')).join(''); };
+      bodyRows += ungroupedHeader() + looseOf(null).map(it => itemRow(it, n++)).join('') + unitBlocks(null);
       groups.forEach((g, gi) => {
-        bodyRows += groupHeader(g, gi) + itemsOf(g.id).map(it => itemRow(it, n++)).join('');
+        bodyRows += groupHeader(g, gi) + looseOf(g.id).map(it => itemRow(it, n++)).join('') + unitBlocks(g.id);
       });
     }
 
@@ -238,7 +287,7 @@ async function renderStructureTab(container, course) {
         </div>
         <div class="card-pad">
           <div class="group-creator">
-            <div class="group-creator-label">หมวดหมู่หลัก <span>สร้างหมวดก่อน แล้วลากงานหรือเลือกหมวดที่แต่ละแถวเพื่อจัดเป็นหมวดย่อย</span></div>
+            <div class="group-creator-label">หมวดหมู่หลัก <span>แต่ละหมวดเพิ่ม "หน่วยการเรียนรู้" แล้วสร้างชิ้นงานในหน่วยได้ · ลากแถวงานหรือเลือกที่ช่อง "ที่อยู่" เพื่อย้าย</span></div>
             <div class="group-creator-row">
               <input id="new-group-name" placeholder="ชื่อหมวดหมู่ เช่น ก่อนกลางภาค" maxlength="60">
               <button class="btn btn-primary btn-sm" id="add-group-btn">+ เพิ่มหมวดหมู่</button>
@@ -255,7 +304,7 @@ async function renderStructureTab(container, course) {
                 <th>รหัส/ชื่อรายการ</th>
                 <th>รายละเอียด / จุดประสงค์</th>
                 <th class="att-col">สื่อ/ใบงาน</th>
-                ${hasGroups ? `<th class="group-col">หมวดหมู่</th>` : ''}
+                ${hasGroups ? `<th class="group-col">ที่อยู่ (หมวด / หน่วย)</th>` : ''}
                 <th class="num-col">คะแนนเก็บ</th>
                 <th class="del-col"></th>
               </tr></thead>
@@ -280,7 +329,7 @@ async function renderStructureTab(container, course) {
       updateTotals();
     });
     document.getElementById('add-item-btn').addEventListener('click', () => {
-      collectItems.push({ id: 'new-' + uid4(), name: '', max: 10, detail: '', category: 'collect', groupId: null });
+      collectItems.push({ id: 'new-' + uid4(), name: '', max: 10, detail: '', category: 'collect', groupId: null, unitId: null });
       draw();
     });
 
@@ -303,12 +352,12 @@ async function renderStructureTab(container, course) {
         const g = groups.find(x => x.id === inp.dataset.gid);
         g.name = inp.value;
         // อัปเดตชื่อในช่องเลือกหมวดของทุกแถวทันที โดยไม่ redraw (กัน focus หลุดระหว่างพิมพ์)
-        container.querySelectorAll(`select.row-group option[value="${g.id}"]`).forEach(o => { o.textContent = groupLabel(g); });
+        container.querySelectorAll(`select.row-group option[value="g:${g.id}"]`).forEach(o => { o.textContent = groupLabel(g); });
       });
     });
     container.querySelectorAll('.group-add').forEach(btn => {
       btn.addEventListener('click', () => {
-        collectItems.push({ id: 'new-' + uid4(), name: '', max: 10, detail: '', category: 'collect', groupId: btn.dataset.gid || null });
+        collectItems.push({ id: 'new-' + uid4(), name: '', max: 10, detail: '', category: 'collect', groupId: btn.dataset.gid || null, unitId: null });
         draw();
       });
     });
@@ -325,8 +374,9 @@ async function renderStructureTab(container, course) {
       btn.addEventListener('click', () => {
         const g = groups.find(x => x.id === btn.dataset.gid);
         const n = itemsOf(g.id).length;
-        if (n > 0 && !confirm(`ลบหมวด "${groupLabel(g)}" ?\nงาน ${n} รายการในหมวดนี้จะไม่ถูกลบ แต่จะกลับไปอยู่ที่ "ยังไม่จัดหมวดหมู่"`)) return;
-        collectItems.forEach(i => { if (i.groupId === g.id) i.groupId = null; });
+        if ((n > 0 || unitsOf(g.id).length > 0) && !confirm(`ลบหมวด "${groupLabel(g)}" ?\nงาน ${n} รายการและหน่วยในหมวดนี้จะไม่ถูกลบ แต่จะกลับไปอยู่ที่ "ยังไม่จัดหมวดหมู่"`)) return;
+        collectItems.forEach(i => { if (i.groupId === g.id) i.groupId = null; }); // งานในหน่วยของหมวดนี้ยังอยู่ในหน่วยเดิม (หน่วยย้ายไป "ยังไม่จัดหมวด")
+        units.forEach(u => { if (u.groupId === g.id) u.groupId = null; });
         groups = groups.filter(x => x.id !== g.id);
         draw();
       });
@@ -334,7 +384,54 @@ async function renderStructureTab(container, course) {
     container.querySelectorAll('select.row-group').forEach(sel => {
       sel.addEventListener('change', () => {
         const it = collectItems.find(x => x.id === sel.dataset.id);
-        it.groupId = sel.value || null;
+        const [kind, id] = sel.value.split(':');
+        if (kind === 'u' && unitById(id)) { it.unitId = id; it.groupId = unitById(id).groupId; }
+        else { it.unitId = null; it.groupId = kind === 'g' && validGroup(id) ? id : null; }
+        draw();
+      });
+    });
+
+    // ----- หน่วยการเรียนรู้ -----
+    container.querySelectorAll('.unit-new').forEach(btn => {
+      btn.addEventListener('click', () => {
+        units.push({ id: 'u' + uid4(), name: '', groupId: btn.dataset.gid || null });
+        draw();
+        const inputs = container.querySelectorAll('.unit-name');
+        inputs[inputs.length - 1]?.focus();
+      });
+    });
+    container.querySelectorAll('.unit-name').forEach(inp => {
+      inp.addEventListener('input', () => {
+        const u = unitById(inp.dataset.uid);
+        u.name = inp.value;
+        container.querySelectorAll(`select.row-group option[value="u:${u.id}"]`).forEach(o => { o.textContent = '\u3000└ ' + unitLabel(u); });
+      });
+    });
+    container.querySelectorAll('.unit-add').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const u = unitById(btn.dataset.uid);
+        collectItems.push({ id: 'new-' + uid4(), name: '', max: 10, detail: '', category: 'collect', groupId: u.groupId, unitId: u.id });
+        draw();
+      });
+    });
+    container.querySelectorAll('.unit-up, .unit-down').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const u = unitById(btn.dataset.uid);
+        const sib = unitsOf(u.groupId || null);
+        const k = sib.indexOf(u) + (btn.classList.contains('unit-up') ? -1 : 1);
+        if (k < 0 || k >= sib.length) return;
+        const a = units.indexOf(u), b = units.indexOf(sib[k]);
+        [units[a], units[b]] = [units[b], units[a]];
+        draw();
+      });
+    });
+    container.querySelectorAll('.unit-del').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const u = unitById(btn.dataset.uid);
+        const n = itemsOfUnit(u.id).length;
+        if (n > 0 && !confirm(`ลบหน่วย "${unitLabel(u)}" ?\nชิ้นงาน ${n} รายการในหน่วยนี้จะไม่ถูกลบ แต่จะอยู่ใต้หมวดโดยตรง`)) return;
+        collectItems.forEach(i => { if (i.unitId === u.id) i.unitId = null; });
+        units = units.filter(x => x.id !== u.id);
         draw();
       });
     });
@@ -371,7 +468,7 @@ async function renderStructureTab(container, course) {
     if (tbody) setupDragReorder(tbody, collectItems, draw);
 
     document.getElementById('save-structure-btn').addEventListener('click', () =>
-      saveStructure(course, displayItems(), groups, midterm, final, colRef, structRef));
+      saveStructure(course, displayItems(), groups, units, midterm, final, colRef, structRef));
   }
 
   function updateTotals() {
@@ -385,8 +482,11 @@ async function renderStructureTab(container, course) {
       header.classList.toggle('is-ok', gt === 100);
       header.classList.toggle('is-bad', gt !== 100);
     }
-    container.querySelectorAll('.group-stat').forEach(el => {
+    container.querySelectorAll('.group-stat:not(.unit-stat)').forEach(el => {
       el.textContent = statText(itemsOf(el.dataset.statFor || null));
+    });
+    container.querySelectorAll('.unit-stat').forEach(el => {
+      el.textContent = statText(itemsOfUnit(el.dataset.unitStatFor), true);
     });
   }
 
@@ -445,15 +545,16 @@ function getDragAfterElement(container, y) {
   }, { offset: -Infinity }).element;
 }
 function reorderFromDom(tbodyEl, items) {
-  // อ่านลำดับและหมวดจาก DOM: หัวข้อหมวดกำหนด groupId ให้แถวงานที่ตามมา
-  let currentGroup = null;
+  // อ่านลำดับ หมวด และหน่วยจาก DOM: หัวข้อหมวดกำหนด groupId · หัวข้อหน่วยกำหนด unitId (และหมวดของหน่วย) ให้แถวงานที่ตามมา
+  let currentGroup = null, currentUnit = null;
   const ordered = [];
   tbodyEl.querySelectorAll('tr').forEach(tr => {
-    if (tr.dataset.type === 'ungrouped') currentGroup = null;
-    else if (tr.dataset.type === 'group') currentGroup = tr.dataset.gid;
+    if (tr.dataset.type === 'ungrouped') { currentGroup = null; currentUnit = null; }
+    else if (tr.dataset.type === 'group') { currentGroup = tr.dataset.gid; currentUnit = null; }
+    else if (tr.dataset.type === 'unit') { currentUnit = tr.dataset.uid; currentGroup = tr.dataset.gid || null; }
     else if (tr.dataset.type === 'item') {
       const it = items.find(x => x.id === tr.dataset.id);
-      if (it) { it.groupId = currentGroup; ordered.push(it); }
+      if (it) { it.groupId = currentGroup; it.unitId = currentUnit; ordered.push(it); }
     }
   });
   // แก้ array เดิมในที่ (closure ของ renderStructureTab ถืออ้างอิงอยู่)
@@ -462,7 +563,7 @@ function reorderFromDom(tbodyEl, items) {
   items.push(...ordered, ...rest);
 }
 
-async function saveStructure(course, collectItems, groups, midterm, final, colRef, structRef) {
+async function saveStructure(course, collectItems, groups, units, midterm, final, colRef, structRef) {
   const existingSnap = await colRef.get();
   const batch = db.batch();
 
@@ -478,14 +579,17 @@ async function saveStructure(course, collectItems, groups, midterm, final, colRe
   };
 
   const groupIds = new Set(groups.map(g => g.id));
+  const unitGroup = new Map(units.map(u => [u.id, groupIds.has(u.groupId) ? u.groupId : null]));
   collectItems.forEach((it, idx) => {
+    const inUnit = unitGroup.has(it.unitId); // งานในหน่วย: หมวดต้องตรงกับหมวดของหน่วยเสมอ
     write(it, {
       name: it.name || `รายการที่ ${idx + 1}`,
       max: Number(it.max) || 0,
       detail: it.detail || '',
       attachments: cleanAttachments(it.attachments),
       category: 'collect',
-      groupId: groupIds.has(it.groupId) ? it.groupId : null,
+      groupId: inUnit ? unitGroup.get(it.unitId) : (groupIds.has(it.groupId) ? it.groupId : null),
+      unitId: inUnit ? it.unitId : null,
       order: idx,
     });
   });
@@ -496,6 +600,7 @@ async function saveStructure(course, collectItems, groups, midterm, final, colRe
 
   batch.set(structRef, {
     groups: groups.map((g, i) => ({ id: g.id, name: g.name.trim() || `หมวดหมู่ ${i + 1}` })),
+    units: units.map((u, i) => ({ id: u.id, name: u.name.trim() || `หน่วยที่ ${i + 1}`, groupId: groupIds.has(u.groupId) ? u.groupId : null })),
   });
 
   await batch.commit();
