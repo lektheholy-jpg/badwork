@@ -314,7 +314,7 @@ function attChipHtml(item) {
 function openAttachmentsViewer(item) {
   openModal(`
     <h2>สื่อ / ใบงาน: ${escapeHtml(item.name || 'รายการ')}</h2>
-    <div class="modal-sub">กดชื่อเพื่อเปิดในแท็บใหม่ — แก้ไขที่แท็บ "โครงสร้างคะแนน" หรือหน้า "ตั้งค่าโครงสร้างวิชา"</div>
+    <div class="modal-sub">กดชื่อเพื่อเปิดในแท็บใหม่ — แก้ไขได้เฉพาะที่หน้า "ตั้งค่าโครงสร้างวิชา"</div>
     ${attListHtml(cleanAttachments(item.attachments), { removable: false })}
     <div class="modal-actions"><button class="btn btn-primary" id="att-view-close">ปิด</button></div>
   `);

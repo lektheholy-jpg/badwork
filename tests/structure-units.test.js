@@ -43,7 +43,7 @@ function makeDb(store) {
   };
 }
 
-async function setup(store) {
+async function setup(store, opts, course) {
   const dom = new JSDOM('<!doctype html><body><div id="c"></div></body>', { runScripts: 'outside-only', pretendToBeVisual: true });
   const w = dom.window;
   const db = makeDb(store);
@@ -54,10 +54,11 @@ async function setup(store) {
     icon: () => '', showLoading: () => {}, showToast: () => {}, openModal: () => {}, closeModal: () => {},
     invalidateCourseData: () => {}, offerTemplateSync: () => {}, confirm: () => true,
     cleanAttachments: (a) => a || [], ATT_MAX_PER_ITEM: 5,
+    navigate: (r) => { w.__nav = r; }, openAttachmentsViewer: (it) => { w.__viewer = it; },
   });
   w.eval(src + '\nwindow.__render = renderStructureTab; window.__reorder = reorderFromDom;');
   const c = w.document.getElementById('c');
-  await w.__render(c, { id: 'C1', isTemplate: false });
+  await w.__render(c, course || { id: 'C1', isTemplate: false }, opts);
   return { w, c, db, store };
 }
 const click = (w, el) => el.dispatchEvent(new w.MouseEvent('click', { bubbles: true }));
@@ -139,6 +140,44 @@ const groupNames = (c) => [...c.querySelectorAll('input.group-name')].map(i => i
     ok(c2.querySelectorAll('tr[data-type="unit"]').length === 0 && c2.querySelectorAll('tr[data-type="item"]').length >= 2, 'ลบหน่วยแล้วชิ้นงานไม่หาย');
     click(w2, c2.querySelector('button.group-del'));
     ok(groupNames(c2).length === 1, 'ลบหมวดได้');
+  }
+
+  console.log('โหมดอ่านอย่างเดียว (หน้ารายวิชาของฉัน) — แก้ไม่ได้');
+  {
+    const base = 'users/U/courses/C1';
+    const store = {
+      [base + '/settings/structure']: { groups: [{ id: 'g1', name: 'ก่อนกลางภาค' }], units: [{ id: 'u1', name: 'หน่วยที่ 1', groupId: 'g1' }] },
+      [base + '/assessments/a1']: { name: 'ใบงาน 1', max: 10, category: 'collect', order: 0, groupId: 'g1', unitId: 'u1', attachments: [{ id: 't1', kind: 'link', title: 'ฟอร์ม', url: 'https://forms.gle/x' }] },
+      [base + '/assessments/a2']: { name: 'งาน 2', max: 20, category: 'collect', order: 1, groupId: 'g1', unitId: null },
+      [base + '/assessments/m']: { name: 'สอบกลางภาค', max: 20, category: 'midterm', order: 2 },
+      [base + '/assessments/f']: { name: 'สอบปลายภาค', max: 30, category: 'final', order: 3 },
+    };
+    const { w, c, db } = await setup(store, { readOnly: true }, { id: 'C1', isTemplate: false, templateId: 'T9' });
+    ok(c.textContent.includes('ใบงาน 1') && c.textContent.includes('หน่วยที่ 1') && c.textContent.includes('ก่อนกลางภาค'), 'ยังแสดงหมวด/หน่วย/ชิ้นงานครบ');
+    ok(c.textContent.includes('30'), 'ยังแสดงยอดรวมคะแนนเก็บ');
+    const editors = 'input.row-name, input.row-detail, input.row-max, input.group-name, input.unit-name, select.row-group, #new-group-name, #add-group-btn, #add-item-btn, #save-structure-btn, .del-item, .group-del, .unit-del, .group-add, .unit-add, .unit-new, .group-up, .group-down, .handle-col, .quick-group';
+    ok(c.querySelectorAll(editors).length === 0, 'ไม่มีช่องกรอก/ปุ่มเพิ่ม-ลบ-บันทึก-ลาก-ย้ายใด ๆ เหลืออยู่');
+    ok(c.querySelector('#mid-max-input').readOnly && c.querySelector('#final-max-input').readOnly, 'ช่องคะแนนกลางภาค/ปลายภาคเป็น readonly');
+    ok(c.querySelectorAll('input:not([readonly])').length === 0, 'ไม่มี input ที่พิมพ์ได้เลย');
+    ok(!c.querySelector('.att-btn[data-id="a2"]'), 'งานที่ไม่มีสื่อไม่แสดงปุ่มแนบ');
+    click(w, c.querySelector('.att-btn[data-id="a1"]'));
+    ok(w.__viewer && w.__viewer.id === 'a1', 'ปุ่มสื่อเปิดหน้าดูอย่างเดียว (ไม่ใช่หน้าแนบ/แก้)');
+    click(w, c.querySelector('#struct-ro-edit'));
+    ok(w.__nav === 'structure-page' && w.AppState.structureOpenOnce === 'T9' && w.AppState.structureTab === 'score', 'ปุ่ม "ไปแก้ที่ตั้งค่าโครงสร้างวิชา" พาไปแม่แบบของวิชานี้');
+    ok(db.writes.length === 0, 'ไม่มีการเขียนลงฐานข้อมูล');
+  }
+
+  console.log('โหมดอ่านอย่างเดียว: วิชาเก่าที่ไม่มีแม่แบบ');
+  {
+    const { c } = await setup({}, { readOnly: true }, { id: 'C1', isTemplate: false });
+    ok(!c.querySelector('#struct-ro-edit'), 'ไม่มีปุ่มพาไปแก้ถ้าไม่มี templateId (แต่ยังมีข้อความบอกว่าแก้ที่ไหน)');
+    ok(c.textContent.includes('ตั้งค่าโครงสร้างวิชา'), 'ข้อความบอกให้ไปแก้ที่หน้าตั้งค่าโครงสร้างวิชา');
+  }
+
+  console.log('หน้าตั้งค่าโครงสร้างวิชา (แม่แบบ) ยังแก้ได้ตามปกติ');
+  {
+    const { c } = await setup({}, undefined, { id: 'T1', isTemplate: true });
+    ok(c.querySelector('#save-structure-btn') && c.querySelector('#add-item-btn') && c.querySelector('#add-group-btn'), 'ยังมีปุ่มบันทึก/เพิ่มแถว/เพิ่มหมวดหมู่');
   }
 
   console.log(`\n${pass} ผ่าน · ${fail} ไม่ผ่าน`);

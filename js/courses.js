@@ -784,7 +784,7 @@ async function renderCourseShellInner() {
   };
   if (AppState.currentTab === 'overview') { await renderCourseOverview(body, course, sections); enterBody(); }
   else if (AppState.currentTab === 'students') { await renderStudentsTab(body, course, section); enterBody(); }
-  else if (AppState.currentTab === 'structure') { await renderStructureTab(body, course); enterBody(); }
+  else if (AppState.currentTab === 'structure') { await renderStructureTab(body, course, { readOnly: true }); enterBody(); } // ดูอย่างเดียว — แก้ที่หน้า "ตั้งค่าโครงสร้างวิชา"
   else if (AppState.currentTab === 'scores') { await renderScoresTab(body, course, section); enterBody(); }
   else if (AppState.currentTab === 'report') {
     // report.js โหลดครั้งแรกที่เปิดแท็บนี้ — ถ้าผู้ใช้สลับแท็บ/ออกจากหน้าก่อนโหลดเสร็จ ไม่ต้องวาดทับ

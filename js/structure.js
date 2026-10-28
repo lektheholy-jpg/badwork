@@ -127,7 +127,9 @@ function courseBaseRef(course) {
     .collection(course.isTemplate ? 'courseTemplates' : 'courses').doc(course.id);
 }
 
-async function renderStructureTab(container, course) {
+// opts.readOnly = true → แสดงอย่างเดียว (หน้ารายวิชาของฉัน): แก้โครงสร้างได้เฉพาะที่หน้า "ตั้งค่าโครงสร้างวิชา" (แม่แบบวิชา)
+async function renderStructureTab(container, course, opts = {}) {
+  const ro = !!opts.readOnly;
   showLoading('cat-sm', container);
   const courseRef = courseBaseRef(course);
   const colRef = courseRef.collection('assessments');
@@ -171,15 +173,16 @@ async function renderStructureTab(container, course) {
   function collectTotal() { return sumMax(collectItems); }
   function grandTotal() { return collectTotal() + (Number(midterm.max) || 0) + (Number(final.max) || 0); }
 
-  function statText(items, isUnit) {
+  function statText(items, isUnit, plain) {
     return items.length ? `${items.length} ชิ้นงาน · ${sumMax(items)} คะแนน`
+      : plain ? 'ไม่มีรายการ'
       : (isUnit ? 'ยังไม่มีชิ้นงาน — กด "+ ชิ้นงาน" หรือลากงานมาวางใต้หน่วยนี้' : 'ยังไม่มีรายการ — ลากงานมาวางใต้หัวข้อนี้ หรือเลือกที่ช่อง "ที่อยู่" ของงาน');
   }
 
   function draw() {
     const gt = grandTotal();
     const hasGroups = groups.length > 0 || units.length > 0; // มีหมวดหรือหน่วย → แสดงหัวข้อ + ช่อง "ที่อยู่"
-    const cols = hasGroups ? 8 : 7;
+    const cols = (hasGroups ? 8 : 7) - (ro ? 2 : 0); // โหมดอ่านอย่างเดียวไม่มีคอลัมน์ลาก/ลบ
     const ordered = displayItems();
 
     // ตัวเลือก "ที่อยู่" ของงาน: ยังไม่จัดหมวด / หมวด / หน่วยในหมวด (ค่า '' | 'g:<id>' | 'u:<id>')
@@ -191,7 +194,29 @@ async function renderStructureTab(container, course) {
         + groups.map(g => opt('g:' + g.id, groupLabel(g)) + unitOpts(g.id)).join('');
     };
 
-    const itemRow = (it, idx) => `
+    // ----- โหมดอ่านอย่างเดียว -----
+    const attBtnHtml = (id, it) => {
+      const n = (it.attachments || []).length;
+      if (ro && !n) return '';
+      return `<button type="button" class="btn btn-ghost btn-sm att-btn" data-id="${id}" title="${ro ? 'ดูลิงก์/ใบงาน' : 'แนบลิงก์/ใบงาน'}">${icon('clip')} ${n || 'แนบ'}</button>`;
+    };
+    const locText = (it) => {
+      const u = it.unitId ? unitById(it.unitId) : null;
+      const g = groups.find(x => x.id === it.groupId);
+      if (u) return (g ? groupLabel(g) + ' › ' : '') + unitLabel(u);
+      return g ? groupLabel(g) : 'ยังไม่จัดหมวด';
+    };
+    const itemRowRo = (it, idx) => `
+      <tr data-type="item" data-id="${it.id}">
+        <td>${idx + 1}</td>
+        <td>${escapeHtml(it.name || '—')}</td>
+        <td class="muted">${escapeHtml(it.detail || '')}</td>
+        <td class="att-col">${attBtnHtml(it.id, it)}</td>
+        ${hasGroups ? `<td class="group-col">${escapeHtml(locText(it))}</td>` : ''}
+        <td class="num-col">${Number(it.max) || 0}</td>
+      </tr>`;
+
+    const itemRowEdit = (it, idx) => `
       <tr draggable="false" data-type="item" data-id="${it.id}">
         <td class="handle-col" title="ลากเพื่อเรียงลำดับ / ย้ายหมวดหมู่">☰</td>
         <td>${idx + 1}</td>
@@ -206,8 +231,15 @@ async function renderStructureTab(container, course) {
         <td class="num-col"><input class="row-max" type="number" data-id="${it.id}" value="${it.max}"></td>
         <td class="del-col"><button class="btn btn-danger-ghost btn-sm del-item" data-id="${it.id}">ลบ</button></td>
       </tr>`;
+    const itemRow = (it, idx) => ro ? itemRowRo(it, idx) : itemRowEdit(it, idx);
 
-    const ungroupedHeader = () => `
+    const ungroupedHeader = () => ro ? `
+      <tr class="group-row ungrouped" data-type="ungrouped"><td colspan="${cols}">
+        <div class="group-bar">
+          <span class="group-title muted">ยังไม่จัดหมวดหมู่</span>
+          <span class="group-stat">${statText(itemsOf(null), false, true)}</span>
+        </div>
+      </td></tr>` : `
       <tr class="group-row ungrouped" data-type="ungrouped"><td colspan="${cols}">
         <div class="group-bar">
           <span class="group-title muted">ยังไม่จัดหมวดหมู่</span>
@@ -216,7 +248,14 @@ async function renderStructureTab(container, course) {
         </div>
       </td></tr>`;
 
-    const groupHeader = (g, gi) => `
+    const groupHeader = (g, gi) => ro ? `
+      <tr class="group-row" data-type="group" data-gid="${g.id}"><td colspan="${cols}">
+        <div class="group-bar">
+          <span class="group-icon">${icon('folder')}</span>
+          <span class="group-title">${escapeHtml(groupLabel(g))}</span>
+          <span class="group-stat">${statText(itemsOf(g.id), false, true)}</span>
+        </div>
+      </td></tr>` : `
       <tr class="group-row" data-type="group" data-gid="${g.id}"><td colspan="${cols}">
         <div class="group-bar">
           <span class="group-icon">${icon('folder')}</span>
@@ -232,7 +271,14 @@ async function renderStructureTab(container, course) {
         </div>
       </td></tr>`;
 
-    const unitHeader = (u, ui, siblings) => `
+    const unitHeader = (u, ui, siblings) => ro ? `
+      <tr class="group-row unit-row" data-type="unit" data-uid="${u.id}" data-gid="${u.groupId || ''}"><td colspan="${cols}">
+        <div class="group-bar unit-bar">
+          <span class="group-icon">${icon('folder')}</span>
+          <span class="group-title">${escapeHtml(unitLabel(u))}</span>
+          <span class="group-stat unit-stat">${statText(itemsOfUnit(u.id), true, true)}</span>
+        </div>
+      </td></tr>` : `
       <tr class="group-row unit-row" data-type="unit" data-uid="${u.id}" data-gid="${u.groupId || ''}"><td colspan="${cols}">
         <div class="group-bar unit-bar">
           <span class="group-icon">${icon('folder')}</span>
@@ -262,7 +308,14 @@ async function renderStructureTab(container, course) {
 
     const quickNames = ['ก่อนกลางภาค', 'หลังกลางภาค'].filter(n => !groups.some(g => g.name.trim() === n));
 
+    const roNotice = !ro ? '' : `
+      <div class="u-note u-flex u-items-center u-gap-8 u-wrap u-mb-12">
+        <span>โครงสร้างคะแนนแสดงเพื่อดูอย่างเดียว — แก้ไขได้เฉพาะที่หน้า "ตั้งค่าโครงสร้างวิชา"</span>
+        ${course.templateId ? '<button type="button" class="btn btn-primary btn-sm u-ml-auto" id="struct-ro-edit">ไปแก้ที่ตั้งค่าโครงสร้างวิชา</button>' : ''}
+      </div>`;
+
     container.innerHTML = `
+      ${roNotice}
       <div class="struct-summary-row">
         <div class="struct-summary-box readonly">
           <div class="lbl">รวมคะแนนเก็บ</div>
@@ -270,13 +323,13 @@ async function renderStructureTab(container, course) {
         </div>
         <div class="struct-summary-box">
           <div class="lbl">สอบกลางภาค</div>
-          <input type="number" id="mid-max-input" value="${midterm.max}">
-          <button type="button" class="btn btn-ghost btn-sm att-btn" data-id="mid" title="แนบลิงก์/ใบงาน">${icon('clip')} ${(midterm.attachments || []).length || 'แนบ'}</button>
+          <input type="number" id="mid-max-input" value="${midterm.max}" ${ro ? 'readonly' : ''}>
+          ${attBtnHtml('mid', midterm)}
         </div>
         <div class="struct-summary-box">
           <div class="lbl">สอบปลายภาค</div>
-          <input type="number" id="final-max-input" value="${final.max}">
-          <button type="button" class="btn btn-ghost btn-sm att-btn" data-id="final" title="แนบลิงก์/ใบงาน">${icon('clip')} ${(final.attachments || []).length || 'แนบ'}</button>
+          <input type="number" id="final-max-input" value="${final.max}" ${ro ? 'readonly' : ''}>
+          ${attBtnHtml('final', final)}
         </div>
       </div>
 
@@ -286,39 +339,54 @@ async function renderStructureTab(container, course) {
           <span class="u-semibold ${gt === 100 ? 'is-ok' : 'is-bad'}">รวมทั้งหมด ${gt} / 100</span>
         </div>
         <div class="card-pad">
-          <div class="group-creator">
+          ${ro ? '' : `<div class="group-creator">
             <div class="group-creator-label">หมวดหมู่หลัก <span>แต่ละหมวดเพิ่ม "หน่วยการเรียนรู้" แล้วสร้างชิ้นงานในหน่วยได้ · ลากแถวงานหรือเลือกที่ช่อง "ที่อยู่" เพื่อย้าย</span></div>
             <div class="group-creator-row">
               <input id="new-group-name" placeholder="ชื่อหมวดหมู่ เช่น ก่อนกลางภาค" maxlength="60">
               <button class="btn btn-primary btn-sm" id="add-group-btn">+ เพิ่มหมวดหมู่</button>
             </div>
             ${quickNames.length ? `<div class="group-quick">ตัวอย่าง: ${quickNames.map(n => `<button type="button" class="chip quick-group" data-name="${n}">+ ${n}</button>`).join('')}</div>` : ''}
-          </div>
+          </div>`}
 
           ${ordered.length === 0 && !hasGroups ? `<div class="empty-state u-p-20">ยังไม่มีรายการคะแนนเก็บ</div>` : `
             <div class="struct-table-wrap">
             <table class="struct-table ${hasGroups ? 'has-groups' : ''}">
               <thead><tr>
-                <th class="u-w-24"></th>
+                ${ro ? '' : '<th class="u-w-24"></th>'}
                 <th>#</th>
                 <th>รหัส/ชื่อรายการ</th>
                 <th>รายละเอียด / จุดประสงค์</th>
                 <th class="att-col">สื่อ/ใบงาน</th>
                 ${hasGroups ? `<th class="group-col">ที่อยู่ (หมวด / หน่วย)</th>` : ''}
                 <th class="num-col">คะแนนเก็บ</th>
-                <th class="del-col"></th>
+                ${ro ? '' : '<th class="del-col"></th>'}
               </tr></thead>
               <tbody id="struct-tbody">${bodyRows}</tbody>
             </table>
             </div>
           `}
-          <div class="u-mt-12 u-flex u-gap-8">
+          ${ro ? '' : `<div class="u-mt-12 u-flex u-gap-8">
             <button class="btn btn-ghost btn-sm" id="add-item-btn">+ เพิ่มแถว</button>
             <button class="btn btn-primary u-ml-auto" id="save-structure-btn">บันทึกโครงสร้างวิชา</button>
-          </div>
+          </div>`}
         </div>
       </div>
     `;
+
+    if (ro) {
+      container.querySelectorAll('.att-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const it = btn.dataset.id === 'mid' ? midterm : btn.dataset.id === 'final' ? final : collectItems.find(x => x.id === btn.dataset.id);
+          if (it) openAttachmentsViewer(it);
+        });
+      });
+      container.querySelector('#struct-ro-edit')?.addEventListener('click', () => {
+        AppState.structureOpenOnce = course.templateId; // app.js อ่านค่านี้ครั้งเดียวแล้วล้าง → เปิดแม่แบบวิชานี้ตรง ๆ
+        AppState.structureTab = 'score';
+        navigate('structure-page');
+      });
+      return;
+    }
 
     document.getElementById('mid-max-input').addEventListener('input', (e) => {
       midterm.max = Number(e.target.value) || 0;
