@@ -69,26 +69,47 @@
    ซ่อนอัตโนมัติโดย auth.js เมื่อ Firebase พร้อม ไม่ต้องแก้ไฟล์นี้ */
 #auth-loading {
   position: fixed; inset: 0; z-index: 9999;
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px;
-  background: var(--bg, #F4F4F4);
-  transition: opacity .25s ease;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+  /* ใช้พื้นหลังชุดเดียวกับหน้าแอปจริง (--page-bg) เพื่อให้ตอนเปลี่ยนจากหน้าโหลดเข้าแอปสีไม่กระโดด */
+  background: var(--page-bg, var(--bg, #F4F4F4)); background-attachment: fixed;
+  color: var(--ink, #111);
+  transition: opacity .35s ease;
 }
-#auth-loading img { width: 64px; height: 64px; border-radius: 50%; }
-#auth-loading .spinner {
-  width: 28px; height: 28px;
-  border: 3px solid var(--border, #E5E6EA);
-  border-top-color: var(--primary, #3E91FF);
-  border-radius: 50%;
-  animation: auth-spin .7s linear infinite;
+#auth-loading.leaving { opacity: 0; pointer-events: none; }
+/* มาสคอตแมว (พื้นหลังโปร่งใส) เด้งเบาๆ แทนโลโก้วงกลมสีขาว */
+#auth-loading .al-cat {
+  width: 84px; height: auto; display: block; transform-origin: 50% 100%;
+  animation: al-pop .5s cubic-bezier(.2,.9,.3,1.3) both, al-bob 1.3s ease-in-out .5s infinite;
 }
-@keyframes auth-spin { to { transform: rotate(360deg); } }
+/* โหมดมืด: เส้นแมวเป็นสีดำ จึงกลับสีให้เห็นชัดบนพื้นเข้ม */
+:root[data-theme="dark"] #auth-loading .al-cat { filter: invert(1); }
+#auth-loading .al-name {
+  font: 700 1.25rem/1.2 var(--font-head, system-ui, sans-serif); letter-spacing: 0;
+  animation: al-fade .5s ease .15s both;
+}
+#auth-loading .al-dots { display: flex; gap: 6px; animation: al-fade .5s ease .3s both; }
+#auth-loading .al-dots i {
+  width: 7px; height: 7px; border-radius: 50%; background: var(--primary, #3E91FF); opacity: .3;
+  animation: al-dot 1s ease-in-out infinite;
+}
+#auth-loading .al-dots i:nth-child(2) { animation-delay: .15s; }
+#auth-loading .al-dots i:nth-child(3) { animation-delay: .3s; }
+@keyframes al-pop  { from { opacity: 0; transform: translateY(12px) scale(.85); } to { opacity: 1; transform: none; } }
+@keyframes al-bob  { 0%, 100% { transform: translateY(0) rotate(-3deg); } 50% { transform: translateY(-8px) rotate(3deg); } }
+@keyframes al-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes al-dot  { 0%, 100% { opacity: .3; transform: translateY(0); } 50% { opacity: 1; transform: translateY(-4px); } }
+@media (prefers-reduced-motion: reduce) {
+  #auth-loading .al-cat, #auth-loading .al-name, #auth-loading .al-dots, #auth-loading .al-dots i { animation: none; }
+  #auth-loading .al-dots i { opacity: .6; }
+}
 </style>
 </head>
 <body>
 <!-- Loading screen: แสดงระหว่าง Firebase ตรวจสอบ session — ถูกลบโดย auth.js -->
 <div id="auth-loading" role="status" aria-label="กำลังโหลด">
-  <img src="assets/icons/logo-128.webp" alt="โลโก้เวรกรรม..">
-  <div class="spinner" aria-hidden="true"></div>
+  <img class="al-cat" src="assets/head-cat-still.webp" width="84" height="117" alt="">
+  <div class="al-name">เวรกรรม..</div>
+  <div class="al-dots" aria-hidden="true"><i></i><i></i><i></i></div>
 </div>
 <noscript>
   <div style="font-family:sans-serif;text-align:center;padding:48px 24px;color:#111">

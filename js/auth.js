@@ -141,7 +141,8 @@ auth.onAuthStateChanged(async (user) => {
   const loginScreen = document.getElementById('login-screen');
   const app = document.getElementById('app');
   // ซ่อน loading screen เมื่อ auth state พร้อมแล้ว
-  document.getElementById('auth-loading')?.remove();
+  const splash = document.getElementById('auth-loading');
+  if (splash) { splash.classList.add('leaving'); setTimeout(() => splash.remove(), 400); } // เฟดออกนุ่มๆ แทนการหายวับ
 
   if (user) {
     loginScreen.classList.add('hidden');

@@ -4,7 +4,7 @@
   "description": "บันทึกคะแนนนักเรียน จัดการเอกสาร PA ID-Plan SAR และวิจัยในชั้นเรียน สำหรับครูทุกโรงเรียน",
   "start_url": ".",
   "display": "standalone",
-  "background_color": "#F1F3F8",
+  "background_color": "#F4F4F4",
   "theme_color": "#F4F4F4",
   "lang": "th",
   "icons": [
