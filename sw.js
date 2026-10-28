@@ -16,7 +16,7 @@
 // ตัวหน้าเว็บ (js/pwa.js) จะแจ้ง "มีเวอร์ชันใหม่" ให้กดอัปเดตเอง ไม่รีโหลดกลางคันตอนครูกำลังกรอกคะแนน
 // ==========================================================================
 
-const VERSION = 'v1.15.27OC281200';
+const VERSION = 'v1.15.28OC281230';
 const CORE = `myscore-core-${VERSION}`; // ไฟล์แอป (เปลี่ยนเวอร์ชัน = ทิ้งของเก่า)
 const RUNTIME = 'myscore-rt';           // รูป/ไฟล์ที่แคชตอนใช้งาน (คงอยู่ข้ามเวอร์ชัน)
 
@@ -69,6 +69,7 @@ const PRECACHE = [
   // ไอคอน + รูปขนาดเล็ก (รูปเต็มแคชตอนใช้งานจริง)
   'assets/icons/android-chrome-192x192.png',
   'assets/icons/logo-128.webp',
+  'assets/icons/notification-badge-96.png',
   'assets/icons/android-chrome-512x512.png',
   'assets/icons/apple-touch-icon.png',
   'assets/icons/favicon-32x32.png',
@@ -146,7 +147,7 @@ self.addEventListener('push', (event) => {
     body: String(d.b || ''),
     tag: d.tag ? String(d.tag) : undefined, // tag เดียวกัน = แทนที่อันเดิม ไม่เด้งซ้ำ
     icon: abs('assets/icons/android-chrome-192x192.png'),
-    badge: abs('assets/icons/favicon-32x32.png'),
+    badge: abs('assets/icons/notification-badge-96.png'), // ไอคอนเล็กในแถบสถานะ: Android ใช้เฉพาะช่องโปร่งใส ต้องเป็นรูปทรงขาวบนพื้นโปร่งใส
   }));
 });
 
