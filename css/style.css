@@ -2677,12 +2677,16 @@ td.doc-ai-target::before { inset: 0; }
 .sy-unit-h { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; margin-bottom: 8px; }
 .sy-unit-n { font-weight: 700; color: var(--ink-soft); white-space: nowrap; }
 .sy-unit-name { font-weight: 600; overflow-wrap: anywhere; }
+.sy-unit-s { font-size: 12.5px; color: var(--ink-soft); }
 .sy-unit-w { margin-left: auto; font-size: 13px; color: var(--ink-soft); white-space: nowrap; }
 .sy-unit .field > label { display: block; font-size: 13px; font-weight: 600; color: var(--ink-soft); }
 .sy-unit .sy-std { display: block; width: 100%; margin-top: 4px; resize: vertical; }
 .sy-pick { margin-top: 6px; max-width: 100%; }
 .sy-topics { --doc-cols: minmax(0, 1fr) 80px 44px; margin-top: 6px; }
 .sy-topics .doc-lhead span:nth-child(2) { text-align: center; }
+.sy-status { margin-right: auto; align-self: center; font-size: 13px; color: var(--ink-soft); }
+.sy-status.is-dirty { color: var(--warning); font-weight: 600; }
+.sy-t-hours[aria-invalid="true"] { border-color: var(--danger); background: var(--danger-tint); }
 .sy-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; }
 .sy-stat { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 10px; font-size: 13px; color: var(--ink-soft); }
 .sy-stat b { font-size: 18px; color: var(--ink); font-variant-numeric: tabular-nums; }

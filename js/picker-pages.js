@@ -124,7 +124,7 @@ async function renderStructureList(view) {
   });
 }
 
-const STRUCT_TABS = [['score', 'โครงสร้างคะแนน'], ['syll', 'โครงสร้างรายวิชา'], ['desc', 'คำอธิบายรายวิชา'], ['descprev', 'ตัวอย่างก่อนพิมพ์']];
+const STRUCT_TABS = [['score', 'โครงสร้างคะแนน'], ['desc', 'คำอธิบายรายวิชา'], ['descprev', 'ตัวอย่างก่อนพิมพ์'], ['syll', 'Course Syllabus']]; // Course Syllabus (โครงสร้างรายวิชา) อยู่หลังสุด
 const DESC_TABS = ['desc', 'descprev']; // แท็บในกลุ่มคำอธิบายรายวิชา — สลับกันเองได้โดยไม่ถามทิ้งร่าง (js/course-desc.js เก็บร่างข้ามแท็บ)
 
 async function renderStructureEditor(view, templateId) {
@@ -170,7 +170,7 @@ async function renderStructureEditor(view, templateId) {
     });
   });
 
-  // แท็บในหน้าแก้แม่แบบ: โครงสร้างคะแนน · โครงสร้างรายวิชา · คำอธิบายรายวิชา — แต่ละแท็บวาดลงกล่องของตัวเอง (วาดค้างจากแท็บเดิมไม่ทับแท็บใหม่)
+  // แท็บในหน้าแก้แม่แบบ: โครงสร้างคะแนน · คำอธิบายรายวิชา · ตัวอย่างก่อนพิมพ์ · Course Syllabus — แต่ละแท็บวาดลงกล่องของตัวเอง (วาดค้างจากแท็บเดิมไม่ทับแท็บใหม่)
   const body = document.getElementById('structure-page-body');
   const drawTab = async () => {
     const tab = AppState.structureTab;

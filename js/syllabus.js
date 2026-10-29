@@ -25,7 +25,7 @@ const SY_SAVE_LABEL = 'บันทึกโครงสร้างรายว
 let _syDirty = false;
 function syIsDirty() { return _syDirty; }
 // สถานะของแท็บที่เปิดอยู่: ข้อมูลที่โหลด + ร่างที่พิมพ์ค้าง (เก็บข้ามมุมมองแก้ไข ↔ ตัวอย่าง)
-const SY = { id: null, course: null, struct: null, desc: null, saved: null, draft: null, onScore: null };
+const SY = { id: null, course: null, struct: null, desc: null, saved: null, draft: null, onScore: null, existed: false, savedAt: null };
 function syDiscard() { SY.draft = null; _syDirty = false; }
 
 const syStr = (v, n) => String(v == null ? '' : v).slice(0, n);
@@ -34,7 +34,7 @@ const syFmt = (n) => String(syRound1(n));
 
 // ชั่วโมง: ตัวเลข ≥ 0 ทศนิยมไม่เกิน 1 ตำแหน่ง ไม่เกิน 999 — ค่าอื่น = ว่าง
 function syHours(v) {
-  const s = String(v == null ? '' : v).trim();
+  const s = String(v == null ? '' : v).trim().replace(/[๐-๙]/g, c => String(c.charCodeAt(0) - 0x0E50)).replace(',', '.'); // เลขไทย ๒ และ 1,5 อ่านได้
   const n = Number(s);
   if (!s || !isFinite(n) || n < 0) return '';
   return String(syRound1(Math.min(n, 999)));
@@ -97,7 +97,8 @@ async function syLoad(course, owner = course) {
   const set = courseBaseRef(owner).collection('settings');
   const [sSnap, dSnap, struct] = await Promise.all([set.doc(SY_DOC_ID).get(), set.doc('description').get(), syLoadStruct(course)]);
   const desc = cdNormalize(dSnap.exists ? dSnap.data() : {}, owner);
-  return { struct, desc, saved: syNormalize(sSnap.exists ? sSnap.data() : {}, desc.area) };
+  const raw = sSnap.exists ? sSnap.data() : null;
+  return { struct, desc, saved: syNormalize(raw || {}, desc.area), existed: !!raw, savedAt: raw ? raw.updatedAt || null : null };
 }
 
 // โมเดลของตาราง: หัวเอกสาร + แถวหน่วย + ยอดรวม + คำเตือน
@@ -126,6 +127,53 @@ function syModel(course, struct, saved, desc) {
     units, outside: struct.outside, collect: struct.collect, midterm: struct.midterm, final: struct.final, grand,
     ratio: [syRound1(struct.collect + struct.midterm), struct.final], hoursTotal, hoursExpected, warnings,
   };
+}
+
+// ---------------------------------------------------------------- สถานะการบันทึก
+// ป้ายบอกสถานะอยู่บนแถบเครื่องมือทั้งมุมมองแก้ไขและตัวอย่าง: ยังไม่เคยบันทึก · มีที่ยังไม่ได้บันทึก · บันทึกแล้ว (พร้อมเวลา) — ตัวอย่าง/พิมพ์ไม่ได้บันทึกให้ จึงต้องเห็นชัดว่าสิ่งที่พิมพ์ตรงกับที่เก็บหรือยัง
+function syTimeText(ts) {
+  try {
+    const dt = ts && typeof ts.toDate === 'function' ? ts.toDate() : (ts instanceof Date ? ts : null);
+    return dt ? dt.toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short' }) : '';
+  } catch (e) { return ''; }
+}
+function syRefreshStatus(container) {
+  const el = container.querySelector('#sy-status');
+  if (!el) return;
+  const when = syTimeText(SY.savedAt);
+  el.className = 'sy-status' + (_syDirty ? ' is-dirty' : '');
+  el.textContent = _syDirty ? '● มีที่ยังไม่ได้บันทึก' : !SY.existed ? 'ยังไม่เคยบันทึก' : '✓ บันทึกแล้ว' + (when ? ' · ' + when : '');
+}
+const syStatusHtml = '<span class="sy-status" id="sy-status" role="status"></span>';
+
+// ช่องเวลาที่พิมพ์แล้วอ่านเป็นตัวเลขไม่ได้ (เช่น "2 ชม.") → ทำเครื่องหมายช่อง แล้วคืนช่องแรก · ไม่ปล่อยให้ถูกทิ้งเงียบ ๆ ตอนบันทึก
+function syFindBadHours(form) {
+  let first = null;
+  form.querySelectorAll('.sy-t-hours').forEach(inp => {
+    const bad = !!inp.value.trim() && syHours(inp.value) === '';
+    inp.setAttribute('aria-invalid', bad ? 'true' : 'false');
+    if (bad && !first) first = inp;
+  });
+  return first;
+}
+
+// บันทึกเอกสารที่ normalize แล้ว → อัปเดตสถานะ · คืน true เมื่อสำเร็จ · ปุ่มบันทึกทุกปุ่มในกล่องถูกปิดระหว่างบันทึก
+async function sySave(container, doc) {
+  const btns = [...container.querySelectorAll('.sy-do-save')], labels = btns.map(b => b.textContent);
+  btns.forEach(b => { b.disabled = true; b.textContent = 'กำลังบันทึก…'; });
+  let done = false;
+  try {
+    await courseBaseRef(SY.course).collection('settings').doc(SY_DOC_ID).set({ ...doc, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+    SY.saved = doc; SY.draft = null; SY.existed = true; SY.savedAt = new Date(); _syDirty = false;
+    const filled = doc.units.filter(u => SY.struct.units.some(x => x.id === u.id)).length;
+    showToast(`บันทึกโครงสร้างรายวิชาสำเร็จ — กรอกแล้ว ${filled} จาก ${SY.struct.units.length} หน่วย`);
+    done = true;
+  } catch (err) {
+    console.error(err);
+    showToast('บันทึกไม่สำเร็จ: ' + (err.message || ''), 'error');
+  }
+  btns.forEach((b, i) => { b.disabled = false; b.textContent = labels[i]; });
+  return done;
 }
 
 // ---------------------------------------------------------------- ตัวอย่างก่อนพิมพ์ / พิมพ์
@@ -212,7 +260,9 @@ function syShowPreview(container, m, fromDraft) {
   container.innerHTML = `
     <div class="doc-preview-bar">
       <div class="doc-preview-actions">
+        ${syStatusHtml}
         <button type="button" class="btn btn-ghost btn-sm" id="sy-prev-edit">${DOC_ICO_EDIT} แก้ไข</button>
+        <button type="button" class="btn btn-ghost btn-sm sy-do-save" id="sy-prev-save">บันทึก</button>
         <button type="button" class="btn btn-primary btn-sm" id="sy-prev-print">${DOC_ICO_PRINT} พิมพ์ / บันทึกเป็น PDF</button>
       </div>
     </div>
@@ -221,6 +271,10 @@ function syShowPreview(container, m, fromDraft) {
     <div class="doc-preview-frame-wrap"><iframe class="doc-preview-frame is-fit" title="ตัวอย่างโครงสร้างรายวิชา"></iframe></div>`;
   container.querySelector('#sy-prev-edit').addEventListener('click', () => syShowForm(container));
   container.querySelector('#sy-prev-print').addEventListener('click', () => syPrint(m));
+  syRefreshStatus(container);
+  container.querySelector('#sy-prev-save').addEventListener('click', async () => { // บันทึกจากหน้าตัวอย่าง: ใช้ค่าที่ตัวอย่างกำลังแสดง (ร่างหรือที่บันทึกไว้)
+    if (await sySave(container, syCurrent())) syShowPreview(container, syModel(SY.course, SY.struct, SY.saved, SY.desc), false);
+  });
   const body = sySheetBodyHtml(m);
   docRenderSheets(SY_PREVIEW_SYS, 'syll', container, null, { // ไม่รอ — แถบแสดงไปก่อน กระดาษตามมา
     html: () => docSheetsHtml(SY1_CSS, `<div class="sy1">${body}</div>`),
@@ -245,11 +299,13 @@ function syIndicatorChoices(desc) {
   });
 }
 
+const syUnitStatus = (u) => (u.standard || u.topics.length ? `กรอกแล้ว · ${syFmt(u.hours)} ชั่วโมง` : 'ยังไม่ได้กรอก');
+
 function syUnitHtml(u, choices) {
   const pick = choices.length
     ? `<select class="input-sm sy-pick" aria-label="ดึงตัวชี้วัดจากคำอธิบายรายวิชา"><option value="">ดึงจากคำอธิบายรายวิชา…</option>${choices.map((c, i) => `<option value="${i}">${escapeHtml(c)}</option>`).join('')}</select>` : '';
   return `<div class="sy-unit" data-unit="${escapeHtml(u.id)}">
-    <div class="sy-unit-h"><span class="sy-unit-n">หน่วยที่ ${u.n}</span><span class="sy-unit-name">${escapeHtml(u.name)}</span><span class="sy-unit-w">น้ำหนักคะแนน ${syFmt(u.weight)}</span></div>
+    <div class="sy-unit-h"><span class="sy-unit-n">หน่วยที่ ${u.n}</span><span class="sy-unit-name">${escapeHtml(u.name)}</span><span class="sy-unit-s">${syUnitStatus(u)}</span><span class="sy-unit-w">น้ำหนักคะแนน ${syFmt(u.weight)}</span></div>
     <div class="field"><label>มาตรฐาน/ตัวชี้วัด
       <textarea class="input-sm sy-std" rows="2" maxlength="${SY_MAX.std}" placeholder="เช่น ว4.2 / ม.2/4">${escapeHtml(u.standard)}</textarea>
     </label>${pick}</div>
@@ -290,9 +346,9 @@ function syShowForm(container) {
   const choices = syIndicatorChoices(SY.desc);
   container.innerHTML = `
   <div class="doc-preview-bar">
-    <div class="doc-preview-actions"><button type="button" class="btn btn-ghost btn-sm" id="sy-to-preview">${DOC_ICO_PRINT} ดูตัวอย่าง / พิมพ์</button></div>
+    <div class="doc-preview-actions">${syStatusHtml}<button type="button" class="btn btn-ghost btn-sm" id="sy-to-preview">${DOC_ICO_PRINT} ดูตัวอย่าง / พิมพ์</button><button type="button" class="btn btn-primary btn-sm sy-do-save" id="sy-top-save">บันทึก</button></div>
   </div>
-  <div class="u-note u-mb-12">กรอกโครงสร้างรายวิชาตามแบบของหลักสูตร — หน่วยการเรียนรู้และน้ำหนักคะแนนดึงจากแท็บ “โครงสร้างคะแนน” อัตโนมัติ (แก้ที่นั่น) · ข้อมูลเก็บไว้กับแม่แบบวิชานี้ และแสดงในหน้ารายวิชาของทุกเทอมที่เปิดสอน · <a href="#" id="sy-goto-score">ไปแท็บโครงสร้างคะแนน</a></div>
+  <div class="u-note u-mb-12"><b>ระบบดึงให้ (แก้ที่นี่ไม่ได้):</b> รหัส/ชื่อวิชา ระดับชั้น หน่วยกิต · ชื่อหน่วยและน้ำหนักคะแนน · กลางภาค/ปลายภาค (มาจากแท็บ “โครงสร้างคะแนน” — <a href="#" id="sy-goto-score">ไปแท็บโครงสร้างคะแนน</a>) · เวลารวม = บวกจากชั่วโมงของสาระย่อย<br><b>กรอกเอง:</b> กลุ่มสาระการเรียนรู้ · ต่อหน่วย: มาตรฐาน/ตัวชี้วัด และสาระย่อยพร้อมชั่วโมง<br>ข้อมูลเก็บไว้กับแม่แบบวิชานี้ใช้ร่วมทุกเทอม · <b>กดปุ่มบันทึกทุกครั้ง</b> (ดูตัวอย่าง/พิมพ์ไม่ได้บันทึกให้) — ดูสถานะบันทึกที่มุมซ้ายของแถบด้านบน</div>
   <form id="sy-form" class="doc-form" autocomplete="off" novalidate>
     <section class="doc-section">
       <h2 class="doc-sec-title">ส่วนที่ 1  หัวเอกสาร</h2>
@@ -304,11 +360,17 @@ function syShowForm(container) {
       ${m.units.length ? m.units.map(u => syUnitHtml(u, choices)).join('') : '<div class="empty-state">ยังไม่มีหน่วยการเรียนรู้ — เพิ่มหน่วยที่แท็บ “โครงสร้างคะแนน” (ปุ่ม + หน่วยการเรียนรู้) แล้วกลับมากรอกที่นี่</div>'}
     </section>
     <section class="doc-section"><h2 class="doc-sec-title">สรุปและตรวจสอบ</h2><div id="sy-check">${syCheckHtml(m)}</div></section>
-    <div class="pa-form-footer"><button type="button" class="btn btn-primary" id="sy-save-btn">${SY_SAVE_LABEL}</button></div>
+    <div class="pa-form-footer"><button type="button" class="btn btn-primary sy-do-save" id="sy-save-btn">${SY_SAVE_LABEL}</button></div>
   </form>`;
   const form = container.querySelector('#sy-form');
-  const recheck = () => { form.querySelector('#sy-check').innerHTML = syCheckHtml(syModel(c, SY.struct, syCollect(form), SY.desc)); };
-  const touch = () => { _syDirty = true; recheck(); };
+  const unitEls = [...form.querySelectorAll('.sy-unit')];
+  const recheck = () => {
+    const mm = syModel(c, SY.struct, syCollect(form), SY.desc);
+    form.querySelector('#sy-check').innerHTML = syCheckHtml(mm);
+    mm.units.forEach((u, i) => { if (unitEls[i]) unitEls[i].querySelector('.sy-unit-s').textContent = syUnitStatus(u); }); // ป้ายสถานะต่อหน่วยอัปเดตสด
+  };
+  const touch = () => { _syDirty = true; recheck(); syRefreshStatus(container); };
+  syRefreshStatus(container);
   form.addEventListener('input', touch);
   form.addEventListener('change', touch);
 
@@ -340,24 +402,14 @@ function syShowForm(container) {
     syShowPreview(container, syModel(c, SY.struct, doc, SY.desc), _syDirty);
   });
 
-  const saveBtn = form.querySelector('#sy-save-btn');
-  saveBtn.addEventListener('click', async () => {
-    const doc = syCollect(form);
-    saveBtn.disabled = true;
-    saveBtn.textContent = 'กำลังบันทึก…';
-    try {
-      await courseBaseRef(SY.course).collection('settings').doc(SY_DOC_ID).set({ ...doc, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
-      SY.saved = doc;
-      SY.draft = null;
-      _syDirty = false;
-      showToast('บันทึกโครงสร้างรายวิชาสำเร็จ');
-    } catch (err) {
-      console.error(err);
-      showToast('บันทึกไม่สำเร็จ: ' + (err.message || ''), 'error');
-    }
-    saveBtn.disabled = false;
-    saveBtn.textContent = SY_SAVE_LABEL;
-  });
+  // บันทึกจากปุ่มบน/ล่าง — ช่องเวลาที่อ่านไม่ได้ = หยุดและชี้ช่อง · บันทึกสำเร็จแล้ววาดฟอร์มใหม่จากค่าที่ถูกเก็บจริง (เช่น "2.0" → "2" · แถวว่างหายไป) ผู้ใช้จะเห็นตรงกับที่อยู่ในฐานข้อมูล
+  const onSave = async () => {
+    const bad = syFindBadHours(form);
+    if (bad) { showToast('เวลา (ชั่วโมง) ต้องเป็นตัวเลข เช่น 1 หรือ 1.5 — แก้ช่องที่ขีดแดงก่อนบันทึก', 'error'); bad.focus(); return; }
+    if (await sySave(container, syCollect(form)) && container.isConnected) syShowForm(container);
+  };
+  container.querySelectorAll('.sy-do-save').forEach(b => b.addEventListener('click', onSave));
+  form.addEventListener('input', (e) => { if (e.target.classList.contains('sy-t-hours')) e.target.setAttribute('aria-invalid', 'false'); });
 }
 
 // แท็บ "โครงสร้างรายวิชา" ของแม่แบบวิชา — โหลดใหม่ทุกครั้งที่เข้าแท็บ (โครงสร้างคะแนนอาจเพิ่งแก้) · onScore() = ลิงก์พากลับแท็บโครงสร้างคะแนน
@@ -372,6 +424,6 @@ async function renderSyllabusTab(container, course, onScore) {
     return;
   }
   if (!container.isConnected) return; // ผู้ใช้สลับแท็บ/ออกจากหน้าไปแล้ว
-  Object.assign(SY, { id: course.id, course, struct: data.struct, desc: data.desc, saved: data.saved, draft: null, onScore: onScore || null });
+  Object.assign(SY, { id: course.id, course, struct: data.struct, desc: data.desc, saved: data.saved, draft: null, onScore: onScore || null, existed: data.existed, savedAt: data.savedAt });
   syShowForm(container);
 }

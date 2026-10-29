@@ -92,6 +92,7 @@ const DESC = { type: 'พื้นฐาน', area: 'วิทยาศาสต
   ok(n.units[1].standard.length === R('SY_MAX.std') && n.units[1].topics.length === R('SY_MAX.topics'), 'normalize: ตัดความยาวมาตรฐาน · จำกัดจำนวนสาระย่อยต่อหน่วย');
   ok(R(`syNormalize({}, 'จากคำอธิบาย')`).area === 'จากคำอธิบาย' && R(`syNormalize({ units: [] }, 'จากคำอธิบาย')`).area === 'จากคำอธิบาย', 'ยังไม่เคยบันทึกกลุ่มสาระ → ใช้ค่าจากคำอธิบายรายวิชา');
   ok(R(`syNormalize({ area: '' }, 'จากคำอธิบาย')`).area === '', 'เคยบันทึกกลุ่มสาระเป็นค่าว่างแล้ว → ว่างตามนั้น (ไม่ดึงกลับมาทับ)');
+  ok(R(`syHours('๒')`) === '2' && R(`syHours('1,5')`) === '1.5' && R(`syHours('๑,๕')`) === '1.5' && R(`syHours('2 ชม.')`) === '', 'ชั่วโมง: รับเลขไทย ๒ และ 1,5 · ข้อความอื่นอ่านไม่ได้ (ตรวจก่อนบันทึก ไม่ทิ้งเงียบ ๆ)');
   ok(R(`syNormalize(null, '').units.length`) === 0 && R(`syNormalize({ units: 'x' }, '').units.length`) === 0, 'normalize: เอกสารว่าง/รูปแบบผิด → ไม่พัง');
 
   // ---------------- โครงสร้างคะแนน → หน่วย ----------------
@@ -181,7 +182,7 @@ const DESC = { type: 'พื้นฐาน', area: 'วิทยาศาสต
   ok(!!$('sy-form') && host.querySelectorAll('.sy-unit').length === 5, 'ฟอร์ม: 1 บล็อกต่อหน่วยการเรียนรู้ (5 หน่วย)');
   ok($('sy-area').value === 'วิทยาศาสตร์และเทคโนโลยี', 'กลุ่มสาระ: ยังไม่เคยกรอกในแท็บนี้ → เริ่มต้นจากคำอธิบายรายวิชา');
   const u1 = host.querySelector('.sy-unit[data-unit="u1"]');
-  ok([...u1.querySelectorAll('.sy-unit-h > span')].map(e => norm(e.textContent)).join('|') === `หน่วยที่ 1|${unitNames[0]}|น้ำหนักคะแนน 10`, 'หัวบล็อกหน่วย: ชื่อ + น้ำหนักคะแนน แสดงเป็นข้อความ (แก้ไม่ได้ในแท็บนี้)');
+  ok([...u1.querySelectorAll('.sy-unit-h > span')].map(e => norm(e.textContent)).join('|') === `หน่วยที่ 1|${unitNames[0]}|กรอกแล้ว · 2 ชั่วโมง|น้ำหนักคะแนน 10`, 'หัวบล็อกหน่วย: ชื่อ + สถานะกรอก/ชั่วโมง + น้ำหนักคะแนน แสดงเป็นข้อความ (แก้ไม่ได้ในแท็บนี้)');
   ok(u1.querySelector('.sy-std').value === 'ว4.2 / ม.2/4' && u1.querySelectorAll('.sy-trow').length === 2 && u1.querySelector('.sy-t-title').value === 'ถูกต้อง ปลอดภัย ใช่เลย', 'ค่าที่บันทึกไว้โหลดกลับมา (มาตรฐาน · สาระย่อย · ชั่วโมง)');
   ok(!host.querySelector('.sy-unit-name input') && /ไปแท็บโครงสร้างคะแนน/.test(host.textContent), 'ชื่อหน่วย/น้ำหนักไม่มีช่องกรอก · มีลิงก์ไปแท็บโครงสร้างคะแนน');
   host.querySelector('#sy-goto-score').click();
@@ -273,6 +274,38 @@ const DESC = { type: 'พื้นฐาน', area: 'วิทยาศาสต
   ok(saved && saved.units.some(u => u.id === 'gone' && u.topics[0].title === 'เก่า'), 'ข้อมูลของหน่วยที่ถูกข้ามยังถูกเก็บไว้ (กลับมาใช้ได้ถ้าเพิ่มหน่วยนั้นคืน)');
   ok(R('syIsDirty()') === false && toasts.some(x => /บันทึกโครงสร้างรายวิชาสำเร็จ/.test(x[0])) && !$('sy-save-btn').disabled && $('sy-save-btn').textContent.trim() === R('SY_SAVE_LABEL'), 'บันทึกสำเร็จ: ล้างธงค่าค้าง · แจ้งผล · ปุ่มกลับมากดได้');
 
+  // ---- การบันทึกต้องชัดเจน: สถานะ · ตรวจช่องเวลา · วาดใหม่จากค่าที่เก็บจริง · บันทึกจากหน้าตัวอย่าง ----
+  const status = () => $('sy-status').textContent;
+  ok(/✓ บันทึกแล้ว/.test(status()) && !$('sy-status').classList.contains('is-dirty'), 'หลังบันทึก: ป้ายสถานะ "✓ บันทึกแล้ว"');
+  ok(/กรอกแล้ว 5 จาก 5 หน่วย/.test(toasts[toasts.length - 1][0]), 'แจ้งผลบันทึกบอกจำนวนหน่วยที่กรอกแล้ว (กรอกแล้ว X จาก Y หน่วย)');
+  ok(host.querySelector('.sy-unit[data-unit="u2"] .sy-t-hours').value === '2' && host.querySelector('.sy-unit[data-unit="u2"] .sy-std').value === 'ว4.2 / ม.2/1', 'บันทึกแล้วฟอร์มวาดใหม่จากค่าที่ถูกเก็บจริง ("2.0" → "2" · ตัดช่องว่าง) ตรงกับในฐานข้อมูล');
+  ok(!!$('sy-top-save') && !!$('sy-save-btn') && host.querySelectorAll('.sy-do-save').length === 2, 'มีปุ่มบันทึก 2 จุด: แถบบน + ท้ายฟอร์ม');
+  const row0 = host.querySelector('.sy-unit[data-unit="u3"] .sy-t-hours');
+  row0.value = '2 ชม.';
+  row0.dispatchEvent(new w.Event('input', { bubbles: true }));
+  ok(/มีที่ยังไม่ได้บันทึก/.test(status()) && $('sy-status').classList.contains('is-dirty'), 'แก้ค่า → ป้ายสถานะเปลี่ยนเป็น "● มีที่ยังไม่ได้บันทึก"');
+  ok(/ชั่วโมง/.test(host.querySelector('.sy-unit[data-unit="u3"] .sy-unit-s').textContent), 'ป้ายสถานะต่อหน่วยอัปเดตสด');
+  const before = JSON.stringify(store.get(TP + '/settings/syllabus'));
+  $('sy-top-save').click(); await settle();
+  ok(JSON.stringify(store.get(TP + '/settings/syllabus')) === before && row0.getAttribute('aria-invalid') === 'true' && toasts.some(x => /ต้องเป็นตัวเลข/.test(x[0]) && x[1] === 'error'), 'ช่องเวลาที่อ่านเป็นตัวเลขไม่ได้: ไม่บันทึก · ขีดแดงช่องนั้น · บอกสาเหตุ (ไม่ทิ้งค่าเงียบ ๆ)');
+  row0.value = '๓,๕';
+  row0.dispatchEvent(new w.Event('input', { bubbles: true }));
+  ok(row0.getAttribute('aria-invalid') === 'false', 'แก้ช่องแล้วเครื่องหมายผิดหายทันที');
+  $('sy-top-save').click(); await settle();
+  ok(store.get(TP + '/settings/syllabus').units.find(u => u.id === 'u3').topics[0].hours === '3.5' && /✓ บันทึกแล้ว/.test(status()), 'เลขไทย/จุลภาค "๓,๕" บันทึกเป็น 3.5 · ปุ่มบันทึกแถบบนใช้ได้เหมือนปุ่มท้ายฟอร์ม');
+  // บันทึกจากหน้าตัวอย่าง
+  host.querySelector('.sy-unit[data-unit="u1"] .sy-std').value = 'ว4.2 / ม.2/9';
+  d.querySelector('#sy-form').dispatchEvent(new w.Event('input'));
+  $('sy-to-preview').click(); await settle();
+  ok(/มีที่ยังไม่ได้บันทึก/.test(status()) && !!$('sy-prev-save'), 'หน้าตัวอย่าง: มีป้ายสถานะและปุ่ม "บันทึก" (ไม่ต้องกลับไปหน้าแก้ไข)');
+  $('sy-prev-save').click(); await settle();
+  ok(store.get(TP + '/settings/syllabus').units.find(u => u.id === 'u1').standard === 'ว4.2 / ม.2/9' && /✓ บันทึกแล้ว/.test(status()) && R('syIsDirty()') === false && !/ยังไม่ได้บันทึก/.test(host.querySelector('.doc-preview-hint').textContent), 'บันทึกจากหน้าตัวอย่าง: เก็บค่าที่ตัวอย่างแสดง · ป้ายเป็น "บันทึกแล้ว" · ข้อความ "รวมส่วนที่ยังไม่ได้บันทึก" หาย');
+  $('sy-prev-edit').click();
+  host.querySelector('.sy-unit[data-unit="u1"] .sy-std').value = 'ว4.2 / ม.2/4';
+  d.querySelector('#sy-form').dispatchEvent(new w.Event('input'));
+  $('sy-save-btn').click(); await settle();
+  ok(R(`syTimeText(new Date(2026, 9, 29, 14, 5))`).length > 0 && R(`syTimeText({ toDate: () => new Date(2026, 9, 29) })`).length > 0 && R(`syTimeText('TS')`) === '' && R(`syTimeText(null)`) === '', 'เวลาบันทึกล่าสุด: อ่านได้ทั้ง Date และ Timestamp ของ Firestore · ค่าอื่น = ว่าง (ไม่พัง)');
+
   // เปิดซ้ำ = ค่าที่บันทึก (กลุ่มสาระไม่ถูกดึงจากคำอธิบายมาทับ)
   host.innerHTML = '';
   await R(`renderSyllabusTab(document.getElementById('host'), ${J(course)}, window.__toScore)`);
@@ -358,7 +391,7 @@ const DESC = { type: 'พื้นฐาน', area: 'วิทยาศาสต
   ok(/syll:\s*\[[^\]]*'doc-shell'[^\]]*'course-desc'[^\]]*'syllabus'\]/.test(U), 'utils.js: LAZY_BUNDLES.syll โหลด doc-shell → course-desc → syllabus (ได้ docs.min.css + ตัวช่วยของคำอธิบายรายวิชา)');
   ok(/'js\/syllabus\.js'/.test(read('sw.js')), 'sw.js: PRECACHE มี js/syllabus.js');
   const pk = read('js/picker-pages.js');
-  ok(/STRUCT_TABS = \[\['score', '[^']+'\], \['syll', 'โครงสร้างรายวิชา'\], \['desc'/.test(pk), 'หน้าโครงสร้างวิชา: แท็บ "โครงสร้างรายวิชา" ต่อจากแท็บโครงสร้างคะแนน');
+  ok(/STRUCT_TABS = \[\['score', '[^']+'\], \['desc', '[^']+'\], \['descprev', '[^']+'\], \['syll', 'Course Syllabus'\]\]/.test(pk), 'หน้าโครงสร้างวิชา: แท็บ "Course Syllabus" อยู่หลังสุด (ต่อจากแท็บตัวอย่างก่อนพิมพ์)');
   ok(/loadModules\(LAZY_BUNDLES\.syll\)/.test(pk) && /renderSyllabusTab\(pane, tpl,/.test(pk) && /syIsDirty\(\)/.test(pk) && /syDiscard\(\)/.test(pk), 'หน้าโครงสร้างวิชา: โหลดโมดูลแล้ววาดแท็บ · ถามก่อนทิ้งค่าค้างตอนออกจากแท็บ');
   ok(/AppState\.structureTab !== 'score'/.test(read('js/structure.js')), 'saveStructure: ไม่วาดโครงสร้างคะแนนทับแท็บอื่นหลังบันทึก (รวมแท็บใหม่)');
   ok(!/<style|createElement\(['"]style|insertRule|\.style\./.test(src) && !/style="(?!--)[^"]/.test(src), 'ไม่เขียน CSS ใน JS (ไม่มี <style> · el.style · style="ค่าคงที่" — ส่งเป็นตัวแปร --xxx เท่านั้น)');
