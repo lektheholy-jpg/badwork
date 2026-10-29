@@ -2368,6 +2368,9 @@ table.tt tr.is-today td.tt-cell { background: color-mix(in srgb, var(--hue-orang
   .preset-actions { flex: 1 1 100%; justify-content: flex-start; }
 }
 
+/* ชิ้นงานที่อยู่ใต้หน่วยการเรียนรู้ในตารางโครงสร้างคะแนนแบบอ่านอย่างเดียว (js/structure.js · itemRowRo) — เยื้องเข้าจากแถวหน่วย */
+.struct-table td.in-unit { padding-left: 28px; }
+
 /* คำอธิบายรายวิชาในแท็บภาพรวมของหน้าวิชา (js/courses.js · courseDescCardHtml) — อ่านอย่างเดียว */
 .cdesc-text { margin: 0 0 10px; line-height: 1.7; white-space: pre-line; overflow-wrap: anywhere; }
 .cdesc-ind { margin-top: 4px; }
@@ -2667,5 +2670,25 @@ td.doc-ai-target::before { inset: 0; }
   .cd-ind .cd-ind-code, .cd-std .cd-std-code { grid-area: code; }
   .cd-ind .cd-ind-text, .cd-std .cd-std-text { grid-area: text; }
   .cd-ind .cd-ind-del, .cd-std .cd-std-del { grid-area: del; }
+}
+/* ฟอร์มโครงสร้างรายวิชา (js/syllabus.js · แท็บในหน้า "ตั้งค่าโครงสร้างวิชา") — ใช้ .doc-form / .doc-section / .doc-lblock ร่วมกับ PA · ที่นี่มีเฉพาะส่วนที่ต่างออกไป */
+.sy-head-ro { font-weight: 600; line-height: 1.6; overflow-wrap: anywhere; }
+.sy-unit { border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px 4px; margin-bottom: 12px; }
+.sy-unit-h { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; margin-bottom: 8px; }
+.sy-unit-n { font-weight: 700; color: var(--ink-soft); white-space: nowrap; }
+.sy-unit-name { font-weight: 600; overflow-wrap: anywhere; }
+.sy-unit-w { margin-left: auto; font-size: 13px; color: var(--ink-soft); white-space: nowrap; }
+.sy-unit .field > label { display: block; font-size: 13px; font-weight: 600; color: var(--ink-soft); }
+.sy-unit .sy-std { display: block; width: 100%; margin-top: 4px; resize: vertical; }
+.sy-pick { margin-top: 6px; max-width: 100%; }
+.sy-topics { --doc-cols: minmax(0, 1fr) 80px 44px; margin-top: 6px; }
+.sy-topics .doc-lhead span:nth-child(2) { text-align: center; }
+.sy-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; }
+.sy-stat { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 10px; font-size: 13px; color: var(--ink-soft); }
+.sy-stat b { font-size: 18px; color: var(--ink); font-variant-numeric: tabular-nums; }
+.sy-warn { margin-top: 8px; padding: 8px 12px; border-radius: 10px; font-size: 13.5px; line-height: 1.6; background: var(--warning-tint); color: var(--warning); }
+@media (max-width: 540px) {
+  .sy-topics { --doc-cols: minmax(0, 1fr) 64px 44px; }
+  .sy-unit { padding: 10px 10px 2px; }
 }
 /* @endbundle */

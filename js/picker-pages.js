@@ -124,7 +124,7 @@ async function renderStructureList(view) {
   });
 }
 
-const STRUCT_TABS = [['score', 'โครงสร้างคะแนน'], ['desc', 'คำอธิบายรายวิชา'], ['descprev', 'ตัวอย่างก่อนพิมพ์']];
+const STRUCT_TABS = [['score', 'โครงสร้างคะแนน'], ['syll', 'โครงสร้างรายวิชา'], ['desc', 'คำอธิบายรายวิชา'], ['descprev', 'ตัวอย่างก่อนพิมพ์']];
 const DESC_TABS = ['desc', 'descprev']; // แท็บในกลุ่มคำอธิบายรายวิชา — สลับกันเองได้โดยไม่ถามทิ้งร่าง (js/course-desc.js เก็บร่างข้ามแท็บ)
 
 async function renderStructureEditor(view, templateId) {
@@ -170,13 +170,21 @@ async function renderStructureEditor(view, templateId) {
     });
   });
 
-  // แท็บในหน้าแก้แม่แบบ: โครงสร้างคะแนน · คำอธิบายรายวิชา — แต่ละแท็บวาดลงกล่องของตัวเอง (วาดค้างจากแท็บเดิมไม่ทับแท็บใหม่)
+  // แท็บในหน้าแก้แม่แบบ: โครงสร้างคะแนน · โครงสร้างรายวิชา · คำอธิบายรายวิชา — แต่ละแท็บวาดลงกล่องของตัวเอง (วาดค้างจากแท็บเดิมไม่ทับแท็บใหม่)
   const body = document.getElementById('structure-page-body');
   const drawTab = async () => {
     const tab = AppState.structureTab;
     const pane = document.createElement('div');
     body.replaceChildren(pane);
-    if (DESC_TABS.includes(tab)) {
+    if (tab === 'syll') { // โครงสร้างรายวิชา: แท็บเดียวสลับมุมมองแก้ไข ↔ ตัวอย่างเอง (js/syllabus.js) · เข้าแท็บทีไรโหลดใหม่ เพราะโครงสร้างคะแนนอาจเพิ่งแก้
+      showLoading('cat-sm', pane);
+      try { await loadModules(LAZY_BUNDLES.syll); } catch (err) {
+        if (pane.isConnected) pane.innerHTML = `<div class="card"><div class="empty-state">${escapeHtml(err.message)}</div></div>`;
+        return;
+      }
+      if (!pane.isConnected || AppState.structureTab !== tab) return;
+      await renderSyllabusTab(pane, tpl, () => tabsEl.querySelector('.tab[data-tab="score"]').click());
+    } else if (DESC_TABS.includes(tab)) {
       showLoading('cat-sm', pane);
       try { await loadModules(LAZY_BUNDLES.cdesc); } catch (err) {
         if (pane.isConnected) pane.innerHTML = `<div class="card"><div class="empty-state">${escapeHtml(err.message)}</div></div>`;
@@ -201,6 +209,10 @@ async function renderStructureEditor(view, templateId) {
           if (!confirm('คำอธิบายรายวิชามีที่ยังไม่ได้บันทึก — ออกจากแท็บนี้และทิ้งที่แก้ไว้?')) return;
           cdDiscardDraft();
         }
+      }
+      if (cur === 'syll' && typeof syIsDirty === 'function') { // ออกจากแท็บโครงสร้างรายวิชา: มีค่าค้างต้องถามก่อนทิ้ง
+        if (syIsDirty() && !confirm('โครงสร้างรายวิชามีที่ยังไม่ได้บันทึก — ออกจากแท็บนี้และทิ้งที่แก้ไว้?')) return;
+        syDiscard();
       }
       AppState.structureTab = t.dataset.tab;
       tabsEl.querySelectorAll(':scope > .active').forEach(x => x.classList.remove('active'));

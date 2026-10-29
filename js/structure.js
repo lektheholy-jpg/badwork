@@ -203,7 +203,7 @@ async function renderStructureTab(container, course, opts = {}) {
     const itemRowRo = (it, idx) => `
       <tr data-type="item" data-id="${it.id}">
         <td>${idx + 1}</td>
-        <td${it.unitId ? ' style="padding-left:28px"' : ''}>${escapeHtml(it.name || '—')}</td>
+        <td${it.unitId ? ' class="in-unit"' : ''}>${escapeHtml(it.name || '—')}</td>
         <td class="muted">${escapeHtml(it.detail || '')}</td>
         <td class="att-col">${attBtnHtml(it.id, it)}</td>
         <td class="num-col">${Number(it.max) || 0}</td>
@@ -667,9 +667,9 @@ async function saveStructure(course, collectItems, groups, units, midterm, final
   await batch.commit();
   invalidateCourseData(course.id);
   showToast(course.isTemplate ? 'บันทึกแม่แบบโครงสร้างวิชาสำเร็จ' : 'บันทึกโครงสร้างวิชาสำเร็จ');
-  // หน้าแก้แม่แบบมีสองแท็บ — ถ้าระหว่างบันทึกผู้ใช้สลับไปแท็บคำอธิบายรายวิชาแล้ว ไม่วาดโครงสร้างทับ
+  // หน้าแก้แม่แบบมีหลายแท็บ — ถ้าระหว่างบันทึกผู้ใช้สลับไปแท็บอื่น (คำอธิบายรายวิชา · โครงสร้างรายวิชา · ตัวอย่าง) แล้ว ไม่วาดโครงสร้างคะแนนทับ
   const target = document.getElementById('course-tab-body') || document.getElementById('structure-page-body');
-  if (target && !(course.isTemplate && AppState.structureTab === 'desc')) renderStructureTab(target, course);
+  if (target && !(course.isTemplate && AppState.structureTab !== 'score')) renderStructureTab(target, course);
   // แก้แม่แบบ → ถามว่าจะอัปเดตรายวิชาของเทอมที่เปิดไปแล้วตามแม่แบบด้วยไหม (ไม่ถามถ้ายังไม่เคยเปิดสอน)
   if (course.isTemplate) offerTemplateSync(course);
 }

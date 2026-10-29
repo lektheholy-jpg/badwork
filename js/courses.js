@@ -1031,7 +1031,7 @@ async function renderCourseOverview(container, course, sections) {
   const uid = AppState.user.uid;
   const base = db.collection('users').doc(uid).collection('courses').doc(course.id);
 
-  const [assessSnap, perSection, desc] = await Promise.all([
+  const [assessSnap, perSection, desc, syll] = await Promise.all([
     base.collection('assessments').get(),
     Promise.all(sections.map(async (s) => {
       const secBase = base.collection('sections').doc(s.id);
@@ -1042,6 +1042,7 @@ async function renderCourseOverview(container, course, sections) {
       return { studentsSnap, scoresSnap, s };
     })),
     loadCourseDescription(course),
+    loadCourseSyllabus(course),
   ]);
 
   const assessmentIds = assessSnap.docs.map(d => d.id);
@@ -1072,6 +1073,7 @@ async function renderCourseOverview(container, course, sections) {
       ${sections.length === 0 ? `<div class="empty-state u-pt-10">ยังไม่มีห้องเรียนในวิชานี้ กด "+ เพิ่มห้อง" เพื่อเริ่มต้น</div>` : ''}
     </div>
     ${courseDescCardHtml(desc, course)}
+    ${syllabusCardHtml(syll, course)}
     <div class="stat-row">
       <div class="stat-card"><div class="label">จำนวนห้อง</div><div class="value">${sections.length}</div></div>
       <div class="stat-card"><div class="label">นักเรียนทั้งหมด</div><div class="value">${totalStudents}</div></div>
@@ -1126,6 +1128,21 @@ async function renderCourseOverview(container, course, sections) {
       cdPrint({ ...desc, semester: desc.semester || String(course.semester || '') });
     });
   }
+
+  // โครงสร้างรายวิชา: แก้ไข = พาไปแท็บ "โครงสร้างรายวิชา" ของแม่แบบวิชา · พิมพ์ = ตัวพิมพ์เดียวกับหน้าตัวอย่าง (js/syllabus.js · โหลดข้อมูลหลังคลิกในหน้าต่างพิมพ์เอง)
+  container.querySelector('#ov-syl-edit-btn')?.addEventListener('click', () => {
+    AppState.structureOpenOnce = course.templateId;
+    AppState.structureTab = 'syll';
+    navigate('structure-page');
+  });
+  if (syllabusHasData(syll)) {
+    setTimeout(() => loadModules(LAZY_BUNDLES.syll).catch(() => { /* ไม่ได้โหลดล่วงหน้า → โหลดตอนกดพิมพ์ */ }), 0); // window.open ต้องมาจากการคลิกโดยตรง จึงโหลดโมดูลรอไว้ก่อน
+    container.querySelector('#ov-syl-print-btn')?.addEventListener('click', async () => {
+      try { if (typeof syPrintCourse !== 'function') await loadModules(LAZY_BUNDLES.syll); }
+      catch (err) { showToast(err.message || 'โหลดหน้าพิมพ์ไม่สำเร็จ'); return; }
+      try { await syPrintCourse(course); } catch (err) { console.error(err); showToast('เตรียมเอกสารไม่สำเร็จ: ' + (err.message || '')); }
+    });
+  }
 }
 
 // คำอธิบายรายวิชา (อ่านอย่างเดียว) ของวิชาที่เปิดสอนในเทอมนี้ — เก็บที่แม่แบบวิชา courseTemplates/{templateId}/settings/description
@@ -1142,6 +1159,63 @@ async function loadCourseDescription(course) {
     console.warn('โหลดคำอธิบายรายวิชาไม่สำเร็จ (ข้ามส่วนนี้):', err);
     return null;
   }
+}
+
+// โครงสร้างรายวิชา (อ่านอย่างเดียว) ของวิชาที่เปิดสอนในเทอมนี้ — หน่วย/คะแนนอ่านจากโครงสร้างของวิชานี้เอง (settings/structure) ·
+// สาระย่อย/ชั่วโมง/มาตรฐานอ่านจากแม่แบบวิชา courseTemplates/{templateId}/settings/syllabus (ใช้ร่วมทุกเทอม) · ไม่ผูกแม่แบบอ่านจาก courses/{id}/settings/syllabus
+// คืน { sd, syl } (ค่าว่างได้) · อ่านไม่ได้ = null (ไม่ให้แท็บภาพรวมพังเพราะส่วนนี้) — การคำนวณเต็ม (ยอดรวม · คำเตือน · ตาราง) อยู่ที่ js/syllabus.js (lazy) การ์ดนี้แสดงแค่สรุป
+async function loadCourseSyllabus(course) {
+  try {
+    const root = db.collection('users').doc(AppState.user.uid);
+    const own = root.collection('courses').doc(course.id);
+    const owner = course.templateId ? root.collection('courseTemplates').doc(course.templateId) : own;
+    const [sd, syl] = await Promise.all([own.collection('settings').doc('structure').get(), owner.collection('settings').doc('syllabus').get()]);
+    return { sd: sd.exists ? sd.data() : null, syl: syl.exists ? syl.data() : null };
+  } catch (err) {
+    console.warn('โหลดโครงสร้างรายวิชาไม่สำเร็จ (ข้ามส่วนนี้):', err);
+    return null;
+  }
+}
+
+// หน่วยตามลำดับเดียวกับหน้าโครงสร้างคะแนน (ยังไม่จัดหมวด → แต่ละหมวด) แล้วจับคู่กับข้อมูล syllabus ด้วย id หน่วย · ต้องตรงกับ syStructFrom ใน js/syllabus.js
+function syllabusRows(sy) {
+  const sd = sy && sy.sd, syl = (sy && sy.syl) || {};
+  const gids = Array.isArray(sd && sd.groups) ? sd.groups.map(g => g && g.id) : [];
+  const all = (Array.isArray(sd && sd.units) ? sd.units : []).filter(u => u && u.id)
+    .map(u => ({ id: u.id, name: String(u.name || ''), groupId: gids.includes(u.groupId) ? u.groupId : null }));
+  const byId = new Map((Array.isArray(syl.units) ? syl.units : []).filter(u => u && u.id).map(u => [u.id, u]));
+  return [null, ...gids].flatMap(gid => all.filter(u => u.groupId === gid)).map((u, i) => {
+    const sv = byId.get(u.id) || {};
+    const topics = Array.isArray(sv.topics) ? sv.topics : [];
+    return { n: i + 1, name: u.name.trim() || `หน่วยที่ ${i + 1}`, standard: String(sv.standard || '').trim(), filled: !!(String(sv.standard || '').trim() || topics.some(t => t && (t.title || t.hours))),
+      hours: Math.round(topics.reduce((s, t) => s + (Number(t && t.hours) || 0), 0) * 10) / 10 };
+  });
+}
+
+function syllabusHasData(sy) { return syllabusRows(sy).some(r => r.filled); }
+
+function syllabusCardHtml(sy, course) {
+  const rows = syllabusRows(sy), filled = rows.filter(r => r.filled);
+  const hours = Math.round(rows.reduce((s, r) => s + r.hours, 0) * 10) / 10;
+  const edit = course.templateId ? '<button class="btn btn-ghost btn-sm" id="ov-syl-edit-btn">' + (filled.length ? 'แก้ไข' : 'กรอกโครงสร้างรายวิชา') + '</button>' : '';
+  const line = (r) => `<div class="cdesc-ind-row"><div class="cdesc-ind-code">หน่วยที่ ${r.n}</div><div>${escapeHtml(r.name)} — ${r.hours} ชั่วโมง${r.standard ? ' · ' + escapeHtml(r.standard).replace(/\n/g, ' · ') : ''}</div></div>`;
+  return `
+    <div class="card card-pad u-mb-16" id="ov-syl-card">
+      <div class="u-flex u-items-center u-between u-mb-10 u-wrap u-gap-8">
+        <div class="u-semibold u-fs-135">โครงสร้างรายวิชา</div>
+        <div class="u-flex u-gap-8">
+          ${filled.length ? '<button class="btn btn-ghost btn-sm" id="ov-syl-print-btn">ดูตัวอย่าง / พิมพ์</button>' : ''}
+          ${edit}
+        </div>
+      </div>
+      ${filled.length ? `
+        <p class="cdesc-text">กรอกแล้ว ${filled.length} จาก ${rows.length} หน่วย · รวม ${hours} ชั่วโมง</p>
+        <details class="cdesc-ind">
+          <summary>รายการหน่วยการเรียนรู้ ${rows.length} หน่วย</summary>
+          ${rows.map(line).join('')}
+        </details>
+      ` : `<div class="u-note">${rows.length ? 'ยังไม่ได้กรอกโครงสร้างรายวิชา — กรอกครั้งเดียวที่ "ตั้งค่าโครงสร้างวิชา" แล้วจะแสดงที่นี่ทุกเทอมที่เปิดสอนวิชานี้' : 'ยังไม่มีหน่วยการเรียนรู้ในโครงสร้างคะแนน — เพิ่มหน่วยที่ "ตั้งค่าโครงสร้างวิชา" ก่อน แล้วค่อยกรอกโครงสร้างรายวิชา'}</div>`}
+    </div>`;
 }
 
 function courseDescCardHtml(d, course) {

@@ -48,7 +48,8 @@
     "test:settings": "node tests/settings-tabs.test.js",
     "test:push": "node tests/push.test.js",
     "test:cdesc": "node tests/course-desc.test.js",
-    "test:cdescai": "node tests/course-desc-ai.test.js"
+    "test:cdescai": "node tests/course-desc-ai.test.js",
+    "test:syll": "node tests/syllabus.test.js"
   },
   "devDependencies": {
     "csso-cli": "4.0.2",

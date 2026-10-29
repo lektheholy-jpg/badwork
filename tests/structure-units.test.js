@@ -159,7 +159,7 @@ const groupNames = (c) => [...c.querySelectorAll('input.group-name')].map(i => i
     ok(c.querySelectorAll(editors).length === 0, 'ไม่มีช่องกรอก/ปุ่มเพิ่ม-ลบ-บันทึก-ลาก-ย้ายใด ๆ เหลืออยู่');
     ok(!c.querySelector('.group-col'), 'ไม่แสดงคอลัมน์ "ที่อยู่ (หมวด / หน่วย)"');
     const nameCell = (id) => c.querySelector(`tr[data-id="${id}"] td:nth-child(2)`);
-    ok(nameCell('a1').style.paddingLeft && !nameCell('a2').style.paddingLeft, 'ชิ้นงานในหน่วยเยื้องเข้ามา ส่วนงานนอกหน่วยไม่เยื้อง')
+    ok(nameCell('a1').classList.contains('in-unit') && !nameCell('a2').classList.contains('in-unit'), 'ชิ้นงานในหน่วยเยื้องเข้ามา (คลาส in-unit → .struct-table td.in-unit) ส่วนงานนอกหน่วยไม่เยื้อง')
     ok(c.querySelector('#mid-max-input').readOnly && c.querySelector('#final-max-input').readOnly, 'ช่องคะแนนกลางภาค/ปลายภาคเป็น readonly');
     ok(c.querySelectorAll('input:not([readonly])').length === 0, 'ไม่มี input ที่พิมพ์ได้เลย');
     ok(!c.querySelector('.att-btn[data-id="a2"]'), 'งานที่ไม่มีสื่อไม่แสดงปุ่มแนบ');
