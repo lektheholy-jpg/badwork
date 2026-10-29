@@ -2,7 +2,8 @@
 // โครงสร้างรายวิชา (Course Syllabus) — ตารางหน่วยการเรียนรู้ตามแบบ "โครงสร้างรายวิชา" ของหลักสูตร
 //   (หัวเอกสาร · หน่วยที่/ชื่อหน่วย · มาตรฐาน/ตัวชี้วัด · สาระการเรียนรู้ย่อยพร้อมเวลา · น้ำหนักคะแนน ·
 //    อัตราส่วนระหว่างภาค:ปลายภาค · รวมชั่วโมง/คะแนน) หน้าตาและตัวช่วยเดียวกับฟอร์มคำอธิบายรายวิชา (js/course-desc.js)
-//   • อยู่ในหน้า "ตั้งค่าโครงสร้างวิชา" → แท็บ "โครงสร้างรายวิชา" ต่อจากแท็บโครงสร้างคะแนน (js/picker-pages.js) — แท็บเดียวสลับ 2 มุมมอง: แก้ไข ↔ ตัวอย่าง/พิมพ์
+//   • อยู่ในหน้า "ตั้งค่าโครงสร้างวิชา" → แท็บ "Course Syllabus" (ฟอร์ม) + แท็บ "ตัวอย่าง Course Syllabus" ต่อจากแท็บคำอธิบายรายวิชา (js/picker-pages.js)
+//     หน้าตาเหมือนคู่แท็บคำอธิบายรายวิชา (js/course-desc.js) และฟอร์มเอกสารอื่น: doc-form-header → doc-section → pa-form-footer · ตัวอย่างมีแค่ปุ่ม แก้ไข / พิมพ์
 //   • ที่มาของข้อมูล (ตารางจึงตรงกับคะแนนจริงเสมอ):
 //       แม่แบบวิชา            → รหัส · ชื่อวิชา · ระดับชั้น · หน่วยกิต
 //       settings/structure    → หน่วยการเรียนรู้ (ลำดับ · ชื่อ) · น้ำหนักคะแนนต่อหน่วย (รวม max ของชิ้นงานในหน่วย) · กลางภาค · ปลายภาค
@@ -135,7 +136,8 @@ function syModel(course, struct, saved, desc) {
 }
 
 // ---------------------------------------------------------------- สถานะการบันทึก
-// ป้ายบอกสถานะอยู่บนแถบเครื่องมือทั้งมุมมองแก้ไขและตัวอย่าง: ยังไม่เคยบันทึก · มีที่ยังไม่ได้บันทึก · บันทึกแล้ว (พร้อมเวลา) — ตัวอย่าง/พิมพ์ไม่ได้บันทึกให้ จึงต้องเห็นชัดว่าสิ่งที่พิมพ์ตรงกับที่เก็บหรือยัง
+// ป้ายบอกสถานะอยู่ที่หัวฟอร์ม (ขวาของ .doc-form-header เหมือนช่อง "สถานะ" ของฟอร์มเอกสารอื่น): ยังไม่เคยบันทึก · มีที่ยังไม่ได้บันทึก · บันทึกแล้ว (พร้อมเวลา)
+//   แท็บตัวอย่างไม่มีป้าย/ปุ่มบันทึก (เหมือนตัวอย่างคำอธิบายรายวิชา) — ข้อความแนะนำใต้แถบบอกเองเมื่อตัวอย่างใช้ค่าที่ยังไม่บันทึก
 function syTimeText(ts) {
   try {
     const dt = ts && typeof ts.toDate === 'function' ? ts.toDate() : (ts instanceof Date ? ts : null);
@@ -265,9 +267,7 @@ function syShowPreview(container, m, fromDraft, onEdit) {
   container.innerHTML = `
     <div class="doc-preview-bar">
       <div class="doc-preview-actions">
-        ${syStatusHtml}
         <button type="button" class="btn btn-ghost btn-sm" id="sy-prev-edit">${DOC_ICO_EDIT} แก้ไข</button>
-        <button type="button" class="btn btn-ghost btn-sm sy-do-save" id="sy-prev-save">บันทึก</button>
         <button type="button" class="btn btn-primary btn-sm" id="sy-prev-print">${DOC_ICO_PRINT} พิมพ์ / บันทึกเป็น PDF</button>
       </div>
     </div>
@@ -276,10 +276,6 @@ function syShowPreview(container, m, fromDraft, onEdit) {
     <div class="doc-preview-frame-wrap"><iframe class="doc-preview-frame is-fit" title="ตัวอย่างโครงสร้างรายวิชา"></iframe></div>`;
   container.querySelector('#sy-prev-edit').addEventListener('click', () => { if (onEdit) onEdit(); });
   container.querySelector('#sy-prev-print').addEventListener('click', () => syPrint(m));
-  syRefreshStatus(container);
-  container.querySelector('#sy-prev-save').addEventListener('click', async () => { // บันทึกจากหน้าตัวอย่าง: ใช้ค่าที่ตัวอย่างกำลังแสดง (ร่างหรือที่บันทึกไว้)
-    if (await sySave(container, syCurrent())) syShowPreview(container, syModel(SY.course, SY.struct, SY.saved, SY.desc), false, onEdit);
-  });
   const body = sySheetBodyHtml(m);
   docRenderSheets(SY_PREVIEW_SYS, 'syllprev', container, null, { // ไม่รอ — แถบแสดงไปก่อน กระดาษตามมา
     html: () => docSheetsHtml(SY1_CSS, `<div class="sy1">${body}</div>`),
@@ -309,8 +305,8 @@ const syUnitStatus = (u) => (u.standard || u.topics.length ? `กรอกแล
 function syUnitHtml(u, choices) {
   const pick = choices.length
     ? `<select class="input-sm sy-pick" aria-label="ดึงตัวชี้วัดจากคำอธิบายรายวิชา"><option value="">ดึงจากคำอธิบายรายวิชา…</option>${choices.map((c, i) => `<option value="${i}">${escapeHtml(c)}</option>`).join('')}</select>` : '';
-  return `<div class="sy-unit" data-unit="${escapeHtml(u.id)}">
-    <div class="sy-unit-h"><span class="sy-unit-n">หน่วยที่ ${u.n}</span><span class="sy-unit-name">${escapeHtml(u.name)}</span><span class="sy-unit-s">${syUnitStatus(u)}</span><span class="sy-unit-w">น้ำหนักคะแนน ${syFmt(u.weight)}</span></div>
+  return `<div class="pa-witem sy-unit" data-unit="${escapeHtml(u.id)}">
+    <div class="pa-witem-h sy-unit-h"><span class="sy-unit-n">หน่วยที่ ${u.n}</span><span class="sy-unit-name">${escapeHtml(u.name)}</span><span class="sy-unit-s">${syUnitStatus(u)}</span><span class="sy-unit-w">น้ำหนักคะแนน ${syFmt(u.weight)}</span></div>
     <div class="field"><label>มาตรฐาน/ตัวชี้วัด
       <textarea class="input-sm sy-std" rows="2" maxlength="${SY_MAX.std}" placeholder="เช่น ว4.2 / ม.2/4">${escapeHtml(u.standard)}</textarea>
     </label>${pick}</div>
@@ -322,13 +318,14 @@ function syUnitHtml(u, choices) {
   </div>`;
 }
 
+// สรุปตัวเลขเป็นการ์ดเล็กชุดเดียวกับข้อมูลในฟอร์มเอกสารอื่น (docProfileGridHtml) · คำเตือนอยู่ใต้การ์ด
 function syCheckHtml(m) {
-  const stat = (k, v) => `<div class="sy-stat"><span>${k}</span><b>${v}</b></div>`;
-  return `<div class="sy-stats">
-    ${stat('ชั่วโมงรวม', syFmt(m.hoursTotal) + (m.hoursExpected != null ? ' / ' + syFmt(m.hoursExpected) : ''))}
-    ${stat('คะแนนระหว่างภาค', syFmt(m.collect))}${stat('กลางภาค', syFmt(m.midterm))}${stat('ปลายภาค', syFmt(m.final))}${stat('รวมทั้งสิ้น', syFmt(m.grand))}
-  </div>${m.outside > 0 ? `<div class="u-note u-mt-4">มีคะแนนเก็บนอกหน่วย ${syFmt(m.outside)} คะแนน — จะแสดงเป็นแถว “คะแนนเก็บนอกหน่วย” ในตาราง</div>` : ''}
-  ${m.warnings.map(w => `<div class="sy-warn" role="status">${escapeHtml(w)}</div>`).join('')}`;
+  return docProfileGridHtml([
+    ['ชั่วโมงรวม', syFmt(m.hoursTotal) + (m.hoursExpected != null ? ' / ' + syFmt(m.hoursExpected) : '')],
+    ['คะแนนระหว่างภาค', syFmt(m.collect)], ['กลางภาค', syFmt(m.midterm)], ['ปลายภาค', syFmt(m.final)], ['รวมทั้งสิ้น', syFmt(m.grand)],
+  ], { auto: true })
+  + (m.outside > 0 ? `<div class="u-note u-mt-4">มีคะแนนเก็บนอกหน่วย ${syFmt(m.outside)} คะแนน — จะแสดงเป็นแถว “คะแนนเก็บนอกหน่วย” ในตาราง</div>` : '')
+  + m.warnings.map(w => `<div class="sy-warn" role="status">${escapeHtml(w)}</div>`).join('');
 }
 
 // ค่าในฟอร์ม → เอกสาร · หน่วยที่ไม่อยู่ในโครงสร้างคะแนนแล้ว (ข้อมูลเดิมที่ถูกข้าม) ยังเก็บไว้ ไม่ถูกลบตอนบันทึก — กลับมาใช้ได้ถ้าเพิ่มหน่วยนั้นคืน
@@ -350,21 +347,34 @@ function syShowForm(container) {
   const m = syModel(c, SY.struct, data, SY.desc);
   const choices = syIndicatorChoices(SY.desc);
   container.innerHTML = `
-  <div class="doc-preview-bar">
-    <div class="doc-preview-actions">${syStatusHtml}<button type="button" class="btn btn-ghost btn-sm" id="sy-to-preview">${DOC_ICO_PRINT} ไปแท็บตัวอย่าง</button><button type="button" class="btn btn-primary btn-sm sy-do-save" id="sy-top-save">บันทึก</button></div>
-  </div>
-  <div class="u-note u-mb-12"><b>ระบบดึงให้ (แก้ที่นี่ไม่ได้):</b> รหัส/ชื่อวิชา ระดับชั้น หน่วยกิต · ชื่อหน่วยและน้ำหนักคะแนน · กลางภาค/ปลายภาค (มาจากแท็บ “โครงสร้างคะแนน” — <a href="#" id="sy-goto-score">ไปแท็บโครงสร้างคะแนน</a>) · เวลารวม = บวกจากชั่วโมงของสาระย่อย<br><b>กรอกเอง:</b> กลุ่มสาระการเรียนรู้ · ต่อหน่วย: มาตรฐาน/ตัวชี้วัด และสาระย่อยพร้อมชั่วโมง<br>ข้อมูลเก็บไว้กับแม่แบบวิชานี้ใช้ร่วมทุกเทอม · <b>กดปุ่มบันทึกทุกครั้ง</b> (แท็บ “ตัวอย่าง Course Syllabus” ดู/พิมพ์ได้ แต่ไม่ได้บันทึกให้) — ดูสถานะบันทึกที่มุมซ้ายของแถบด้านบน</div>
+  <div class="u-note u-mb-12">กรอกโครงสร้างรายวิชาตามแบบของหลักสูตร — ข้อมูลเก็บไว้กับแม่แบบวิชานี้ และแสดงในหน้ารายวิชาของทุกเทอมที่เปิดสอนวิชานี้ · ชื่อหน่วย น้ำหนักคะแนน กลางภาค/ปลายภาค มาจากแท็บ “โครงสร้างคะแนน” (<a href="#" id="sy-goto-score">ไปแท็บโครงสร้างคะแนน</a>) · เวลารวมบวกจากชั่วโมงของสาระย่อย · ดูหน้ากระดาษก่อนพิมพ์ได้ที่แท็บ “ตัวอย่าง Course Syllabus” แต่ตัวอย่างไม่ได้บันทึกให้ — กดบันทึกทุกครั้ง</div>
   <form id="sy-form" class="doc-form" autocomplete="off" novalidate>
+
+    <div class="doc-form-header">
+      <div class="doc-form-meta">
+        <label class="sy-area-l">กลุ่มสาระการเรียนรู้
+          <input id="sy-area" type="text" maxlength="${SY_MAX.area}" placeholder="เช่น วิทยาศาสตร์และเทคโนโลยี" value="${escapeHtml(data.area)}">
+        </label>
+      </div>
+      ${syStatusHtml}
+    </div>
+
     <section class="doc-section">
-      <h2 class="doc-sec-title">ส่วนที่ 1  หัวเอกสาร</h2>
-      <div class="sy-head-ro">${escapeHtml([c.code, c.name].filter(Boolean).join(' ')) || 'ยังไม่มีชื่อวิชา'} · ${escapeHtml(c.level || 'ไม่ระบุระดับชั้น')}${c.credit ? ' · ' + escapeHtml(String(c.credit)) + ' หน่วยกิต' : ''}<span class="doc-sec-note"> แก้ที่ปุ่ม “แก้ไขข้อมูลวิชา”</span></div>
-      <div class="field u-mt-4"><label for="sy-area">กลุ่มสาระการเรียนรู้</label><input id="sy-area" type="text" maxlength="${SY_MAX.area}" placeholder="เช่น วิทยาศาสตร์และเทคโนโลยี" value="${escapeHtml(data.area)}"></div>
+      <h2 class="doc-sec-title">ส่วนที่ 1  ข้อมูลรายวิชา</h2>
+      ${docProfileGridHtml([['รหัสวิชา', c.code], ['ชื่อวิชา', c.name], ['ระดับชั้น', c.level], ['หน่วยกิต', c.credit], ['ประเภทวิชา', m.type]], { auto: true })}
+      ${docProfileNoteHtml('ดึงจากข้อมูลวิชาและคำอธิบายรายวิชา — แก้ที่นี่ไม่ได้', 'sy-edit-info', 'แก้ไขข้อมูลวิชา')}
     </section>
+
     <section class="doc-section">
       <h2 class="doc-sec-title">ส่วนที่ 2  หน่วยการเรียนรู้</h2>
       ${m.units.length ? m.units.map(u => syUnitHtml(u, choices)).join('') : '<div class="empty-state">ยังไม่มีหน่วยการเรียนรู้ — เพิ่มหน่วยที่แท็บ “โครงสร้างคะแนน” (ปุ่ม + หน่วยการเรียนรู้) แล้วกลับมากรอกที่นี่</div>'}
     </section>
-    <section class="doc-section"><h2 class="doc-sec-title">สรุปและตรวจสอบ</h2><div id="sy-check">${syCheckHtml(m)}</div></section>
+
+    <section class="doc-section">
+      <h2 class="doc-sec-title">ส่วนที่ 3  สรุปและตรวจสอบ</h2>
+      <div id="sy-check">${syCheckHtml(m)}</div>
+    </section>
+
     <div class="pa-form-footer"><button type="button" class="btn btn-primary sy-do-save" id="sy-save-btn">${SY_SAVE_LABEL}</button></div>
   </form>`;
   const form = container.querySelector('#sy-form');
@@ -401,9 +411,13 @@ function syShowForm(container) {
   });
 
   container.querySelector('#sy-goto-score').addEventListener('click', (e) => { e.preventDefault(); if (SY.nav.score) SY.nav.score(); });
-  container.querySelector('#sy-to-preview').addEventListener('click', () => { if (SY.nav.preview) SY.nav.preview(); }); // ไปแท็บตัวอย่าง (ผู้เรียกเก็บร่างให้ก่อนสลับแท็บ — syStashDraft)
+  container.querySelector('#sy-edit-info').addEventListener('click', () => { // ปุ่มเดียวกับ "แก้ไขข้อมูลวิชา" ที่หัวหน้า · เก็บค่าที่พิมพ์ค้างเป็นร่างก่อน เพราะบันทึกข้อมูลวิชาแล้วหน้าจะวาดใหม่
+  syStashDraft();
+  const btn = document.getElementById('struct-edit-info-btn');
+  if (btn) btn.click();
+});
 
-  // บันทึกจากปุ่มบน/ล่าง — ช่องเวลาที่อ่านไม่ได้ = หยุดและชี้ช่อง · บันทึกสำเร็จแล้ววาดฟอร์มใหม่จากค่าที่ถูกเก็บจริง (เช่น "2.0" → "2" · แถวว่างหายไป) ผู้ใช้จะเห็นตรงกับที่อยู่ในฐานข้อมูล
+  // บันทึกจากปุ่มท้ายฟอร์ม — ช่องเวลาที่อ่านไม่ได้ = หยุดและชี้ช่อง · บันทึกสำเร็จแล้ววาดฟอร์มใหม่จากค่าที่ถูกเก็บจริง (เช่น "2.0" → "2" · แถวว่างหายไป) ผู้ใช้จะเห็นตรงกับที่อยู่ในฐานข้อมูล
   const onSave = async () => {
     const bad = syFindBadHours(form);
     if (bad) { showToast('เวลา (ชั่วโมง) ต้องเป็นตัวเลข เช่น 1 หรือ 1.5 — แก้ช่องที่ขีดแดงก่อนบันทึก', 'error'); bad.focus(); return; }
@@ -416,7 +430,7 @@ function syShowForm(container) {
 // โหลดข้อมูลของแท็บให้พร้อมใน SY — มีร่างค้างของวิชานี้อยู่ (สลับระหว่างแท็บฟอร์ม ↔ ตัวอย่าง) ใช้ต่อได้เลย ไม่โหลดใหม่ · ไม่งั้นโหลดใหม่ทุกครั้ง (โครงสร้างคะแนนอาจเพิ่งแก้)
 //   คืน false เมื่อโหลดไม่ได้ (แสดงข้อความแทนในกล่อง) หรือผู้ใช้ออกจากแท็บไปแล้ว
 async function syEnsure(container, course) {
-  if (SY.id === course.id && _syDirty && SY.draft) return true;
+  if (SY.id === course.id && _syDirty && SY.draft) { SY.course = course; return true; } // ใช้ร่างเดิมต่อ แต่ข้อมูลวิชาเอาล่าสุด (เพิ่งแก้ระดับชั้น/หน่วยกิตได้)
   syDiscard();
   let data;
   try { data = await syLoad(course, course); }
@@ -430,7 +444,7 @@ async function syEnsure(container, course) {
   return true;
 }
 
-// แท็บ "Course Syllabus" (ฟอร์ม) ของแม่แบบวิชา — nav = { score(), preview() } พาไปแท็บโครงสร้างคะแนน / แท็บตัวอย่าง
+// แท็บ "Course Syllabus" (ฟอร์ม) ของแม่แบบวิชา — nav = { score() } พาไปแท็บโครงสร้างคะแนน (การสลับไปแท็บตัวอย่างใช้แถบแท็บของหน้า เหมือนคำอธิบายรายวิชา)
 async function renderSyllabusTab(container, course, nav) {
   showLoading('cat-sm', container);
   if (!(await syEnsure(container, course))) return;

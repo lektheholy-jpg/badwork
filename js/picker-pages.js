@@ -185,7 +185,7 @@ async function renderStructureEditor(view, templateId) {
       }
       if (!pane.isConnected || AppState.structureTab !== tab) return;
       const go = (id) => () => tabsEl.querySelector(`.tab[data-tab="${id}"]`).click();
-      if (tab === 'syll') await renderSyllabusTab(pane, tpl, { score: go('score'), preview: go('syllprev') });
+      if (tab === 'syll') await renderSyllabusTab(pane, tpl, { score: go('score') });
       else await renderSyllabusPreviewTab(pane, tpl, go('syll'));
     } else if (DESC_TABS.includes(tab)) {
       showLoading('cat-sm', pane);

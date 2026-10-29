@@ -175,8 +175,8 @@ const DESC = { type: 'พื้นฐาน', area: 'วิทยาศาสต
   seedStructure();
   store.set(TP + '/settings/syllabus', SYL);
   const host = $('host');
-  let toScore = 0, toPrev = 0, edited = 0;
-  w.__nav = { score: () => toScore++, preview: () => toPrev++ };
+  let toScore = 0, edited = 0;
+  w.__nav = { score: () => toScore++ };
   // จำลองการสลับแท็บของ picker-pages.js: ออกจากแท็บฟอร์มต้องเก็บร่างก่อน (syStashDraft) แล้ววาดแท็บปลายทางลงกล่องเดิม
   const showPrev = async () => { R('syStashDraft()'); host.innerHTML = ''; await R(`renderSyllabusPreviewTab(document.getElementById('host'), ${J(course)}, window.__edit)`); await settle(); };
   const goEdit = async () => { host.innerHTML = ''; await R(`renderSyllabusTab(document.getElementById('host'), ${J(course)}, window.__nav)`); await settle(); };
@@ -185,12 +185,28 @@ const DESC = { type: 'พื้นฐาน', area: 'วิทยาศาสต
   await settle();
   ok(!!$('sy-form') && host.querySelectorAll('.sy-unit').length === 5, 'ฟอร์ม: 1 บล็อกต่อหน่วยการเรียนรู้ (5 หน่วย)');
   ok($('sy-area').value === 'วิทยาศาสตร์และเทคโนโลยี', 'กลุ่มสาระ: ยังไม่เคยกรอกในแท็บนี้ → เริ่มต้นจากคำอธิบายรายวิชา');
+  ok(!!host.querySelector('form.doc-form > .doc-form-header .doc-form-meta #sy-area') && !!host.querySelector('.doc-form-header #sy-status'), 'โครงฟอร์มเหมือนฟอร์มเอกสารอื่น: .doc-form-header (ช่องกลุ่มสาระ + ป้ายสถานะ) ก่อนการ์ด .doc-section');
+  ok(host.querySelectorAll('form.doc-form > section.doc-section').length === 3 && !!host.querySelector('form.doc-form > .pa-form-footer #sy-save-btn'), 'การ์ด 3 ใบ (<section class="doc-section">) แล้วตามด้วย .pa-form-footer');
+  ok(!$('sy-to-preview') && !$('sy-top-save') && !host.querySelector('.doc-preview-bar'), 'ฟอร์มไม่มีแถบเครื่องมือบน (ปุ่มไปตัวอย่าง/บันทึกบน) — สลับแท็บด้วยแถบแท็บของหน้า เหมือนคำอธิบายรายวิชา');
+  const info = [...host.querySelectorAll('section.doc-section:first-of-type dl.pa-pf .pa-pf-item')].map(e => norm(e.textContent));
+  ok(info.length === 5 && info[0] === 'รหัสวิชาว22183' && info[3] === 'หน่วยกิต0.5' && info[4] === 'ประเภทวิชาพื้นฐาน' && !host.querySelector('.sy-head-ro') && !!host.querySelector('.pa-pf-note #sy-edit-info'), 'ข้อมูลรายวิชาที่ระบบดึงให้: การ์ดเล็ก docProfileGridHtml + แถบหมายเหตุพร้อมปุ่ม "แก้ไขข้อมูลวิชา" (ไม่เขียนเป็นข้อความต่อกัน)');
   const u1 = host.querySelector('.sy-unit[data-unit="u1"]');
+  ok(u1.classList.contains('pa-witem') && u1.querySelector('.sy-unit-h').classList.contains('pa-witem-h') && host.querySelectorAll('#sy-check dl.pa-pf .pa-pf-item').length === 5 && !host.querySelector('.sy-stats, .sy-stat'), 'รายการหน่วยใช้ .pa-witem · ตัวเลขสรุปใช้การ์ดเล็ก .pa-pf (ไม่มีชุดคลาสของตัวเอง)');
   ok([...u1.querySelectorAll('.sy-unit-h > span')].map(e => norm(e.textContent)).join('|') === `หน่วยที่ 1|${unitNames[0]}|กรอกแล้ว · 2 ชั่วโมง|น้ำหนักคะแนน 10`, 'หัวบล็อกหน่วย: ชื่อ + สถานะกรอก/ชั่วโมง + น้ำหนักคะแนน แสดงเป็นข้อความ (แก้ไม่ได้ในแท็บนี้)');
   ok(u1.querySelector('.sy-std').value === 'ว4.2 / ม.2/4' && u1.querySelectorAll('.sy-trow').length === 2 && u1.querySelector('.sy-t-title').value === 'ถูกต้อง ปลอดภัย ใช่เลย', 'ค่าที่บันทึกไว้โหลดกลับมา (มาตรฐาน · สาระย่อย · ชั่วโมง)');
   ok(!host.querySelector('.sy-unit-name input') && /ไปแท็บโครงสร้างคะแนน/.test(host.textContent), 'ชื่อหน่วย/น้ำหนักไม่มีช่องกรอก · มีลิงก์ไปแท็บโครงสร้างคะแนน');
   host.querySelector('#sy-goto-score').click();
   ok(toScore === 1, 'ลิงก์ "ไปแท็บโครงสร้างคะแนน" เรียก nav.score');
+  // ปุ่ม "แก้ไขข้อมูลวิชา" ในการ์ด = ปุ่มเดียวกับที่หัวหน้า · เก็บค่าที่พิมพ์ค้างเป็นร่างก่อน (บันทึกข้อมูลวิชาแล้วหน้าวาดใหม่)
+  let infoClicks = 0;
+  const fakeInfoBtn = d.createElement('button'); fakeInfoBtn.id = 'struct-edit-info-btn'; fakeInfoBtn.addEventListener('click', () => infoClicks++); d.body.appendChild(fakeInfoBtn);
+  u1.querySelector('.sy-std').value = 'ค่าที่พิมพ์ก่อนแก้ข้อมูลวิชา';
+  d.querySelector('#sy-form').dispatchEvent(new w.Event('input'));
+  host.querySelector('#sy-edit-info').click();
+  ok(infoClicks === 1 && R('SY.draft').units.find(x => x.id === 'u1').standard === 'ค่าที่พิมพ์ก่อนแก้ข้อมูลวิชา', 'ปุ่ม "แก้ไขข้อมูลวิชา": กดปุ่มของหัวหน้า + เก็บร่างที่พิมพ์ค้างไว้ไม่ให้หาย');
+  fakeInfoBtn.remove();
+  u1.querySelector('.sy-std').value = 'ว4.2 / ม.2/4';
+  R('syDiscard()'); R('SY.draft = null'); // กลับสู่ค่าเดิมก่อนทดสอบต่อ (ไม่ค้างร่างจากขั้นตอนนี้)
   ok(/ชั่วโมงรวม\s*20 \/ 20/.test(norm($('sy-check').textContent)) && !host.querySelector('.sy-warn'), 'สรุป: ชั่วโมงรวม 20 / 20 · คะแนนครบ → ไม่มีคำเตือน');
 
   // ดึงตัวชี้วัดจากคำอธิบายรายวิชา
@@ -223,11 +239,10 @@ const DESC = { type: 'พื้นฐาน', area: 'วิทยาศาสต
   u1.querySelector('.sy-std').value = 'ค่าที่ยังไม่บันทึก';
   $('sy-area').value = 'กลุ่มสาระใหม่';
   d.querySelector('#sy-form').dispatchEvent(new w.Event('input'));
-  $('sy-to-preview').click();
-  ok(toPrev === 1, 'ปุ่ม "ไปแท็บตัวอย่าง" เรียก nav.preview (พาไปแท็บตัวอย่างที่แยกไว้ ไม่สลับมุมมองในแท็บเดิม)');
   await showPrev();
   const frame = host.querySelector('.doc-preview-frame.is-fit');
   ok(!$('sy-form') && !!frame && !!host.querySelector('.doc-preview-frame-wrap') && !!$('sy-prev-print'), 'แท็บตัวอย่าง: กรอบตัวอย่างโครงเดียวกับระบบเอกสารอื่น + ปุ่มพิมพ์');
+  ok([...host.querySelectorAll('.doc-preview-bar .doc-preview-actions .btn')].map(b => b.id).join() === 'sy-prev-edit,sy-prev-print' && !$('sy-prev-save') && !$('sy-status'), 'แถบตัวอย่างมีแค่ปุ่ม แก้ไข / พิมพ์ เหมือนตัวอย่างคำอธิบายรายวิชา (ไม่มีป้ายสถานะ/ปุ่มบันทึก)');
   ok(/ยังไม่ได้บันทึก/.test(host.querySelector('.doc-preview-hint').textContent) && /ค่าที่ยังไม่บันทึก/.test(frame.srcdoc) && /กลุ่มสาระการเรียนรู้กลุ่มสาระใหม่/.test(frame.srcdoc), 'ตัวอย่างใช้ค่าที่ยังไม่บันทึก · บอกในข้อความแนะนำ');
   ok(/class="sy1"/.test(frame.srcdoc) && /id="doc-src"/.test(frame.srcdoc), 'ตัวอย่างห่อด้วยโครงกลาง (docSheetsHtml) + สไตล์กระดาษ sy1');
   $('sy-prev-edit').click();
@@ -287,27 +302,31 @@ const DESC = { type: 'พื้นฐาน', area: 'วิทยาศาสต
   ok(/✓ บันทึกแล้ว/.test(status()) && !$('sy-status').classList.contains('is-dirty'), 'หลังบันทึก: ป้ายสถานะ "✓ บันทึกแล้ว"');
   ok(/กรอกแล้ว 5 จาก 5 หน่วย/.test(toasts[toasts.length - 1][0]), 'แจ้งผลบันทึกบอกจำนวนหน่วยที่กรอกแล้ว (กรอกแล้ว X จาก Y หน่วย)');
   ok(host.querySelector('.sy-unit[data-unit="u2"] .sy-t-hours').value === '2' && host.querySelector('.sy-unit[data-unit="u2"] .sy-std').value === 'ว4.2 / ม.2/1', 'บันทึกแล้วฟอร์มวาดใหม่จากค่าที่ถูกเก็บจริง ("2.0" → "2" · ตัดช่องว่าง) ตรงกับในฐานข้อมูล');
-  ok(!!$('sy-top-save') && !!$('sy-save-btn') && host.querySelectorAll('.sy-do-save').length === 2, 'มีปุ่มบันทึก 2 จุด: แถบบน + ท้ายฟอร์ม');
+  ok(!$('sy-top-save') && !!$('sy-save-btn') && host.querySelectorAll('.sy-do-save').length === 1, 'ปุ่มบันทึกอยู่ท้ายฟอร์มจุดเดียว (เหมือนฟอร์มเอกสารอื่น)');
   const row0 = host.querySelector('.sy-unit[data-unit="u3"] .sy-t-hours');
   row0.value = '2 ชม.';
   row0.dispatchEvent(new w.Event('input', { bubbles: true }));
   ok(/มีที่ยังไม่ได้บันทึก/.test(status()) && $('sy-status').classList.contains('is-dirty'), 'แก้ค่า → ป้ายสถานะเปลี่ยนเป็น "● มีที่ยังไม่ได้บันทึก"');
   ok(/ชั่วโมง/.test(host.querySelector('.sy-unit[data-unit="u3"] .sy-unit-s').textContent), 'ป้ายสถานะต่อหน่วยอัปเดตสด');
   const before = JSON.stringify(store.get(TP + '/settings/syllabus'));
-  $('sy-top-save').click(); await settle();
+  $('sy-save-btn').click(); await settle();
   ok(JSON.stringify(store.get(TP + '/settings/syllabus')) === before && row0.getAttribute('aria-invalid') === 'true' && toasts.some(x => /ต้องเป็นตัวเลข/.test(x[0]) && x[1] === 'error'), 'ช่องเวลาที่อ่านเป็นตัวเลขไม่ได้: ไม่บันทึก · ขีดแดงช่องนั้น · บอกสาเหตุ (ไม่ทิ้งค่าเงียบ ๆ)');
   row0.value = '๓,๕';
   row0.dispatchEvent(new w.Event('input', { bubbles: true }));
   ok(row0.getAttribute('aria-invalid') === 'false', 'แก้ช่องแล้วเครื่องหมายผิดหายทันที');
-  $('sy-top-save').click(); await settle();
-  ok(store.get(TP + '/settings/syllabus').units.find(u => u.id === 'u3').topics[0].hours === '3.5' && /✓ บันทึกแล้ว/.test(status()), 'เลขไทย/จุลภาค "๓,๕" บันทึกเป็น 3.5 · ปุ่มบันทึกแถบบนใช้ได้เหมือนปุ่มท้ายฟอร์ม');
-  // บันทึกจากหน้าตัวอย่าง
+  $('sy-save-btn').click(); await settle();
+  ok(store.get(TP + '/settings/syllabus').units.find(u => u.id === 'u3').topics[0].hours === '3.5' && /✓ บันทึกแล้ว/.test(status()), 'เลขไทย/จุลภาค "๓,๕" บันทึกเป็น 3.5');
+  // ดูตัวอย่างระหว่างมีค่าค้าง: ตัวอย่างบอกว่ายังไม่บันทึก · กลับไปบันทึกที่ฟอร์ม (ตัวอย่างไม่มีปุ่มบันทึก)
   host.querySelector('.sy-unit[data-unit="u1"] .sy-std').value = 'ว4.2 / ม.2/9';
   d.querySelector('#sy-form').dispatchEvent(new w.Event('input'));
   await showPrev();
-  ok(/มีที่ยังไม่ได้บันทึก/.test(status()) && !!$('sy-prev-save'), 'หน้าตัวอย่าง: มีป้ายสถานะและปุ่ม "บันทึก" (ไม่ต้องกลับไปหน้าแก้ไข)');
-  $('sy-prev-save').click(); await settle();
-  ok(store.get(TP + '/settings/syllabus').units.find(u => u.id === 'u1').standard === 'ว4.2 / ม.2/9' && /✓ บันทึกแล้ว/.test(status()) && R('syIsDirty()') === false && !/ยังไม่ได้บันทึก/.test(host.querySelector('.doc-preview-hint').textContent), 'บันทึกจากหน้าตัวอย่าง: เก็บค่าที่ตัวอย่างแสดง · ป้ายเป็น "บันทึกแล้ว" · ข้อความ "รวมส่วนที่ยังไม่ได้บันทึก" หาย');
+  ok(/ยังไม่ได้บันทึก/.test(host.querySelector('.doc-preview-hint').textContent) && !$('sy-prev-save') && !$('sy-status'), 'หน้าตัวอย่าง: ข้อความแนะนำบอกว่ารวมส่วนที่ยังไม่ได้บันทึก · ไม่มีปุ่มบันทึก');
+  $('sy-prev-edit').click();
+  await goEdit();
+  $('sy-save-btn').click(); await settle();
+  ok(store.get(TP + '/settings/syllabus').units.find(u => u.id === 'u1').standard === 'ว4.2 / ม.2/9' && /✓ บันทึกแล้ว/.test(status()) && R('syIsDirty()') === false, 'กลับมาบันทึกที่ฟอร์ม: เก็บค่าที่ตัวอย่างแสดง · ป้ายเป็น "บันทึกแล้ว"');
+  await showPrev();
+  ok(!/ยังไม่ได้บันทึก/.test(host.querySelector('.doc-preview-hint').textContent), 'บันทึกแล้ว: ตัวอย่างไม่มีข้อความ "รวมส่วนที่ยังไม่ได้บันทึก"');
   await goEdit();
   host.querySelector('.sy-unit[data-unit="u1"] .sy-std').value = 'ว4.2 / ม.2/4';
   d.querySelector('#sy-form').dispatchEvent(new w.Event('input'));
@@ -442,8 +461,8 @@ const DESC = { type: 'พื้นฐาน', area: 'วิทยาศาสต
   ok(/AppState\.structureTab !== 'score'/.test(read('js/structure.js')), 'saveStructure: ไม่วาดโครงสร้างคะแนนทับแท็บอื่นหลังบันทึก (รวมแท็บใหม่)');
   ok(!/<style|createElement\(['"]style|insertRule|\.style\./.test(src) && !/style="(?!--)[^"]/.test(src), 'ไม่เขียน CSS ใน JS (ไม่มี <style> · el.style · style="ค่าคงที่" — ส่งเป็นตัวแปร --xxx เท่านั้น)');
   ok(R('SY1_CSS').split('}').map(s => s.trim()).filter(Boolean).every(r => /^\.sy1\b/.test(r)), 'SY1_CSS มีเฉพาะกฎของกระดาษ (.sy1 …) ไม่มีสไตล์หน้าเว็บ');
-  const css = read('css/style.css'), at = css.indexOf('/* @bundle docs'), ci = css.indexOf('.sy-unit {');
-  ok(ci > at && at > 0 && read('css/docs.min.css').includes('.sy-unit') && read('css/docs.min.css').includes('.sy-stat'), 'CSS ของฟอร์มอยู่ในบล็อก bundle docs และถูกสร้างลง docs.min.css');
+  const css = read('css/style.css'), at = css.indexOf('/* @bundle docs'), ci = css.indexOf('.sy-topics {');
+  ok(ci > at && at > 0 && read('css/docs.min.css').includes('.sy-unit') && read('css/docs.min.css').includes('.sy-topics') && !/\.sy-stats?\b/.test(css), 'CSS ของฟอร์มอยู่ในบล็อก bundle docs และถูกสร้างลง docs.min.css · ไม่มีคลาสสรุปตัวเลขของตัวเอง (ใช้ .pa-pf)');
   ok(css.indexOf('.struct-table td.in-unit') > 0 && css.indexOf('.struct-table td.in-unit') < at && read('css/style.min.css').includes('td.in-unit'), 'CSS เยื้องชิ้นงานใต้หน่วย (แทน inline style เดิมใน structure.js) อยู่ใน core');
   ok(/"test:syll":\s*"node tests\/syllabus\.test\.js"/.test(read('package.json')), 'package.json: มีสคริปต์ test:syll');
   ok(/match \/courseTemplates\/\{templateId\}[\s\S]*?match \/\{document=\*\*\}[\s\S]*?validDoc\(100\)/.test(read('firestore.rules')), 'firestore.rules: เอกสารใต้ courseTemplates (รวม settings/syllabus) เขียนได้อยู่แล้ว');
