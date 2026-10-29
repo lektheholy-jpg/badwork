@@ -285,7 +285,7 @@ function syShowPreview(container, m, fromDraft) {
 // ---------------------------------------------------------------- ฟอร์ม (มุมมองแก้ไข)
 function syTopicRowHtml(t = {}) {
   return `<div class="doc-lrow sy-trow">
-    <input class="input-sm sy-t-title" type="text" maxlength="${SY_MAX.title}" placeholder="เช่น ถูกต้อง ปลอดภัย ใช่เลย" value="${escapeHtml(t.title || '')}" aria-label="ชื่อสาระการเรียนรู้ย่อย">
+    <input class="input-sm sy-t-title" type="text" maxlength="${SY_MAX.title}" placeholder="เช่น ถูกต้อง ปลอดภัย ใช่เลย (เลข 1.1, 1.2 ใส่ให้เอง)" value="${escapeHtml(t.title || '')}" aria-label="ชื่อสาระการเรียนรู้ย่อย">
     <input class="input-sm sy-t-hours" type="text" inputmode="decimal" maxlength="${SY_MAX.hours}" placeholder="ชม." value="${escapeHtml(t.hours || '')}" aria-label="เวลา (ชั่วโมง)">
     <button type="button" class="btn btn-danger-ghost btn-sm doc-l-del sy-t-del" title="ลบแถว" aria-label="ลบแถว">${DOC_ICO_DEL}</button>
   </div>`;
@@ -310,9 +310,9 @@ function syUnitHtml(u, choices) {
       <textarea class="input-sm sy-std" rows="2" maxlength="${SY_MAX.std}" placeholder="เช่น ว4.2 / ม.2/4">${escapeHtml(u.standard)}</textarea>
     </label>${pick}</div>
     <div class="doc-lblock sy-topics">
-      <div class="doc-lhead" aria-hidden="true"><span>สาระการเรียนรู้ย่อย</span><span>เวลา (ชม.)</span><span></span></div>
-      <div class="doc-lrows sy-trows">${u.topics.map(syTopicRowHtml).join('')}</div>
-      <button type="button" class="btn btn-ghost btn-sm doc-l-add sy-t-add">${DOC_ICO_ADD} เพิ่มสาระย่อย</button>
+      <div class="doc-lhead" aria-hidden="true"><span>สาระการเรียนรู้ (เนื้อหา)</span><span>เวลา (ชั่วโมง)</span><span></span></div>
+      <div class="doc-lrows sy-trows">${(u.topics.length ? u.topics : [{}]).map(syTopicRowHtml).join('')}</div>
+      <button type="button" class="btn btn-ghost btn-sm doc-l-add sy-t-add">${DOC_ICO_ADD} เพิ่มสาระการเรียนรู้</button>
     </div>
   </div>`;
 }

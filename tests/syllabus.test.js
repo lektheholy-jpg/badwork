@@ -312,6 +312,23 @@ const DESC = { type: 'พื้นฐาน', area: 'วิทยาศาสต
   await settle();
   ok($('sy-area').value === 'วิทยาศาสตร์' && host.querySelector('.sy-unit[data-unit="u2"] .sy-std').value === 'ว4.2 / ม.2/1', 'เปิดใหม่: โหลดค่าที่บันทึกไว้');
 
+  // หน่วยที่ยังไม่เคยกรอก (เช่นหน่วยใหม่) ต้องมีช่องสาระ + เวลาให้กรอกทันที ไม่ต้องกดเพิ่มก่อน
+  seedStructure();
+  store.set(TP + '/settings/syllabus', { units: [] });
+  host.innerHTML = '';
+  await R(`renderSyllabusTab(document.getElementById('host'), ${J(course)}, window.__toScore)`);
+  await settle();
+  const blank = host.querySelector('.sy-unit[data-unit="u1"]');
+  ok(host.querySelectorAll('.sy-unit').length === 5 && [...host.querySelectorAll('.sy-unit')].every(u => u.querySelectorAll('.sy-trow').length === 1 && u.querySelector('.sy-t-title') && u.querySelector('.sy-t-hours')), 'หน่วยที่ยังว่าง: มีแถวว่าง 1 แถว (ช่องสาระการเรียนรู้ + ช่องเวลา) ให้กรอกทันที');
+  ok([...blank.querySelectorAll('.doc-lhead span')].map(e => e.textContent).join('|') === 'สาระการเรียนรู้ (เนื้อหา)|เวลา (ชั่วโมง)|' && /ยังไม่ได้กรอก/.test(blank.querySelector('.sy-unit-s').textContent), 'หัวคอลัมน์ตรงกับตาราง: สาระการเรียนรู้ (เนื้อหา) · เวลา (ชั่วโมง) · สถานะ "ยังไม่ได้กรอก"');
+  ok(R('syIsDirty()') === false, 'แถวว่างที่วาดให้ไม่ตั้งธงค่าค้าง');
+  blank.querySelector('.sy-t-title').value = 'ถูกต้อง ปลอดภัย ใช่เลย';
+  blank.querySelector('.sy-t-hours').value = '1';
+  blank.querySelector('.sy-t-hours').dispatchEvent(new w.Event('input', { bubbles: true }));
+  $('sy-save-btn').click(); await settle();
+  const sv = store.get(TP + '/settings/syllabus');
+  ok(sv.units.length === 1 && sv.units[0].id === 'u1' && sv.units[0].topics[0].title === 'ถูกต้อง ปลอดภัย ใช่เลย' && sv.units[0].topics[0].hours === '1', 'กรอกในแถวว่างแล้วบันทึก: เก็บสาระ + ชั่วโมง (หน่วยที่ยังว่างไม่ถูกเก็บเป็นขยะ)');
+
   // ไม่มีตัวชี้วัดในคำอธิบาย → ไม่มีตัวเลือกดึง · ไม่มีหน่วย → ข้อความนำทาง
   store.set(TP + '/settings/description', { type: 'พื้นฐาน', indicators: [] });
   host.innerHTML = '';
