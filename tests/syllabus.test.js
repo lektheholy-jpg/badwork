@@ -175,9 +175,13 @@ const DESC = { type: 'พื้นฐาน', area: 'วิทยาศาสต
   seedStructure();
   store.set(TP + '/settings/syllabus', SYL);
   const host = $('host');
-  let toScore = 0;
-  w.__toScore = () => toScore++;
-  await R(`renderSyllabusTab(document.getElementById('host'), ${J(course)}, window.__toScore)`);
+  let toScore = 0, toPrev = 0, edited = 0;
+  w.__nav = { score: () => toScore++, preview: () => toPrev++ };
+  // จำลองการสลับแท็บของ picker-pages.js: ออกจากแท็บฟอร์มต้องเก็บร่างก่อน (syStashDraft) แล้ววาดแท็บปลายทางลงกล่องเดิม
+  const showPrev = async () => { R('syStashDraft()'); host.innerHTML = ''; await R(`renderSyllabusPreviewTab(document.getElementById('host'), ${J(course)}, window.__edit)`); await settle(); };
+  const goEdit = async () => { host.innerHTML = ''; await R(`renderSyllabusTab(document.getElementById('host'), ${J(course)}, window.__nav)`); await settle(); };
+  w.__edit = () => edited++;
+  await R(`renderSyllabusTab(document.getElementById('host'), ${J(course)}, window.__nav)`);
   await settle();
   ok(!!$('sy-form') && host.querySelectorAll('.sy-unit').length === 5, 'ฟอร์ม: 1 บล็อกต่อหน่วยการเรียนรู้ (5 หน่วย)');
   ok($('sy-area').value === 'วิทยาศาสตร์และเทคโนโลยี', 'กลุ่มสาระ: ยังไม่เคยกรอกในแท็บนี้ → เริ่มต้นจากคำอธิบายรายวิชา');
@@ -186,7 +190,7 @@ const DESC = { type: 'พื้นฐาน', area: 'วิทยาศาสต
   ok(u1.querySelector('.sy-std').value === 'ว4.2 / ม.2/4' && u1.querySelectorAll('.sy-trow').length === 2 && u1.querySelector('.sy-t-title').value === 'ถูกต้อง ปลอดภัย ใช่เลย', 'ค่าที่บันทึกไว้โหลดกลับมา (มาตรฐาน · สาระย่อย · ชั่วโมง)');
   ok(!host.querySelector('.sy-unit-name input') && /ไปแท็บโครงสร้างคะแนน/.test(host.textContent), 'ชื่อหน่วย/น้ำหนักไม่มีช่องกรอก · มีลิงก์ไปแท็บโครงสร้างคะแนน');
   host.querySelector('#sy-goto-score').click();
-  ok(toScore === 1, 'ลิงก์ "ไปแท็บโครงสร้างคะแนน" เรียก onScore');
+  ok(toScore === 1, 'ลิงก์ "ไปแท็บโครงสร้างคะแนน" เรียก nav.score');
   ok(/ชั่วโมงรวม\s*20 \/ 20/.test(norm($('sy-check').textContent)) && !host.querySelector('.sy-warn'), 'สรุป: ชั่วโมงรวม 20 / 20 · คะแนนครบ → ไม่มีคำเตือน');
 
   // ดึงตัวชี้วัดจากคำอธิบายรายวิชา
@@ -215,32 +219,35 @@ const DESC = { type: 'พื้นฐาน', area: 'วิทยาศาสต
   ok(u1.querySelectorAll('.sy-trow').length === R('SY_MAX.topics') && toasts.some(x => /สูงสุด/.test(x[0])), 'เพิ่มได้ไม่เกินขีดจำกัดต่อหน่วย · แจ้งเตือน');
   [...u1.querySelectorAll('.sy-trow')].slice(2).forEach(r => r.querySelector('.sy-t-del').click());
 
-  // ตัวอย่าง/พิมพ์ ในแท็บเดียวกัน — ร่างข้ามมุมมองไม่หาย
+  // แท็บตัวอย่างแยกจากแท็บฟอร์ม — ร่างข้ามแท็บไม่หาย
   u1.querySelector('.sy-std').value = 'ค่าที่ยังไม่บันทึก';
   $('sy-area').value = 'กลุ่มสาระใหม่';
   d.querySelector('#sy-form').dispatchEvent(new w.Event('input'));
   $('sy-to-preview').click();
-  await settle();
+  ok(toPrev === 1, 'ปุ่ม "ไปแท็บตัวอย่าง" เรียก nav.preview (พาไปแท็บตัวอย่างที่แยกไว้ ไม่สลับมุมมองในแท็บเดิม)');
+  await showPrev();
   const frame = host.querySelector('.doc-preview-frame.is-fit');
-  ok(!$('sy-form') && !!frame && !!host.querySelector('.doc-preview-frame-wrap') && !!$('sy-prev-print'), 'มุมมองตัวอย่าง: กรอบตัวอย่างโครงเดียวกับระบบเอกสารอื่น + ปุ่มพิมพ์ (แท็บเดียว ไม่แยกแท็บ)');
+  ok(!$('sy-form') && !!frame && !!host.querySelector('.doc-preview-frame-wrap') && !!$('sy-prev-print'), 'แท็บตัวอย่าง: กรอบตัวอย่างโครงเดียวกับระบบเอกสารอื่น + ปุ่มพิมพ์');
   ok(/ยังไม่ได้บันทึก/.test(host.querySelector('.doc-preview-hint').textContent) && /ค่าที่ยังไม่บันทึก/.test(frame.srcdoc) && /กลุ่มสาระการเรียนรู้กลุ่มสาระใหม่/.test(frame.srcdoc), 'ตัวอย่างใช้ค่าที่ยังไม่บันทึก · บอกในข้อความแนะนำ');
   ok(/class="sy1"/.test(frame.srcdoc) && /id="doc-src"/.test(frame.srcdoc), 'ตัวอย่างห่อด้วยโครงกลาง (docSheetsHtml) + สไตล์กระดาษ sy1');
   $('sy-prev-edit').click();
-  ok(!!$('sy-form') && host.querySelector('.sy-unit[data-unit="u1"] .sy-std').value === 'ค่าที่ยังไม่บันทึก' && $('sy-area').value === 'กลุ่มสาระใหม่' && R('syIsDirty()') === true, 'กลับมาแก้ไข: ค่าที่พิมพ์ค้างไม่หาย · ธงค่าค้างยังอยู่');
+  ok(edited === 1, 'ปุ่ม "แก้ไข" ในแท็บตัวอย่างเรียก onEdit (พากลับแท็บฟอร์ม)');
+  await goEdit();
+  ok(!!$('sy-form') && host.querySelector('.sy-unit[data-unit="u1"] .sy-std').value === 'ค่าที่ยังไม่บันทึก' && $('sy-area').value === 'กลุ่มสาระใหม่' && R('syIsDirty()') === true, 'กลับมาแท็บฟอร์ม: ค่าที่พิมพ์ค้างไม่หาย · ธงค่าค้างยังอยู่ (ไม่โหลดใหม่ทับ)');
   host.querySelector('.sy-unit[data-unit="u1"] .sy-std').value = 'ว4.2 / ม.2/4';
   $('sy-area').value = 'วิทยาศาสตร์และเทคโนโลยี';
 
   // พิมพ์ผ่านหน้าต่างใหม่
   const written = []; let opened = 0;
   w.open = () => { opened++; return { document: { write: h => written.push(h), close() {} }, focus() {}, print() {}, close() {} }; };
-  $('sy-to-preview').click(); await settle();
+  await showPrev();
   const pr = R(`syPrint`)(R(`syModel`)(course, loaded.struct, SYL, DESC));
   ok(opened === 1, 'syPrint: เรียก window.open ทันที (ก่อน await ใดๆ)');
   await pr; await settle();
   const html = written.join('');
   ok(/<title>โครงสร้างรายวิชา ว22183 เทคโนโลยี \(วิทยาการคำนวณ 2\)<\/title>/.test(html) && /size:A4 portrait;margin:15mm/.test(html), 'หน้าต่างพิมพ์: ชื่อเอกสาร + @page A4 ขอบ 15 มม.');
   ok(/class="sy1"/.test(html) && /รวมทั้งสิ้น/.test(html) && /\.sy1 \.sy-tr\{display:grid/.test(html), 'หน้าต่างพิมพ์: มีตารางและสไตล์กระดาษ');
-  $('sy-prev-edit').click();
+  await goEdit();
 
   // syPrintCourse: เปิดหน้าต่างก่อนโหลดข้อมูล แล้วค่อยสร้างเอกสารจากแม่แบบของวิชาที่เปิดสอน
   store.set('users/u1/courses/c1/settings/structure', store.get(TP + '/settings/structure'));
@@ -255,9 +262,10 @@ const DESC = { type: 'พื้นฐาน', area: 'วิทยาศาสต
   ok(R(`syOwner({ id: 'c1', templateId: 't1' })`).id === 't1' && R(`syOwner({ id: 'c1', templateId: 't1' })`).isTemplate === true && R(`syOwner({ id: 'c1' })`).id === 'c1', 'เจ้าของข้อมูล: วิชาที่ผูกแม่แบบ → แม่แบบ · ไม่ผูก → ตัววิชาเอง');
 
   // บันทึก — ต้องเก็บข้อมูลหน่วยที่ถูกข้ามไว้ด้วย
+  R('syDiscard()'); // ออกจากกลุ่มแท็บ (ยืนยันทิ้งร่างแล้ว) แล้วเปิดใหม่ = โหลดใหม่จากฐานข้อมูล
   store.set(TP + '/settings/syllabus', { ...SYL, units: [...SYL.units, { id: 'gone', standard: 'หน่วยที่เคยมี', topics: [t('เก่า', '4')] }] });
   host.innerHTML = '';
-  await R(`renderSyllabusTab(document.getElementById('host'), ${J(course)}, window.__toScore)`);
+  await R(`renderSyllabusTab(document.getElementById('host'), ${J(course)}, window.__nav)`);
   await settle();
   ok(host.querySelectorAll('.sy-unit').length === 5 && !host.querySelector('.sy-unit[data-unit="gone"]'), 'หน่วยที่ไม่อยู่ในโครงสร้างคะแนนแล้ว: ไม่แสดงในฟอร์ม');
   ok(R('syIsDirty()') === false, 'เปิดแท็บใหม่: ไม่มีธงค่าค้าง');
@@ -296,11 +304,11 @@ const DESC = { type: 'พื้นฐาน', area: 'วิทยาศาสต
   // บันทึกจากหน้าตัวอย่าง
   host.querySelector('.sy-unit[data-unit="u1"] .sy-std').value = 'ว4.2 / ม.2/9';
   d.querySelector('#sy-form').dispatchEvent(new w.Event('input'));
-  $('sy-to-preview').click(); await settle();
+  await showPrev();
   ok(/มีที่ยังไม่ได้บันทึก/.test(status()) && !!$('sy-prev-save'), 'หน้าตัวอย่าง: มีป้ายสถานะและปุ่ม "บันทึก" (ไม่ต้องกลับไปหน้าแก้ไข)');
   $('sy-prev-save').click(); await settle();
   ok(store.get(TP + '/settings/syllabus').units.find(u => u.id === 'u1').standard === 'ว4.2 / ม.2/9' && /✓ บันทึกแล้ว/.test(status()) && R('syIsDirty()') === false && !/ยังไม่ได้บันทึก/.test(host.querySelector('.doc-preview-hint').textContent), 'บันทึกจากหน้าตัวอย่าง: เก็บค่าที่ตัวอย่างแสดง · ป้ายเป็น "บันทึกแล้ว" · ข้อความ "รวมส่วนที่ยังไม่ได้บันทึก" หาย');
-  $('sy-prev-edit').click();
+  await goEdit();
   host.querySelector('.sy-unit[data-unit="u1"] .sy-std').value = 'ว4.2 / ม.2/4';
   d.querySelector('#sy-form').dispatchEvent(new w.Event('input'));
   $('sy-save-btn').click(); await settle();
@@ -308,7 +316,7 @@ const DESC = { type: 'พื้นฐาน', area: 'วิทยาศาสต
 
   // เปิดซ้ำ = ค่าที่บันทึก (กลุ่มสาระไม่ถูกดึงจากคำอธิบายมาทับ)
   host.innerHTML = '';
-  await R(`renderSyllabusTab(document.getElementById('host'), ${J(course)}, window.__toScore)`);
+  await R(`renderSyllabusTab(document.getElementById('host'), ${J(course)}, window.__nav)`);
   await settle();
   ok($('sy-area').value === 'วิทยาศาสตร์' && host.querySelector('.sy-unit[data-unit="u2"] .sy-std').value === 'ว4.2 / ม.2/1', 'เปิดใหม่: โหลดค่าที่บันทึกไว้');
 
@@ -316,7 +324,7 @@ const DESC = { type: 'พื้นฐาน', area: 'วิทยาศาสต
   seedStructure();
   store.set(TP + '/settings/syllabus', { units: [] });
   host.innerHTML = '';
-  await R(`renderSyllabusTab(document.getElementById('host'), ${J(course)}, window.__toScore)`);
+  await R(`renderSyllabusTab(document.getElementById('host'), ${J(course)}, window.__nav)`);
   await settle();
   const blank = host.querySelector('.sy-unit[data-unit="u1"]');
   ok(host.querySelectorAll('.sy-unit').length === 5 && [...host.querySelectorAll('.sy-unit')].every(u => u.querySelectorAll('.sy-trow').length === 1 && u.querySelector('.sy-t-title') && u.querySelector('.sy-t-hours')), 'หน่วยที่ยังว่าง: มีแถวว่าง 1 แถว (ช่องสาระการเรียนรู้ + ช่องเวลา) ให้กรอกทันที');
@@ -332,12 +340,12 @@ const DESC = { type: 'พื้นฐาน', area: 'วิทยาศาสต
   // ไม่มีตัวชี้วัดในคำอธิบาย → ไม่มีตัวเลือกดึง · ไม่มีหน่วย → ข้อความนำทาง
   store.set(TP + '/settings/description', { type: 'พื้นฐาน', indicators: [] });
   host.innerHTML = '';
-  await R(`renderSyllabusTab(document.getElementById('host'), ${J(course)}, window.__toScore)`);
+  await R(`renderSyllabusTab(document.getElementById('host'), ${J(course)}, window.__nav)`);
   await settle();
   ok(!host.querySelector('.sy-pick'), 'คำอธิบายรายวิชายังไม่มีตัวชี้วัด: ไม่แสดงตัวเลือกดึง');
   store.set(TP + '/settings/structure', { groups: [], units: [] });
   host.innerHTML = '';
-  await R(`renderSyllabusTab(document.getElementById('host'), ${J(course)}, window.__toScore)`);
+  await R(`renderSyllabusTab(document.getElementById('host'), ${J(course)}, window.__nav)`);
   await settle();
   ok(host.querySelectorAll('.sy-unit').length === 0 && /ยังไม่มีหน่วยการเรียนรู้/.test(host.textContent) && !!$('sy-save-btn'), 'ไม่มีหน่วยในโครงสร้างคะแนน: บอกให้ไปเพิ่มที่แท็บโครงสร้างคะแนน');
 
@@ -350,7 +358,7 @@ const DESC = { type: 'พื้นฐาน', area: 'วิทยาศาสต
   fail.on = true;
   host.innerHTML = '';
   const realErr = console.error; console.error = () => {};
-  await R(`renderSyllabusTab(document.getElementById('host'), ${J(course)}, window.__toScore)`);
+  await R(`renderSyllabusTab(document.getElementById('host'), ${J(course)}, window.__nav)`);
   await settle();
   console.error = realErr; fail.on = false;
   ok(/โหลดโครงสร้างรายวิชาไม่สำเร็จ/.test(host.textContent) && !$('sy-form'), 'โหลดไม่สำเร็จ: แสดงข้อความแทนฟอร์ม (ไม่ค้างหน้าโหลด)');
@@ -402,14 +410,35 @@ const DESC = { type: 'พื้นฐาน', area: 'วิทยาศาสต
   ok(/loadCourseSyllabus\(course\)/.test(cs) && /\$\{syllabusCardHtml\(syll, course\)\}/.test(cs) && /structureTab = 'syll'/.test(cs) && /syPrintCourse\(course\)/.test(cs), 'แท็บภาพรวม: โหลดพร้อมข้อมูลอื่น · วาดการ์ดต่อจากคำอธิบายรายวิชา · ปุ่มแก้ไปแท็บ syll · ปุ่มพิมพ์ใช้ syPrintCourse');
   ok(!/\bsy-(unit|stat|warn|trow|std|pick|head-ro|topics)\b/.test(cs), 'courses.js (หลัก) ไม่ใช้คลาสของ bundle docs (ใช้ cdesc-* ที่อยู่ใน core แทน)');
 
+  // ---------------- แท็บตัวอย่าง: ร่างของวิชาหนึ่งไม่รั่วไปอีกวิชา · ไม่มีร่างอ่านที่บันทึกไว้ ----------------
+  seedStructure();
+  store.set(TP + '/settings/syllabus', SYL);
+  store.set(TP + '/settings/description', DESC);
+  R('syDiscard()');
+  await goEdit();
+  host.querySelector('.sy-unit[data-unit="u1"] .sy-std').value = 'ร่างที่ยังไม่บันทึก';
+  d.querySelector('#sy-form').dispatchEvent(new w.Event('input'));
+  const other = { ...course, id: 'tx' };
+  await showPrev();
+  ok(/ยังไม่ได้บันทึก/.test(host.querySelector('.doc-preview-hint').textContent) && /ร่างที่ยังไม่บันทึก/.test(host.querySelector('.doc-preview-frame').srcdoc), 'แท็บตัวอย่างใช้ร่างที่พิมพ์ค้าง (ทั้งที่ยังไม่บันทึก)');
+  host.innerHTML = '';
+  await R(`renderSyllabusPreviewTab(document.getElementById('host'), ${J(other)}, null)`);
+  await settle();
+  ok(!/ยังไม่ได้บันทึก/.test(host.querySelector('.doc-preview-hint').textContent) && !/ร่างที่ยังไม่บันทึก/.test(host.querySelector('.doc-preview-frame').srcdoc), 'ร่างของวิชาหนึ่งไม่ถูกเอาไปแสดงเป็นตัวอย่างของอีกวิชา');
+  R('syDiscard()');
+  host.innerHTML = '';
+  await R(`renderSyllabusPreviewTab(document.getElementById('host'), ${J(course)}, null)`);
+  await settle();
+  ok(R('syIsDirty()') === false && !/ยังไม่ได้บันทึก/.test(host.querySelector('.doc-preview-hint').textContent) && /ว4\.2 \/ ม\.2\/4/.test(host.querySelector('.doc-preview-frame').srcdoc), 'ทิ้งร่างแล้ว: ตัวอย่างอ่านจากที่บันทึกไว้ · ไม่มีธงค้าง');
+
   // ---------------- ลงทะเบียนครบ + กฎโปรเจกต์ ----------------
   const U = read('js/utils.js'), src = read('js/syllabus.js');
   ok(/syllabus:\s*'js\/syllabus\.js'/.test(U), 'utils.js: LAZY_MODULES มี syllabus');
   ok(/syll:\s*\[[^\]]*'doc-shell'[^\]]*'course-desc'[^\]]*'syllabus'\]/.test(U), 'utils.js: LAZY_BUNDLES.syll โหลด doc-shell → course-desc → syllabus (ได้ docs.min.css + ตัวช่วยของคำอธิบายรายวิชา)');
   ok(/'js\/syllabus\.js'/.test(read('sw.js')), 'sw.js: PRECACHE มี js/syllabus.js');
   const pk = read('js/picker-pages.js');
-  ok(/STRUCT_TABS = \[\['score', '[^']+'\], \['desc', '[^']+'\], \['descprev', '[^']+'\], \['syll', 'Course Syllabus'\]\]/.test(pk), 'หน้าโครงสร้างวิชา: แท็บ "Course Syllabus" อยู่หลังสุด (ต่อจากแท็บตัวอย่างก่อนพิมพ์)');
-  ok(/loadModules\(LAZY_BUNDLES\.syll\)/.test(pk) && /renderSyllabusTab\(pane, tpl,/.test(pk) && /syIsDirty\(\)/.test(pk) && /syDiscard\(\)/.test(pk), 'หน้าโครงสร้างวิชา: โหลดโมดูลแล้ววาดแท็บ · ถามก่อนทิ้งค่าค้างตอนออกจากแท็บ');
+  ok(/STRUCT_TABS = \[\['score', '[^']+'\], \['desc', '[^']+'\], \['descprev', '[^']+'\], \['syll', 'Course Syllabus'\], \['syllprev', 'ตัวอย่าง Course Syllabus'\]\]/.test(pk), 'หน้าโครงสร้างวิชา: แท็บ "Course Syllabus" แล้วตามด้วยแท็บ "ตัวอย่าง Course Syllabus" อยู่หลังสุด');
+  ok(/loadModules\(LAZY_BUNDLES\.syll\)/.test(pk) && /renderSyllabusTab\(pane, tpl,/.test(pk) && /syIsDirty\(\)/.test(pk) && /syDiscard\(\)/.test(pk) && /renderSyllabusPreviewTab\(pane, tpl,/.test(pk) && /syStashDraft\(\)/.test(pk) && /SYLL_TABS/.test(pk), 'หน้าโครงสร้างวิชา: โหลดโมดูลแล้ววาดแท็บฟอร์ม/ตัวอย่าง · เก็บร่างก่อนสลับ · ถามก่อนทิ้งค่าค้างตอนออกจากกลุ่มแท็บ');
   ok(/AppState\.structureTab !== 'score'/.test(read('js/structure.js')), 'saveStructure: ไม่วาดโครงสร้างคะแนนทับแท็บอื่นหลังบันทึก (รวมแท็บใหม่)');
   ok(!/<style|createElement\(['"]style|insertRule|\.style\./.test(src) && !/style="(?!--)[^"]/.test(src), 'ไม่เขียน CSS ใน JS (ไม่มี <style> · el.style · style="ค่าคงที่" — ส่งเป็นตัวแปร --xxx เท่านั้น)');
   ok(R('SY1_CSS').split('}').map(s => s.trim()).filter(Boolean).every(r => /^\.sy1\b/.test(r)), 'SY1_CSS มีเฉพาะกฎของกระดาษ (.sy1 …) ไม่มีสไตล์หน้าเว็บ');

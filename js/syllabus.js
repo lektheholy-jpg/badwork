@@ -25,8 +25,13 @@ const SY_SAVE_LABEL = 'บันทึกโครงสร้างรายว
 let _syDirty = false;
 function syIsDirty() { return _syDirty; }
 // สถานะของแท็บที่เปิดอยู่: ข้อมูลที่โหลด + ร่างที่พิมพ์ค้าง (เก็บข้ามมุมมองแก้ไข ↔ ตัวอย่าง)
-const SY = { id: null, course: null, struct: null, desc: null, saved: null, draft: null, onScore: null, existed: false, savedAt: null };
+const SY = { id: null, course: null, struct: null, desc: null, saved: null, draft: null, nav: {}, existed: false, savedAt: null };
 function syDiscard() { SY.draft = null; _syDirty = false; }
+// เก็บค่าที่พิมพ์ค้างในฟอร์มเป็นร่าง — เรียกก่อนออกจากแท็บฟอร์ม (js/picker-pages.js) เพื่อให้แท็บตัวอย่างเห็นค่านี้ · ร่างผูกกับวิชา (SY.id)
+function syStashDraft() {
+  const form = document.getElementById('sy-form');
+  if (form && _syDirty) SY.draft = syCollect(form);
+}
 
 const syStr = (v, n) => String(v == null ? '' : v).slice(0, n);
 const syRound1 = (n) => Math.round((Number(n) || 0) * 10) / 10;
@@ -255,8 +260,8 @@ function syPrintCourse(course) {
 }
 
 // หน้าตัวอย่าง: แผ่น A4 ตัดหน้าด้วยโครงกลาง (docRenderSheets) · โครงกลางดูแท็บจาก sys.state.tab เพื่อเลิกฟัง resize — ส่ง sys จำลอง
-const SY_PREVIEW_SYS = { state: { tab: 'syll' } };
-function syShowPreview(container, m, fromDraft) {
+const SY_PREVIEW_SYS = { state: { tab: 'syllprev' } };
+function syShowPreview(container, m, fromDraft, onEdit) {
   container.innerHTML = `
     <div class="doc-preview-bar">
       <div class="doc-preview-actions">
@@ -269,14 +274,14 @@ function syShowPreview(container, m, fromDraft) {
     <div class="u-note doc-preview-hint">${fromDraft ? 'ตัวอย่างนี้รวมส่วนที่ยังไม่ได้บันทึก (ยังไม่ถูกเก็บลงแม่แบบ) · ' : ''}กดพิมพ์แล้วเลือก "บันทึกเป็น PDF" ในหน้าต่างพิมพ์ได้ · ใช้ Chrome/Edge จะแบ่งหน้าได้ถูกต้องที่สุด</div>
     ${m.warnings.length ? `<div class="sy-warn" role="status">${m.warnings.map(escapeHtml).join('<br>')}</div>` : ''}
     <div class="doc-preview-frame-wrap"><iframe class="doc-preview-frame is-fit" title="ตัวอย่างโครงสร้างรายวิชา"></iframe></div>`;
-  container.querySelector('#sy-prev-edit').addEventListener('click', () => syShowForm(container));
+  container.querySelector('#sy-prev-edit').addEventListener('click', () => { if (onEdit) onEdit(); });
   container.querySelector('#sy-prev-print').addEventListener('click', () => syPrint(m));
   syRefreshStatus(container);
   container.querySelector('#sy-prev-save').addEventListener('click', async () => { // บันทึกจากหน้าตัวอย่าง: ใช้ค่าที่ตัวอย่างกำลังแสดง (ร่างหรือที่บันทึกไว้)
-    if (await sySave(container, syCurrent())) syShowPreview(container, syModel(SY.course, SY.struct, SY.saved, SY.desc), false);
+    if (await sySave(container, syCurrent())) syShowPreview(container, syModel(SY.course, SY.struct, SY.saved, SY.desc), false, onEdit);
   });
   const body = sySheetBodyHtml(m);
-  docRenderSheets(SY_PREVIEW_SYS, 'syll', container, null, { // ไม่รอ — แถบแสดงไปก่อน กระดาษตามมา
+  docRenderSheets(SY_PREVIEW_SYS, 'syllprev', container, null, { // ไม่รอ — แถบแสดงไปก่อน กระดาษตามมา
     html: () => docSheetsHtml(SY1_CSS, `<div class="sy1">${body}</div>`),
     specs: SY_SHEET, bodyClass: 'sy1', keep: '.sy-title', kindOf: () => 'port',
   }).catch(err => console.error('syShowPreview:', err));
@@ -346,9 +351,9 @@ function syShowForm(container) {
   const choices = syIndicatorChoices(SY.desc);
   container.innerHTML = `
   <div class="doc-preview-bar">
-    <div class="doc-preview-actions">${syStatusHtml}<button type="button" class="btn btn-ghost btn-sm" id="sy-to-preview">${DOC_ICO_PRINT} ดูตัวอย่าง / พิมพ์</button><button type="button" class="btn btn-primary btn-sm sy-do-save" id="sy-top-save">บันทึก</button></div>
+    <div class="doc-preview-actions">${syStatusHtml}<button type="button" class="btn btn-ghost btn-sm" id="sy-to-preview">${DOC_ICO_PRINT} ไปแท็บตัวอย่าง</button><button type="button" class="btn btn-primary btn-sm sy-do-save" id="sy-top-save">บันทึก</button></div>
   </div>
-  <div class="u-note u-mb-12"><b>ระบบดึงให้ (แก้ที่นี่ไม่ได้):</b> รหัส/ชื่อวิชา ระดับชั้น หน่วยกิต · ชื่อหน่วยและน้ำหนักคะแนน · กลางภาค/ปลายภาค (มาจากแท็บ “โครงสร้างคะแนน” — <a href="#" id="sy-goto-score">ไปแท็บโครงสร้างคะแนน</a>) · เวลารวม = บวกจากชั่วโมงของสาระย่อย<br><b>กรอกเอง:</b> กลุ่มสาระการเรียนรู้ · ต่อหน่วย: มาตรฐาน/ตัวชี้วัด และสาระย่อยพร้อมชั่วโมง<br>ข้อมูลเก็บไว้กับแม่แบบวิชานี้ใช้ร่วมทุกเทอม · <b>กดปุ่มบันทึกทุกครั้ง</b> (ดูตัวอย่าง/พิมพ์ไม่ได้บันทึกให้) — ดูสถานะบันทึกที่มุมซ้ายของแถบด้านบน</div>
+  <div class="u-note u-mb-12"><b>ระบบดึงให้ (แก้ที่นี่ไม่ได้):</b> รหัส/ชื่อวิชา ระดับชั้น หน่วยกิต · ชื่อหน่วยและน้ำหนักคะแนน · กลางภาค/ปลายภาค (มาจากแท็บ “โครงสร้างคะแนน” — <a href="#" id="sy-goto-score">ไปแท็บโครงสร้างคะแนน</a>) · เวลารวม = บวกจากชั่วโมงของสาระย่อย<br><b>กรอกเอง:</b> กลุ่มสาระการเรียนรู้ · ต่อหน่วย: มาตรฐาน/ตัวชี้วัด และสาระย่อยพร้อมชั่วโมง<br>ข้อมูลเก็บไว้กับแม่แบบวิชานี้ใช้ร่วมทุกเทอม · <b>กดปุ่มบันทึกทุกครั้ง</b> (แท็บ “ตัวอย่าง Course Syllabus” ดู/พิมพ์ได้ แต่ไม่ได้บันทึกให้) — ดูสถานะบันทึกที่มุมซ้ายของแถบด้านบน</div>
   <form id="sy-form" class="doc-form" autocomplete="off" novalidate>
     <section class="doc-section">
       <h2 class="doc-sec-title">ส่วนที่ 1  หัวเอกสาร</h2>
@@ -395,12 +400,8 @@ function syShowForm(container) {
     touch();
   });
 
-  container.querySelector('#sy-goto-score').addEventListener('click', (e) => { e.preventDefault(); if (SY.onScore) SY.onScore(); });
-  container.querySelector('#sy-to-preview').addEventListener('click', () => {
-    const doc = syCollect(form);
-    if (_syDirty) SY.draft = doc; // มีค่าค้าง → ตัวอย่างใช้ค่านี้ แล้วกลับมาแก้ต่อได้ไม่หาย
-    syShowPreview(container, syModel(c, SY.struct, doc, SY.desc), _syDirty);
-  });
+  container.querySelector('#sy-goto-score').addEventListener('click', (e) => { e.preventDefault(); if (SY.nav.score) SY.nav.score(); });
+  container.querySelector('#sy-to-preview').addEventListener('click', () => { if (SY.nav.preview) SY.nav.preview(); }); // ไปแท็บตัวอย่าง (ผู้เรียกเก็บร่างให้ก่อนสลับแท็บ — syStashDraft)
 
   // บันทึกจากปุ่มบน/ล่าง — ช่องเวลาที่อ่านไม่ได้ = หยุดและชี้ช่อง · บันทึกสำเร็จแล้ววาดฟอร์มใหม่จากค่าที่ถูกเก็บจริง (เช่น "2.0" → "2" · แถวว่างหายไป) ผู้ใช้จะเห็นตรงกับที่อยู่ในฐานข้อมูล
   const onSave = async () => {
@@ -412,18 +413,35 @@ function syShowForm(container) {
   form.addEventListener('input', (e) => { if (e.target.classList.contains('sy-t-hours')) e.target.setAttribute('aria-invalid', 'false'); });
 }
 
-// แท็บ "โครงสร้างรายวิชา" ของแม่แบบวิชา — โหลดใหม่ทุกครั้งที่เข้าแท็บ (โครงสร้างคะแนนอาจเพิ่งแก้) · onScore() = ลิงก์พากลับแท็บโครงสร้างคะแนน
-async function renderSyllabusTab(container, course, onScore) {
-  showLoading('cat-sm', container);
+// โหลดข้อมูลของแท็บให้พร้อมใน SY — มีร่างค้างของวิชานี้อยู่ (สลับระหว่างแท็บฟอร์ม ↔ ตัวอย่าง) ใช้ต่อได้เลย ไม่โหลดใหม่ · ไม่งั้นโหลดใหม่ทุกครั้ง (โครงสร้างคะแนนอาจเพิ่งแก้)
+//   คืน false เมื่อโหลดไม่ได้ (แสดงข้อความแทนในกล่อง) หรือผู้ใช้ออกจากแท็บไปแล้ว
+async function syEnsure(container, course) {
+  if (SY.id === course.id && _syDirty && SY.draft) return true;
   syDiscard();
   let data;
   try { data = await syLoad(course, course); }
   catch (err) {
     console.error(err);
     if (container.isConnected) container.innerHTML = `<div class="card"><div class="empty-state">โหลดโครงสร้างรายวิชาไม่สำเร็จ: ${escapeHtml(err.message || '')}</div></div>`;
-    return;
+    return false;
   }
-  if (!container.isConnected) return; // ผู้ใช้สลับแท็บ/ออกจากหน้าไปแล้ว
-  Object.assign(SY, { id: course.id, course, struct: data.struct, desc: data.desc, saved: data.saved, draft: null, onScore: onScore || null, existed: data.existed, savedAt: data.savedAt });
+  if (!container.isConnected) return false; // ผู้ใช้สลับแท็บ/ออกจากหน้าไปแล้ว
+  Object.assign(SY, { id: course.id, course, struct: data.struct, desc: data.desc, saved: data.saved, draft: null, existed: data.existed, savedAt: data.savedAt });
+  return true;
+}
+
+// แท็บ "Course Syllabus" (ฟอร์ม) ของแม่แบบวิชา — nav = { score(), preview() } พาไปแท็บโครงสร้างคะแนน / แท็บตัวอย่าง
+async function renderSyllabusTab(container, course, nav) {
+  showLoading('cat-sm', container);
+  if (!(await syEnsure(container, course))) return;
+  SY.nav = nav || {};
   syShowForm(container);
+}
+
+// แท็บ "ตัวอย่าง Course Syllabus" — ร่างที่พิมพ์ค้างถ้ามี ไม่งั้นที่บันทึกไว้ · onEdit() = ปุ่ม "แก้ไข" พากลับแท็บฟอร์ม
+async function renderSyllabusPreviewTab(container, course, onEdit) {
+  showLoading('cat-sm', container);
+  if (!(await syEnsure(container, course))) return;
+  const fromDraft = !!(SY.draft && _syDirty);
+  syShowPreview(container, syModel(course, SY.struct, syCurrent(), SY.desc), fromDraft, onEdit);
 }

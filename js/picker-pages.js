@@ -124,7 +124,8 @@ async function renderStructureList(view) {
   });
 }
 
-const STRUCT_TABS = [['score', 'โครงสร้างคะแนน'], ['desc', 'คำอธิบายรายวิชา'], ['descprev', 'ตัวอย่างก่อนพิมพ์'], ['syll', 'Course Syllabus']]; // Course Syllabus (โครงสร้างรายวิชา) อยู่หลังสุด
+const STRUCT_TABS = [['score', 'โครงสร้างคะแนน'], ['desc', 'คำอธิบายรายวิชา'], ['descprev', 'ตัวอย่างก่อนพิมพ์'], ['syll', 'Course Syllabus'], ['syllprev', 'ตัวอย่าง Course Syllabus']]; // Course Syllabus (โครงสร้างรายวิชา) + แท็บตัวอย่าง อยู่หลังสุด
+const SYLL_TABS = ['syll', 'syllprev']; // แท็บในกลุ่ม Course Syllabus — สลับกันเองได้โดยไม่ถามทิ้งร่าง (js/syllabus.js เก็บร่างข้ามแท็บ)
 const DESC_TABS = ['desc', 'descprev']; // แท็บในกลุ่มคำอธิบายรายวิชา — สลับกันเองได้โดยไม่ถามทิ้งร่าง (js/course-desc.js เก็บร่างข้ามแท็บ)
 
 async function renderStructureEditor(view, templateId) {
@@ -176,14 +177,16 @@ async function renderStructureEditor(view, templateId) {
     const tab = AppState.structureTab;
     const pane = document.createElement('div');
     body.replaceChildren(pane);
-    if (tab === 'syll') { // โครงสร้างรายวิชา: แท็บเดียวสลับมุมมองแก้ไข ↔ ตัวอย่างเอง (js/syllabus.js) · เข้าแท็บทีไรโหลดใหม่ เพราะโครงสร้างคะแนนอาจเพิ่งแก้
+    if (SYLL_TABS.includes(tab)) { // Course Syllabus: ฟอร์ม + แท็บตัวอย่างแยกกัน (js/syllabus.js) · เข้ากลุ่มทีไรโหลดใหม่ เว้นแต่มีร่างค้าง
       showLoading('cat-sm', pane);
       try { await loadModules(LAZY_BUNDLES.syll); } catch (err) {
         if (pane.isConnected) pane.innerHTML = `<div class="card"><div class="empty-state">${escapeHtml(err.message)}</div></div>`;
         return;
       }
       if (!pane.isConnected || AppState.structureTab !== tab) return;
-      await renderSyllabusTab(pane, tpl, () => tabsEl.querySelector('.tab[data-tab="score"]').click());
+      const go = (id) => () => tabsEl.querySelector(`.tab[data-tab="${id}"]`).click();
+      if (tab === 'syll') await renderSyllabusTab(pane, tpl, { score: go('score'), preview: go('syllprev') });
+      else await renderSyllabusPreviewTab(pane, tpl, go('syll'));
     } else if (DESC_TABS.includes(tab)) {
       showLoading('cat-sm', pane);
       try { await loadModules(LAZY_BUNDLES.cdesc); } catch (err) {
@@ -210,9 +213,12 @@ async function renderStructureEditor(view, templateId) {
           cdDiscardDraft();
         }
       }
-      if (cur === 'syll' && typeof syIsDirty === 'function') { // ออกจากแท็บโครงสร้างรายวิชา: มีค่าค้างต้องถามก่อนทิ้ง
-        if (syIsDirty() && !confirm('โครงสร้างรายวิชามีที่ยังไม่ได้บันทึก — ออกจากแท็บนี้และทิ้งที่แก้ไว้?')) return;
-        syDiscard();
+      if (SYLL_TABS.includes(cur) && typeof syIsDirty === 'function') { // ออกจากกลุ่ม Course Syllabus: มีค่าค้างต้องถามก่อนทิ้ง · สลับฟอร์ม ↔ ตัวอย่างเก็บร่างไว้
+        if (cur === 'syll') syStashDraft();
+        if (!SYLL_TABS.includes(t.dataset.tab)) {
+          if (syIsDirty() && !confirm('Course Syllabus มีที่ยังไม่ได้บันทึก — ออกจากแท็บนี้และทิ้งที่แก้ไว้?')) return;
+          syDiscard();
+        }
       }
       AppState.structureTab = t.dataset.tab;
       tabsEl.querySelectorAll(':scope > .active').forEach(x => x.classList.remove('active'));
