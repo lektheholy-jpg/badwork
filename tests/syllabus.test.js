@@ -278,6 +278,7 @@ const DESC = { type: 'พื้นฐาน', area: 'วิทยาศาสต
   ok(og.length === 2 && og[0].key === 'ว4.1' && og[0].title === 'ก' && og[1].items[0].sub === '' && J(R(`syPickLines`)(og, new Set(['0:1', '1:0']))) === J(['ว4.1 / ม.2/2', 'ส1.1']) && J(R(`syPickLines`)(og, new Set())) === '[]', 'syIndicatorOptions/syPickLines: จัดกลุ่มตามมาตรฐาน · ตัวชี้วัดไม่มีรหัสย่อย = รหัสมาตรฐานอย่างเดียว · แถวไม่มีรหัสถูกข้าม · ไม่ติ๊ก = ไม่มีบรรทัด');
   ok(R(`syAppendLines`)('x\n y ', ['y', 'z']).text === 'x\n y\nz' && R(`syAppendLines`)('', ['a', 'b']).text === 'a\nb' && R(`syAppendLines`)('a', ['a']).added === 0, 'syAppendLines: ข้ามบรรทัดที่มีอยู่ (ตัดช่องว่างเทียบ) · ช่องว่าง = ใส่เลย');
   ta.value = 'ว4.2 / ม.2/4';
+  ok(/\.sy-pick-box input\[type="checkbox"\]\s*\{[^}]*width:\s*16px[^}]*padding:\s*0/.test(read('css/style.css')) && /\.sy-pick-box input\[type=checkbox\]\{[^}]*width:16px[^}]*padding:0/.test(read('css/docs.min.css')), 'CSS ช่องติ๊กในกล่องเลือกตัวชี้วัด: ขนาดคงที่ + ไม่มี padding (ไม่โดน .field input กว้าง 100% ขยายเต็มแถว) ทั้ง style.css และ docs.min.css');
 
   // เพิ่ม/ลบสาระย่อย + สรุปสด
   u1.querySelector('.sy-t-add').click();

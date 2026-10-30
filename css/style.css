@@ -2683,7 +2683,7 @@ td.doc-ai-target::before { inset: 0; }
 .sy-pick > summary { cursor: pointer; font-size: 13.5px; font-weight: 600; color: var(--ink-soft); padding: 4px 0; }
 .sy-pick-box { margin-top: 6px; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius-s); background: var(--surface); }
 .sy-pick-box label { display: flex; font-weight: 400; color: var(--ink); gap: 8px; align-items: flex-start; font-size: 13.5px; line-height: 1.55; margin: 0; padding: 3px 0; cursor: pointer; }
-.sy-pick-box input[type="checkbox"] { flex: none; margin-top: 4px; }
+.sy-pick-box input[type="checkbox"] { flex: none; width: 16px; min-width: 16px; height: 16px; padding: 0; margin: 4px 0 0; accent-color: var(--primary); } /* ชนะ .field input (width:100% + padding) ที่ครอบช่องกรอกทั่วไป */
 .sy-pick-box .sy-pick-all { font-weight: 600; padding-bottom: 6px; border-bottom: 1px solid var(--border); margin-bottom: 4px; }
 .sy-pick-gh { margin-top: 6px; }
 .sy-pick-i { padding-left: 24px; }
