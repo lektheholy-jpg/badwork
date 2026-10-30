@@ -19,7 +19,7 @@
 const SY_DOC_ID = 'syllabus';   // settings/syllabus
 const SY_MAX = { area: 80, std: 200, title: 400, hours: 5, topics: 12, units: 40 };
 const SY_CREDIT_HOURS = 40;     // 1 หน่วยกิต = 40 ชั่วโมง (0.5 = 20 · 1.5 = 60)
-const SY_COLS = [8, 18, 15, 36, 11, 12]; // ความกว้างคอลัมน์ (%) หน่วยที่ · ชื่อหน่วย · มาตรฐาน · สาระ · เวลา · น้ำหนัก
+const SY_COLS = [10, 18, 15, 34, 11, 12]; // ความกว้างคอลัมน์ (%) หน่วยที่ · ชื่อหน่วย · มาตรฐาน · สาระ · เวลา · น้ำหนัก
 const SY_SAVE_LABEL = 'บันทึกโครงสร้างรายวิชา';
 
 // มีค่าที่พิมพ์ค้างยังไม่บันทึกหรือไม่ — หน้าที่สลับแท็บเรียกถามก่อนทิ้ง (js/picker-pages.js)
@@ -301,6 +301,9 @@ const SY_SHEET = { port: { w: 210, h: 297, pad: [15, 15, 15, 15], label: 'A4 แ
 const SY_PAGE = '@page{size:A4 portrait;margin:15mm}html,body{margin:0;background:#fff}';
 const SY_TG = (SY_COLS[3] / (SY_COLS[3] + SY_COLS[4]) * 100).toFixed(3); // สัดส่วนช่องสาระ : ช่องเวลา ในเซลล์รวมของแถวหน่วย — ให้เส้นตรงกับคอลัมน์ของหัวตาราง
 
+// หัวตาราง: ในแต่ละช่อง 1 สมาชิก = 1 บรรทัด และแต่ละบรรทัดไม่ถูกตัดกลางคำ (.sy-hl) — เรียงตาม SY_COLS
+const SY_HEAD = [['หน่วย', 'ที่'], ['ชื่อหน่วย', 'การเรียนรู้'], ['มาตรฐาน/', 'ตัวชี้วัด'], ['สาระการเรียนรู้ ', '(เนื้อหา)'], ['เวลา', '(ชั่วโมง)'], ['น้ำหนัก', 'คะแนน']];
+
 const SY1_CSS = `
 .sy1{background:#fff;color:#000;font-family:'TH SarabunPSK','TH Sarabun PSK','THSarabunPSK','TH Sarabun New','THSarabunNew','PA Sarabun','Noto Sans Thai',Tahoma,sans-serif;font-size:16pt;line-height:1.28}
 .sy1 *{box-sizing:border-box}
@@ -309,8 +312,9 @@ const SY1_CSS = `
 .sy1 .sy-l>span:last-child{text-align:right}
 .sy1 table{width:100%;border-collapse:collapse;table-layout:fixed;margin-top:.4em}
 .sy1 col{width:var(--w)}
-.sy1 th,.sy1 td{border:.75pt solid #aaa;padding:.1em .3em;vertical-align:middle;overflow-wrap:anywhere}
-.sy1 th{font-weight:700;text-align:center}
+.sy1 th,.sy1 td{border:.75pt solid #aaa;padding:.1em .3em;vertical-align:top;overflow-wrap:anywhere}
+.sy1 th{font-weight:700;text-align:center;vertical-align:middle;padding:.1em .15em;overflow-wrap:normal;word-break:normal}
+.sy1 .sy-hl{display:inline-block;white-space:nowrap}
 .sy1 tr{break-inside:avoid;page-break-inside:avoid}
 .sy1 td.sy-c{text-align:center}
 .sy1 td.sy-tc{padding:0;vertical-align:top;position:relative}
@@ -386,7 +390,7 @@ function syTableSectionHtml(m) {
   <div class="sy-l"><span>${e(cdLevelText(m.level)) || 'ชั้น' + dots(12)} เวลา ${hours || dots(3)} ชั่วโมง</span> <span>จำนวน ${e(m.credit) || dots(3)} หน่วยกิต</span></div>
   <table>
     <colgroup>${SY_COLS.map(w => `<col style="--w:${w}%">`).join('')}</colgroup>
-    <thead><tr><th>หน่วย<br>ที่</th><th>ชื่อหน่วยการเรียนรู้</th><th>มาตรฐาน/<br>ตัวชี้วัด</th><th>สาระการเรียนรู้ (เนื้อหา)</th><th>เวลา<br>(ชั่วโมง)</th><th>น้ำหนัก<br>คะแนน</th></tr></thead>
+    <thead><tr>${SY_HEAD.map(h => `<th>${h.map(l => `<span class="sy-hl">${l}</span>`).join('<br>')}</th>`).join('')}</tr></thead>
     <tbody>
       ${m.units.map(unitRow).join('\n      ')}
       ${m.outside > 0 ? sum('คะแนนเก็บนอกหน่วย', '', f(m.outside)) : ''}
