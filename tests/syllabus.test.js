@@ -253,16 +253,30 @@ const DESC = { type: 'พื้นฐาน', area: 'วิทยาศาสต
   R('syDiscard()'); R('SY.draft = null'); // กลับสู่ค่าเดิมก่อนทดสอบต่อ (ไม่ค้างร่างจากขั้นตอนนี้)
   ok(/ชั่วโมงรวม\s*20 \/ 20/.test(norm($('sy-check').textContent)) && !host.querySelector('.sy-warn'), 'สรุป: ชั่วโมงรวม 20 / 20 · คะแนนครบ → ไม่มีคำเตือน');
 
-  // ดึงตัวชี้วัดจากคำอธิบายรายวิชา
+  // เลือกตัวชี้วัดจากคำอธิบายรายวิชา: ทั้งหมด / ทั้งมาตรฐาน / บางข้อ → "ใส่ลงช่อง"
   const pick = u1.querySelector('.sy-pick');
-  ok(pick && pick.options.length === 2 && pick.options[1].textContent === 'ว4.2 / ม.2/1, ม.2/2, ม.2/3, ม.2/4', 'ปุ่มดึงตัวชี้วัด: รวมตามมาตรฐาน "ว4.2 / ม.2/1, …" จากคำอธิบายรายวิชา');
+  const pcb = () => [...pick.querySelectorAll('.sy-pick-cb')];
+  const tick = (el, v) => { el.checked = v; el.dispatchEvent(new w.Event('change', { bubbles: true })); };
   const ta = u1.querySelector('.sy-std');
+  ok(!!pick && pick.tagName === 'DETAILS' && pcb().length === 4 && /เลือกทั้งหมด \(4 ข้อ\)/.test(norm(pick.querySelector('.sy-pick-all').textContent) ) && pick.querySelector('.sy-pick-apply').disabled === true, 'กล่องเลือกตัวชี้วัด (พับเก็บได้): 4 ข้อ + "เลือกทั้งหมด (4 ข้อ)" · ยังไม่เลือก = ปุ่มใส่ลงช่องกดไม่ได้');
+  ok(norm(pick.querySelector('.sy-pick-gh').textContent).startsWith('ว 4.2') && norm(pcb()[0].closest('label').textContent) === 'ม.2/1 a', 'จัดกลุ่มตามมาตรฐาน (หัว "ว 4.2") · แต่ละข้อแสดงรหัสย่อย + ข้อความ');
   ta.value = '';
-  pick.value = '0'; pick.dispatchEvent(new w.Event('change', { bubbles: true }));
-  ok(ta.value === 'ว4.2 / ม.2/1, ม.2/2, ม.2/3, ม.2/4' && pick.value === '' && R('syIsDirty()') === true, 'เลือกแล้วใส่ช่องมาตรฐาน (ช่องว่าง = ใส่เลย) · ตัวเลือกกลับเป็นค่าเริ่มต้น · ตั้งธงค่าค้าง');
-  ta.value = 'ว4.2 / ม.2/4';
-  pick.value = '0'; pick.dispatchEvent(new w.Event('change', { bubbles: true }));
-  ok(ta.value === 'ว4.2 / ม.2/4\nว4.2 / ม.2/1, ม.2/2, ม.2/3, ม.2/4', 'ช่องมีค่าอยู่แล้ว: ต่อท้ายบรรทัดใหม่ ไม่ทับ');
+  tick(pcb()[0], true); tick(pcb()[2], true);
+  ok(pick.querySelector('.sy-pick-n').textContent === 'เลือก 2 ข้อ' && pick.querySelector('.sy-pick-g-cb').indeterminate === true && pick.querySelector('.sy-pick-all-cb').indeterminate === true && pick.querySelector('.sy-pick-apply').disabled === false && R('syIsDirty()') === false, 'ติ๊กบางข้อ: นับจำนวน · ช่องกลุ่ม/ทั้งหมดเป็นสถานะกึ่งกลาง · ยังไม่ถือว่าแก้เอกสาร');
+  pick.querySelector('.sy-pick-apply').click();
+  ok(ta.value === 'ว4.2 / ม.2/1, ม.2/3' && R('syIsDirty()') === true && pcb().every(c => !c.checked) && pick.open === false, 'ใส่ลงช่อง (บางข้อ): "ว4.2 / ม.2/1, ม.2/3" · ตั้งธงค่าค้าง · ล้างการติ๊กและพับกล่อง');
+  tick(pick.querySelector('.sy-pick-all-cb'), true);
+  ok(pcb().every(c => c.checked) && pick.querySelector('.sy-pick-g-cb').checked === true && pick.querySelector('.sy-pick-n').textContent === 'เลือก 4 ข้อ', 'เลือกทั้งหมด: ติ๊กทุกข้อ + ช่องกลุ่มติ๊กเต็ม');
+  pick.querySelector('.sy-pick-apply').click();
+  ok(ta.value === 'ว4.2 / ม.2/1, ม.2/3\nว4.2 / ม.2/1, ม.2/2, ม.2/3, ม.2/4', 'ช่องมีค่าอยู่แล้ว: ต่อบรรทัดใหม่ ไม่ทับ');
+  tick(pick.querySelector('.sy-pick-g-cb'), true);
+  pick.querySelector('.sy-pick-apply').click();
+  ok(ta.value === 'ว4.2 / ม.2/1, ม.2/3\nว4.2 / ม.2/1, ม.2/2, ม.2/3, ม.2/4' && toasts.some(x => /มีอยู่ในช่องแล้ว/.test(x[0])), 'ติ๊กซ้ำที่มีอยู่แล้ว: ไม่ซ้อนบรรทัด · แจ้งผล');
+  tick(pcb()[3], true); tick(pcb()[3], false);
+  ok(pick.querySelector('.sy-pick-apply').disabled === true && !pick.querySelector('.sy-pick-g-cb').checked, 'ยกเลิกติ๊กครบ: ปุ่มใส่ลงช่องกลับเป็นกดไม่ได้');
+  const og = R(`syIndicatorOptions`)({ standards: [{ code: 'ว 4.1', text: 'ก' }], indicators: [{ code: 'ว 4.1 ม.2/1', text: 'a' }, { code: 'ว 4.1 ม.2/2', text: 'b' }, { code: 'ส 1.1', text: 'ไม่มีรหัสย่อย' }, { code: '', text: 'ไม่มีรหัส' }] });
+  ok(og.length === 2 && og[0].key === 'ว4.1' && og[0].title === 'ก' && og[1].items[0].sub === '' && J(R(`syPickLines`)(og, new Set(['0:1', '1:0']))) === J(['ว4.1 / ม.2/2', 'ส 1.1']) && J(R(`syPickLines`)(og, new Set())) === '[]', 'syIndicatorOptions/syPickLines: จัดกลุ่มตามมาตรฐาน · ตัวชี้วัดไม่มีรหัสย่อย = รหัสมาตรฐานอย่างเดียว · แถวไม่มีรหัสถูกข้าม · ไม่ติ๊ก = ไม่มีบรรทัด');
+  ok(R(`syAppendLines`)('x\n y ', ['y', 'z']).text === 'x\n y \nz' && R(`syAppendLines`)('', ['a', 'b']).text === 'a\nb' && R(`syAppendLines`)('a', ['a']).added === 0, 'syAppendLines: ข้ามบรรทัดที่มีอยู่ (ตัดช่องว่างเทียบ) · ช่องว่าง = ใส่เลย');
   ta.value = 'ว4.2 / ม.2/4';
 
   // เพิ่ม/ลบสาระย่อย + สรุปสด
@@ -405,7 +419,7 @@ const DESC = { type: 'พื้นฐาน', area: 'วิทยาศาสต
   host.innerHTML = '';
   await R(`renderSyllabusTab(document.getElementById('host'), ${J(course)}, window.__nav)`);
   await settle();
-  ok(!host.querySelector('.sy-pick'), 'คำอธิบายรายวิชายังไม่มีตัวชี้วัด: ไม่แสดงตัวเลือกดึง');
+  ok(!host.querySelector('.sy-pick'), 'คำอธิบายรายวิชายังไม่มีตัวชี้วัด: ไม่แสดงกล่องเลือกตัวชี้วัด');
   store.set(TP + '/settings/structure', { groups: [], units: [] });
   host.innerHTML = '';
   await R(`renderSyllabusTab(document.getElementById('host'), ${J(course)}, window.__nav)`);

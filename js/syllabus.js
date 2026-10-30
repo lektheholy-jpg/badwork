@@ -81,6 +81,13 @@ async function syLatestTerm(templateId) {
 // รหัสมาตรฐานแบบเทียบกัน: "ว 4.2" = "ว4.2" = "ว. 4.2"
 const syCodeKey = (c) => String(c || '').replace(/[\s.]/g, '');
 
+// แยกรหัสตัวชี้วัด "ว 4.2 ม.1/1" → { head: 'ว 4.2', sub: 'ม.1/1' } (กติกาเดียวกับ cdGroupIndicators) · ไม่เข้ารูปแบบ = ทั้งรหัสเป็น head ไม่มี sub
+function syIndSplit(raw) {
+  const code = String(raw || '').trim().replace(/\s+/g, ' ');
+  const m = /^(.+?) ((?:[ก-ฮ]{1,3}\.? )?\S*\d\S*\/\S*\d\S*)$/.exec(code);
+  return { code, head: m ? m[1] : code, sub: m ? m[2] : '' };
+}
+
 // ตัวชี้วัดจัดเป็นกลุ่มตามมาตรฐาน (หัวกลุ่ม = รหัส + ข้อความมาตรฐานที่ตรงรหัส) เรียงเลขต่อเนื่องทุกกลุ่ม — รวมจำนวน = จำนวนตัวชี้วัด
 //   แยกรหัสตัวชี้วัด "ว 4.2 ม.1/1" เป็นหัว "ว 4.2" + ส่วนย่อย "ม.1/1" ด้วยกติกาเดียวกับ cdGroupIndicators · มาตรฐานที่ไม่มีตัวชี้วัดก็แสดงเป็นหัวกลุ่มว่าง
 function syOutcomes(desc) {
@@ -98,11 +105,10 @@ function syOutcomes(desc) {
   stds.forEach(r => { if (r.code) group(r.code); else if (r.text) group(r.text); });
   let n = 0;
   inds.forEach(r => {
-    const code = String((r && r.code) || '').trim().replace(/\s+/g, ' ');
-    const m = /^(.+?) ((?:[ก-ฮ]{1,3}\.? )?\S*\d\S*\/\S*\d\S*)$/.exec(code);
-    const text = String((r && r.text) || '').trim() || (m ? m[2] : code);
+    const { code, head, sub } = syIndSplit(r && r.code);
+    const text = String((r && r.text) || '').trim() || sub || code;
     if (!text) return;
-    group(m ? m[1] : code).items.push({ n: ++n, text });
+    group(head).items.push({ n: ++n, text });
   });
   return { groups, count: n };
 }
@@ -428,19 +434,60 @@ function syTopicRowHtml(t = {}) {
   </div>`;
 }
 
-// ตัวเลือกดึงตัวชี้วัดจากคำอธิบายรายวิชา: รวมตามมาตรฐาน "ว 4.2" + "ม.2/1","ม.2/2" → "ว4.2 / ม.2/1, ม.2/2" (ตัดช่องว่างหลังตัวอักษรนำหน้าตามแบบ · ครูแก้ในช่องได้)
-function syIndicatorChoices(desc) {
-  return cdGroupIndicators(desc && desc.indicators).map(g => {
-    const head = g.head.replace(/^([ก-ฮ]+)\s+/, '$1');
-    return g.subs.length ? `${head} / ${g.subs.join(', ')}` : head;
+// ตัวชี้วัดในคำอธิบายรายวิชา จัดเป็นกลุ่มตามมาตรฐาน ให้ครูติ๊กเลือกทั้งหมดหรือบางข้อใส่ช่อง "มาตรฐาน/ตัวชี้วัด" ของหน่วย
+//   group = { head: รหัสมาตรฐานตามที่พิมพ์, key: รูปที่ใส่ช่อง (ตัดช่องว่างหลังตัวอักษรนำหน้า "ว 4.2" → "ว4.2"), title: ข้อความมาตรฐานที่รหัสตรงกัน, items: [{ sub: "ม.2/1", text }] }
+function syIndicatorOptions(desc) {
+  const stds = Array.isArray(desc && desc.standards) ? desc.standards : [];
+  const groups = [], at = new Map();
+  (Array.isArray(desc && desc.indicators) ? desc.indicators : []).forEach(r => {
+    const { code, head, sub } = syIndSplit(r && r.code);
+    if (!code) return; // แถวที่ไม่มีรหัส (มีแต่ข้อความ) ไม่มีอะไรให้ใส่ช่องรหัส
+    if (!at.has(head)) {
+      const std = stds.find(x => syCodeKey(x && x.code) === syCodeKey(head));
+      at.set(head, groups.length);
+      groups.push({ head, key: head.replace(/^([ก-ฮ]+)\s+/, '$1'), title: std ? String(std.text || '').trim() : '', items: [] });
+    }
+    groups[at.get(head)].items.push({ sub, text: String((r && r.text) || '').trim() });
   });
+  return groups;
+}
+
+// บรรทัดที่จะใส่ช่องมาตรฐาน จากข้อที่ติ๊ก (sel = Set ของ "กลุ่ม:ข้อ") — บางข้อในกลุ่ม → "ว4.2 / ม.2/1, ม.2/3" · ตัวชี้วัดที่ไม่มีรหัสย่อย = รหัสมาตรฐานอย่างเดียว
+function syPickLines(groups, sel) {
+  return groups.map((g, gi) => {
+    const hit = g.items.filter((_, ii) => sel.has(gi + ':' + ii));
+    if (!hit.length) return null;
+    const subs = hit.map(it => it.sub).filter(Boolean);
+    return subs.length ? `${g.key} / ${subs.join(', ')}` : g.key;
+  }).filter(Boolean);
+}
+
+// ต่อบรรทัดใหม่ท้ายช่องมาตรฐาน โดยข้ามบรรทัดที่มีอยู่แล้ว (ติ๊กซ้ำไม่ซ้อนกัน) → { text, added }
+function syAppendLines(current, lines) {
+  const have = new Set(String(current || '').split(/\r?\n/).map(x => x.trim()).filter(Boolean));
+  const add = lines.filter(l => !have.has(l));
+  const base = String(current || '').trim();
+  return { text: add.length ? (base ? base + '\n' : '') + add.join('\n') : String(current || ''), added: add.length };
 }
 
 const syUnitStatus = (u) => (u.standard || u.topics.length ? `กรอกแล้ว · ${syFmt(u.hours)} ชั่วโมง` : 'ยังไม่ได้กรอก');
 
-function syUnitHtml(u, choices) {
-  const pick = choices.length
-    ? `<select class="input-sm sy-pick" aria-label="ดึงตัวชี้วัดจากคำอธิบายรายวิชา"><option value="">ดึงจากคำอธิบายรายวิชา…</option>${choices.map((c, i) => `<option value="${i}">${escapeHtml(c)}</option>`).join('')}</select>` : '';
+// กล่องเลือกตัวชี้วัด (พับเก็บได้): เลือกทั้งหมด · ทั้งมาตรฐาน · รายข้อ — ติ๊กอย่างเดียวไม่แก้เอกสาร จนกว่าจะกด "ใส่ลงช่อง"
+function syPickHtml(groups) {
+  if (!groups.length) return '';
+  const total = groups.reduce((n, g) => n + g.items.length, 0);
+  return `<details class="sy-pick"><summary>เลือกจากคำอธิบายรายวิชา…</summary><div class="sy-pick-box">
+      <label class="sy-pick-all"><input type="checkbox" class="sy-pick-all-cb"> เลือกทั้งหมด (${total} ข้อ)</label>
+      ${groups.map((g, gi) => `<div class="sy-pick-g">
+        <label class="sy-pick-gh"><input type="checkbox" class="sy-pick-g-cb" data-g="${gi}"> <b>${escapeHtml(g.head)}</b>${g.title ? ' ' + escapeHtml(g.title) : ''}</label>
+        ${g.items.map((it, ii) => `<label class="sy-pick-i"><input type="checkbox" class="sy-pick-cb" data-g="${gi}" data-i="${ii}"> ${it.sub ? `<span class="sy-pick-code">${escapeHtml(it.sub)}</span> ` : ''}${escapeHtml(it.text)}</label>`).join('')}
+      </div>`).join('')}
+      <div class="sy-pick-foot"><span class="sy-pick-n" role="status">เลือก 0 ข้อ</span><button type="button" class="btn btn-primary btn-sm sy-pick-apply" disabled>ใส่ลงช่อง</button></div>
+    </div></details>`;
+}
+
+function syUnitHtml(u, groups) {
+  const pick = syPickHtml(groups);
   return `<div class="pa-witem sy-unit" data-unit="${escapeHtml(u.id)}">
     <div class="pa-witem-h sy-unit-h"><span class="sy-unit-n">หน่วยที่ ${u.n}</span><span class="sy-unit-name">${escapeHtml(u.name)}</span><span class="sy-unit-s">${syUnitStatus(u)}</span><span class="sy-unit-w">น้ำหนักคะแนน ${syFmt(u.weight)}</span></div>
     <div class="field"><label>มาตรฐาน/ตัวชี้วัด
@@ -500,7 +547,7 @@ function syCurrent() { return SY.draft || SY.saved; }
 function syShowForm(container) {
   const data = syCurrent(), c = SY.course;
   const m = syModel(c, SY.struct, data, SY.desc, syCtx());
-  const choices = syIndicatorChoices(SY.desc);
+  const indGroups = syIndicatorOptions(SY.desc);
   container.innerHTML = `
   <div class="u-note u-mb-12">กรอกโครงสร้างรายวิชาตามแบบของหลักสูตร — ข้อมูลเก็บไว้กับแม่แบบวิชานี้ และแสดงในหน้ารายวิชาของทุกเทอมที่เปิดสอนวิชานี้ · ชื่อหน่วย น้ำหนักคะแนน กลางภาค/ปลายภาค มาจากแท็บ “โครงสร้างคะแนน” (<a href="#" id="sy-goto-score">ไปแท็บโครงสร้างคะแนน</a>) · เวลารวมบวกจากชั่วโมงของสาระย่อย · ดูหน้ากระดาษก่อนพิมพ์ได้ที่แท็บ “ตัวอย่าง Course Syllabus” แต่ตัวอย่างไม่ได้บันทึกให้ — กดบันทึกทุกครั้ง</div>
   <form id="sy-form" class="doc-form" autocomplete="off" novalidate>
@@ -528,7 +575,7 @@ function syShowForm(container) {
 
     <section class="doc-section">
       <h2 class="doc-sec-title">ส่วนที่ 2  หน่วยการเรียนรู้</h2>
-      ${m.units.length ? m.units.map(u => syUnitHtml(u, choices)).join('') : '<div class="empty-state">ยังไม่มีหน่วยการเรียนรู้ — เพิ่มหน่วยที่แท็บ “โครงสร้างคะแนน” (ปุ่ม + หน่วยการเรียนรู้) แล้วกลับมากรอกที่นี่</div>'}
+      ${m.units.length ? m.units.map(u => syUnitHtml(u, indGroups)).join('') : '<div class="empty-state">ยังไม่มีหน่วยการเรียนรู้ — เพิ่มหน่วยที่แท็บ “โครงสร้างคะแนน” (ปุ่ม + หน่วยการเรียนรู้) แล้วกลับมากรอกที่นี่</div>'}
     </section>
 
     <section class="doc-section">
@@ -554,6 +601,7 @@ function syShowForm(container) {
     recheck();
   };
   const touch = (e) => {
+    if (e && e.target && e.target.closest && e.target.closest('.sy-pick')) return; // ติ๊กเลือกตัวชี้วัดยังไม่ใช่การแก้เอกสาร (แก้เมื่อกด "ใส่ลงช่อง")
     if (e && e.target && (e.target.id === 'sy-sem' || e.target.id === 'sy-year')) return readTerm();
     _syDirty = true; recheck(); syRefreshStatus(container);
   };
@@ -571,15 +619,36 @@ function syShowForm(container) {
       touch();
     } else if (del) { del.closest('.sy-trow').remove(); touch(); }
   });
-  form.addEventListener('change', (e) => { // ดึงตัวชี้วัดจากคำอธิบายรายวิชา: ช่องว่าง = ใส่ · มีค่าแล้ว = ต่อบรรทัดใหม่
-    const sel = e.target.closest('.sy-pick');
-    if (!sel) return;
-    const text = choices[Number(sel.value)];
-    sel.value = '';
-    if (!text) return;
-    const ta = sel.closest('.field').querySelector('.sy-std');
-    ta.value = (ta.value.trim() ? ta.value.trim() + '\n' : '') + text;
-    touch();
+  // เลือกตัวชี้วัดจากคำอธิบายรายวิชา: ติ๊กทั้งหมด/ทั้งมาตรฐาน/รายข้อ → "ใส่ลงช่อง" ต่อท้ายช่องมาตรฐานของหน่วยนั้น (ข้ามบรรทัดที่มีอยู่แล้ว)
+  const pickSel = (box) => new Set([...box.querySelectorAll('.sy-pick-cb:checked')].map(c => c.dataset.g + ':' + c.dataset.i));
+  const pickSync = (box) => { // ซิงก์ช่องติ๊กกลุ่ม/ทั้งหมด (ติ๊กบางส่วน = สถานะกึ่งกลาง) + จำนวน + ปุ่มใส่
+    const all = [...box.querySelectorAll('.sy-pick-cb')];
+    box.querySelectorAll('.sy-pick-g-cb').forEach(g => {
+      const mine = all.filter(c => c.dataset.g === g.dataset.g), n = mine.filter(c => c.checked).length;
+      g.checked = n > 0 && n === mine.length; g.indeterminate = n > 0 && n < mine.length;
+    });
+    const n = all.filter(c => c.checked).length, a = box.querySelector('.sy-pick-all-cb');
+    a.checked = n > 0 && n === all.length; a.indeterminate = n > 0 && n < all.length;
+    box.querySelector('.sy-pick-n').textContent = `เลือก ${n} ข้อ`;
+    box.querySelector('.sy-pick-apply').disabled = n === 0;
+  };
+  form.addEventListener('change', (e) => {
+    const t = e.target, box = t.closest && t.closest('.sy-pick-box');
+    if (!box) return;
+    if (t.classList.contains('sy-pick-all-cb')) box.querySelectorAll('.sy-pick-cb').forEach(c => { c.checked = t.checked; });
+    else if (t.classList.contains('sy-pick-g-cb')) box.querySelectorAll(`.sy-pick-cb[data-g="${t.dataset.g}"]`).forEach(c => { c.checked = t.checked; });
+    pickSync(box);
+  });
+  form.addEventListener('click', (e) => {
+    const btn = e.target.closest('.sy-pick-apply');
+    if (!btn) return;
+    const pick = btn.closest('.sy-pick'), box = pick.querySelector('.sy-pick-box'), ta = btn.closest('.field').querySelector('.sy-std');
+    const r = syAppendLines(ta.value, syPickLines(indGroups, pickSel(box)));
+    ta.value = r.text;
+    box.querySelectorAll('input[type="checkbox"]').forEach(c => { c.checked = false; c.indeterminate = false; });
+    pickSync(box);
+    pick.open = false;
+    if (r.added) touch(); else showToast('ตัวชี้วัดที่เลือกมีอยู่ในช่องแล้ว');
   });
 
   container.querySelector('#sy-goto-score').addEventListener('click', (e) => { e.preventDefault(); if (SY.nav.score) SY.nav.score(); });

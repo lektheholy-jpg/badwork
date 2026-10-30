@@ -2680,6 +2680,16 @@ td.doc-ai-target::before { inset: 0; }
 .sy-unit .field > label { display: block; font-size: 13px; font-weight: 600; color: var(--ink-soft); }
 .sy-unit .sy-std { display: block; width: 100%; margin-top: 4px; resize: vertical; }
 .sy-pick { margin-top: 6px; max-width: 100%; }
+.sy-pick > summary { cursor: pointer; font-size: 13.5px; font-weight: 600; color: var(--ink-soft); padding: 4px 0; }
+.sy-pick-box { margin-top: 6px; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius-s); background: var(--surface); }
+.sy-pick-box label { display: flex; font-weight: 400; color: var(--ink); gap: 8px; align-items: flex-start; font-size: 13.5px; line-height: 1.55; margin: 0; padding: 3px 0; cursor: pointer; }
+.sy-pick-box input[type="checkbox"] { flex: none; margin-top: 4px; }
+.sy-pick-box .sy-pick-all { font-weight: 600; padding-bottom: 6px; border-bottom: 1px solid var(--border); margin-bottom: 4px; }
+.sy-pick-gh { margin-top: 6px; }
+.sy-pick-i { padding-left: 24px; }
+.sy-pick-code { color: var(--ink-soft); white-space: nowrap; }
+.sy-pick-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
+.sy-pick-n { font-size: 13px; color: var(--ink-soft); }
 .sy-topics { --doc-cols: minmax(0, 1fr) 80px 44px; margin-top: 6px; }
 .sy-topics .doc-lhead span:nth-child(2) { text-align: center; }
 .sy-status { align-self: center; font-size: 13px; color: var(--ink-soft); }
