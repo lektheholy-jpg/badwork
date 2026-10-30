@@ -275,8 +275,8 @@ const DESC = { type: 'พื้นฐาน', area: 'วิทยาศาสต
   tick(pcb()[3], true); tick(pcb()[3], false);
   ok(pick.querySelector('.sy-pick-apply').disabled === true && !pick.querySelector('.sy-pick-g-cb').checked, 'ยกเลิกติ๊กครบ: ปุ่มใส่ลงช่องกลับเป็นกดไม่ได้');
   const og = R(`syIndicatorOptions`)({ standards: [{ code: 'ว 4.1', text: 'ก' }], indicators: [{ code: 'ว 4.1 ม.2/1', text: 'a' }, { code: 'ว 4.1 ม.2/2', text: 'b' }, { code: 'ส 1.1', text: 'ไม่มีรหัสย่อย' }, { code: '', text: 'ไม่มีรหัส' }] });
-  ok(og.length === 2 && og[0].key === 'ว4.1' && og[0].title === 'ก' && og[1].items[0].sub === '' && J(R(`syPickLines`)(og, new Set(['0:1', '1:0']))) === J(['ว4.1 / ม.2/2', 'ส 1.1']) && J(R(`syPickLines`)(og, new Set())) === '[]', 'syIndicatorOptions/syPickLines: จัดกลุ่มตามมาตรฐาน · ตัวชี้วัดไม่มีรหัสย่อย = รหัสมาตรฐานอย่างเดียว · แถวไม่มีรหัสถูกข้าม · ไม่ติ๊ก = ไม่มีบรรทัด');
-  ok(R(`syAppendLines`)('x\n y ', ['y', 'z']).text === 'x\n y \nz' && R(`syAppendLines`)('', ['a', 'b']).text === 'a\nb' && R(`syAppendLines`)('a', ['a']).added === 0, 'syAppendLines: ข้ามบรรทัดที่มีอยู่ (ตัดช่องว่างเทียบ) · ช่องว่าง = ใส่เลย');
+  ok(og.length === 2 && og[0].key === 'ว4.1' && og[0].title === 'ก' && og[1].items[0].sub === '' && J(R(`syPickLines`)(og, new Set(['0:1', '1:0']))) === J(['ว4.1 / ม.2/2', 'ส1.1']) && J(R(`syPickLines`)(og, new Set())) === '[]', 'syIndicatorOptions/syPickLines: จัดกลุ่มตามมาตรฐาน · ตัวชี้วัดไม่มีรหัสย่อย = รหัสมาตรฐานอย่างเดียว · แถวไม่มีรหัสถูกข้าม · ไม่ติ๊ก = ไม่มีบรรทัด');
+  ok(R(`syAppendLines`)('x\n y ', ['y', 'z']).text === 'x\n y\nz' && R(`syAppendLines`)('', ['a', 'b']).text === 'a\nb' && R(`syAppendLines`)('a', ['a']).added === 0, 'syAppendLines: ข้ามบรรทัดที่มีอยู่ (ตัดช่องว่างเทียบ) · ช่องว่าง = ใส่เลย');
   ta.value = 'ว4.2 / ม.2/4';
 
   // เพิ่ม/ลบสาระย่อย + สรุปสด

@@ -340,7 +340,7 @@ function syCoverSectionHtml(m) {
   ${row('6. ปีการศึกษา', v(cv.year, 4))}
   ${row('7. ชื่อผู้สอน', v(cv.teacher, 14))}
   ${row('8. ประเภทวิชา', e(cv.type.replace(/^วิชา/, '') ? cv.type : ''))}
-  ${row('9. จำนวนชั่วโมง', `${cv.hoursWeek != null ? f(cv.hoursWeek) : dots(2)} ชั่วโมง / สัปดาห์<span class="sy-gap"></span>${cv.hoursSem != null ? f(cv.hoursSem) : dots(2)} ชั่วโมง / ภาคเรียน`)}
+  ${row('9. จำนวนชั่วโมง', `${cv.hoursWeek != null ? f(cv.hoursWeek) : dots(2)} ชั่วโมง / สัปดาห์ <span class="sy-gap"></span>${cv.hoursSem != null ? f(cv.hoursSem) : dots(2)} ชั่วโมง / ภาคเรียน`)}
   ${row('10. ระดับชั้น', v(cv.level, 12))}
   <div class="sy-rule"></div>
   <div class="sy-h">11. คำอธิบายรายวิชา</div>
@@ -506,7 +506,7 @@ function syCoverGridHtml(m) {
   const cv = m.cover, num = (x) => (x == null ? '' : syFmt(x));
   return docProfileGridHtml([
     ['โรงเรียน', cv.school], ['1 ชื่อวิชา', cv.name], ['2 รหัสวิชา', cv.code], ['3 หน่วยกิต', cv.credit], ['4 กลุ่มสาระฯ', cv.area],
-    ['5 ภาคเรียนที่', cv.semester], ['6 ปีการศึกษา', cv.year], ['7 ผู้สอน', cv.teacher], ['8 ประเภทวิชา', cv.type],
+    ['5 ภาคเรียนที่', cv.semester], ['6 ปีการศึกษา', cv.year], ['7 ผู้สอน', cv.teacher], ['8 ประเภทวิชา', cv.type.replace(/^วิชา/, '')],
     ['9 ชั่วโมง/สัปดาห์', num(cv.hoursWeek)], ['9 ชั่วโมง/ภาคเรียน', num(cv.hoursSem)], ['10 ระดับชั้น', cv.level],
     ['11 คำอธิบายรายวิชา', cv.descMain ? 'กรอกแล้ว' : ''], ['ผลการเรียนรู้/ตัวชี้วัด', cv.count ? cv.count + ' ข้อ' : ''],
   ], { auto: true });
