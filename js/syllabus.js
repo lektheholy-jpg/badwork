@@ -26,8 +26,10 @@ const SY_SAVE_LABEL = 'บันทึกโครงสร้างรายว
 let _syDirty = false;
 function syIsDirty() { return _syDirty; }
 // สถานะของแท็บที่เปิดอยู่: ข้อมูลที่โหลด + ร่างที่พิมพ์ค้าง (เก็บข้ามมุมมองแก้ไข ↔ ตัวอย่าง)
-const SY = { id: null, course: null, struct: null, desc: null, saved: null, draft: null, nav: {}, existed: false, savedAt: null };
+const SY = { id: null, course: null, struct: null, desc: null, profile: null, term: null, termPicked: false, saved: null, draft: null, nav: {}, existed: false, savedAt: null };
 function syDiscard() { SY.draft = null; _syDirty = false; }
+// บริบทของหน้าข้อมูลรายวิชา: โปรไฟล์ครู + ภาคเรียน/ปีที่ใช้พิมพ์ (ชั่วโมงต่อสัปดาห์ที่แก้ทับอยู่ในเอกสารที่บันทึก/ร่าง)
+const syCtx = () => ({ profile: SY.profile, term: SY.term });
 // เก็บค่าที่พิมพ์ค้างในฟอร์มเป็นร่าง — เรียกก่อนออกจากแท็บฟอร์ม (js/picker-pages.js) เพื่อให้แท็บตัวอย่างเห็นค่านี้ · ร่างผูกกับวิชา (SY.id)
 function syStashDraft() {
   const form = document.getElementById('sy-form');
@@ -46,6 +48,86 @@ function syHours(v) {
   return String(syRound1(Math.min(n, 999)));
 }
 
+// ---------------------------------------------------------------- หน้าข้อมูลรายวิชา (หน้าแรกของเอกสาร — ตามแบบ "หลักสูตรรายวิชา (Course Syllabus)")
+// ทุกช่องดึงอัตโนมัติ (โปรไฟล์ครู · แม่แบบวิชา · คำอธิบายรายวิชา · วิชาที่เปิดสอน) ไม่เก็บซ้ำ — เก็บลง settings/syllabus เฉพาะ hoursWeek ที่ครูแก้ทับ
+const SY_WEEKS = 20; // 1 ภาคเรียน = 20 สัปดาห์ → ชั่วโมงต่อสัปดาห์ = ชั่วโมงต่อภาคเรียน ÷ 20 (1 หน่วยกิต = 40 ชม. = 2 ชม./สัปดาห์)
+
+// ระดับชั้นแบบเต็มตามแบบฟอร์ม: ม.1 → มัธยมศึกษาปีที่ 1 · ป.6 → ประถมศึกษาปีที่ 6 · แปลงไม่ได้ (เช่น ม.4-6) = ตามที่พิมพ์ (ตัดคำว่า "ชั้น" นำหน้า)
+function syLevelLong(level) {
+  const v = String(level == null ? '' : level).trim().replace(/\s+/g, ' ');
+  const m = /^(?:ชั้น\s*)?([มป])\.?\s*([1-6])$/.exec(v);
+  if (m) return (m[1] === 'ม' ? 'มัธยมศึกษาปีที่ ' : 'ประถมศึกษาปีที่ ') + m[2];
+  return v.replace(/^ชั้น\s*/, '');
+}
+
+// ภาคเรียนปัจจุบัน: พ.ค.–ต.ค. = ภาค 1 · พ.ย.–เม.ย. = ภาค 2 (กติกาเดียวกับ ttCurrentTerm ของตารางสอน — ไม่โหลดโมดูลตารางสอนเพียงเพื่อสูตรนี้)
+function syCurrentTerm(now = new Date()) {
+  const m = now.getMonth() + 1, be = now.getFullYear() + 543;
+  if (m >= 5 && m <= 10) return { semester: '1', year: String(be) };
+  return { semester: '2', year: String(m >= 11 ? be : be - 1) };
+}
+
+// ภาคเรียน/ปีของวิชาที่เปิดสอนล่าสุดจากแม่แบบนี้ — ใช้เป็นค่าเริ่มต้นตอนแก้ที่แม่แบบ (แม่แบบไม่มีภาคเรียนของตัวเอง) · อ่านไม่ได้/ไม่มีวิชา = null
+async function syLatestTerm(templateId) {
+  try {
+    const snap = await db.collection('users').doc(AppState.user.uid).collection('courses').where('templateId', '==', templateId).get();
+    const rank = (s) => ({ '1': 1, '2': 2 }[String(s)] || 0);
+    const list = snap.docs.map(d => d.data()).filter(c => /^\d{4}$/.test(String(c.year || '')) && rank(c.semester))
+      .sort((a, b) => (Number(b.year) - Number(a.year)) || (rank(b.semester) - rank(a.semester)));
+    return list.length ? { semester: String(list[0].semester), year: String(list[0].year) } : null;
+  } catch (e) { return null; }
+}
+
+// รหัสมาตรฐานแบบเทียบกัน: "ว 4.2" = "ว4.2" = "ว. 4.2"
+const syCodeKey = (c) => String(c || '').replace(/[\s.]/g, '');
+
+// ตัวชี้วัดจัดเป็นกลุ่มตามมาตรฐาน (หัวกลุ่ม = รหัส + ข้อความมาตรฐานที่ตรงรหัส) เรียงเลขต่อเนื่องทุกกลุ่ม — รวมจำนวน = จำนวนตัวชี้วัด
+//   แยกรหัสตัวชี้วัด "ว 4.2 ม.1/1" เป็นหัว "ว 4.2" + ส่วนย่อย "ม.1/1" ด้วยกติกาเดียวกับ cdGroupIndicators · มาตรฐานที่ไม่มีตัวชี้วัดก็แสดงเป็นหัวกลุ่มว่าง
+function syOutcomes(desc) {
+  const d = desc || {}, stds = Array.isArray(d.standards) ? d.standards : [], inds = Array.isArray(d.indicators) ? d.indicators : [];
+  const groups = [], at = new Map();
+  const group = (head) => {
+    const key = syCodeKey(head);
+    if (!at.has(key)) {
+      const std = stds.find(r => syCodeKey(r.code) === key);
+      at.set(key, groups.length);
+      groups.push({ head: std ? [std.code, std.text].filter(Boolean).join(' ') : String(head || '').trim(), items: [] });
+    }
+    return groups[at.get(key)];
+  };
+  stds.forEach(r => { if (r.code) group(r.code); else if (r.text) group(r.text); });
+  let n = 0;
+  inds.forEach(r => {
+    const code = String((r && r.code) || '').trim().replace(/\s+/g, ' ');
+    const m = /^(.+?) ((?:[ก-ฮ]{1,3}\.? )?\S*\d\S*\/\S*\d\S*)$/.exec(code);
+    const text = String((r && r.text) || '').trim() || (m ? m[2] : code);
+    if (!text) return;
+    group(m ? m[1] : code).items.push({ n: ++n, text });
+  });
+  return { groups, count: n };
+}
+
+// โมเดลหน้าข้อมูลรายวิชา (ฟังก์ชันล้วน) — m = โมเดลตารางที่คำนวณแล้ว (ใช้ชั่วโมง/หน่วยกิต) · ctx = { profile, term, hoursWeek }
+//   ภาคเรียน/ปี: ctx.term (ที่ครูเลือกตอนแก้ที่แม่แบบ) → วิชาที่เปิดสอน (course.semester/year) · ชั่วโมงต่อภาคเรียน: หน่วยกิต × 40 ถ้ามีหน่วยกิต ไม่งั้นผลรวมชั่วโมงสาระย่อย
+//   ชั่วโมงต่อสัปดาห์: ที่ครูแก้ทับ → ÷ 20 (ไม่อ่านจากตารางสอน: วิชาเดียวสอนหลายห้อง จึงบอกไม่ได้ว่าคาบไหนนับเป็นของเอกสารนี้)
+function syCoverModel(course, desc, m, ctx) {
+  const c = course || {}, dsc = desc || {}, x = ctx || {}, t = x.term || {};
+  const info = docProfileInfo(x.profile);
+  const credit = Number(c.credit);
+  const hoursSem = m.hoursExpected != null ? m.hoursExpected : (m.hoursTotal > 0 ? m.hoursTotal : null);
+  const ovr = Number(syHours(x.hoursWeek)) > 0 ? syHours(x.hoursWeek) : '';
+  const hoursWeek = ovr !== '' ? Number(ovr) : (hoursSem != null ? syRound1(hoursSem / SY_WEEKS) : null);
+  const out = syOutcomes(dsc);
+  return {
+    school: info.school, name: String(c.name || ''), code: String(c.code || ''),
+    credit: credit > 0 ? credit.toFixed(1) : '', area: m.area || info.subjectGroup, // กลุ่มสาระฯ: ที่กรอกในเอกสาร → คำอธิบายรายวิชา → โปรไฟล์ครู
+    semester: String(t.semester || c.semester || ''), year: String(t.year || c.year || ''),
+    teacher: info.name, type: 'วิชา' + m.type, hoursWeek, hoursSem, level: syLevelLong(c.level),
+    descMain: String(dsc.descMain || '').trim(), descPurpose: String(dsc.descPurpose || '').trim(),
+    groups: out.groups, count: out.count,
+  };
+}
+
 // ทำให้เอกสารที่บันทึกไว้ครบทุกช่อง: ตัดช่องว่าง/ความยาว/จำนวน · ทิ้งสาระย่อยที่ว่าง · ทิ้งหน่วยที่ไม่มีเนื้อหา/id ซ้ำ
 //   กลุ่มสาระฯ ที่ไม่เคยบันทึก (ไม่มีฟิลด์ area) → ใช้ค่าจากคำอธิบายรายวิชา (descArea) · เคยบันทึกเป็นค่าว่างแล้ว = ว่างตามนั้น
 function syNormalize(d, descArea) {
@@ -62,7 +144,8 @@ function syNormalize(d, descArea) {
     seen.add(u.id);
     return true;
   });
-  return { area: syStr(d.area != null ? d.area : descArea, SY_MAX.area).trim(), units };
+  const hw = Number(syHours(d.hoursWeek)) > 0 ? syHours(d.hoursWeek) : '';
+  return { area: syStr(d.area != null ? d.area : descArea, SY_MAX.area).trim(), ...(hw ? { hoursWeek: hw } : {}), units }; // hoursWeek เก็บเฉพาะเมื่อครูแก้ทับ (ว่าง = คำนวณจากหน่วยกิต)
 }
 
 // หน่วย/คะแนนจากโครงสร้างคะแนน (ฟังก์ชันล้วน — ทดสอบได้) — items = เอกสารใน assessments · sd = settings/structure
@@ -101,14 +184,17 @@ function syOwner(course) {
 // โหลดทุกอย่างที่ตารางต้องใช้ — โครงสร้างคะแนนอ่านจาก `course` (วิชาที่เปิดสอนมีโครงสร้างของตัวเอง) · syllabus/คำอธิบายอ่านจาก `owner`
 async function syLoad(course, owner = course) {
   const set = courseBaseRef(owner).collection('settings');
-  const [sSnap, dSnap, struct] = await Promise.all([set.doc(SY_DOC_ID).get(), set.doc('description').get(), syLoadStruct(course)]);
+  const [sSnap, dSnap, struct, profile, term] = await Promise.all([
+    set.doc(SY_DOC_ID).get(), set.doc('description').get(), syLoadStruct(course), docGetProfile(),
+    course.isTemplate ? syLatestTerm(course.id) : null, // แม่แบบไม่มีภาคเรียนของตัวเอง → ใช้ของวิชาที่เปิดสอนล่าสุด
+  ]);
   const desc = cdNormalize(dSnap.exists ? dSnap.data() : {}, owner);
   const raw = sSnap.exists ? sSnap.data() : null;
-  return { struct, desc, saved: syNormalize(raw || {}, desc.area), existed: !!raw, savedAt: raw ? raw.updatedAt || null : null };
+  return { struct, desc, profile, term, saved: syNormalize(raw || {}, desc.area), existed: !!raw, savedAt: raw ? raw.updatedAt || null : null };
 }
 
 // โมเดลของตาราง: หัวเอกสาร + แถวหน่วย + ยอดรวม + คำเตือน
-function syModel(course, struct, saved, desc) {
+function syModel(course, struct, saved, desc, ctx) {
   const c = course || {}, dsc = desc || {};
   const s = syNormalize(saved, dsc.area);
   const byId = new Map(s.units.map(u => [u.id, u]));
@@ -127,12 +213,14 @@ function syModel(course, struct, saved, desc) {
   if (!units.length) warnings.push('ยังไม่มีหน่วยการเรียนรู้ในโครงสร้างคะแนน — เพิ่มหน่วยที่แท็บ “โครงสร้างคะแนน” แล้วกลับมากรอกที่นี่');
   if (hoursExpected != null && hoursTotal !== hoursExpected) warnings.push(`ชั่วโมงรวม ${syFmt(hoursTotal)} ไม่เท่ากับ ${syFmt(credit)} หน่วยกิต × ${SY_CREDIT_HOURS} = ${syFmt(hoursExpected)} ชั่วโมง`);
   if (grand !== 100) warnings.push(`คะแนนรวมทั้งสิ้น ${syFmt(grand)} ไม่ครบ 100 (แก้ที่แท็บ “โครงสร้างคะแนน”)`);
-  return {
+  const m = {
     code: String(c.code || ''), name: String(c.name || ''), level: String(c.level || ''), credit: String(c.credit == null ? '' : c.credit),
     type: CD_TYPES.includes(dsc.type) ? dsc.type : CD_TYPES[0], area: s.area,
     units, outside: struct.outside, collect: struct.collect, midterm: struct.midterm, final: struct.final, grand,
     ratio: [syRound1(struct.collect + struct.midterm), struct.final], hoursTotal, hoursExpected, warnings,
   };
+  m.cover = syCoverModel(c, dsc, m, { ...(ctx || {}), hoursWeek: (ctx && ctx.hoursWeek != null) ? ctx.hoursWeek : s.hoursWeek });
+  return m;
 }
 
 // ---------------------------------------------------------------- สถานะการบันทึก
@@ -208,14 +296,59 @@ const SY1_CSS = `
 .sy1 .sy-tt{padding:.1em .3em;overflow-wrap:anywhere}
 .sy1 .sy-th{padding:.1em .3em;text-align:center;border-left:.75pt solid #aaa}
 .sy1 tr.sy-sum td{font-weight:700;text-align:center}
+.sy1 section+section{break-before:page;page-break-before:always}
+.sy1 .sy-ct{text-align:center;font-size:18pt;line-height:1.4;overflow-wrap:anywhere}
+.sy1 .sy-rule{border-top:.75pt solid #000;margin:.4em 0 .5em}
+.sy1 .sy-f{margin:.15em 0;overflow-wrap:anywhere}
+.sy1 .sy-gap{display:inline-block;width:2.5em}
+.sy1 .sy-h{font-weight:700;margin:.55em 0 .2em;break-after:avoid;page-break-after:avoid}
+.sy1 .sy-p{text-indent:2.5em;text-align:justify;margin:.15em 0;overflow-wrap:anywhere}
+.sy1 .sy-sg{text-indent:2.5em;margin:.45em 0 .1em;break-after:avoid;page-break-after:avoid;overflow-wrap:anywhere}
+.sy1 .sy-oi{text-indent:2.5em;margin:.1em 0;overflow-wrap:anywhere}
+.sy1 .sy-oi.sy-tot{text-indent:0;margin-top:.15em}
 `;
 
 // ข้อความหลายบรรทัด (ช่องมาตรฐาน/ตัวชี้วัด) → <br>
 const syLines = (t) => String(t || '').split(/\r?\n/).map(escapeHtml).join('<br>');
 
-// เนื้อกระดาษ (<section>) — หัวเรื่อง · ชื่อวิชา/รหัส/กลุ่มสาระ · ชั้น/เวลา/หน่วยกิต · ตารางหน่วยการเรียนรู้ · สรุปอัตราส่วนและยอดรวม
+// ข้อความหลายย่อหน้า (คั่นด้วยบรรทัดว่าง) → <div class="sy-p"> ต่อย่อหน้า · ขึ้นบรรทัดเดี่ยว = <br>
+const syParas = (t) => String(t || '').split(/\r?\n\s*\r?\n/).map(x => x.trim()).filter(Boolean).map(x => `<div class="sy-p">${syLines(x)}</div>`).join('');
+
+// หน้าแรก (<section>) ตามแบบ "หลักสูตรรายวิชา (Course Syllabus)": หัวเรื่อง+โรงเรียน → เส้น → ข้อ 1–10 → เส้น → 11. คำอธิบายรายวิชา → ผลการเรียนรู้/ตัวชี้วัด → รวม N
+//   ทุกบล็อกเป็นลูกตรงของ <section> เพื่อให้ docPaginate ตัดหน้าได้ · ช่องที่ยังว่างแสดงจุดไข่ปลา
+function syCoverSectionHtml(m) {
+  const cv = m.cover, e = escapeHtml, dots = n => '…'.repeat(n), f = syFmt;
+  const v = (x, n) => e(x) || dots(n);
+  const area = cv.area.replace(/^กลุ่มสาระการเรียนรู้\s*/, '').trim();
+  const row = (label, val) => `<div class="sy-f">${label} ${val}</div>`;
+  const outcomes = cv.groups.map(g => (g.head ? `<div class="sy-sg">${e(g.head)}</div>` : '') + g.items.map(i => `<div class="sy-oi">${i.n}. ${e(i.text)}</div>`).join('')).join('');
+  return `<section class="pg-port">
+  <div class="sy-ct">หลักสูตรรายวิชา (Course Syllabus)</div>
+  <div class="sy-ct">${v(cv.school, 20)}</div>
+  <div class="sy-rule"></div>
+  ${row('1. ชื่อวิชา', v(cv.name, 20))}
+  ${row('2. รหัสวิชา', v(cv.code, 6))}
+  ${row('3. จำนวนหน่วยกิต', cv.credit ? e(cv.credit) : dots(3))}
+  ${row('4. กลุ่มสาระการเรียนรู้', v(area, 12))}
+  ${row('5. ภาคเรียนที่', v(cv.semester, 1))}
+  ${row('6. ปีการศึกษา', v(cv.year, 4))}
+  ${row('7. ชื่อผู้สอน', v(cv.teacher, 14))}
+  ${row('8. ประเภทวิชา', e(cv.type.replace(/^วิชา/, '') ? cv.type : ''))}
+  ${row('9. จำนวนชั่วโมง', `${cv.hoursWeek != null ? f(cv.hoursWeek) : dots(2)} ชั่วโมง / สัปดาห์<span class="sy-gap"></span>${cv.hoursSem != null ? f(cv.hoursSem) : dots(2)} ชั่วโมง / ภาคเรียน`)}
+  ${row('10. ระดับชั้น', v(cv.level, 12))}
+  <div class="sy-rule"></div>
+  <div class="sy-h">11. คำอธิบายรายวิชา</div>
+  ${syParas(cv.descMain) || `<div class="sy-p">${dots(40)}</div>`}
+  ${syParas(cv.descPurpose)}
+  <div class="sy-h">ผลการเรียนรู้ /ตัวชี้วัด</div>
+  ${outcomes}
+  <div class="sy-oi sy-tot">รวม ${cv.count ? cv.count : dots(2)} ผลการเรียนรู้/ตัวชี้วัด</div>
+</section>`;
+}
+
+// เนื้อกระดาษหน้าตาราง (<section>) — หัวเรื่อง · ชื่อวิชา/รหัส/กลุ่มสาระ · ชั้น/เวลา/หน่วยกิต · ตารางหน่วยการเรียนรู้ · สรุปอัตราส่วนและยอดรวม
 //   ช่องที่ยังว่างแสดงจุดไข่ปลา เหมือนฟอร์มราชการที่รอกรอก
-function sySheetBodyHtml(m) {
+function syTableSectionHtml(m) {
   const e = escapeHtml, dots = n => '…'.repeat(n), f = syFmt;
   const area = m.area.replace(/^กลุ่มสาระการเรียนรู้\s*/, '').trim(); // กันพิมพ์คำนำมาซ้ำกับที่กระดาษใส่ให้
   const hours = m.hoursTotal > 0 ? f(m.hoursTotal) : (m.hoursExpected != null ? f(m.hoursExpected) : '');
@@ -243,11 +376,14 @@ function sySheetBodyHtml(m) {
 </section>`;
 }
 
-function syDocTitle(c) { return ['โครงสร้างรายวิชา', c.code, c.name].filter(Boolean).join(' '); }
+// เนื้อกระดาษทั้งเอกสาร: หน้าข้อมูลรายวิชา (ตามรูปแบบหลักสูตร) ตามด้วยตารางหน่วยการเรียนรู้ — แต่ละส่วนขึ้นหน้าใหม่
+function sySheetBodyHtml(m) { return syCoverSectionHtml(m) + '\n' + syTableSectionHtml(m); }
+
+function syDocTitle(c) { return ['Course Syllabus', c.code, c.name].filter(Boolean).join(' '); }
 
 // พิมพ์ / บันทึกเป็น PDF ผ่านหน้าต่างใหม่ (docPrintWindow ต้องถูกเรียกจากการคลิกโดยตรง)
 function syPrint(m) {
-  return docPrintWindow({ title: syDocTitle(m), css: SY1_CSS, page: SY_PAGE, html: `<div class="sy1">${sySheetBodyHtml(m)}</div>` });
+  return docPrintWindow({ title: syDocTitle(m), css: SY1_CSS, page: SY_PAGE, html: `<div class="sy1">${sySheetBodyHtml(m)}</div>` }); // m มีหน้าข้อมูลรายวิชา (m.cover) อยู่แล้ว
 }
 
 // พิมพ์จากหน้าวิชาที่เปิดสอน (js/courses.js) — window.open ต้องมาก่อน await จึงส่ง html เป็นฟังก์ชัน (docPrintWindow เปิดหน้าต่างก่อนแล้วค่อยเรียก) · โหลดข้อมูลหลังคลิกได้
@@ -256,7 +392,7 @@ function syPrintCourse(course) {
     title: syDocTitle(course), css: SY1_CSS, page: SY_PAGE,
     html: async () => {
       const d = await syLoad(course, syOwner(course));
-      return `<div class="sy1">${sySheetBodyHtml(syModel(course, d.struct, d.saved, d.desc))}</div>`;
+      return `<div class="sy1">${sySheetBodyHtml(syModel(course, d.struct, d.saved, d.desc, { profile: d.profile }))}</div>`; // ภาคเรียน/ปีมาจากวิชาที่เปิดสอนเอง
     },
   });
 }
@@ -279,7 +415,7 @@ function syShowPreview(container, m, fromDraft, onEdit) {
   const body = sySheetBodyHtml(m);
   docRenderSheets(SY_PREVIEW_SYS, 'syllprev', container, null, { // ไม่รอ — แถบแสดงไปก่อน กระดาษตามมา
     html: () => docSheetsHtml(SY1_CSS, `<div class="sy1">${body}</div>`),
-    specs: SY_SHEET, bodyClass: 'sy1', keep: '.sy-title', kindOf: () => 'port',
+    specs: SY_SHEET, bodyClass: 'sy1', keep: '.sy-title, .sy-h, .sy-sg', kindOf: () => 'port',
   }).catch(err => console.error('syShowPreview:', err));
 }
 
@@ -318,6 +454,25 @@ function syUnitHtml(u, choices) {
   </div>`;
 }
 
+// ข้อมูลรายวิชา ข้อ 1–10 ของหน้าแรก (อ่านอย่างเดียว ดึงอัตโนมัติ) — วาดใหม่ทุกครั้งที่ค่าในฟอร์มเปลี่ยน
+function syCoverGridHtml(m) {
+  const cv = m.cover, num = (x) => (x == null ? '' : syFmt(x));
+  return docProfileGridHtml([
+    ['โรงเรียน', cv.school], ['1 ชื่อวิชา', cv.name], ['2 รหัสวิชา', cv.code], ['3 หน่วยกิต', cv.credit], ['4 กลุ่มสาระฯ', cv.area],
+    ['5 ภาคเรียนที่', cv.semester], ['6 ปีการศึกษา', cv.year], ['7 ผู้สอน', cv.teacher], ['8 ประเภทวิชา', cv.type],
+    ['9 ชั่วโมง/สัปดาห์', num(cv.hoursWeek)], ['9 ชั่วโมง/ภาคเรียน', num(cv.hoursSem)], ['10 ระดับชั้น', cv.level],
+    ['11 คำอธิบายรายวิชา', cv.descMain ? 'กรอกแล้ว' : ''], ['ผลการเรียนรู้/ตัวชี้วัด', cv.count ? cv.count + ' ข้อ' : ''],
+  ], { auto: true });
+}
+// รายการที่ยังขาดในหน้าแรก (บอกที่แก้) — ไม่ขวางการบันทึก แค่เตือน
+function syCoverGaps(m) {
+  const cv = m.cover, gaps = [];
+  if (!cv.school || !cv.teacher) gaps.push('ชื่อโรงเรียน/ชื่อผู้สอน ยังไม่ครบ — กรอกที่หน้าข้อมูลส่วนตัว');
+  if (!cv.level || !cv.credit || !cv.code) gaps.push('รหัสวิชา/ระดับชั้น/หน่วยกิต ยังไม่ครบ — แก้ที่ปุ่ม “แก้ไขข้อมูลวิชา”');
+  if (!cv.descMain || !cv.count) gaps.push('คำอธิบายรายวิชา/ตัวชี้วัด ยังไม่ครบ — กรอกที่แท็บ “คำอธิบายรายวิชา”');
+  return gaps;
+}
+
 // สรุปตัวเลขเป็นการ์ดเล็กชุดเดียวกับข้อมูลในฟอร์มเอกสารอื่น (docProfileGridHtml) · คำเตือนอยู่ใต้การ์ด
 function syCheckHtml(m) {
   return docProfileGridHtml([
@@ -337,14 +492,14 @@ function syCollect(form) {
   }));
   const inStruct = new Set(SY.struct.units.map(u => u.id));
   const orphans = ((SY.saved && SY.saved.units) || []).filter(u => !inStruct.has(u.id));
-  return syNormalize({ area: form.querySelector('#sy-area').value, units: [...live, ...orphans] }, '');
+  return syNormalize({ area: form.querySelector('#sy-area').value, hoursWeek: form.querySelector('#sy-hw').value, units: [...live, ...orphans] }, '');
 }
 
 function syCurrent() { return SY.draft || SY.saved; }
 
 function syShowForm(container) {
   const data = syCurrent(), c = SY.course;
-  const m = syModel(c, SY.struct, data, SY.desc);
+  const m = syModel(c, SY.struct, data, SY.desc, syCtx());
   const choices = syIndicatorChoices(SY.desc);
   container.innerHTML = `
   <div class="u-note u-mb-12">กรอกโครงสร้างรายวิชาตามแบบของหลักสูตร — ข้อมูลเก็บไว้กับแม่แบบวิชานี้ และแสดงในหน้ารายวิชาของทุกเทอมที่เปิดสอนวิชานี้ · ชื่อหน่วย น้ำหนักคะแนน กลางภาค/ปลายภาค มาจากแท็บ “โครงสร้างคะแนน” (<a href="#" id="sy-goto-score">ไปแท็บโครงสร้างคะแนน</a>) · เวลารวมบวกจากชั่วโมงของสาระย่อย · ดูหน้ากระดาษก่อนพิมพ์ได้ที่แท็บ “ตัวอย่าง Course Syllabus” แต่ตัวอย่างไม่ได้บันทึกให้ — กดบันทึกทุกครั้ง</div>
@@ -361,8 +516,14 @@ function syShowForm(container) {
 
     <section class="doc-section">
       <h2 class="doc-sec-title">ส่วนที่ 1  ข้อมูลรายวิชา</h2>
-      ${docProfileGridHtml([['รหัสวิชา', c.code], ['ชื่อวิชา', c.name], ['ระดับชั้น', c.level], ['หน่วยกิต', c.credit], ['ประเภทวิชา', m.type]], { auto: true })}
-      ${docProfileNoteHtml('ดึงจากข้อมูลวิชาและคำอธิบายรายวิชา — แก้ที่นี่ไม่ได้', 'sy-edit-info', 'แก้ไขข้อมูลวิชา')}
+      <div id="sy-cover-grid">${syCoverGridHtml(m)}</div>
+      <div class="sy-cover-edit">
+        <div class="field"><label for="sy-sem">ภาคเรียนที่ (ใช้พิมพ์)</label><select id="sy-sem" class="input-sm"><option value="1"${SY.term && SY.term.semester === '1' ? ' selected' : ''}>1</option><option value="2"${SY.term && SY.term.semester === '2' ? ' selected' : ''}>2</option></select></div>
+        <div class="field"><label for="sy-year">ปีการศึกษา (พ.ศ.)</label><input id="sy-year" class="input-sm" type="text" inputmode="numeric" maxlength="4" value="${escapeHtml((SY.term && SY.term.year) || '')}"></div>
+        <div class="field"><label for="sy-hw">ชั่วโมง / สัปดาห์</label><input id="sy-hw" class="input-sm" type="text" inputmode="decimal" maxlength="${SY_MAX.hours}" placeholder="ว่าง = หน่วยกิต × 40 ÷ ${SY_WEEKS}" value="${escapeHtml(data.hoursWeek || '')}"></div>
+      </div>
+      <div id="sy-cover-gaps">${syCoverGaps(m).map(g => `<div class="sy-gap-note" role="status">${escapeHtml(g)}</div>`).join('')}</div>
+      ${docProfileNoteHtml('ข้อมูลดึงอัตโนมัติจากข้อมูลส่วนตัว แม่แบบวิชา และคำอธิบายรายวิชา — ภาคเรียน/ปีเป็นค่าตั้งต้นจากวิชาที่เปิดสอนล่าสุด ไม่ได้ถูกบันทึก', 'sy-edit-info', 'แก้ไขข้อมูลวิชา')}
     </section>
 
     <section class="doc-section">
@@ -380,11 +541,22 @@ function syShowForm(container) {
   const form = container.querySelector('#sy-form');
   const unitEls = [...form.querySelectorAll('.sy-unit')];
   const recheck = () => {
-    const mm = syModel(c, SY.struct, syCollect(form), SY.desc);
+    const mm = syModel(c, SY.struct, syCollect(form), SY.desc, syCtx());
     form.querySelector('#sy-check').innerHTML = syCheckHtml(mm);
+    form.querySelector('#sy-cover-grid').innerHTML = syCoverGridHtml(mm);
+    form.querySelector('#sy-cover-gaps').innerHTML = syCoverGaps(mm).map(g => `<div class="sy-gap-note" role="status">${escapeHtml(g)}</div>`).join('');
     mm.units.forEach((u, i) => { if (unitEls[i]) unitEls[i].querySelector('.sy-unit-s').textContent = syUnitStatus(u); }); // ป้ายสถานะต่อหน่วยอัปเดตสด
   };
-  const touch = () => { _syDirty = true; recheck(); syRefreshStatus(container); };
+  const readTerm = () => { // ภาคเรียน/ปีที่ใช้พิมพ์ — ค่าชั่วคราวของหน้านี้ ไม่ถือว่าแก้เอกสาร (ไม่ตั้งธงยังไม่บันทึก)
+    const yr = form.querySelector('#sy-year').value.trim();
+    SY.term = { semester: form.querySelector('#sy-sem').value, year: /^\d{4}$/.test(yr) ? yr : '' };
+    SY.termPicked = true;
+    recheck();
+  };
+  const touch = (e) => {
+    if (e && e.target && (e.target.id === 'sy-sem' || e.target.id === 'sy-year')) return readTerm();
+    _syDirty = true; recheck(); syRefreshStatus(container);
+  };
   syRefreshStatus(container);
   form.addEventListener('input', touch);
   form.addEventListener('change', touch);
@@ -431,6 +603,7 @@ function syShowForm(container) {
 //   คืน false เมื่อโหลดไม่ได้ (แสดงข้อความแทนในกล่อง) หรือผู้ใช้ออกจากแท็บไปแล้ว
 async function syEnsure(container, course) {
   if (SY.id === course.id && _syDirty && SY.draft) { SY.course = course; return true; } // ใช้ร่างเดิมต่อ แต่ข้อมูลวิชาเอาล่าสุด (เพิ่งแก้ระดับชั้น/หน่วยกิตได้)
+  const keepTerm = SY.id === course.id && SY.termPicked ? SY.term : null; // ภาคเรียน/ปีที่ครูเลือกเอง (ไม่ถูกบันทึก) ต้องอยู่ข้ามการสลับแท็บ/โหลดใหม่ ตราบที่ยังเป็นวิชาเดิม
   syDiscard();
   let data;
   try { data = await syLoad(course, course); }
@@ -440,7 +613,7 @@ async function syEnsure(container, course) {
     return false;
   }
   if (!container.isConnected) return false; // ผู้ใช้สลับแท็บ/ออกจากหน้าไปแล้ว
-  Object.assign(SY, { id: course.id, course, struct: data.struct, desc: data.desc, saved: data.saved, draft: null, existed: data.existed, savedAt: data.savedAt });
+  Object.assign(SY, { id: course.id, course, struct: data.struct, desc: data.desc, profile: data.profile, term: keepTerm || data.term || syCurrentTerm(), termPicked: !!keepTerm, saved: data.saved, draft: null, existed: data.existed, savedAt: data.savedAt });
   return true;
 }
 
@@ -457,5 +630,5 @@ async function renderSyllabusPreviewTab(container, course, onEdit) {
   showLoading('cat-sm', container);
   if (!(await syEnsure(container, course))) return;
   const fromDraft = !!(SY.draft && _syDirty);
-  syShowPreview(container, syModel(course, SY.struct, syCurrent(), SY.desc), fromDraft, onEdit);
+  syShowPreview(container, syModel(course, SY.struct, syCurrent(), SY.desc, syCtx()), fromDraft, onEdit);
 }

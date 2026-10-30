@@ -2686,7 +2686,11 @@ td.doc-ai-target::before { inset: 0; }
 .sy-status.is-dirty { color: var(--warning); font-weight: 600; }
 .sy-t-hours[aria-invalid="true"] { border-color: var(--danger); background: var(--danger-tint); }
 .sy-warn { margin-top: 8px; padding: 8px 12px; border-radius: var(--radius-s); font-size: 13.5px; line-height: 1.6; background: var(--warning-tint); color: var(--warning); }
+.sy-cover-edit { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 12px; }
+.sy-cover-edit .field { margin-bottom: 0; }
+.sy-gap-note { margin-top: 8px; padding: 8px 12px; border-radius: var(--radius-s); font-size: 13.5px; line-height: 1.6; background: var(--surface); color: var(--ink-soft); border: 1px dashed var(--border); }
 @media (max-width: 540px) {
   .sy-topics { --doc-cols: minmax(0, 1fr) 64px 44px; }
+  .sy-cover-edit { grid-template-columns: 1fr; }
 }
 /* @endbundle */
