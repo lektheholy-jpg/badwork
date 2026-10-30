@@ -131,6 +131,16 @@ const DESC = { type: 'พื้นฐาน', area: 'วิทยาศาสต
   ok(!doc.querySelector('[rowspan]'), 'ไม่ใช้ rowspan (docPaginate ตัดตารางทีละแถว)');
   const r1 = urows[0];
   ok(norm(r1.children[0].textContent) === '1' && norm(r1.children[1].textContent) === unitNames[0] && norm(r1.children[2].textContent) === 'ว4.2 / ม.2/4' && norm(r1.children[4].textContent) === '10', 'แถวหน่วย 1: เลขหน่วย · ชื่อ · มาตรฐาน · น้ำหนัก 10');
+  { // ชื่อหน่วยไม่ซ้ำคำนำ "หน่วยการเรียนรู้ที่ N" ที่ซ้ำกับคอลัมน์ "หน่วยที่" · เส้นแบ่งสาระ|เวลาเต็มความสูงเซลล์ · ช่องสาระยาวได้ไม่ถูกตัด
+    const ut = R('syUnitTitle');
+    ok(ut('หน่วยการเรียนรู้ที่ 1 แนวคิดเชิงคำนวณกับการแก้ปัญหา (Computational Thinking)', 1) === 'แนวคิดเชิงคำนวณกับการแก้ปัญหา (Computational Thinking)', 'ชื่อหน่วย: ตัดคำนำ \"หน่วยการเรียนรู้ที่ 1\" ที่ซ้ำกับคอลัมน์หน่วยที่');
+    ok(ut('หน่วยที่ ๒: ข้อมูลและสารสนเทศ', 2) === 'ข้อมูลและสารสนเทศ' && ut('หน่วยการเรียนรู้ที่ 3 - อัลกอริทึม', 3) === 'อัลกอริทึม', 'ชื่อหน่วย: ตัดได้ทั้งเลขไทย · \"หน่วยที่\" · เครื่องหมายคั่น (: -)');
+    ok(ut('หน่วยการเรียนรู้ที่ 3 อัลกอริทึม', 1) === 'หน่วยการเรียนรู้ที่ 3 อัลกอริทึม' && ut('หน่วยการเรียนรู้ที่ 1', 1) === 'หน่วยการเรียนรู้ที่ 1' && ut('ข้อมูลและสารสนเทศ', 2) === 'ข้อมูลและสารสนเทศ', 'ชื่อหน่วย: เลขไม่ตรงลำดับ · มีแต่คำนำ · ไม่มีคำนำ = คงเดิม (ไม่ซ่อนความผิดพลาด)');
+    const css = R('SY1_CSS');
+    ok(/td\.sy-tc::after\{[^}]*position:absolute[^}]*top:0[^}]*bottom:0[^}]*border-left/.test(css) && !/\.sy-th\{[^}]*border-left/.test(css), 'เส้นแบ่งสาระ|เวลา: เส้นเดียวสูงเต็มเซลล์ (::after) ไม่ใช่ border ของกริดซ้อนที่สูงแค่เนื้อหา');
+    const nz = R('syNormalize')({ units: [{ id: 'a', topics: [{ title: 'บรรทัดแรก\n  บรรทัดสอง', hours: '1' }, { title: 'ก'.repeat(300), hours: '1' }, { title: 'ข'.repeat(500), hours: '1' }] }] }, '').units[0].topics;
+    ok(nz[0].title === 'บรรทัดแรก บรรทัดสอง' && nz[1].title.length === 300 && nz[2].title.length === R('SY_MAX.title'), 'ช่องสาระ: ขึ้นบรรทัดใหม่ → ช่องว่าง · ยาว 300 ตัวไม่ถูกตัด · เพดานเดิม 150 ขยายแล้ว');
+  }
   const topics1 = [...r1.querySelectorAll('.sy-tr')].map(e => [norm(e.querySelector('.sy-tt').textContent), norm(e.querySelector('.sy-th').textContent)]);
   ok(J(topics1) === J([['1.1 ถูกต้อง ปลอดภัย ใช่เลย', '1'], ['1.2 สิทธิ์ของเรา', '1']]), 'สาระย่อยเลขนำ 1.1 · 1.2 พร้อมชั่วโมง');
   ok([...urows[4].querySelectorAll('.sy-tt')].map(e => norm(e.textContent))[2] === '5.3 ฟังก์ชันที่มีพารามิเตอร์' && urows[4].querySelectorAll('.sy-tr').length === 4, 'หน่วย 5 มี 4 สาระย่อย (5.1–5.4)');
@@ -282,6 +292,7 @@ const DESC = { type: 'พื้นฐาน', area: 'วิทยาศาสต
 
   // เพิ่ม/ลบสาระย่อย + สรุปสด
   u1.querySelector('.sy-t-add').click();
+  ok(u1.querySelector('.sy-t-title').tagName === 'TEXTAREA', 'ช่องสาระการเรียนรู้เป็น textarea (ข้อความยาวขึ้นบรรทัดใหม่ ไม่ใช่ช่องบรรทัดเดียว)');
   ok(u1.querySelectorAll('.sy-trow').length === 3, 'เพิ่มสาระย่อย: แถวใหม่');
   const nr = u1.querySelectorAll('.sy-trow')[2];
   nr.querySelector('.sy-t-title').value = 'เรื่องใหม่';

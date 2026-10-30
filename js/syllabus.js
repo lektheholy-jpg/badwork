@@ -17,7 +17,7 @@
 // ==========================================================================
 
 const SY_DOC_ID = 'syllabus';   // settings/syllabus
-const SY_MAX = { area: 80, std: 200, title: 150, hours: 5, topics: 12, units: 40 };
+const SY_MAX = { area: 80, std: 200, title: 400, hours: 5, topics: 12, units: 40 };
 const SY_CREDIT_HOURS = 40;     // 1 หน่วยกิต = 40 ชั่วโมง (0.5 = 20 · 1.5 = 60)
 const SY_COLS = [8, 18, 15, 36, 11, 12]; // ความกว้างคอลัมน์ (%) หน่วยที่ · ชื่อหน่วย · มาตรฐาน · สาระ · เวลา · น้ำหนัก
 const SY_SAVE_LABEL = 'บันทึกโครงสร้างรายวิชา';
@@ -34,6 +34,13 @@ const syCtx = () => ({ profile: SY.profile, term: SY.term });
 function syStashDraft() {
   const form = document.getElementById('sy-form');
   if (form && _syDirty) SY.draft = syCollect(form);
+}
+
+// ช่องสาระการเรียนรู้ขยายสูงตามข้อความ — เนื้อหายาวขึ้นบรรทัดใหม่ให้เห็นครบ ไม่ต้องเลื่อนอ่านในช่องบรรทัดเดียว (แท็บที่ซ่อนอยู่วัดความสูงไม่ได้ → ข้าม แล้ววัดใหม่เมื่อมองเห็น)
+function syGrow(ta) {
+  if (!ta || !ta.offsetParent) return;
+  ta.setAttribute('style', '--grow-h:auto'); // ส่งเป็นตัวแปร --grow-h อย่างเดียว (ไม่เขียนความสูงลงสไตล์ตรง ๆ) — กฎความสูงอยู่ใน .sy-t-title ใน CSS
+  ta.setAttribute('style', `--grow-h:${ta.scrollHeight + 2}px`);
 }
 
 const syStr = (v, n) => String(v == null ? '' : v).slice(0, n);
@@ -143,7 +150,7 @@ function syNormalize(d, descArea) {
     id: syStr(u && u.id, 80),
     standard: syStr(u && u.standard, SY_MAX.std).trim(),
     topics: (Array.isArray(u && u.topics) ? u.topics : []).slice(0, SY_MAX.topics)
-      .map(t => ({ title: syStr(t && t.title, SY_MAX.title).trim(), hours: syHours(t && t.hours) }))
+      .map(t => ({ title: syStr(t && t.title, SY_MAX.title).replace(/\s*[\r\n]+\s*/g, ' ').trim(), hours: syHours(t && t.hours) }))
       .filter(t => t.title || t.hours),
   })).filter(u => {
     if (!u.id || seen.has(u.id) || !(u.standard || u.topics.length)) return false;
@@ -200,6 +207,16 @@ async function syLoad(course, owner = course) {
 }
 
 // โมเดลของตาราง: หัวเอกสาร + แถวหน่วย + ยอดรวม + คำเตือน
+// ชื่อหน่วยที่ครูตั้งมักขึ้นต้นว่า "หน่วยการเรียนรู้ที่ 1 …" ซึ่งซ้ำกับคอลัมน์ "หน่วยที่" → ตัดคำนำออกเมื่อเลขตรงกับลำดับหน่วย (เลขไม่ตรง/ไม่มีชื่อต่อท้าย = คงเดิม ไม่ซ่อนความผิดพลาด)
+function syUnitTitle(name, n) {
+  const raw = String(name == null ? '' : name).trim();
+  const m = /^หน่วย(?:การเรียนรู้)?(?:ที่)?\s*([0-9๐-๙]+)\s*[:：.)\-–—]*\s*/.exec(raw);
+  if (!m) return raw;
+  const num = Number(m[1].replace(/[๐-๙]/g, c => String(c.charCodeAt(0) - 0x0E50)));
+  const rest = raw.slice(m[0].length).trim();
+  return num === n && rest ? rest : raw;
+}
+
 function syModel(course, struct, saved, desc, ctx) {
   const c = course || {}, dsc = desc || {};
   const s = syNormalize(saved, dsc.area);
@@ -207,7 +224,7 @@ function syModel(course, struct, saved, desc, ctx) {
   const units = struct.units.map((u, i) => {
     const sv = byId.get(u.id) || { standard: '', topics: [] };
     return {
-      n: i + 1, id: u.id, name: u.name.trim() || `หน่วยที่ ${i + 1}`, standard: sv.standard, topics: sv.topics,
+      n: i + 1, id: u.id, name: syUnitTitle(u.name, i + 1) || `หน่วยที่ ${i + 1}`, standard: sv.standard, topics: sv.topics,
       hours: syRound1(sv.topics.reduce((a, t) => a + (Number(t.hours) || 0), 0)), weight: u.weight,
     };
   });
@@ -296,11 +313,12 @@ const SY1_CSS = `
 .sy1 th{font-weight:700;text-align:center}
 .sy1 tr{break-inside:avoid;page-break-inside:avoid}
 .sy1 td.sy-c{text-align:center}
-.sy1 td.sy-tc{padding:0;vertical-align:top}
+.sy1 td.sy-tc{padding:0;vertical-align:top;position:relative}
+.sy1 td.sy-tc::after{content:"";position:absolute;top:0;bottom:0;left:${SY_TG}%;border-left:.75pt solid #aaa;pointer-events:none}
 .sy1 .sy-tr{display:grid;grid-template-columns:${SY_TG}% ${(100 - SY_TG).toFixed(3)}%}
 .sy1 .sy-tr+.sy-tr{border-top:.75pt solid #555}
 .sy1 .sy-tt{padding:.1em .3em;overflow-wrap:anywhere}
-.sy1 .sy-th{padding:.1em .3em;text-align:center;border-left:.75pt solid #aaa}
+.sy1 .sy-th{padding:.1em .3em;text-align:center}
 .sy1 tr.sy-sum td{font-weight:700;text-align:center}
 .sy1 section+section{break-before:page;page-break-before:always}
 .sy1 .sy-ct{text-align:center;font-size:18pt;line-height:1.4;overflow-wrap:anywhere}
@@ -428,7 +446,7 @@ function syShowPreview(container, m, fromDraft, onEdit) {
 // ---------------------------------------------------------------- ฟอร์ม (มุมมองแก้ไข)
 function syTopicRowHtml(t = {}) {
   return `<div class="doc-lrow sy-trow">
-    <input class="input-sm sy-t-title" type="text" maxlength="${SY_MAX.title}" placeholder="เช่น ถูกต้อง ปลอดภัย ใช่เลย (เลข 1.1, 1.2 ใส่ให้เอง)" value="${escapeHtml(t.title || '')}" aria-label="ชื่อสาระการเรียนรู้ย่อย">
+    <textarea class="input-sm sy-t-title" rows="1" maxlength="${SY_MAX.title}" placeholder="เช่น ถูกต้อง ปลอดภัย ใช่เลย (เลข 1.1, 1.2 ใส่ให้เอง)" aria-label="ชื่อสาระการเรียนรู้ย่อย">${escapeHtml(t.title || '')}</textarea>
     <input class="input-sm sy-t-hours" type="text" inputmode="decimal" maxlength="${SY_MAX.hours}" placeholder="ชม." value="${escapeHtml(t.hours || '')}" aria-label="เวลา (ชั่วโมง)">
     <button type="button" class="btn btn-danger-ghost btn-sm doc-l-del sy-t-del" title="ลบแถว" aria-label="ลบแถว">${DOC_ICO_DEL}</button>
   </div>`;
@@ -608,6 +626,13 @@ function syShowForm(container) {
   syRefreshStatus(container);
   form.addEventListener('input', touch);
   form.addEventListener('change', touch);
+  const growAll = () => form.querySelectorAll('.sy-t-title').forEach(syGrow);
+  form.addEventListener('input', (e) => { if (e.target.classList && e.target.classList.contains('sy-t-title')) syGrow(e.target); });
+  growAll();
+  if (typeof ResizeObserver === 'function') { // เปิดแท็บที่ซ่อนอยู่ / ย่อ-ขยายหน้าจอ → ความกว้างเปลี่ยน บรรทัดตัดใหม่ → วัดความสูงอีกครั้ง
+    let lastW = 0;
+    new ResizeObserver(() => { const w = form.clientWidth; if (w !== lastW) { lastW = w; growAll(); } }).observe(form);
+  }
 
   form.addEventListener('click', (e) => {
     const add = e.target.closest('.sy-t-add'), del = e.target.closest('.sy-t-del');
@@ -615,7 +640,7 @@ function syShowForm(container) {
       const box = add.closest('.sy-unit').querySelector('.sy-trows');
       if (box.children.length >= SY_MAX.topics) { showToast(`เพิ่มสาระย่อยได้สูงสุด ${SY_MAX.topics} รายการต่อหน่วย`); return; }
       box.insertAdjacentHTML('beforeend', syTopicRowHtml());
-      box.lastElementChild.querySelector('input').focus();
+      box.lastElementChild.querySelector('.sy-t-title').focus();
       touch();
     } else if (del) { del.closest('.sy-trow').remove(); touch(); }
   });

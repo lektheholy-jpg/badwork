@@ -2692,6 +2692,8 @@ td.doc-ai-target::before { inset: 0; }
 .sy-pick-n { font-size: 13px; color: var(--ink-soft); }
 .sy-topics { --doc-cols: minmax(0, 1fr) 80px 44px; margin-top: 6px; }
 .sy-topics .doc-lhead span:nth-child(2) { text-align: center; }
+.sy-topics .doc-lrow { align-items: start; }
+.sy-t-title { display: block; width: 100%; height: var(--grow-h, auto); min-height: 40px; resize: none; overflow: hidden; line-height: 1.5; }
 .sy-status { align-self: center; font-size: 13px; color: var(--ink-soft); }
 .sy-status.is-dirty { color: var(--warning); font-weight: 600; }
 .sy-t-hours[aria-invalid="true"] { border-color: var(--danger); background: var(--danger-tint); }
