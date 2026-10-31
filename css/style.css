@@ -2677,9 +2677,14 @@ td.doc-ai-target::before { inset: 0; }
 .sy-unit-name { font-weight: 600; overflow-wrap: anywhere; }
 .sy-unit-s { font-size: 12.5px; font-weight: 400; color: var(--ink-soft); }
 .sy-unit-w { margin-left: auto; font-size: 13px; font-weight: 400; color: var(--ink-soft); white-space: nowrap; }
-.sy-unit .field > label, .sy-ind .field > label { display: block; font-size: 13px; font-weight: 600; color: var(--ink-soft); }
-.sy-unit .sy-std, .sy-ind .sy-core, .sy-ind .sy-kw { display: block; width: 100%; margin-top: 4px; resize: vertical; }
+.sy-unit .field > label, .sy-ind .field > label, .sy-pl .field > label { display: block; font-size: 13px; font-weight: 600; color: var(--ink-soft); }
+.sy-unit .sy-std, .sy-ind .sy-core, .sy-ind .sy-kw, .sy-pl .field textarea { display: block; width: 100%; margin-top: 4px; resize: vertical; }
 .sy-ind-t { flex: 1 1 14em; min-width: 0; font-size: 13px; color: var(--ink-soft); overflow-wrap: anywhere; }
+.sy-pl-h { font-size: 12.5px; font-weight: 400; color: var(--ink-soft); }
+.sy-pl-ro { font-size: 13px; color: var(--ink-soft); margin: 4px 0 8px; overflow-wrap: anywhere; }
+.sy-pl-exam { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+.sy-pl-exam label { display: block; font-size: 13px; font-weight: 600; color: var(--ink-soft); }
+.sy-pl-exam .input-sm { display: block; width: 100%; margin-top: 4px; }
 .sy-ind-kpa { display: grid; grid-template-columns: repeat(3, minmax(0, 120px)); gap: 12px; margin-top: 8px; }
 .sy-ind-kpa label { display: block; font-size: 13px; font-weight: 600; color: var(--ink-soft); }
 .sy-ind-kpa .sy-kpa { display: block; width: 100%; margin-top: 4px; }
