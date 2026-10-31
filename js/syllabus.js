@@ -17,7 +17,7 @@
 // ==========================================================================
 
 const SY_DOC_ID = 'syllabus';   // settings/syllabus
-const SY_MAX = { area: 80, std: 200, title: 400, hours: 5, topics: 12, units: 40, core: 1000, kw: 600, inds: 100, when: 200, obj: 1500, pmedia: 400, aind: 200, aweek: 40, adue: 40, assess: 120, mother: 120, res: 1500, books: 1000, rules: 2000, apr: 8, role: 120, aname: 80 }; // core/kw = สาระแกนกลาง/คำสำคัญต่อตัวชี้วัด (ข้อ 13) · when/obj/pmedia = ครั้งที่-วันเวลา/จุดประสงค์/สื่อ ต่อหน่วย (ข้อ 14) · aind/aweek/adue = ตัวชี้วัด/สัปดาห์/กำหนดส่ง ต่อรายการคะแนน (ข้อ 15)
+const SY_MAX = { area: 80, std: 200, title: 400, hours: 5, topics: 12, units: 40, core: 1000, kw: 600, inds: 100, when: 200, obj: 1500, pmedia: 400, aind: 200, aweek: 40, adue: 40, assess: 120, mother: 120, res: 1500, books: 1000, rules: 2000 }; // core/kw = สาระแกนกลาง/คำสำคัญต่อตัวชี้วัด (ข้อ 13) · when/obj/pmedia = ครั้งที่-วันเวลา/จุดประสงค์/สื่อ ต่อหน่วย (ข้อ 14) · aind/aweek/adue = ตัวชี้วัด/สัปดาห์/กำหนดส่ง ต่อรายการคะแนน (ข้อ 15)
 const SY_CREDIT_HOURS = 40;     // 1 หน่วยกิต = 40 ชั่วโมง (0.5 = 20 · 1.5 = 60)
 const SY_COLS = [10, 18, 15, 34, 11, 12]; // ความกว้างคอลัมน์ (%) หน่วยที่ · ชื่อหน่วย · มาตรฐาน · สาระ · เวลา · น้ำหนัก
 const SY_SAVE_LABEL = 'บันทึกโครงสร้างรายวิชา';
@@ -25,13 +25,15 @@ const SY_SAVE_LABEL = 'บันทึกโครงสร้างรายว
 // ข้อ 17–21 (ท้ายเอกสาร): วิธีการสอน · สื่อ/แหล่งเรียนรู้ · หนังสืออ่านประกอบ · มาตรฐาน/ตัวชี้วัด (ดึงจากคำอธิบายรายวิชา) · ข้อตกลง · ช่องลงชื่อ/ความเห็นผู้บริหาร
 const SY_METHODS = [['practice', 'ลงมือปฏิบัติ (Practice)'], ['demo', 'แบบสาธิต'], ['lecture', 'แบบบรรยาย'], ['group', 'กิจกรรมกลุ่ม (Group Process)'], ['coop', 'ทำงานรับผิดชอบร่วมกัน (Co-operative Learning)']];
 const SY_SAMPLE_RULES = ['ห้ามนำอาหาร เครื่องดื่ม เข้ามารับประทานในห้องคอม', 'ช่วยกันรักษาความสะอาดเครื่องคอมพิวเตอร์และห้องเรียน', 'ห้ามเล่นเกมส์โดยเด็ดขาด', 'ห้ามใช้โทรศัพท์ในห้องเรียน ถ้าเห็นโดนยึดและหักคะแนน', 'ห้ามออกนอกห้องก่อนได้รับอนุญาต', 'แต่งกายให้ถูกกระเบียบ', 'ห้ามส่งเสียงดังและพูดจาหยาบคาย'].join('\n');
-// ผู้ให้ความเห็น (ค่าเริ่มต้นเมื่อยังไม่เคยบันทึก) — ครูเพิ่ม/ลบ/เปลี่ยนตำแหน่งได้ · approve = มีช่อง “อนุญาตให้ใช้สอนได้ / ควรปรับปรุง”
-const syDefaultApprovers = (area) => [
-  { role: 'หัวหน้ากลุ่มสาระการเรียนรู้' + (area || ''), name: '', approve: false },
-  { role: 'ผู้ช่วยผู้อำนวยการฝ่ายวิชาการ', name: '', approve: false },
-  { role: 'รองผู้อำนวยการฝ่ายวิชาการ', name: '', approve: false },
-  { role: 'ผู้อำนวยการโรงเรียน', name: '', approve: true },
+// ผู้ให้ความเห็นท้ายเอกสาร — ชื่อดึงจากข้อมูลส่วนตัว (docProfileInfo) ครูเลือกแค่ว่าจะให้ขึ้นตำแหน่งไหน (เรียงตามนี้) · [คีย์ = ชื่อฟิลด์ในโปรไฟล์, ตำแหน่งที่พิมพ์(กลุ่มสาระ, ข้อมูลส่วนตัว), มีช่อง “อนุญาตให้ใช้สอนได้ / ควรปรับปรุง”?]
+const SY_SIGNERS = [
+  ['subjectHead', (a, pi) => 'หัวหน้ากลุ่มสาระการเรียนรู้' + (a || pi.subjectGroup || ''), false],
+  ['assessmentHead', () => 'หัวหน้างานวัดผลและประเมินผล', false],
+  ['academicAsst', () => 'ผู้ช่วยผู้อำนวยการฝ่ายวิชาการ', false],
+  ['deputyAcademic', () => 'รองผู้อำนวยการฝ่ายวิชาการ', false],
+  ['director', (a, pi) => 'ผู้อำนวยการ' + (pi.school || ''), true],
 ];
+const SY_SIGNERS_DEFAULT = ['subjectHead', 'academicAsst', 'deputyAcademic', 'director']; // ยังไม่เคยเลือก = ตามแบบ Course Syllabus ที่ใช้กันทั่วไป
 
 // มีค่าที่พิมพ์ค้างยังไม่บันทึกหรือไม่ — หน้าที่สลับแท็บเรียกถามก่อนทิ้ง (js/picker-pages.js)
 let _syDirty = false;
@@ -202,9 +204,9 @@ function syNormalize(d, descArea) {
   const mOther = syStr(d.methodsOther, SY_MAX.mother).replace(/\s*[\r\n]+\s*/g, ' ').trim();
   const tx = (v, n) => syStr(v, n).replace(/\r\n?/g, '\n').trim();
   const resources = tx(d.resources, SY_MAX.res), books = tx(d.books, SY_MAX.books), rules = tx(d.rules, SY_MAX.rules);
-  const approvers = Array.isArray(d.approvers) ? d.approvers.slice(0, SY_MAX.apr).map(r => ({ role: syStr(r && r.role, SY_MAX.role).replace(/\s*[\r\n]+\s*/g, ' ').trim(), name: syStr(r && r.name, SY_MAX.aname).replace(/\s*[\r\n]+\s*/g, ' ').trim(), approve: !!(r && r.approve) })).filter(r => r.role || r.name) : null; // มีฟิลด์แต่ว่าง = ไม่มีช่องความเห็น
+  const sg = Array.isArray(d.signers) ? SY_SIGNERS.map(x => x[0]).filter(k => d.signers.includes(k)) : null; // ผู้ให้ความเห็น: ไม่มีฟิลด์ = ยังไม่เคยเลือก (ใช้ค่าเริ่มต้น) · มีแต่ว่าง = ไม่เลือกเลย
   const planHas = plan.units.length || plan.media || plan.midAfter || plan.midHours || plan.finalHours;
-  return { area: syStr(d.area != null ? d.area : descArea, SY_MAX.area).trim(), ...(hw ? { hoursWeek: hw } : {}), units, analysis, ...(planHas ? { plan } : {}), ...(assess.length ? { assess } : {}), ...(mt ? { methods: mt } : {}), ...(mOther ? { methodsOther: mOther } : {}), ...(resources ? { resources } : {}), ...(books ? { books } : {}), ...(rules ? { rules } : {}), ...(approvers ? { approvers } : {}) }; // hoursWeek เก็บเฉพาะเมื่อครูแก้ทับ (ว่าง = คำนวณจากหน่วยกิต)
+  return { area: syStr(d.area != null ? d.area : descArea, SY_MAX.area).trim(), ...(hw ? { hoursWeek: hw } : {}), units, analysis, ...(planHas ? { plan } : {}), ...(assess.length ? { assess } : {}), ...(mt ? { methods: mt } : {}), ...(mOther ? { methodsOther: mOther } : {}), ...(resources ? { resources } : {}), ...(books ? { books } : {}), ...(rules ? { rules } : {}), ...(sg ? { signers: sg } : {}) }; // hoursWeek เก็บเฉพาะเมื่อครูแก้ทับ (ว่าง = คำนวณจากหน่วยกิต)
 }
 
 // หน่วย/คะแนนจากโครงสร้างคะแนน (ฟังก์ชันล้วน — ทดสอบได้) — items = เอกสารใน assessments · sd = settings/structure
@@ -379,15 +381,16 @@ function syAssessModel(struct, assess, units, plan) {
 }
 
 // ข้อ 17–21 + ช่องลงชื่อ: ฟังก์ชันล้วน — s = เอกสารที่ normalize แล้ว · ข้อ 18 ที่ครูไม่กรอก = ใช้สื่อ/แหล่งเรียนรู้ที่กรอกไว้ในข้อ 14 · ข้อ 20 ดึงจากคำอธิบายรายวิชา (m.cover.groups)
-function syTailModel(s, cover, area) {
+function syTailModel(s, cover, area, info) {
   const on = new Set(Array.isArray(s.methods) ? s.methods : SY_METHODS.map(x => x[0]));
   const a = String(area || '').replace(/^กลุ่มสาระการเรียนรู้\s*/, '').trim();
-  const planMedia = (s.plan && s.plan.media) || '';
+  const planMedia = (s.plan && s.plan.media) || '', pi = info || {}, keys = new Set(Array.isArray(s.signers) ? s.signers : SY_SIGNERS_DEFAULT);
+  const signers = SY_SIGNERS.map(([k, role, approve]) => ({ k, role: role(a, pi), name: pi[k] || '', approve, on: keys.has(k) }));
   return {
     methods: SY_METHODS.map(([k, label]) => ({ k, label, on: on.has(k) })), methodsOther: s.methodsOther || '',
     resources: syNumbered(s.resources || planMedia), resourcesAuto: !s.resources && !!planMedia,
     books: syNumbered(s.books), rules: syNumbered(s.rules),
-    teacher: cover.teacher, approvers: (Array.isArray(s.approvers) ? s.approvers : syDefaultApprovers(a)).map(r => ({ ...r })),
+    teacher: cover.teacher, signers, approvers: signers.filter(x => x.on), // approvers = ที่เลือกให้พิมพ์
   };
 }
 
@@ -433,7 +436,7 @@ function syModel(course, struct, saved, desc, ctx) {
   m.cover = syCoverModel(c, dsc, m, { ...(ctx || {}), hoursWeek: (ctx && ctx.hoursWeek != null) ? ctx.hoursWeek : s.hoursWeek });
   m.plan = syPlanModel(units, struct, s.plan, m.cover.hoursWeek, m.cover);
   m.assess = syAssessModel(struct, s.assess, units, m.plan);
-  m.tail = syTailModel(s, m.cover, m.area);
+  m.tail = syTailModel(s, m.cover, m.area, docProfileInfo(ctx && ctx.profile));
   return m;
 }
 
@@ -958,21 +961,11 @@ function syTailFormHtml(m, data) {
   ${sub('21. ข้อตกลงในการเรียนรายวิชา', `<div class="field"><textarea id="sy-rules" class="input-sm" rows="5" maxlength="${SY_MAX.rules}" aria-label="ข้อตกลงในการเรียนรายวิชา" placeholder="เช่น ห้ามนำอาหารเข้าห้องคอม (ขึ้นบรรทัดใหม่ = ข้อใหม่)">${e(data.rules || '')}</textarea></div>
     <button type="button" class="btn btn-ghost btn-sm" id="sy-rules-sample">ใส่ข้อตกลงตัวอย่าง</button>`)}`;
 }
-function syApproverRowHtml(r = {}) {
-  const e = escapeHtml;
-  return `<div class="doc-lrow sy-apr">
-    <input class="input-sm sy-apr-role" type="text" maxlength="${SY_MAX.role}" placeholder="ตำแหน่ง เช่น ผู้อำนวยการโรงเรียน" value="${e(r.role || '')}" aria-label="ตำแหน่งผู้ให้ความเห็น">
-    <input class="input-sm sy-apr-name" type="text" maxlength="${SY_MAX.aname}" placeholder="ชื่อ-สกุล (ว่าง = เว้นจุดไข่ปลา)" value="${e(r.name || '')}" aria-label="ชื่อผู้ให้ความเห็น">
-    <label class="doc-check" title="มีช่อง “อนุญาตให้ใช้สอนได้ / ควรปรับปรุง” ใต้ความเห็น"><input type="checkbox" class="sy-apr-ok"${r.approve ? ' checked' : ''}> ช่องอนุญาต</label>
-    <button type="button" class="btn btn-danger-ghost btn-sm doc-l-del sy-apr-del" title="ลบแถว" aria-label="ลบแถว">${DOC_ICO_DEL}</button>
-  </div>`;
-}
-const syApproversFormHtml = (m) => `<div class="u-note u-mb-12">ช่องลงชื่อครูประจำวิชาใช้ชื่อจากข้อมูลส่วนตัวอัตโนมัติ · ด้านล่างคือผู้ให้ความเห็นต่อจากครู (พิมพ์เรียงตามลำดับ) — เพิ่ม ลบ หรือเปลี่ยนตำแหน่ง/ชื่อได้ เช่น เพิ่มหัวหน้างานของวิชา</div>
-  <div class="doc-lblock sy-aprs">
-    <div class="doc-lhead" aria-hidden="true"><span>ตำแหน่ง</span><span>ชื่อ-สกุล</span><span>อนุญาต/ปรับปรุง</span><span></span></div>
-    <div class="doc-lrows sy-apr-rows">${m.tail.approvers.map(syApproverRowHtml).join('')}</div>
-    <button type="button" class="btn btn-ghost btn-sm doc-l-add sy-apr-add">${DOC_ICO_ADD} เพิ่มผู้ให้ความเห็น</button>
-  </div>`;
+// ส่วนที่ 7: เลือกตำแหน่งที่จะให้ขึ้นท้ายเอกสาร (ชิปเลือกหลายอัน เหมือน PA/SAR) + กริดชื่อที่ดึงจากข้อมูลส่วนตัว (อ่านอย่างเดียว) + ปุ่มไปแก้ที่โปรไฟล์
+const sySignersFormHtml = (m) => `<div class="doc-subsec"><div class="doc-subsec-hd">ผู้ให้ความเห็นท้ายเอกสาร <span class="doc-sec-note">(เลือกได้มากกว่า 1 ตำแหน่ง · พิมพ์เรียงตามลำดับนี้)</span></div>
+    <div class="doc-checks doc-checks-auto">${m.tail.signers.map(x => `<label class="doc-check"><input type="checkbox" class="sy-sg" data-k="${x.k}"${x.on ? ' checked' : ''}> ${escapeHtml(x.role)}</label>`).join('')}</div></div>
+  ${docProfileGridHtml(m.tail.signers.map(x => [x.role, x.name]), { auto: true })}
+  ${docProfileNoteHtml('ชื่อผู้ลงนามดึงจากข้อมูลส่วนตัว (ชื่อครูประจำวิชาก็ดึงจากที่นั่น) — กรอกครั้งเดียวใช้ได้ทุกเอกสาร ตำแหน่งที่ยังไม่มีชื่อจะพิมพ์เป็นจุดไข่ปลาให้เขียนเอง', 'sy-edit-signers')}`;
 
 // ข้อมูลรายวิชา ข้อ 1–10 ของหน้าแรก (อ่านอย่างเดียว ดึงอัตโนมัติ) — วาดใหม่ทุกครั้งที่ค่าในฟอร์มเปลี่ยน
 function syCoverGridHtml(m) {
@@ -1033,10 +1026,10 @@ function syCollect(form) {
   const inStruct = new Set(SY.struct.units.map(u => u.id));
   const orphans = ((SY.saved && SY.saved.units) || []).filter(u => !inStruct.has(u.id));
   const val = (sel) => { const el = form.querySelector(sel); return el ? el.value : ''; };
-  const tail = { // ข้อ 17–21 + ผู้ให้ความเห็น (ฟอร์มมีช่องเสมอ — ติ๊กไม่เลือกเลย/ลบทุกแถว = เก็บเป็นค่าว่างตามนั้น)
+  const tail = { // ข้อ 17–21 + ผู้ให้ความเห็น (ฟอร์มมีช่องเสมอ — ไม่ติ๊กเลย = เก็บเป็นค่าว่างตามนั้น)
     methods: [...form.querySelectorAll('.sy-mt:checked')].map(c => c.dataset.k), methodsOther: val('#sy-mt-other'),
     resources: val('#sy-res'), books: val('#sy-books'), rules: val('#sy-rules'),
-    approvers: [...form.querySelectorAll('.sy-apr')].map(r => ({ role: r.querySelector('.sy-apr-role').value, name: r.querySelector('.sy-apr-name').value, approve: r.querySelector('.sy-apr-ok').checked })),
+    signers: [...form.querySelectorAll('.sy-sg:checked')].map(c => c.dataset.k),
   };
   return syNormalize({ area: form.querySelector('#sy-area').value, hoursWeek: form.querySelector('#sy-hw').value, units: [...live, ...orphans], analysis: [...liveA, ...orphanA], plan, assess: [...liveS, ...orphanS], ...tail }, '');
 }
@@ -1098,8 +1091,8 @@ function syShowForm(container) {
     </section>
 
     <section class="doc-section">
-      <h2 class="doc-sec-title">ส่วนที่ 7  ช่องลงชื่อและความเห็นผู้บริหาร</h2>
-      <div id="sy-aprs-box">${syApproversFormHtml(m)}</div>
+      <h2 class="doc-sec-title">ส่วนที่ 7  ผู้ให้ความเห็นท้ายเอกสาร</h2>
+      ${sySignersFormHtml(m)}
     </section>
 
     <section class="doc-section">
@@ -1168,21 +1161,12 @@ function syShowForm(container) {
       touch();
     } else if (del) { del.closest('.sy-trow').remove(); touch(); }
   });
-  form.addEventListener('click', (e) => { // ผู้ให้ความเห็น (เพิ่ม/ลบแถว) · ข้อตกลงตัวอย่าง
-    const add = e.target.closest('.sy-apr-add'), del = e.target.closest('.sy-apr-del'), sample = e.target.closest('#sy-rules-sample');
-    if (add) {
-      const box = form.querySelector('.sy-apr-rows');
-      if (box.children.length >= SY_MAX.apr) { showToast(`เพิ่มผู้ให้ความเห็นได้สูงสุด ${SY_MAX.apr} คน`); return; }
-      box.insertAdjacentHTML('beforeend', syApproverRowHtml());
-      box.lastElementChild.querySelector('.sy-apr-role').focus();
-      touch();
-    } else if (del) { del.closest('.sy-apr').remove(); touch(); }
-    else if (sample) {
-      const ta = form.querySelector('#sy-rules'), r = syAppendLines(ta.value, SY_SAMPLE_RULES.split('\n'));
-      ta.value = r.text;
-      if (r.added) touch(); else showToast('ข้อตกลงตัวอย่างมีอยู่ในช่องแล้ว');
-    }
+  form.querySelector('#sy-rules-sample').addEventListener('click', () => { // ข้อตกลงตัวอย่าง (ข้ามบรรทัดที่มีอยู่แล้ว)
+    const ta = form.querySelector('#sy-rules'), r = syAppendLines(ta.value, SY_SAMPLE_RULES.split('\n'));
+    ta.value = r.text;
+    if (r.added) touch(); else showToast('ข้อตกลงตัวอย่างมีอยู่ในช่องแล้ว');
   });
+  container.querySelector('#sy-edit-signers').addEventListener('click', () => { syStashDraft(); navigate('profile'); }); // เก็บค่าที่พิมพ์ค้างเป็นร่างก่อน · กลับมาแล้วดึงชื่อล่าสุด (ดู syEnsure)
   // เลือกตัวชี้วัดจากคำอธิบายรายวิชา: ติ๊กทั้งหมด/ทั้งมาตรฐาน/รายข้อ → "ใส่ลงช่อง" ต่อท้ายช่องมาตรฐานของหน่วยนั้น (ข้ามบรรทัดที่มีอยู่แล้ว)
   const pickSel = (box) => new Set([...box.querySelectorAll('.sy-pick-cb:checked')].map(c => c.dataset.g + ':' + c.dataset.i));
   const pickSync = (box) => { // ซิงก์ช่องติ๊กกลุ่ม/ทั้งหมด (ติ๊กบางส่วน = สถานะกึ่งกลาง) + จำนวน + ปุ่มใส่
@@ -1235,7 +1219,7 @@ function syShowForm(container) {
 // โหลดข้อมูลของแท็บให้พร้อมใน SY — มีร่างค้างของวิชานี้อยู่ (สลับระหว่างแท็บฟอร์ม ↔ ตัวอย่าง) ใช้ต่อได้เลย ไม่โหลดใหม่ · ไม่งั้นโหลดใหม่ทุกครั้ง (โครงสร้างคะแนนอาจเพิ่งแก้)
 //   คืน false เมื่อโหลดไม่ได้ (แสดงข้อความแทนในกล่อง) หรือผู้ใช้ออกจากแท็บไปแล้ว
 async function syEnsure(container, course) {
-  if (SY.id === course.id && _syDirty && SY.draft) { SY.course = course; return true; } // ใช้ร่างเดิมต่อ แต่ข้อมูลวิชาเอาล่าสุด (เพิ่งแก้ระดับชั้น/หน่วยกิตได้)
+  if (SY.id === course.id && _syDirty && SY.draft) { SY.course = course; SY.profile = await docGetProfile(); return true; } // ใช้ร่างเดิมต่อ แต่ข้อมูลวิชา/ข้อมูลส่วนตัวเอาล่าสุด (เพิ่งแก้ระดับชั้น/หน่วยกิต/ชื่อผู้ลงนามได้)
   const keepTerm = SY.id === course.id && SY.termPicked ? SY.term : null; // ภาคเรียน/ปีที่ครูเลือกเอง (ไม่ถูกบันทึก) ต้องอยู่ข้ามการสลับแท็บ/โหลดใหม่ ตราบที่ยังเป็นวิชาเดิม
   syDiscard();
   let data;

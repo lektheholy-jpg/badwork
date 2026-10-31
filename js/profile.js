@@ -9,7 +9,7 @@ const PROFILE_FIELDS = [
   'prefix', 'firstName', 'lastName', 'phone',
   'position', 'academicStanding', 'ksLevel', 'salary', 'positionNo', 'subjectGroup',
   'school', 'affiliation', 'schoolDistrict', 'schoolProvince', 'agency', // ที่ตั้งสถานศึกษา (อำเภอ/จังหวัด) + ส่วนราชการ — SAR/CAR ดึงไปพิมพ์บนปก ไม่ต้องพิมพ์ซ้ำทุกเอกสาร
-  'director', 'deputyAcademic', 'subjectHead', 'assessmentHead', 'personnelAsst', 'personnelDeputy',
+  'director', 'deputyAcademic', 'academicAsst', 'subjectHead', 'assessmentHead', 'personnelAsst', 'personnelDeputy',
   'birthDate', 'startDate', 'licenseNo', // birthDate · startDate = วันที่รูปแบบ YYYY-MM-DD (ค.ศ.) · แสดงเป็น พ.ศ. ด้วย profileThaiDate()
 ];
 // วุฒิการศึกษา (profile.education = [{ level, major, institution, year }] สูงสุด PROFILE_EDU_MAX รายการ · year = พ.ศ.) — เอกสารอื่นดึงด้วย profileEducationLines(p)
@@ -238,9 +238,10 @@ function profileFormHtml(p) {
 
       <div class="card card-pad">
         <h2 class="card-title">ผู้ลงนามในเอกสาร <span class="profile-opt">(ไม่บังคับ)</span></h2>
-        <div class="u-note u-mb-12">ท้ายแบบรายงานผลการเรียนมักมีช่องลงนามหลายตำแหน่ง ตามแบบของแต่ละโรงเรียน</div>
+        <div class="u-note u-mb-12">ท้ายแบบรายงานและ Course Syllabus มักมีช่องลงนามหลายตำแหน่ง ตามแบบของแต่ละโรงเรียน — กรอกครั้งเดียว เอกสารต่าง ๆ ดึงไปใส่ให้</div>
         ${pfInput('subjectHead', 'หัวหน้ากลุ่มสาระการเรียนรู้', p.subjectHead)}
         ${pfInput('assessmentHead', 'หัวหน้างานวัดผลและประเมินผล', p.assessmentHead)}
+        ${pfInput('academicAsst', 'ผู้ช่วยผู้อำนวยการฝ่ายวิชาการ', p.academicAsst)}
         ${pfInput('deputyAcademic', 'รองผู้อำนวยการฝ่ายวิชาการ', p.deputyAcademic)}
         ${pfInput('personnelAsst', 'ผู้ช่วยผู้อำนวยการกลุ่มบริหารงานบุคคล', p.personnelAsst)}
         ${pfInput('personnelDeputy', 'รองผู้อำนวยการกลุ่มบริหารงานบุคคล', p.personnelDeputy)}

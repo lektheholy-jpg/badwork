@@ -34,6 +34,10 @@ const code = grab(/async function docGetProfile\(\) \{\n[\s\S]*?\n\}\n/) + grab(
     ok(e.name === '' && e.position === '' && e.school === '' && e.location === '', 'โปรไฟล์ว่าง/null → ช่องว่าง ไม่ error', bad);
   }
   ok(c.docProfileInfo({ lastName: 'ใจดี' }).name === 'ใจดี', 'มีแค่นามสกุล → ไม่มีช่องว่างเกิน');
+  const sg = c.docProfileInfo({ subjectHead: ' ก ', assessmentHead: 'ข', academicAsst: 'ค', deputyAcademic: 'ง', director: ' จ ' });
+  ok(sg.subjectHead === 'ก' && sg.assessmentHead === 'ข' && sg.academicAsst === 'ค' && sg.deputyAcademic === 'ง' && sg.director === 'จ', 'ผู้ลงนาม 5 ตำแหน่ง (subjectHead · assessmentHead · academicAsst · deputyAcademic · director) ส่งต่อพร้อมตัดช่องว่าง');
+  const se = c.docProfileInfo(null);
+  ok(['subjectHead', 'assessmentHead', 'academicAsst', 'deputyAcademic', 'director'].every(k => se[k] === ''), 'ไม่มีผู้ลงนาม/โปรไฟล์ null → ค่าว่าง ไม่ error');
 
   console.log('docGetProfile');
   let r = await make().docGetProfile();

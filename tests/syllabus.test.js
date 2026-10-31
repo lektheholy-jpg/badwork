@@ -407,18 +407,19 @@ const DESC = { type: 'พื้นฐาน', area: 'วิทยาศาสต
 
   { // ---------------- ข้อ 16–21 (วิธีสอน · สื่อ · หนังสือ · ตัวชี้วัด · ข้อตกลง · ช่องลงชื่อ) ----------------
     const nz0 = R('syNormalize')({ units: [] }, '');
-    ok(!('methods' in nz0) && !('resources' in nz0) && !('books' in nz0) && !('rules' in nz0) && !('approvers' in nz0), 'normalize ข้อ 17–21: เอกสารเก่าไม่มีฟิลด์ใหม่ (ไม่ถูกเติมค่าเอง)');
+    ok(!('methods' in nz0) && !('resources' in nz0) && !('books' in nz0) && !('rules' in nz0) && !('signers' in nz0), 'normalize ข้อ 17–21: เอกสารเก่าไม่มีฟิลด์ใหม่ (ไม่ถูกเติมค่าเอง)');
     const nz1 = R('syNormalize')({ units: [], methods: ['demo', 'xx', 'practice'], methodsOther: ' ทัศนศึกษา\nนอกสถานที่ ', resources: '  1. หนังสือ \r\n 2. เน็ต ', books: ' คู่มือ สสวท. ', rules: ' ห้ามเล่นเกม ',
-      approvers: [{ role: ' ผอ. ', name: ' นาย ก ', approve: 1 }, { role: '', name: '' }, { role: 'รอง ผอ.' }] }, '');
+      signers: ['director', 'xx', 'subjectHead', 'director'] }, '');
     ok(J(nz1.methods) === J(['practice', 'demo']) && nz1.methodsOther === 'ทัศนศึกษา นอกสถานที่' && nz1.resources === '1. หนังสือ \n 2. เน็ต' && nz1.books === 'คู่มือ สสวท.' && nz1.rules === 'ห้ามเล่นเกม', 'normalize: วิธีสอนเรียงตามแบบ ทิ้งรหัสที่ไม่รู้จัก · ตัดช่องว่าง · วิธีอื่นเป็นบรรทัดเดียว');
-    ok(nz1.approvers.length === 2 && nz1.approvers[0].role === 'ผอ.' && nz1.approvers[0].name === 'นาย ก' && nz1.approvers[0].approve === true && nz1.approvers[1].approve === false && J(R('syNormalize')({ units: [], methods: [], approvers: [] }, '').methods) === '[]' && Array.isArray(R('syNormalize')({ units: [], approvers: [] }, '').approvers), 'normalize: ทิ้งแถวผู้ให้ความเห็นที่ว่าง · methods/approvers ว่างที่ครูตั้งใจเก็บไว้ = เก็บเป็นอาเรย์ว่าง (ไม่กลับไปใช้ค่าเริ่มต้น)');
-
-    const mt = R('syModel')(course, loaded.struct, { ...loaded.saved }, loaded.desc);
-    ok(mt.tail.methods.length === 5 && mt.tail.methods.every(x => x.on) && mt.tail.approvers.length === 4 && mt.tail.approvers[3].approve === true && /^หัวหน้ากลุ่มสาระการเรียนรู้/.test(mt.tail.approvers[0].role), 'ยังไม่เคยเลือก: วิธีสอนติ๊กทั้ง 5 วิธี · ผู้ให้ความเห็นเริ่มต้น 4 ตำแหน่ง (ผอ. มีช่องอนุญาต/ควรปรับปรุง)');
+    ok(J(nz1.signers) === J(['subjectHead', 'director']) && J(R('syNormalize')({ units: [], methods: [], signers: [] }, '').methods) === '[]' && J(R('syNormalize')({ units: [], signers: [] }, '').signers) === '[]' && !('approvers' in nz1), 'normalize: ผู้ให้ความเห็นเรียงตามแบบ ทิ้งคีย์ที่ไม่รู้จัก/ซ้ำ · methods/signers ว่างที่ครูตั้งใจเก็บไว้ = เก็บเป็นอาเรย์ว่าง (ไม่กลับไปใช้ค่าเริ่มต้น) · ไม่เก็บชื่อคนในเอกสาร');
+    const SGP = { prefix: 'นาย', firstName: 'ธนาวุฒิ', lastName: 'อาญาเมือง', school: 'โรงเรียนหนองกี่พิทยาคม', subjectGroup: 'คณิตศาสตร์', subjectHead: 'นางสาวคำใต้ รูปโฉม', assessmentHead: 'นายวัด ผล', academicAsst: 'นายสุเนตร บอกประโคน', deputyAcademic: '  นางสาวสุพิชชา มากะเด ', director: 'ดร.สมิงไพร สุนทะวงษ์' }; // ข้อมูลส่วนตัวจำลอง (ผู้ลงนามดึงจากที่นี่)
+    const mt = R('syModel')(course, loaded.struct, { ...loaded.saved }, loaded.desc, { profile: SGP });
+    ok(mt.tail.methods.length === 5 && mt.tail.methods.every(x => x.on) && mt.tail.approvers.map(x => x.k).join() === 'subjectHead,academicAsst,deputyAcademic,director' && mt.tail.signers.length === 5, 'ยังไม่เคยเลือก: วิธีสอนติ๊กทั้ง 5 วิธี · ผู้ให้ความเห็นเริ่มต้น 4 ตำแหน่ง (จาก 5 ตำแหน่งที่เลือกได้)');
+    ok(mt.tail.approvers.map(x => x.name).join('|') === 'นางสาวคำใต้ รูปโฉม|นายสุเนตร บอกประโคน|นางสาวสุพิชชา มากะเด|ดร.สมิงไพร สุนทะวงษ์' && mt.tail.approvers[0].role === 'หัวหน้ากลุ่มสาระการเรียนรู้วิทยาศาสตร์และเทคโนโลยี' && mt.tail.approvers[3].role === 'ผู้อำนวยการโรงเรียนหนองกี่พิทยาคม' && mt.tail.approvers.map(x => x.approve).join() === 'false,false,false,true', 'ผู้ให้ความเห็น: ชื่อดึงจากข้อมูลส่วนตัว (ตัดช่องว่าง) · กลุ่มสาระใช้ของวิชา · ผอ. ต่อท้ายชื่อโรงเรียน + มีช่องอนุญาต/ควรปรับปรุง');
     const mt2 = R('syModel')(course, loaded.struct, { ...loaded.saved, methods: ['lecture'], plan: { media: '1. หนังสือเรียน\n2. Internet' } }, loaded.desc);
     ok(mt2.tail.methods.filter(x => x.on).map(x => x.k).join() === 'lecture' && J(mt2.tail.resources) === J(['หนังสือเรียน', 'Internet']) && mt2.tail.resourcesAuto === true, 'ข้อ 18 ว่าง = ใช้สื่อ/แหล่งเรียนรู้จากข้อ 14 (ตัดเลขนำหน้า) · ข้อ 17 ใช้ตามที่เลือก');
-    const mt3 = R('syModel')(course, loaded.struct, { ...loaded.saved, resources: 'ของฉัน', books: '1. A\n2. B', rules: 'x\ny', approvers: [{ role: 'ผู้อำนวยการ', name: 'ดร.ก', approve: true }] }, loaded.desc);
-    ok(J(mt3.tail.resources) === J(['ของฉัน']) && mt3.tail.resourcesAuto === false && J(mt3.tail.books) === J(['A', 'B']) && J(mt3.tail.rules) === J(['x', 'y']) && mt3.tail.approvers.length === 1, 'ข้อ 18–21 ที่กรอกเอง: ใช้ค่าของครู · ผู้ให้ความเห็นตามที่เก็บ');
+    const mt3 = R('syModel')(course, loaded.struct, { ...loaded.saved, resources: 'ของฉัน', books: '1. A\n2. B', rules: 'x\ny', signers: ['director', 'assessmentHead'] }, loaded.desc, { profile: SGP });
+    ok(J(mt3.tail.resources) === J(['ของฉัน']) && mt3.tail.resourcesAuto === false && J(mt3.tail.books) === J(['A', 'B']) && J(mt3.tail.rules) === J(['x', 'y']) && mt3.tail.approvers.map(x => x.k).join() === 'assessmentHead,director' && mt3.tail.signers.filter(x => x.on).length === 2, 'ข้อ 18–21 ที่กรอกเอง: ใช้ค่าของครู · ผู้ให้ความเห็นตามที่เลือก (พิมพ์เรียงตามแบบ ไม่ใช่ตามลำดับที่ติ๊ก)');
 
     const dt = body(R(`sySheetBodyHtml`)(mt3)), secT = [...dt.querySelectorAll('section')].pop();
     ok(secT.classList.contains('pg-port') && [...secT.children].every(el => el.tagName === 'DIV'), 'กระดาษข้อ 17–21: หน้าแนวตั้งหน้าสุดท้าย · ทุกบล็อกเป็นลูกตรงของ section (docPaginate ตัดหน้าได้)');
@@ -432,32 +433,36 @@ const DESC = { type: 'พื้นฐาน', area: 'วิทยาศาสต
     ok(li.join('|') === '1.ของฉัน|1.A|2.B|1.x|2.y', 'ข้อ 18/19/21: รายการเลขข้อ (ใส่เลขให้เอง)');
     ok(secT.querySelectorAll('.sy-oi').length === mt3.cover.count && /^20\./.test(norm(secT.querySelectorAll(':scope > .sy-h')[3].textContent)), 'ข้อ 20: ตัวชี้วัดดึงจากคำอธิบายรายวิชา ครบทุกข้อ');
     const sigs = [...secT.querySelectorAll(':scope > .sy-ap')].map(e => norm(e.textContent));
-    ok(sigs.length === 2 && /ครูประจำวิชา/.test(sigs[0]) && /ความเห็นของผู้อำนวยการ/.test(sigs[1]) && /ดร\.ก/.test(sigs[1]) && /อนุญาตให้ใช้สอนได้.*ควรปรับปรุง/.test(sigs[1]), 'ลงชื่อ: ครูประจำวิชา + ผู้ให้ความเห็นแต่ละคนเป็นก้อนเดียว (ผอ. มีช่องอนุญาต/ควรปรับปรุง)');
-    const blank = body(R(`sySheetBodyHtml`)(R('syModel')(course, loaded.struct, { ...loaded.saved, resources: '', approvers: [] }, loaded.desc))), tb = [...blank.querySelectorAll('section')].pop();
-    ok(tb.querySelectorAll(':scope > .sy-ap').length === 1 && /…{10,}/.test(norm(tb.textContent)), 'ช่องว่างพิมพ์เป็นจุดไข่ปลา · ไม่มีผู้ให้ความเห็น = เหลือแต่ลงชื่อครู');
+    ok(sigs.length === 3 && /ครูประจำวิชา/.test(sigs[0]) && /ความเห็นของหัวหน้างานวัดผลและประเมินผล/.test(sigs[1]) && /นายวัด ผล/.test(sigs[1]) && !/อนุญาต/.test(sigs[1]) && /ความเห็นของผู้อำนวยการโรงเรียนหนองกี่พิทยาคม/.test(sigs[2]) && /ดร\.สมิงไพร/.test(sigs[2]) && /อนุญาตให้ใช้สอนได้.*ควรปรับปรุง/.test(sigs[2]), 'ลงชื่อ: ครูประจำวิชา + ผู้ให้ความเห็นที่เลือกแต่ละคนเป็นก้อนเดียว (ชื่อจากข้อมูลส่วนตัว · เฉพาะ ผอ. มีช่องอนุญาต/ควรปรับปรุง)');
+    const blank = body(R(`sySheetBodyHtml`)(R('syModel')(course, loaded.struct, { ...loaded.saved, resources: '', signers: [] }, loaded.desc, { profile: SGP }))), tb = [...blank.querySelectorAll('section')].pop();
+    ok(tb.querySelectorAll(':scope > .sy-ap').length === 1 && /…{10,}/.test(norm(tb.textContent)), 'ช่องว่างพิมพ์เป็นจุดไข่ปลา · ไม่เลือกผู้ให้ความเห็น = เหลือแต่ลงชื่อครู');
+    const noprof = body(R(`sySheetBodyHtml`)(R('syModel')(course, loaded.struct, { ...loaded.saved }, loaded.desc))), tn = [...noprof.querySelectorAll('section')].pop();
+    ok(tn.querySelectorAll(':scope > .sy-ap').length === 5 && [...tn.querySelectorAll(':scope > .sy-ap')].slice(1).every(e => /\(…+\)/.test(norm(e.textContent))), 'ยังไม่กรอกข้อมูลส่วนตัว: ตำแหน่งยังขึ้นครบ ชื่อเป็นจุดไข่ปลาให้เขียนเอง (ไม่พัง)');
   }
 
   { // ข้อ 17–21 ในฟอร์ม: ส่วนที่ 6–7 → syCollect
     const form = d.querySelector('#sy-form');
-    ok(!!$('sy-res') && !!$('sy-books') && !!$('sy-rules') && !!$('sy-mt-other') && form.querySelectorAll('.sy-mt').length === 5 && form.querySelectorAll('.sy-mt:checked').length === 5 && form.querySelectorAll('.sy-apr').length === 4, 'ส่วนที่ 6–7: ช่องข้อ 17–21 + ติ๊กวิธีสอนครบ 5 + ผู้ให้ความเห็นเริ่มต้น 4 แถว');
+    ok(!!$('sy-res') && !!$('sy-books') && !!$('sy-rules') && !!$('sy-mt-other') && form.querySelectorAll('.sy-mt').length === 5 && form.querySelectorAll('.sy-mt:checked').length === 5, 'ส่วนที่ 6: ช่องข้อ 17–21 + ติ๊กวิธีสอนครบ 5 (ใช้ .doc-checks ร่วมกับฟอร์มอื่น)');
+    ok(form.querySelectorAll('.doc-checks .sy-mt').length === 5 && form.querySelectorAll('.doc-subsec > .doc-subsec-hd').length >= 5, 'วิธีสอนอยู่ในชิป .doc-check ใต้หัวข้อย่อย .doc-subsec (เหมือน SAR/PA)');
+    ok(form.querySelectorAll('.sy-sg').length === 5 && form.querySelectorAll('.sy-sg:checked').length === 4 && !form.querySelector('.sy-sg[data-k="assessmentHead"]').checked && !!form.querySelector('.pa-pf-note #sy-edit-signers') && form.querySelectorAll('.pa-pf-item').length >= 5 && !form.querySelector('.sy-apr'), 'ส่วนที่ 7: เลือกตำแหน่งผู้ให้ความเห็น 5 ตำแหน่ง (ติ๊ก 4 ตามค่าเริ่มต้น) + กริดชื่อจากข้อมูลส่วนตัว + ปุ่มไปแก้ที่โปรไฟล์ · ไม่มีช่องพิมพ์ชื่อเองแล้ว');
+    const sm = R('syModel')(course, loaded.struct, { ...loaded.saved, signers: ['director', 'assessmentHead'] }, loaded.desc, { profile: { school: 'โรงเรียนก', assessmentHead: 'นายวัด ผล', director: 'ดร.ก' } });
+    const sf = d.createElement('div'); sf.innerHTML = R('sySignersFormHtml')(sm);
+    ok([...sf.querySelectorAll('.pa-pf-item')].map(e => norm(e.textContent)).join('|').includes('นายวัด ผล') && sf.querySelectorAll('.sy-sg:checked').length === 2, 'กริดแสดงชื่อที่ดึงจากข้อมูลส่วนตัว · ติ๊กตามที่เลือกไว้');
     form.querySelector('.sy-mt[data-k="demo"]').checked = false; form.querySelector('.sy-mt[data-k="coop"]').checked = false;
+    form.querySelector('.sy-sg[data-k="academicAsst"]').checked = false; form.querySelector('.sy-sg[data-k="assessmentHead"]').checked = true;
     $('sy-mt-other').value = 'ทัศนศึกษา'; $('sy-res').value = '1. หนังสือ\n2. Internet'; $('sy-books').value = 'คู่มือ สสวท.';
-    form.querySelector('.sy-apr-add').click();
-    const rows = [...form.querySelectorAll('.sy-apr')], last = rows[rows.length - 1];
-    ok(rows.length === 5 && R('syIsDirty()') === true, 'เพิ่มผู้ให้ความเห็น: แถวใหม่ + ตั้งธงยังไม่บันทึก');
-    last.querySelector('.sy-apr-role').value = 'หัวหน้างานคอมพิวเตอร์'; last.querySelector('.sy-apr-name').value = 'นายสมชาย'; rows[0].querySelector('.sy-apr-del').click();
     form.querySelector('#sy-rules-sample').click();
     const cl = R('syCollect')(form);
     ok(J(cl.methods) === J(['practice', 'lecture', 'group']) && cl.methodsOther === 'ทัศนศึกษา' && cl.resources === '1. หนังสือ\n2. Internet' && cl.books === 'คู่มือ สสวท.', 'syCollect: วิธีสอนที่ติ๊ก · วิธีอื่น · สื่อ · หนังสือ');
-    ok(cl.rules.split('\n').length === 7 && cl.approvers.length === 4 && cl.approvers[3].role === 'หัวหน้างานคอมพิวเตอร์' && cl.approvers[3].name === 'นายสมชาย' && cl.approvers[2].approve === true, 'ข้อตกลงตัวอย่าง 7 ข้อ (กดซ้ำไม่เพิ่มซ้ำ) · ผู้ให้ความเห็น: ลบแถวแรกแล้วเหลือ 4 · เรียงตามที่เห็นในฟอร์ม');
+    ok(cl.rules.split('\n').length === 7 && J(cl.signers) === J(['subjectHead', 'assessmentHead', 'deputyAcademic', 'director']), 'ข้อตกลงตัวอย่าง 7 ข้อ · syCollect เก็บเฉพาะคีย์ตำแหน่งที่ติ๊ก (เรียงตามแบบ) ไม่เก็บชื่อ');
     form.querySelector('#sy-rules-sample').click();
     ok(R('syCollect')(form).rules.split('\n').length === 7, 'กด “ใส่ข้อตกลงตัวอย่าง” ซ้ำ = ไม่เพิ่มซ้ำ');
-    for (let i = 0; i < 12; i++) form.querySelector('.sy-apr-add').click();
-    ok(form.querySelectorAll('.sy-apr').length === 8, 'เพิ่มผู้ให้ความเห็นได้สูงสุด 8 คน');
+    form.querySelectorAll('.sy-sg:checked').forEach(c => { c.checked = false; });
+    ok(J(R('syCollect')(form).signers) === '[]', 'ไม่ติ๊กผู้ให้ความเห็นเลย = เก็บเป็นอาเรย์ว่าง');
     form.querySelectorAll('.sy-mt').forEach(c => { c.checked = true; }); $('sy-mt-other').value = ''; $('sy-res').value = ''; $('sy-books').value = ''; $('sy-rules').value = '';
+    form.querySelectorAll('.sy-sg').forEach(c => { c.checked = ['subjectHead', 'academicAsst', 'deputyAcademic', 'director'].includes(c.dataset.k); });
     form.dispatchEvent(new w.Event('input')); R('syDiscard()');
   }
-
   // เลือกตัวชี้วัดจากคำอธิบายรายวิชา: ทั้งหมด / ทั้งมาตรฐาน / บางข้อ → "ใส่ลงช่อง"
   const pick = u1.querySelector('.sy-pick');
   const pcb = () => [...pick.querySelectorAll('.sy-pick-cb')];

@@ -323,12 +323,14 @@ function docProfileInfo(p) {
   p = p || {};
   const name = [(p.prefix || '') + (p.firstName || ''), p.lastName || ''].filter(Boolean).join(' ');
   const position = [p.position, p.academicStanding].filter(Boolean).join(' ');
-  const strip = (v, re) => String(v || '').trim().replace(re, '').trim();
+  const trim = v => String(v || '').trim(), strip = (v, re) => trim(v).replace(re, '').trim();
   const dist = strip(p.schoolDistrict, /^(อำเภอ|อ\.|เขต)\s*/), prov = strip(p.schoolProvince, /^(จังหวัด|จ\.)\s*/);
   const location = [dist && 'อำเภอ' + dist, prov && 'จังหวัด' + prov].filter(Boolean).join(' ');
   return {
     name, position, subjectGroup: p.subjectGroup || '', school: p.school || '', affiliation: p.affiliation || '',
     district: p.schoolDistrict || '', province: p.schoolProvince || '', agency: p.agency || '', logo: p.logo || '', location,
+    // ผู้ลงนามในเอกสาร (ชื่อเต็มตามที่กรอก — ไม่มีชื่อ = '') · Course Syllabus ฯลฯ ใช้ร่วมกัน
+    subjectHead: trim(p.subjectHead), assessmentHead: trim(p.assessmentHead), academicAsst: trim(p.academicAsst), deputyAcademic: trim(p.deputyAcademic), director: trim(p.director),
   };
 }
 
