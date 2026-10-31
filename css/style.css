@@ -2677,8 +2677,12 @@ td.doc-ai-target::before { inset: 0; }
 .sy-unit-name { font-weight: 600; overflow-wrap: anywhere; }
 .sy-unit-s { font-size: 12.5px; font-weight: 400; color: var(--ink-soft); }
 .sy-unit-w { margin-left: auto; font-size: 13px; font-weight: 400; color: var(--ink-soft); white-space: nowrap; }
-.sy-unit .field > label { display: block; font-size: 13px; font-weight: 600; color: var(--ink-soft); }
-.sy-unit .sy-std { display: block; width: 100%; margin-top: 4px; resize: vertical; }
+.sy-unit .field > label, .sy-ind .field > label { display: block; font-size: 13px; font-weight: 600; color: var(--ink-soft); }
+.sy-unit .sy-std, .sy-ind .sy-core, .sy-ind .sy-kw { display: block; width: 100%; margin-top: 4px; resize: vertical; }
+.sy-ind-t { flex: 1 1 14em; min-width: 0; font-size: 13px; color: var(--ink-soft); overflow-wrap: anywhere; }
+.sy-ind-kpa { display: grid; grid-template-columns: repeat(3, minmax(0, 120px)); gap: 12px; margin-top: 8px; }
+.sy-ind-kpa label { display: block; font-size: 13px; font-weight: 600; color: var(--ink-soft); }
+.sy-ind-kpa .sy-kpa { display: block; width: 100%; margin-top: 4px; }
 .sy-pick { margin-top: 6px; max-width: 100%; }
 .sy-pick > summary { cursor: pointer; font-size: 13.5px; font-weight: 600; color: var(--ink-soft); padding: 4px 0; }
 .sy-pick-box { margin-top: 6px; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius-s); background: var(--surface); }
