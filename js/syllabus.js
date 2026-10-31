@@ -427,7 +427,9 @@ const SY1_CSS = `
 .sy1 tr.sy-sum td{font-weight:700;text-align:center}
 .sy1 tr.sy-pe td{text-align:center}
 .sy1 .sy-pl-l{margin-top:.15em}
-.sy1 .sy-pl-i{padding-left:1.3em;text-indent:-1.3em;overflow-wrap:anywhere}
+.sy1 .sy-pl-i{display:grid;grid-template-columns:var(--nw,1.3em) minmax(0,1fr);overflow-wrap:anywhere}
+.sy1 .sy-pl-n{white-space:nowrap}
+.sy1 .sy-pl-t{min-width:0;overflow-wrap:anywhere}
 .sy1 section+section{break-before:page;page-break-before:always}
 .sy1 .sy-ct{text-align:center;font-size:18pt;line-height:1.4;overflow-wrap:anywhere}
 .sy1 .sy-rule{border-top:.75pt solid #000;margin:.4em 0 .5em}
@@ -536,11 +538,11 @@ function syPlanSectionHtml(m) {
   const e = escapeHtml, f = syFmt, pl = m.plan;
   if (!pl || !pl.rows.some(r => r.kind === 'unit')) return '';
   const hl = (h) => h.map(l => `<span class="sy-hl">${l}</span>`).join('<br>');
-  const list = (arr) => arr.map((t, i) => `<div class="sy-pl-i">${i + 1}. ${e(t)}</div>`).join('');
+  const list = (arr) => { const nw = (String(arr.length).length * 0.5 + 0.8).toFixed(1); return arr.map((t, i) => `<div class="sy-pl-i" style="--nw:${nw}em"><span class="sy-pl-n">${i + 1}.</span> <span class="sy-pl-t">${e(t)}</span></div>`).join(''); }; // เลขแยกคอลัมน์ของตัวเอง → บรรทัดต่อไปชิดแนวเดียวกับตัวอักษรบรรทัดแรก (เดิมใช้ text-indent ติดลบ แล้วเลขสั้นกว่าช่องเยื้อง ทำให้แนวเหลื่อม)
   const hrs = (h) => (Number(h) > 0 ? f(h) : '');
   const unit = (r) => `<tr class="sy-pu"><td class="sy-c">${syLines(r.when || r.whenAuto)}</td><td class="sy-c">${hrs(r.hours)}</td>`
     + `<td>${syLines(r.standard)}${r.objectives.length ? `<div class="sy-pl-l">จุดประสงค์การเรียนรู้</div>${list(r.objectives)}` : ''}</td>`
-    + `<td>${r.topics.length ? `<div>เนื้อหา</div>${list(r.topics)}` : ''}${r.works.length ? `<div class="sy-pl-l">ภาระงาน</div>${list(r.works)}` : ''}</td>`
+    + `<td>${r.topics.length ? `<div class="sy-pl-l">เนื้อหา</div>${list(r.topics)}` : ''}${r.works.length ? `<div class="sy-pl-l">ภาระงาน</div>${list(r.works)}` : ''}</td>`
     + `<td>${syLines(r.media)}</td></tr>`;
   const exam = (r) => `<tr class="sy-pe"><td></td><td>${hrs(r.hours)}</td><td colspan="3">${r.kind === 'mid' ? 'สอบกลางภาค' : 'สอบปลายภาค'}</td></tr>`;
   return `<section class="pg-port">
