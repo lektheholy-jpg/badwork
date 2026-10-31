@@ -190,6 +190,13 @@ const DESC = { type: 'พื้นฐาน', area: 'วิทยาศาสต
     ok(pr.map(r => r.kind).join() === 'unit,unit,mid,unit,unit,unit,final' && mp.plan.midId === 'u2' && mp.plan.total === 22, 'โมเดลข้อ 14: 5 หน่วย + สอบกลางภาคหลังหน่วยที่เลือก + สอบปลายภาค · รวมชั่วโมง 20 + ชั่วโมงสอบ 2 = 22');
     ok(pr[0].standard === 'ว4.2 / ม.2/4' && pr[0].hours === 2 && pr[0].topics.length === 2 && J(pr[0].works) === J(['งาน 1']) && J(pr[0].objectives) === J(['อธิบาย', 'วิเคราะห์']) && pr[0].media === '1. หนังสือเรียน' && pr[0].when === 'ครั้งที่ 1-2\n1-14 มิ.ย.69', 'แถวหน่วย: ตัวชี้วัด/ชั่วโมง/เนื้อหา/ภาระงานดึงจากโครงสร้างเดิม · จุดประสงค์ตัดเลขนำหน้า · สื่อใช้ค่ากลาง');
     ok(pr[0].whenAuto === 'ครั้งที่ 1-2' && pr[1].whenAuto === 'ครั้งที่ 3-6' && pr[3].whenAuto === 'ครั้งที่ 8-9', 'ครั้งที่ที่เสนอ: ชั่วโมงสะสม ÷ ชั่วโมงต่อสัปดาห์ (นับชั่วโมงสอบกลางภาคด้วย)');
+    // วันเปิดเรียน: ภาค 1 = 16 พ.ค. · ภาค 2 = 1 พ.ย. · เสาร์/อาทิตย์ → จันทร์ถัดไป · สัปดาห์ = จันทร์–ศุกร์
+    const iso = (sem, yr) => { const d = R('syTermStart')(sem, yr); return d ? d.toISOString().slice(0, 10) : null; };
+    ok(iso('1', '2569') === '2026-05-18' && iso('2', '2569') === '2026-11-02' && iso('1', '2570') === '2027-05-17' && iso('2', '2570') === '2027-11-01' && iso('1', '2571') === '2028-05-16' && iso('3', '2569') === null && iso('1', '') === null, 'วันเปิดเรียน: ภาค 1 = 16 พ.ค. · ภาค 2 = 1 พ.ย. · ตรงเสาร์/อาทิตย์เลื่อนเป็นจันทร์ถัดไป (16 พ.ค.69 = เสาร์ → 18 พ.ค. · 1 พ.ย.69 = อาทิตย์ → 2 พ.ย.) · ภาค/ปีไม่ถูกต้อง = null');
+    const st = R('syTermStart')('1', '2569');
+    ok(R('syWeekRange')(st, 1, 2) === '18-29 พ.ค.69' && R('syWeekRange')(st, 3, 5) === '1-19 มิ.ย.69' && R('syWeekRange')(st, 6, 10) === '22 มิ.ย.–24 ก.ค.69' && R('syWeekRange')(R('syTermStart')('2', '2569'), 8, 9) === '21 ธ.ค.69–1 ม.ค.70', 'ช่วงวันที่ของสัปดาห์: เดือนเดียวกัน · ข้ามเดือน · ข้ามปี (จันทร์–ศุกร์)');
+    const mt = R('syModel')(course, loaded.struct, { ...loaded.saved, plan }, loaded.desc, { term: { semester: '1', year: '2569' } }).plan.rows;
+    ok(mt[0].whenShow === 'ครั้งที่ 1-2\n18-29 พ.ค.69' && mt[0].whenAuto === 'ครั้งที่ 1-2' && mt[1].whenAuto === 'ครั้งที่ 3-6', 'ข้อ 14: ที่เสนอ = ครั้งที่ + ช่วงวันที่ (whenAuto ยังเป็น \"ครั้งที่ a-b\" ล้วน ข้อ 15 ใช้ดึงสัปดาห์)');
     const auto = R('syModel')(course, loaded.struct, loaded.saved, loaded.desc).plan;
     ok(auto.rows.map(r => r.kind).join() === 'unit,unit,unit,unit,mid,unit,final' && auto.total === 20, 'ไม่เลือกตำแหน่งสอบกลางภาค: แทรกหลังหน่วยที่ชั่วโมงสะสมถึงครึ่งหนึ่ง · ไม่กรอกชั่วโมงสอบ = รวม 20');
     const st1 = R(`syStructFrom`)([{ id: 'a', name: 'ก', category: 'collect', unitId: 'u', max: 10 }, { id: 'm', name: 'm', category: 'midterm', max: 20 }, { id: 'f', name: 'f', category: 'final', max: 30 }], { groups: [], units: [{ id: 'u', name: 'หน่วย', groupId: null }] });
@@ -369,7 +376,7 @@ const DESC = { type: 'พื้นฐาน', area: 'วิทยาศาสต
 
   { // ข้อ 14 ในฟอร์ม: ช่องกรอก → syCollect → ตรวจตัวเลขชั่วโมงสอบ
     const form = d.querySelector('#sy-form'), pls = [...host.querySelectorAll('.sy-pl[data-unit]')];
-    ok(pls.length === 5 && !!$('sy-media') && $('sy-mid-after').options.length === 6 && !!$('sy-mid-h') && !!$('sy-fin-h') && pls[0].querySelector('.sy-pl-when').placeholder === 'ครั้งที่ 1-2' && /ภาระงาน: งาน 1/.test(norm(pls[0].querySelector('.sy-pl-ro').textContent)), 'ส่วนที่ 4: การ์ด 5 หน่วย + ช่องสื่อกลาง + ตำแหน่ง/ชั่วโมงสอบ · ภาระงาน/ตัวชี้วัดดึงมาแสดง · ครั้งที่เสนอเป็น placeholder');
+    ok(pls.length === 5 && !!$('sy-media') && $('sy-mid-after').options.length === 6 && !!$('sy-mid-h') && !!$('sy-fin-h') && pls[0].querySelector('.sy-pl-when').placeholder.split('\n')[0] === 'ครั้งที่ 1-2' && /ภาระงาน: งาน 1/.test(norm(pls[0].querySelector('.sy-pl-ro').textContent)), 'ส่วนที่ 4: การ์ด 5 หน่วย + ช่องสื่อกลาง + ตำแหน่ง/ชั่วโมงสอบ · ภาระงาน/ตัวชี้วัดดึงมาแสดง · ครั้งที่เสนอเป็น placeholder');
     pls[0].querySelector('.sy-pl-when').value = 'ครั้งที่ 1-2'; pls[0].querySelector('.sy-pl-obj').value = 'อธิบาย';
     $('sy-media').value = 'สื่อกลาง'; $('sy-mid-after').value = 'u2'; $('sy-mid-h').value = '1';
     const pc = R(`syCollect`)(form).plan;

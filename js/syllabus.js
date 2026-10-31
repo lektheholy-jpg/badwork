@@ -266,7 +266,27 @@ function syAnalysisModel(desc, saved) {
 //   แถวสอบกลางภาค/ปลายภาคมีเมื่อโครงสร้างคะแนนมีคะแนนสอบนั้น (ชั่วโมงสอบครูกรอกเอง) · สอบกลางภาคแทรกหลังหน่วยที่ครูเลือก (ว่าง = หน่วยที่ชั่วโมงสะสมถึงครึ่งหนึ่ง)
 //   ครั้งที่ที่ครูไม่กรอก = เสนอจากชั่วโมงสะสม ÷ ชั่วโมงต่อสัปดาห์ (whenAuto) · ชั่วโมงสะสมนับรวมชั่วโมงสอบ
 const syNumbered = (t) => String(t || '').split(/\r?\n/).map(x => x.trim().replace(/^[0-9๐-๙]+[.)]\s+/, '').trim()).filter(Boolean);
-function syPlanModel(units, struct, plan, hoursWeek) {
+// วันเปิดเรียนตามปฏิทินโรงเรียน: ภาค 1 = 16 พ.ค. · ภาค 2 = 1 พ.ย. ของปี ค.ศ. = ปีการศึกษา − 543 · ตรงเสาร์/อาทิตย์ → เลื่อนเป็นวันจันทร์ถัดไป
+//   สัปดาห์ที่ n = จันทร์ถึงศุกร์ (SY_WEEK_DAYS วัน) นับจากวันเปิดเรียน · ไม่หักวันหยุดนักขัตฤกษ์ (แอปยังไม่มีปฏิทินโรงเรียน)
+const SY_TERM_OPEN = { '1': [4, 16], '2': [10, 1] }; // [เดือน (0 = ม.ค.), วัน]
+const SY_MONTHS = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+const SY_WEEK_DAYS = 5;
+function syTermStart(semester, year) {
+  const o = SY_TERM_OPEN[String(semester)], be = Number(year);
+  if (!o || !Number.isInteger(be) || be < 2500 || be > 2700) return null;
+  const d = new Date(Date.UTC(be - 543, o[0], o[1])), wd = d.getUTCDay();
+  if (wd === 6) d.setUTCDate(d.getUTCDate() + 2); else if (wd === 0) d.setUTCDate(d.getUTCDate() + 1);
+  return d;
+}
+// สัปดาห์ที่ a–b (นับจาก 1) → ช่วงวันที่ เช่น "1-12 มิ.ย.69" · ข้ามเดือน "15 มิ.ย.–3 ก.ค.69" · ข้ามปี "29 ธ.ค.69–2 ม.ค.70"
+function syWeekRange(start, a, b) {
+  const DAY = 864e5, from = new Date(start.getTime() + (a - 1) * 7 * DAY), to = new Date(start.getTime() + ((b - 1) * 7 + SY_WEEK_DAYS - 1) * DAY);
+  const yy = (d) => String((d.getUTCFullYear() + 543) % 100).padStart(2, '0'), mon = (d) => SY_MONTHS[d.getUTCMonth()];
+  if (from.getUTCFullYear() !== to.getUTCFullYear()) return `${from.getUTCDate()} ${mon(from)}${yy(from)}–${to.getUTCDate()} ${mon(to)}${yy(to)}`;
+  if (from.getUTCMonth() !== to.getUTCMonth()) return `${from.getUTCDate()} ${mon(from)}–${to.getUTCDate()} ${mon(to)}${yy(to)}`;
+  return `${from.getUTCDate()}-${to.getUTCDate()} ${mon(to)}${yy(to)}`;
+}
+function syPlanModel(units, struct, plan, hoursWeek, term) {
   const pl = plan || {}, byId = new Map((pl.units || []).map(r => [r.id, r])), hw = Number(hoursWeek) > 0 ? Number(hoursWeek) : 0;
   const hasMid = (struct.midterm || 0) > 0, hasFinal = (struct.final || 0) > 0;
   const midH = hasMid ? Number(pl.midHours) || 0 : 0, finH = hasFinal ? Number(pl.finalHours) || 0 : 0;
@@ -285,21 +305,25 @@ function syPlanModel(units, struct, plan, hoursWeek) {
   }
   const rows = [];
   let cum = 0;
-  const span = (h) => {
-    if (!(hw > 0) || !(h > 0)) return '';
-    const a = Math.floor(cum / hw + 1e-9) + 1, b = Math.max(a, Math.ceil((cum + h) / hw - 1e-9));
-    return 'ครั้งที่ ' + (a === b ? a : a + '-' + b);
+  const start = syTermStart((term || {}).semester, (term || {}).year);
+  const weeks = (h) => {
+    if (!(hw > 0) || !(h > 0)) return null;
+    const a = Math.floor(cum / hw + 1e-9) + 1;
+    return [a, Math.max(a, Math.ceil((cum + h) / hw - 1e-9))];
   };
+  const span = (h) => { const w = weeks(h); return w ? 'ครั้งที่ ' + (w[0] === w[1] ? w[0] : w[0] + '-' + w[1]) : ''; }; // whenAuto ต้องเป็น "ครั้งที่ a-b" เท่านั้น — ข้อ 15 ดึงเลขสุดท้ายไปเป็นสัปดาห์ (syLastNum)
+  const dates = (h) => { const w = weeks(h); return w && start ? syWeekRange(start, w[0], w[1]) : ''; };
+  const show = (h) => [span(h), dates(h)].filter(Boolean).join('\n'); // ที่เสนอ/พิมพ์เมื่อครูไม่กรอกเอง: ครั้งที่ + ช่วงวันที่
   units.forEach((u, i) => {
     const sv = byId.get(u.id) || {};
     rows.push({
       kind: 'unit', n: u.n, id: u.id, name: u.name, hours: u.hours, standard: u.standard, topics: u.topics.map(t => t.title).filter(Boolean), works: u.works || [],
-      when: sv.when || '', whenAuto: span(u.hours), objectives: syNumbered(sv.objectives), media: sv.media || pl.media || '',
+      when: sv.when || '', whenAuto: span(u.hours), whenShow: show(u.hours), objectives: syNumbered(sv.objectives), media: sv.media || pl.media || '',
     });
     cum += u.hours;
-    if (i === midIdx) { rows.push({ kind: 'mid', hours: midH, whenAuto: span(midH) }); cum += midH; }
+    if (i === midIdx) { rows.push({ kind: 'mid', hours: midH, whenAuto: span(midH), whenShow: show(midH) }); cum += midH; }
   });
-  if (hasFinal && units.length) rows.push({ kind: 'final', hours: finH, whenAuto: span(finH) });
+  if (hasFinal && units.length) rows.push({ kind: 'final', hours: finH, whenAuto: span(finH), whenShow: show(finH) });
   return { rows, total: syRound1(rows.reduce((a, r) => a + (Number(r.hours) || 0), 0)), hasMid, hasFinal, midId: midIdx >= 0 ? units[midIdx].id : '' };
 }
 
@@ -378,7 +402,7 @@ function syModel(course, struct, saved, desc, ctx) {
   const kpa = m.analysis.k + m.analysis.p + m.analysis.a;
   if (kpa > 0 && syRound1(kpa) !== 100) warnings.push(`คะแนน K + P + A ในข้อ 13 รวม ${syFmt(kpa)} ไม่ครบ 100`);
   m.cover = syCoverModel(c, dsc, m, { ...(ctx || {}), hoursWeek: (ctx && ctx.hoursWeek != null) ? ctx.hoursWeek : s.hoursWeek });
-  m.plan = syPlanModel(units, struct, s.plan, m.cover.hoursWeek);
+  m.plan = syPlanModel(units, struct, s.plan, m.cover.hoursWeek, m.cover);
   m.assess = syAssessModel(struct, s.assess, units, m.plan);
   return m;
 }
@@ -594,7 +618,7 @@ function syPlanSectionHtml(m) {
   const hl = (h) => h.map(l => `<span class="sy-hl">${l}</span>`).join('<br>');
   const list = (arr) => { const nw = (String(arr.length).length * 0.5 + 0.8).toFixed(1); return arr.map((t, i) => `<div class="sy-pl-i" style="--nw:${nw}em"><span class="sy-pl-n">${i + 1}.</span> <span class="sy-pl-t">${e(t)}</span></div>`).join(''); }; // เลขแยกคอลัมน์ของตัวเอง → บรรทัดต่อไปชิดแนวเดียวกับตัวอักษรบรรทัดแรก (เดิมใช้ text-indent ติดลบ แล้วเลขสั้นกว่าช่องเยื้อง ทำให้แนวเหลื่อม)
   const hrs = (h) => (Number(h) > 0 ? f(h) : '');
-  const unit = (r) => `<tr class="sy-pu"><td class="sy-c">${syLines(r.when || r.whenAuto)}</td><td class="sy-c">${hrs(r.hours)}</td>`
+  const unit = (r) => `<tr class="sy-pu"><td class="sy-c">${syLines(r.when || r.whenShow)}</td><td class="sy-c">${hrs(r.hours)}</td>`
     + `<td>${syLines(r.standard)}${r.objectives.length ? `<div class="sy-pl-l">จุดประสงค์การเรียนรู้</div>${list(r.objectives)}` : ''}</td>`
     + `<td>${r.topics.length ? `<div class="sy-pl-l">เนื้อหา</div>${list(r.topics)}` : ''}${r.works.length ? `<div class="sy-pl-l">ภาระงาน</div>${list(r.works)}` : ''}</td>`
     + `<td>${syLines(r.media)}</td></tr>`;
@@ -788,7 +812,7 @@ function syPlanHtml(r, sv) {
     <div class="pa-witem-h sy-unit-h"><span class="sy-unit-n">หน่วยที่ ${r.n}</span><span class="sy-unit-name">${e(r.name)}</span><span class="sy-pl-h">${syFmt(r.hours)} ชั่วโมง</span></div>
     <div class="sy-pl-ro">${syPlanRoHtml(r)}</div>
     <div class="field"><label>ครั้งที่ / วัน / เวลา
-      <textarea class="input-sm sy-pl-when" rows="2" maxlength="${SY_MAX.when}" placeholder="${e(r.whenAuto || 'เช่น ครั้งที่ 1-2 (ขึ้นบรรทัดใหม่แล้วใส่วันที่ เช่น 1-14 มิ.ย.69)')}">${e(sv.when || '')}</textarea>
+      <textarea class="input-sm sy-pl-when" rows="2" maxlength="${SY_MAX.when}" placeholder="${e(r.whenShow || 'เช่น ครั้งที่ 1-2 (ขึ้นบรรทัดใหม่แล้วใส่วันที่ เช่น 1-14 มิ.ย.69)')}">${e(sv.when || '')}</textarea>
     </label></div>
     <div class="field"><label>จุดประสงค์การเรียนรู้ (1 บรรทัด = 1 ข้อ ระบบใส่เลขให้)
       <textarea class="input-sm sy-pl-obj" rows="3" maxlength="${SY_MAX.obj}">${e(sv.objectives || '')}</textarea>
@@ -981,7 +1005,7 @@ function syShowForm(container) {
       if (!r) return;
       el.querySelector('.sy-pl-h').textContent = `${syFmt(r.hours)} ชั่วโมง`;
       el.querySelector('.sy-pl-ro').innerHTML = syPlanRoHtml(r);
-      if (r.whenAuto) el.querySelector('.sy-pl-when').placeholder = r.whenAuto;
+      if (r.whenShow) el.querySelector('.sy-pl-when').placeholder = r.whenShow;
     });
     form.querySelectorAll('.sy-as').forEach(el => { // ข้อ 15: ประเภทที่ใช้จริง (อัตโนมัติ/เลือกเอง) สลับช่องสัปดาห์ ↔ ลักษณะงาน/กำหนดส่ง · ค่าที่ระบบเสนอเป็น placeholder อัปเดตสด
       const it = mm.assess.items.find(x => x.id === el.dataset.id), ex = mm.assess.exams.find(x => x.id === el.dataset.id), r = it || ex;
