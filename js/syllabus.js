@@ -17,10 +17,21 @@
 // ==========================================================================
 
 const SY_DOC_ID = 'syllabus';   // settings/syllabus
-const SY_MAX = { area: 80, std: 200, title: 400, hours: 5, topics: 12, units: 40, core: 1000, kw: 600, inds: 100, when: 200, obj: 1500, pmedia: 400, aind: 200, aweek: 40, adue: 40, assess: 120 }; // core/kw = สาระแกนกลาง/คำสำคัญต่อตัวชี้วัด (ข้อ 13) · when/obj/pmedia = ครั้งที่-วันเวลา/จุดประสงค์/สื่อ ต่อหน่วย (ข้อ 14) · aind/aweek/adue = ตัวชี้วัด/สัปดาห์/กำหนดส่ง ต่อรายการคะแนน (ข้อ 15)
+const SY_MAX = { area: 80, std: 200, title: 400, hours: 5, topics: 12, units: 40, core: 1000, kw: 600, inds: 100, when: 200, obj: 1500, pmedia: 400, aind: 200, aweek: 40, adue: 40, assess: 120, mother: 120, res: 1500, books: 1000, rules: 2000, apr: 8, role: 120, aname: 80 }; // core/kw = สาระแกนกลาง/คำสำคัญต่อตัวชี้วัด (ข้อ 13) · when/obj/pmedia = ครั้งที่-วันเวลา/จุดประสงค์/สื่อ ต่อหน่วย (ข้อ 14) · aind/aweek/adue = ตัวชี้วัด/สัปดาห์/กำหนดส่ง ต่อรายการคะแนน (ข้อ 15)
 const SY_CREDIT_HOURS = 40;     // 1 หน่วยกิต = 40 ชั่วโมง (0.5 = 20 · 1.5 = 60)
 const SY_COLS = [10, 18, 15, 34, 11, 12]; // ความกว้างคอลัมน์ (%) หน่วยที่ · ชื่อหน่วย · มาตรฐาน · สาระ · เวลา · น้ำหนัก
 const SY_SAVE_LABEL = 'บันทึกโครงสร้างรายวิชา';
+
+// ข้อ 17–21 (ท้ายเอกสาร): วิธีการสอน · สื่อ/แหล่งเรียนรู้ · หนังสืออ่านประกอบ · มาตรฐาน/ตัวชี้วัด (ดึงจากคำอธิบายรายวิชา) · ข้อตกลง · ช่องลงชื่อ/ความเห็นผู้บริหาร
+const SY_METHODS = [['practice', 'ลงมือปฏิบัติ (Practice)'], ['demo', 'แบบสาธิต'], ['lecture', 'แบบบรรยาย'], ['group', 'กิจกรรมกลุ่ม (Group Process)'], ['coop', 'ทำงานรับผิดชอบร่วมกัน (Co-operative Learning)']];
+const SY_SAMPLE_RULES = ['ห้ามนำอาหาร เครื่องดื่ม เข้ามารับประทานในห้องคอม', 'ช่วยกันรักษาความสะอาดเครื่องคอมพิวเตอร์และห้องเรียน', 'ห้ามเล่นเกมส์โดยเด็ดขาด', 'ห้ามใช้โทรศัพท์ในห้องเรียน ถ้าเห็นโดนยึดและหักคะแนน', 'ห้ามออกนอกห้องก่อนได้รับอนุญาต', 'แต่งกายให้ถูกกระเบียบ', 'ห้ามส่งเสียงดังและพูดจาหยาบคาย'].join('\n');
+// ผู้ให้ความเห็น (ค่าเริ่มต้นเมื่อยังไม่เคยบันทึก) — ครูเพิ่ม/ลบ/เปลี่ยนตำแหน่งได้ · approve = มีช่อง “อนุญาตให้ใช้สอนได้ / ควรปรับปรุง”
+const syDefaultApprovers = (area) => [
+  { role: 'หัวหน้ากลุ่มสาระการเรียนรู้' + (area || ''), name: '', approve: false },
+  { role: 'ผู้ช่วยผู้อำนวยการฝ่ายวิชาการ', name: '', approve: false },
+  { role: 'รองผู้อำนวยการฝ่ายวิชาการ', name: '', approve: false },
+  { role: 'ผู้อำนวยการโรงเรียน', name: '', approve: true },
+];
 
 // มีค่าที่พิมพ์ค้างยังไม่บันทึกหรือไม่ — หน้าที่สลับแท็บเรียกถามก่อนทิ้ง (js/picker-pages.js)
 let _syDirty = false;
@@ -187,8 +198,13 @@ function syNormalize(d, descArea) {
     seenS.add(r.id);
     return true;
   });
+  const mt = Array.isArray(d.methods) ? SY_METHODS.map(x => x[0]).filter(k => d.methods.includes(k)) : null; // ข้อ 17: ไม่มีฟิลด์ = ยังไม่เคยเลือก (ใช้ค่าเริ่มต้นทุกวิธี) · มีแต่ว่าง = ไม่เลือกเลย
+  const mOther = syStr(d.methodsOther, SY_MAX.mother).replace(/\s*[\r\n]+\s*/g, ' ').trim();
+  const tx = (v, n) => syStr(v, n).replace(/\r\n?/g, '\n').trim();
+  const resources = tx(d.resources, SY_MAX.res), books = tx(d.books, SY_MAX.books), rules = tx(d.rules, SY_MAX.rules);
+  const approvers = Array.isArray(d.approvers) ? d.approvers.slice(0, SY_MAX.apr).map(r => ({ role: syStr(r && r.role, SY_MAX.role).replace(/\s*[\r\n]+\s*/g, ' ').trim(), name: syStr(r && r.name, SY_MAX.aname).replace(/\s*[\r\n]+\s*/g, ' ').trim(), approve: !!(r && r.approve) })).filter(r => r.role || r.name) : null; // มีฟิลด์แต่ว่าง = ไม่มีช่องความเห็น
   const planHas = plan.units.length || plan.media || plan.midAfter || plan.midHours || plan.finalHours;
-  return { area: syStr(d.area != null ? d.area : descArea, SY_MAX.area).trim(), ...(hw ? { hoursWeek: hw } : {}), units, analysis, ...(planHas ? { plan } : {}), ...(assess.length ? { assess } : {}) }; // hoursWeek เก็บเฉพาะเมื่อครูแก้ทับ (ว่าง = คำนวณจากหน่วยกิต)
+  return { area: syStr(d.area != null ? d.area : descArea, SY_MAX.area).trim(), ...(hw ? { hoursWeek: hw } : {}), units, analysis, ...(planHas ? { plan } : {}), ...(assess.length ? { assess } : {}), ...(mt ? { methods: mt } : {}), ...(mOther ? { methodsOther: mOther } : {}), ...(resources ? { resources } : {}), ...(books ? { books } : {}), ...(rules ? { rules } : {}), ...(approvers ? { approvers } : {}) }; // hoursWeek เก็บเฉพาะเมื่อครูแก้ทับ (ว่าง = คำนวณจากหน่วยกิต)
 }
 
 // หน่วย/คะแนนจากโครงสร้างคะแนน (ฟังก์ชันล้วน — ทดสอบได้) — items = เอกสารใน assessments · sd = settings/structure
@@ -362,6 +378,19 @@ function syAssessModel(struct, assess, units, plan) {
   return { items, exams, quizzes, works, rows, total: sum(rows.map(r => ({ max: r.pts }))), workTotal: sum(works) };
 }
 
+// ข้อ 17–21 + ช่องลงชื่อ: ฟังก์ชันล้วน — s = เอกสารที่ normalize แล้ว · ข้อ 18 ที่ครูไม่กรอก = ใช้สื่อ/แหล่งเรียนรู้ที่กรอกไว้ในข้อ 14 · ข้อ 20 ดึงจากคำอธิบายรายวิชา (m.cover.groups)
+function syTailModel(s, cover, area) {
+  const on = new Set(Array.isArray(s.methods) ? s.methods : SY_METHODS.map(x => x[0]));
+  const a = String(area || '').replace(/^กลุ่มสาระการเรียนรู้\s*/, '').trim();
+  const planMedia = (s.plan && s.plan.media) || '';
+  return {
+    methods: SY_METHODS.map(([k, label]) => ({ k, label, on: on.has(k) })), methodsOther: s.methodsOther || '',
+    resources: syNumbered(s.resources || planMedia), resourcesAuto: !s.resources && !!planMedia,
+    books: syNumbered(s.books), rules: syNumbered(s.rules),
+    teacher: cover.teacher, approvers: (Array.isArray(s.approvers) ? s.approvers : syDefaultApprovers(a)).map(r => ({ ...r })),
+  };
+}
+
 function syUnitTitle(name, n) {
   const raw = String(name == null ? '' : name).trim();
   const m = /^หน่วย(?:การเรียนรู้)?(?:ที่)?\s*([0-9๐-๙]+)\s*[:：.)\-–—]*\s*/.exec(raw);
@@ -404,6 +433,7 @@ function syModel(course, struct, saved, desc, ctx) {
   m.cover = syCoverModel(c, dsc, m, { ...(ctx || {}), hoursWeek: (ctx && ctx.hoursWeek != null) ? ctx.hoursWeek : s.hoursWeek });
   m.plan = syPlanModel(units, struct, s.plan, m.cover.hoursWeek, m.cover);
   m.assess = syAssessModel(struct, s.assess, units, m.plan);
+  m.tail = syTailModel(s, m.cover, m.area);
   return m;
 }
 
@@ -518,6 +548,12 @@ const SY1_CSS = `
 .sy1 .sy-sg{text-indent:2.5em;margin:.45em 0 .1em;break-after:avoid;page-break-after:avoid;overflow-wrap:anywhere}
 .sy1 .sy-oi{text-indent:2.5em;margin:.1em 0;overflow-wrap:anywhere}
 .sy1 .sy-oi.sy-tot{text-indent:0;margin-top:.15em}
+.sy1 .sy-ck{display:grid;grid-template-columns:1fr 1fr;gap:.1em 1em;margin:.15em 0 .15em 2.5em}
+.sy1 .sy-li{display:grid;grid-template-columns:var(--nw,1.3em) minmax(0,1fr);margin:.1em 0 .1em 2.5em;overflow-wrap:anywhere}
+.sy1 .sy-ap{break-inside:avoid;page-break-inside:avoid;margin-top:.5em}
+.sy1 .sy-ap .sy-h{margin-top:.2em}
+.sy1 .sy-sig{margin-left:42%;text-align:center;overflow-wrap:anywhere}
+.sy1 .sy-dl{border-bottom:.75pt dotted #000;height:1.3em;margin:.1em 0}
 `;
 
 // ข้อความหลายบรรทัด (ช่องมาตรฐาน/ตัวชี้วัด) → <br>
@@ -588,8 +624,43 @@ function syTableSectionHtml(m) {
 </section>`;
 }
 
-// เนื้อกระดาษทั้งเอกสาร: หน้าข้อมูลรายวิชา (ตามรูปแบบหลักสูตร) ตามด้วยตารางหน่วยการเรียนรู้ ข้อ 13 วิเคราะห์ตัวชี้วัด ข้อ 14 กำหนดการจัดการเรียนรู้ และข้อ 15 แผนการประเมินผลการเรียน — แต่ละส่วนขึ้นหน้าใหม่
-function sySheetBodyHtml(m) { return [syCoverSectionHtml(m), syTableSectionHtml(m), syAnalysisSectionHtml(m), syPlanSectionHtml(m), syAssessSectionHtml(m)].filter(Boolean).join('\n'); }
+// เนื้อกระดาษทั้งเอกสาร: หน้าข้อมูลรายวิชา (ตามรูปแบบหลักสูตร) ตามด้วยตารางหน่วยการเรียนรู้ ข้อ 13 วิเคราะห์ตัวชี้วัด ข้อ 14 กำหนดการจัดการเรียนรู้ ข้อ 15–16 แผนการประเมินผลการเรียน/รายละเอียดภาระชิ้นงาน และข้อ 17–21 พร้อมช่องลงชื่อ — แต่ละส่วนขึ้นหน้าใหม่
+function sySheetBodyHtml(m) { return [syCoverSectionHtml(m), syTableSectionHtml(m), syAnalysisSectionHtml(m), syPlanSectionHtml(m), syAssessSectionHtml(m), syTailSectionHtml(m)].filter(Boolean).join('\n'); }
+
+// ข้อ 17–21 + ลงชื่อครูประจำวิชา + ความเห็นผู้บริหาร (หน้าแนวตั้ง) — ช่องที่ยังว่างแสดงจุดไข่ปลา · ทุกบล็อกเป็นลูกตรงของ <section> (ช่องลงชื่อแต่ละคนห่อเป็นก้อนเดียว ไม่ถูกตัดกลาง)
+function syTailSectionHtml(m) {
+  const e = escapeHtml, t = m.tail, dots = n => '…'.repeat(n), empty = `<div class="sy-p">${dots(40)}</div>`;
+  const list = (arr) => { if (!arr.length) return empty; const nw = (String(arr.length).length * 0.5 + 0.8).toFixed(1); return arr.map((x, i) => `<div class="sy-li" style="--nw:${nw}em"><span>${i + 1}.</span><span>${e(x)}</span></div>`).join(''); };
+  const box = (on) => (on ? '[ / ]' : '[&nbsp;&nbsp;&nbsp;&nbsp;]');
+  const mrows = [...t.methods.map(x => ({ label: x.label, on: x.on })), ...(t.methodsOther ? [{ label: 'อื่น ๆ ' + t.methodsOther, on: true }] : [])];
+  const outcomes = m.cover.groups.length ? m.cover.groups.map(g => (g.head ? `<div class="sy-sg">${e(g.head)}</div>` : '') + g.items.map(i => `<div class="sy-oi">${i.n}. ${e(i.text)}</div>`).join('')).join('') : empty;
+  const nm = e(m.name) || dots(12);
+  const approver = (r) => `<div class="sy-ap">
+    <div class="sy-h">ความเห็นของ${e(r.role) || dots(10)}</div>
+    ${r.approve ? '<div class="sy-f">( ) อนุญาตให้ใช้สอนได้ ( ) ควรปรับปรุง</div>' : ''}
+    <div class="sy-dl"></div>
+    <div class="sy-sig">ลงชื่อ${dots(12)}</div>
+    <div class="sy-sig">(${e(r.name) || dots(8)})</div>
+    <div class="sy-sig">${e(r.role)}</div>
+  </div>`;
+  return `<section class="pg-port">
+  <div class="sy-h">17. วิธีการจัดการเรียนการสอน (ระบุได้มากกว่า 1 วิธี)</div>
+  <div class="sy-ck">${mrows.map(x => `<span>${box(x.on)} ${e(x.label)}</span>`).join('')}</div>
+  <div class="sy-h">18. สื่อ / แหล่งเรียนรู้</div>
+  ${list(t.resources)}
+  <div class="sy-h">19. รายชื่อหนังสืออ่านประกอบ</div>
+  ${list(t.books)}
+  <div class="sy-h">20. มาตรฐานการเรียนรู้/ตัวชี้วัด (จุดประสงค์การเรียนรู้) รายวิชา${nm}</div>
+  ${outcomes}
+  <div class="sy-h">21. ข้อตกลงในการเรียนรายวิชา ${nm}</div>
+  ${list(t.rules)}
+  <div class="sy-ap">
+    <div class="sy-sig">ลงชื่อ${dots(8)}ครูประจำวิชา</div>
+    <div class="sy-sig">(${e(t.teacher) || dots(8)})</div>
+  </div>
+  ${t.approvers.map(approver).join('\n  ')}
+</section>`;
+}
 
 // ข้อ 13 วิเคราะห์มาตรฐานตัวชี้วัด หรือผลการเรียนรู้ — ตารางต่อจากโครงสร้างรายวิชา (ไม่มีตัวชี้วัดในคำอธิบายรายวิชา = ไม่มีหน้านี้)
 //   หัว 2 แถว (เกณฑ์การประเมินฯ คร่อม K P A) — docPaginate ซ้ำ thead ทั้งก้อนทุกแผ่น · แถวรวมอยู่ใน tbody
@@ -657,7 +728,7 @@ function syAssessSectionHtml(m) {
       <tr class="sy-sum"><td colspan="4">รวม</td><td>${f(a.total)}</td></tr>
     </tbody>
   </table>
-  ${a.works.length ? `<div class="sy-h">รายละเอียดภาระชิ้นงาน</div>
+  ${a.works.length ? `<div class="sy-h">16. รายละเอียดภาระชิ้นงาน</div>
   <table>
     ${head(SY_WCOLS, SY_WHEAD)}
     <tbody>
@@ -874,6 +945,41 @@ const syAssessFormHtml = (m) => (m.assess.items.length || m.assess.exams.length)
   ? `<div class="u-note u-mb-12">ชื่อรายการและคะแนนดึงจากแท็บโครงสร้างคะแนน (แก้ที่ต้นทาง) · อัตราส่วนระหว่างภาค:ปลายภาค และ K:P:A คำนวณจากโครงสร้างคะแนนกับส่วนที่ 3 · ตัวชี้วัดและสัปดาห์เว้นว่าง = ใช้ค่าที่ระบบเสนอจากหน่วยการเรียนรู้ (ข้อ 14) · ชื่อที่ขึ้นต้นว่า “ทดสอบ” นับเป็นทดสอบย่อย ที่เหลือเป็นชิ้นงาน — เปลี่ยนได้ที่ช่องประเภท</div>${m.assess.items.map(syAssessCardHtml).join('')}${m.assess.exams.map(syAssessExamHtml).join('')}`
   : '<div class="empty-state">ยังไม่มีรายการคะแนนในโครงสร้างคะแนน — เพิ่มที่แท็บ “โครงสร้างคะแนน” แล้วกลับมากรอกที่นี่ (ไม่มีรายการคะแนน = ไม่พิมพ์ข้อ 15)</div>';
 
+// ข้อ 17–21: วิธีสอน (ติ๊กได้หลายวิธี) · สื่อ · หนังสืออ่านประกอบ · ข้อตกลง (1 บรรทัด = 1 ข้อ ระบบใส่เลขให้) · ข้อ 20 ดึงจากคำอธิบายรายวิชา อ่านอย่างเดียว
+function syTailFormHtml(m, data) {
+  const e = escapeHtml, t = m.tail, planMedia = (data.plan && data.plan.media) || '';
+  return `<div class="u-note u-mb-12">ข้อ 17–21 พิมพ์ต่อท้ายเอกสารหลังข้อ 16 · ข้อความหลายข้อให้ขึ้นบรรทัดใหม่ (ระบบใส่เลขข้อให้เอง) · ช่องที่เว้นว่างจะพิมพ์เป็นจุดไข่ปลาให้เขียนเพิ่มด้วยมือ</div>
+  <div class="field sy-mt-box"><label>17. วิธีการจัดการเรียนการสอน (เลือกได้มากกว่า 1 วิธี)</label>
+    <div class="sy-mt-list">${t.methods.map(x => `<label class="sy-mt-l"><input type="checkbox" class="sy-mt" data-k="${x.k}"${x.on ? ' checked' : ''}> ${e(x.label)}</label>`).join('')}</div>
+    <input id="sy-mt-other" class="input-sm" type="text" maxlength="${SY_MAX.mother}" placeholder="วิธีอื่น ๆ (ถ้ามี)" value="${e(data.methodsOther || '')}" aria-label="วิธีการสอนอื่น ๆ">
+  </div>
+  <div class="field"><label for="sy-res">18. สื่อ / แหล่งเรียนรู้</label>
+    <textarea id="sy-res" class="input-sm" rows="3" maxlength="${SY_MAX.res}" placeholder="${e(planMedia ? 'ว่าง = ใช้ตามที่กรอกในข้อ 14: ' + planMedia.replace(/\s*\r?\n\s*/g, ' · ') : 'เช่น แหล่งข้อมูลบนเครือข่ายอินเทอร์เน็ต (ขึ้นบรรทัดใหม่ = ข้อใหม่)')}">${e(data.resources || '')}</textarea>
+  </div>
+  <div class="field"><label for="sy-books">19. รายชื่อหนังสืออ่านประกอบ</label>
+    <textarea id="sy-books" class="input-sm" rows="3" maxlength="${SY_MAX.books}" placeholder="เช่น คู่มือรายวิชาพื้นฐานวิทยาศาสตร์ เทคโนโลยี (วิทยาการคำนวณ) สสวท.">${e(data.books || '')}</textarea>
+  </div>
+  <div class="field"><label>20. มาตรฐานการเรียนรู้/ตัวชี้วัด (จุดประสงค์การเรียนรู้)</label>
+    <div class="sy-pl-ro">${m.cover.count ? `ดึงจากคำอธิบายรายวิชาอัตโนมัติ ${m.cover.count} ตัวชี้วัด (แก้ที่แท็บ “คำอธิบายรายวิชา”)` : 'ยังไม่มีตัวชี้วัดในคำอธิบายรายวิชา — เพิ่มที่แท็บ “คำอธิบายรายวิชา” แล้วจะแสดงในข้อนี้เอง'}</div>
+  </div>
+  <div class="field"><label for="sy-rules">21. ข้อตกลงในการเรียนรายวิชา</label>
+    <textarea id="sy-rules" class="input-sm" rows="5" maxlength="${SY_MAX.rules}" placeholder="เช่น ห้ามนำอาหารเข้าห้องคอม (ขึ้นบรรทัดใหม่ = ข้อใหม่)">${e(data.rules || '')}</textarea>
+    <button type="button" class="btn btn-ghost btn-sm u-mt-4" id="sy-rules-sample">ใส่ข้อตกลงตัวอย่าง</button>
+  </div>`;
+}
+function syApproverRowHtml(r = {}) {
+  const e = escapeHtml;
+  return `<div class="doc-lrow sy-apr">
+    <input class="input-sm sy-apr-role" type="text" maxlength="${SY_MAX.role}" placeholder="ตำแหน่ง เช่น ผู้อำนวยการโรงเรียน" value="${e(r.role || '')}" aria-label="ตำแหน่งผู้ให้ความเห็น">
+    <input class="input-sm sy-apr-name" type="text" maxlength="${SY_MAX.aname}" placeholder="ชื่อ-สกุล (ว่าง = เว้นจุดไข่ปลา)" value="${e(r.name || '')}" aria-label="ชื่อผู้ให้ความเห็น">
+    <label class="sy-apr-ok-l"><input type="checkbox" class="sy-apr-ok"${r.approve ? ' checked' : ''}> มีช่องอนุญาต/ควรปรับปรุง</label>
+    <button type="button" class="btn btn-danger-ghost btn-sm doc-l-del sy-apr-del" title="ลบแถว" aria-label="ลบแถว">${DOC_ICO_DEL}</button>
+  </div>`;
+}
+const syApproversFormHtml = (m) => `<div class="u-note u-mb-12">ช่องลงชื่อครูประจำวิชาใช้ชื่อจากข้อมูลส่วนตัวอัตโนมัติ · ด้านล่างคือผู้ให้ความเห็นต่อจากครู (พิมพ์เรียงตามลำดับ) — เพิ่ม ลบ หรือเปลี่ยนตำแหน่ง/ชื่อได้ เช่น เพิ่มหัวหน้างานของวิชา</div>
+  <div class="doc-lrows sy-aprs">${m.tail.approvers.map(syApproverRowHtml).join('')}</div>
+  <button type="button" class="btn btn-ghost btn-sm doc-l-add sy-apr-add">${DOC_ICO_ADD} เพิ่มผู้ให้ความเห็น</button>`;
+
 // ข้อมูลรายวิชา ข้อ 1–10 ของหน้าแรก (อ่านอย่างเดียว ดึงอัตโนมัติ) — วาดใหม่ทุกครั้งที่ค่าในฟอร์มเปลี่ยน
 function syCoverGridHtml(m) {
   const cv = m.cover, num = (x) => (x == null ? '' : syFmt(x));
@@ -932,7 +1038,13 @@ function syCollect(form) {
   const orphanS = ((SY.saved && SY.saved.assess) || []).filter(r => !shownS.has(r.id));
   const inStruct = new Set(SY.struct.units.map(u => u.id));
   const orphans = ((SY.saved && SY.saved.units) || []).filter(u => !inStruct.has(u.id));
-  return syNormalize({ area: form.querySelector('#sy-area').value, hoursWeek: form.querySelector('#sy-hw').value, units: [...live, ...orphans], analysis: [...liveA, ...orphanA], plan, assess: [...liveS, ...orphanS] }, '');
+  const val = (sel) => { const el = form.querySelector(sel); return el ? el.value : ''; };
+  const tail = { // ข้อ 17–21 + ผู้ให้ความเห็น (ฟอร์มมีช่องเสมอ — ติ๊กไม่เลือกเลย/ลบทุกแถว = เก็บเป็นค่าว่างตามนั้น)
+    methods: [...form.querySelectorAll('.sy-mt:checked')].map(c => c.dataset.k), methodsOther: val('#sy-mt-other'),
+    resources: val('#sy-res'), books: val('#sy-books'), rules: val('#sy-rules'),
+    approvers: [...form.querySelectorAll('.sy-apr')].map(r => ({ role: r.querySelector('.sy-apr-role').value, name: r.querySelector('.sy-apr-name').value, approve: r.querySelector('.sy-apr-ok').checked })),
+  };
+  return syNormalize({ area: form.querySelector('#sy-area').value, hoursWeek: form.querySelector('#sy-hw').value, units: [...live, ...orphans], analysis: [...liveA, ...orphanA], plan, assess: [...liveS, ...orphanS], ...tail }, '');
 }
 
 function syCurrent() { return SY.draft || SY.saved; }
@@ -973,7 +1085,7 @@ function syShowForm(container) {
 
     <section class="doc-section">
       <h2 class="doc-sec-title">ส่วนที่ 3  วิเคราะห์มาตรฐานตัวชี้วัด (ข้อ 13)</h2>
-      ${m.analysis.rows.length ? `<div class="u-note u-mb-12">ตัวชี้วัดดึงจากคำอธิบายรายวิชา — กรอกสาระแกนกลาง คำสำคัญ และคะแนน K P A ของแต่ละตัวชี้วัด (ผลรวมแสดงในส่วนที่ 6)</div>${m.analysis.rows.map(syIndHtml).join('')}` : '<div class="empty-state">ยังไม่มีตัวชี้วัดในคำอธิบายรายวิชา — เพิ่มที่แท็บ “คำอธิบายรายวิชา” แล้วกลับมากรอกที่นี่ (ไม่มีตัวชี้วัด = ไม่พิมพ์ข้อ 13)</div>'}
+      ${m.analysis.rows.length ? `<div class="u-note u-mb-12">ตัวชี้วัดดึงจากคำอธิบายรายวิชา — กรอกสาระแกนกลาง คำสำคัญ และคะแนน K P A ของแต่ละตัวชี้วัด (ผลรวมแสดงในส่วนที่ 8)</div>${m.analysis.rows.map(syIndHtml).join('')}` : '<div class="empty-state">ยังไม่มีตัวชี้วัดในคำอธิบายรายวิชา — เพิ่มที่แท็บ “คำอธิบายรายวิชา” แล้วกลับมากรอกที่นี่ (ไม่มีตัวชี้วัด = ไม่พิมพ์ข้อ 13)</div>'}
     </section>
 
     <section class="doc-section">
@@ -982,12 +1094,22 @@ function syShowForm(container) {
     </section>
 
     <section class="doc-section">
-      <h2 class="doc-sec-title">ส่วนที่ 5  แผนการประเมินผลการเรียน (ข้อ 15)</h2>
+      <h2 class="doc-sec-title">ส่วนที่ 5  แผนการประเมินผลการเรียน (ข้อ 15–16)</h2>
       <div id="sy-assess">${syAssessFormHtml(m)}</div>
     </section>
 
     <section class="doc-section">
-      <h2 class="doc-sec-title">ส่วนที่ 6  สรุปและตรวจสอบ</h2>
+      <h2 class="doc-sec-title">ส่วนที่ 6  วิธีสอน สื่อ และข้อตกลง (ข้อ 17–21)</h2>
+      ${syTailFormHtml(m, data)}
+    </section>
+
+    <section class="doc-section">
+      <h2 class="doc-sec-title">ส่วนที่ 7  ช่องลงชื่อและความเห็นผู้บริหาร</h2>
+      <div id="sy-aprs-box">${syApproversFormHtml(m)}</div>
+    </section>
+
+    <section class="doc-section">
+      <h2 class="doc-sec-title">ส่วนที่ 8  สรุปและตรวจสอบ</h2>
       <div id="sy-check">${syCheckHtml(m)}</div>
     </section>
 
@@ -1051,6 +1173,21 @@ function syShowForm(container) {
       box.lastElementChild.querySelector('.sy-t-title').focus();
       touch();
     } else if (del) { del.closest('.sy-trow').remove(); touch(); }
+  });
+  form.addEventListener('click', (e) => { // ผู้ให้ความเห็น (เพิ่ม/ลบแถว) · ข้อตกลงตัวอย่าง
+    const add = e.target.closest('.sy-apr-add'), del = e.target.closest('.sy-apr-del'), sample = e.target.closest('#sy-rules-sample');
+    if (add) {
+      const box = form.querySelector('.sy-aprs');
+      if (box.children.length >= SY_MAX.apr) { showToast(`เพิ่มผู้ให้ความเห็นได้สูงสุด ${SY_MAX.apr} คน`); return; }
+      box.insertAdjacentHTML('beforeend', syApproverRowHtml());
+      box.lastElementChild.querySelector('.sy-apr-role').focus();
+      touch();
+    } else if (del) { del.closest('.sy-apr').remove(); touch(); }
+    else if (sample) {
+      const ta = form.querySelector('#sy-rules'), r = syAppendLines(ta.value, SY_SAMPLE_RULES.split('\n'));
+      ta.value = r.text;
+      if (r.added) touch(); else showToast('ข้อตกลงตัวอย่างมีอยู่ในช่องแล้ว');
+    }
   });
   // เลือกตัวชี้วัดจากคำอธิบายรายวิชา: ติ๊กทั้งหมด/ทั้งมาตรฐาน/รายข้อ → "ใส่ลงช่อง" ต่อท้ายช่องมาตรฐานของหน่วยนั้น (ข้ามบรรทัดที่มีอยู่แล้ว)
   const pickSel = (box) => new Set([...box.querySelectorAll('.sy-pick-cb:checked')].map(c => c.dataset.g + ':' + c.dataset.i));

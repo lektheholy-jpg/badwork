@@ -121,7 +121,7 @@ const DESC = { type: 'พื้นฐาน', area: 'วิทยาศาสต
   ok(m.units.map(u => u.hours).join() === '2,4,2,4,8' && m.units[4].topics.length === 4, 'ชั่วโมงต่อหน่วย 2,4,2,4,8');
 
   const doc = body(R(`sySheetBodyHtml`)(m));
-  ok(doc.querySelectorAll('section.pg-port').length === 4 && doc.querySelectorAll('section.pg-land').length === 1 && doc.querySelector('.sy-title').textContent === 'โครงสร้างรายวิชาพื้นฐานวิทยาศาสตร์และเทคโนโลยี', 'กระดาษ: 5 section (แนวตั้ง: หน้าข้อมูลรายวิชา + ตารางหน่วย + ข้อ 14 กำหนดการ + ข้อ 15 แผนการประเมิน · แนวนอน: ข้อ 13 วิเคราะห์ตัวชี้วัด) · หัวเรื่อง "โครงสร้างรายวิชา" + ประเภท + กลุ่มสาระ');
+  ok(doc.querySelectorAll('section.pg-port').length === 5 && doc.querySelectorAll('section.pg-land').length === 1 && doc.querySelector('.sy-title').textContent === 'โครงสร้างรายวิชาพื้นฐานวิทยาศาสตร์และเทคโนโลยี', 'กระดาษ: 6 section (แนวตั้ง: หน้าข้อมูลรายวิชา + ตารางหน่วย + ข้อ 14 กำหนดการ + ข้อ 15–16 แผนการประเมิน + ข้อ 17–21 · แนวนอน: ข้อ 13 วิเคราะห์ตัวชี้วัด) · หัวเรื่อง "โครงสร้างรายวิชา" + ประเภท + กลุ่มสาระ');
   const hl = [...doc.querySelectorAll('.sy-l')].map(e => norm(e.textContent));
   ok(hl[0] === 'เทคโนโลยี (วิทยาการคำนวณ 2) ว22183 กลุ่มสาระการเรียนรู้วิทยาศาสตร์และเทคโนโลยี', 'บรรทัดที่ 2: ชื่อวิชา รหัส · กลุ่มสาระการเรียนรู้…');
   ok(hl[1] === 'ชั้นมัธยมศึกษาปีที่ 2 เวลา 20 ชั่วโมง จำนวน 0.5 หน่วยกิต', 'บรรทัดที่ 3: ชั้น… เวลา 20 ชั่วโมง จำนวน 0.5 หน่วยกิต');
@@ -167,7 +167,7 @@ const DESC = { type: 'พื้นฐาน', area: 'วิทยาศาสต
     const dup = R('syAnalysisModel')({ indicators: [{ code: 'ว 1 ม.1/1', text: 'x' }, { code: 'ว 1 ม.1/1', text: 'y' }, { code: '', text: '' }] }, []);
     ok(dup.rows.length === 2 && dup.rows[0].key !== dup.rows[1].key, 'รหัสซ้ำ: ได้ key ไม่ซ้ำ (ไม่ทิ้งแถว) · แถวว่างทั้งรหัสและข้อความถูกข้าม');
     const ad = body(R(`sySheetBodyHtml`)(ma)), secs13 = [...ad.querySelectorAll('section')], s13 = secs13[2];
-    ok(secs13.length === 5 && s13.classList.contains('pg-land') && norm(s13.querySelector('.sy-h').textContent) === '13. วิเคราะห์มาตรฐานตัวชี้วัด หรือผลการเรียนรู้' && [...s13.children].every(el => el.tagName === 'DIV' || el.tagName === 'TABLE'), 'กระดาษข้อ 13: หน้าที่ 3 · หัวข้อ \"13. วิเคราะห์มาตรฐานตัวชี้วัด หรือผลการเรียนรู้\" · ลูกตรงเป็นหัวข้อ/ตาราง (docPaginate ตัดได้)');
+    ok(secs13.length === 6 && s13.classList.contains('pg-land') && norm(s13.querySelector('.sy-h').textContent) === '13. วิเคราะห์มาตรฐานตัวชี้วัด หรือผลการเรียนรู้' && [...s13.children].every(el => el.tagName === 'DIV' || el.tagName === 'TABLE'), 'กระดาษข้อ 13: หน้าที่ 3 · หัวข้อ \"13. วิเคราะห์มาตรฐานตัวชี้วัด หรือผลการเรียนรู้\" · ลูกตรงเป็นหัวข้อ/ตาราง (docPaginate ตัดได้)');
     const hr = [...s13.querySelectorAll('thead tr')].map(r => [...r.children].map(c => norm(c.textContent)).join('|'));
     ok(hr.length === 2 && hr[0] === 'ที่|รหัส|ตัวชี้วัด/ผลการเรียนรู้|สาระแกนกลาง|คำสำคัญ|เกณฑ์การประเมินผลการเรียนรู้ของผู้เรียน' && hr[1] === 'K|P|A' && s13.querySelector('thead th[colspan="3"]'), 'หัวตารางข้อ 13 2 แถว: ที่ · รหัส · ตัวชี้วัด · สาระแกนกลาง · คำสำคัญ · เกณฑ์การประเมินฯ คร่อม K P A');
     const cols = [...s13.querySelectorAll('col')].map(c => parseFloat(c.getAttribute('style').replace(/[^\d.]/g, '')));
@@ -177,7 +177,7 @@ const DESC = { type: 'พื้นฐาน', area: 'วิทยาศาสต
     const tot = [...s13.querySelector('tbody tr.sy-sum').children];
     ok(norm(tot[0].textContent) === 'รวม' && tot[0].colSpan === 5 && J(tot.slice(1).map(c => norm(c.textContent))) === J(['40', '20', '5']), 'แถวรวมอยู่ใน tbody: รวม · K 40 · P 20 · A 5');
     const none = body(R(`sySheetBodyHtml`)(R('syModel')(course, loaded.struct, loaded.saved, { ...loaded.desc, indicators: [] })));
-    ok(none.querySelectorAll('section').length === 4 && !none.querySelector('section.pg-land') && !/วิเคราะห์มาตรฐานตัวชี้วัด/.test(none.body.textContent), 'ไม่มีตัวชี้วัดในคำอธิบายรายวิชา → ไม่มีหน้าข้อ 13');
+    ok(none.querySelectorAll('section').length === 5 && !none.querySelector('section.pg-land') && !/วิเคราะห์มาตรฐานตัวชี้วัด/.test(none.body.textContent), 'ไม่มีตัวชี้วัดในคำอธิบายรายวิชา → ไม่มีหน้าข้อ 13');
   }
 
   // ---------------- ข้อ 14 กำหนดการจัดการเรียนรู้ ----------------
@@ -230,8 +230,8 @@ const DESC = { type: 'พื้นฐาน', area: 'วิทยาศาสต
       analysis: [{ key: R('syCodeKey')('ว 4.2 ม.2/1'), core: '', keywords: '', k: '60', p: '30', a: '10' }] };
     const m15 = R('syModel')(course, loaded.struct, sv15, loaded.desc);
     ok(J(m15.assess.rows.map(r => r.label)) === J(['ทดสอบย่อยครั้งที่ 1', 'สอบกลางภาค', 'สอบปลายภาค', 'ภาระงานเดี่ยว จำนวน 3 ชิ้น', 'ภาระงานกลุ่ม จำนวน 1 ชิ้น']) && m15.assess.total === 100 && m15.assess.rows[0].week === '2' && m15.assess.rows[1].week === '10' && m15.assess.rows[1].ind === 'ว4.2 ม.2/1', 'ทดสอบย่อย/งานกลุ่ม: แยกแถว · ทดสอบย่อยใช้สัปดาห์สุดท้ายของหน่วยเป็นค่าเริ่มต้น · ค่าที่ครูกรอกทับค่าเริ่มต้น');
-    const d15 = body(R(`sySheetBodyHtml`)(m15)), secs15 = [...d15.querySelectorAll('section')], s15 = secs15[secs15.length - 1];
-    ok(secs15.length === 5 && s15.classList.contains('pg-port') && norm(s15.querySelector('.sy-h').textContent) === '15. แผนการประเมินผลการเรียน' && [...s15.children].every(el => el.tagName === 'DIV' || el.tagName === 'TABLE') && s15.querySelectorAll('table').length === 2, 'กระดาษข้อ 15: หน้าแนวตั้งหน้าสุดท้าย · หัวข้อ "15. แผนการประเมินผลการเรียน" · ลูกตรงเป็นหัวข้อ/ตาราง 2 ตาราง');
+    const d15 = body(R(`sySheetBodyHtml`)(m15)), secs15 = [...d15.querySelectorAll('section')], s15 = secs15[secs15.length - 2]; // ข้อ 17–21 เป็นหน้าสุดท้าย
+    ok(secs15.length === 6 && s15.classList.contains('pg-port') && norm(s15.querySelector('.sy-h').textContent) === '15. แผนการประเมินผลการเรียน' && [...s15.children].every(el => el.tagName === 'DIV' || el.tagName === 'TABLE') && s15.querySelectorAll('table').length === 2, 'กระดาษข้อ 15: หน้าแนวตั้ง (ก่อนหน้าข้อ 17–21) · หัวข้อ "15. แผนการประเมินผลการเรียน" · ลูกตรงเป็นหัวข้อ/ตาราง 2 ตาราง');
     ok(J([...s15.querySelectorAll('.sy-ra')].map(e => norm(e.textContent))) === J(['1. อัตราส่วนคะแนนระหว่างภาค : คะแนนปลายภาค = 70 : 30', '2. อัตราส่วนคะแนน K : P : A = 60 : 30 : 10']), 'อัตราส่วน: ระหว่างภาค:ปลายภาค จากโครงสร้างคะแนน · K:P:A จากข้อ 13');
     ok(!/อัตราส่วนคะแนน K : P : A/.test(body(R(`sySheetBodyHtml`)(R('syModel')(course, loaded.struct, loaded.saved, loaded.desc))).body.textContent), 'ยังไม่กรอก K/P/A ในข้อ 13 → ไม่มีบรรทัดอัตราส่วน K:P:A');
     const [t1, t2] = [...s15.querySelectorAll('table')];
@@ -294,7 +294,7 @@ const DESC = { type: 'พื้นฐาน', area: 'วิทยาศาสต
   ok(mo.count === 4 && mo.groups.length === 4 && mo.groups[0].items.map(i => i.n).join() === '1,3' && mo.groups[1].head === 'ว4.2 ข' && mo.groups[2].items.length === 0 && mo.groups[3].items[0].text === 'd', 'หลายมาตรฐาน: "ว4.2" = "ว. 4.2" จัดกลุ่มเดียวกัน · มาตรฐานไม่มีตัวชี้วัดเป็นหัวว่าง · เลขต่อเนื่องทุกกลุ่ม · แถวว่างถูกทิ้ง');
   const cvDoc = body(R(`sySheetBodyHtml`)(cvm));
   const secs = [...cvDoc.querySelectorAll('section')];
-  ok(secs.length === 5 && !!secs[0].querySelector('.sy-ct') && !!secs[1].querySelector('.sy-title') && !!secs[2].querySelector('.sy-h') && !!secs[3].querySelector('.sy-h') && !!secs[4].querySelector('.sy-h') && [...secs[0].children].every(el => el.tagName === 'DIV'), 'กระดาษ: หน้าแรก = ข้อมูลรายวิชา · ถัดไป = ตารางหน่วย · ข้อ 13 · ข้อ 14 · ข้อ 15 · ทุกบล็อกเป็นลูกตรงของ section (docPaginate ตัดหน้าได้)');
+  ok(secs.length === 6 && !!secs[5].querySelector('.sy-h') && !!secs[0].querySelector('.sy-ct') && !!secs[1].querySelector('.sy-title') && !!secs[2].querySelector('.sy-h') && !!secs[3].querySelector('.sy-h') && !!secs[4].querySelector('.sy-h') && [...secs[0].children].every(el => el.tagName === 'DIV'), 'กระดาษ: หน้าแรก = ข้อมูลรายวิชา · ถัดไป = ตารางหน่วย · ข้อ 13 · ข้อ 14 · ข้อ 15 · ทุกบล็อกเป็นลูกตรงของ section (docPaginate ตัดหน้าได้)');
   const ct = [...secs[0].querySelectorAll('.sy-ct')].map(e => norm(e.textContent));
   ok(ct[0] === 'หลักสูตรรายวิชา (Course Syllabus)' && ct[1] === 'โรงเรียนหนองกี่พิทยาคม', 'หัวเรื่อง 2 บรรทัด: หลักสูตรรายวิชา (Course Syllabus) / ชื่อโรงเรียน');
   const frows = [...secs[0].querySelectorAll('.sy-f')].map(e => norm(e.textContent));
@@ -332,7 +332,7 @@ const DESC = { type: 'พื้นฐาน', area: 'วิทยาศาสต
   ok(!!$('sy-form') && host.querySelectorAll('.sy-unit').length === 5, 'ฟอร์ม: 1 บล็อกต่อหน่วยการเรียนรู้ (5 หน่วย)');
   ok($('sy-area').value === 'วิทยาศาสตร์และเทคโนโลยี', 'กลุ่มสาระ: ยังไม่เคยกรอกในแท็บนี้ → เริ่มต้นจากคำอธิบายรายวิชา');
   ok(!!host.querySelector('form.doc-form > .doc-form-header .doc-form-meta #sy-area') && !!host.querySelector('.doc-form-header #sy-status'), 'โครงฟอร์มเหมือนฟอร์มเอกสารอื่น: .doc-form-header (ช่องกลุ่มสาระ + ป้ายสถานะ) ก่อนการ์ด .doc-section');
-  ok(host.querySelectorAll('form.doc-form > section.doc-section').length === 6 && !!host.querySelector('form.doc-form > .pa-form-footer #sy-save-btn'), 'การ์ด 5 ใบ (<section class="doc-section">) แล้วตามด้วย .pa-form-footer');
+  ok(host.querySelectorAll('form.doc-form > section.doc-section').length === 8 && !!host.querySelector('form.doc-form > .pa-form-footer #sy-save-btn'), 'การ์ด 8 ใบ (<section class="doc-section">) แล้วตามด้วย .pa-form-footer');
   ok(!$('sy-to-preview') && !$('sy-top-save') && !host.querySelector('.doc-preview-bar'), 'ฟอร์มไม่มีแถบเครื่องมือบน (ปุ่มไปตัวอย่าง/บันทึกบน) — สลับแท็บด้วยแถบแท็บของหน้า เหมือนคำอธิบายรายวิชา');
   const info = [...host.querySelectorAll('section.doc-section:first-of-type dl.pa-pf .pa-pf-item')].map(e => norm(e.textContent));
   ok(info.length === 14 && info[2] === '2 รหัสวิชาว22183' && info[3] === '3 หน่วยกิต0.5' && info[8] === '8 ประเภทวิชาพื้นฐาน' && info[10] === '9 ชั่วโมง/ภาคเรียน20' && info[11] === '10 ระดับชั้นมัธยมศึกษาปีที่ 2' && !host.querySelector('.sy-head-ro') && !!host.querySelector('.pa-pf-note #sy-edit-info'), 'ข้อมูลรายวิชาข้อ 1–10 ที่ระบบดึงให้: การ์ดเล็ก docProfileGridHtml + แถบหมายเหตุพร้อมปุ่ม "แก้ไขข้อมูลวิชา" (ไม่เขียนเป็นข้อความต่อกัน)');
@@ -401,6 +401,60 @@ const DESC = { type: 'พื้นฐาน', area: 'วิทยาศาสต
     const col15 = R(`syCollect`)(form).assess;
     ok(col15.length === 3 && col15[0].id === 'a1' && col15[0].kind === 'quiz' && col15[0].week === '3' && col15[1].id === 'a2' && col15[1].work === 'group' && col15[1].due === '6 ก.ค. 69' && col15[2].id === '@mid' && col15[2].ind === 'ว4.2', 'syCollect: อ่านค่าข้อ 15 ตาม id รายการ (เก็บเฉพาะแถวที่กรอก · สอบกลางภาค = @mid)');
     form.querySelectorAll('.sy-as select').forEach(el => { el.value = ''; }); form.querySelectorAll('.sy-as input, .sy-as textarea').forEach(el => { el.value = ''; });
+    form.dispatchEvent(new w.Event('input')); R('syDiscard()');
+  }
+
+
+  { // ---------------- ข้อ 16–21 (วิธีสอน · สื่อ · หนังสือ · ตัวชี้วัด · ข้อตกลง · ช่องลงชื่อ) ----------------
+    const nz0 = R('syNormalize')({ units: [] }, '');
+    ok(!('methods' in nz0) && !('resources' in nz0) && !('books' in nz0) && !('rules' in nz0) && !('approvers' in nz0), 'normalize ข้อ 17–21: เอกสารเก่าไม่มีฟิลด์ใหม่ (ไม่ถูกเติมค่าเอง)');
+    const nz1 = R('syNormalize')({ units: [], methods: ['demo', 'xx', 'practice'], methodsOther: ' ทัศนศึกษา\nนอกสถานที่ ', resources: '  1. หนังสือ \r\n 2. เน็ต ', books: ' คู่มือ สสวท. ', rules: ' ห้ามเล่นเกม ',
+      approvers: [{ role: ' ผอ. ', name: ' นาย ก ', approve: 1 }, { role: '', name: '' }, { role: 'รอง ผอ.' }] }, '');
+    ok(J(nz1.methods) === J(['practice', 'demo']) && nz1.methodsOther === 'ทัศนศึกษา นอกสถานที่' && nz1.resources === '1. หนังสือ \n 2. เน็ต' && nz1.books === 'คู่มือ สสวท.' && nz1.rules === 'ห้ามเล่นเกม', 'normalize: วิธีสอนเรียงตามแบบ ทิ้งรหัสที่ไม่รู้จัก · ตัดช่องว่าง · วิธีอื่นเป็นบรรทัดเดียว');
+    ok(nz1.approvers.length === 2 && nz1.approvers[0].role === 'ผอ.' && nz1.approvers[0].name === 'นาย ก' && nz1.approvers[0].approve === true && nz1.approvers[1].approve === false && J(R('syNormalize')({ units: [], methods: [], approvers: [] }, '').methods) === '[]' && Array.isArray(R('syNormalize')({ units: [], approvers: [] }, '').approvers), 'normalize: ทิ้งแถวผู้ให้ความเห็นที่ว่าง · methods/approvers ว่างที่ครูตั้งใจเก็บไว้ = เก็บเป็นอาเรย์ว่าง (ไม่กลับไปใช้ค่าเริ่มต้น)');
+
+    const mt = R('syModel')(course, loaded.struct, { ...loaded.saved }, loaded.desc);
+    ok(mt.tail.methods.length === 5 && mt.tail.methods.every(x => x.on) && mt.tail.approvers.length === 4 && mt.tail.approvers[3].approve === true && /^หัวหน้ากลุ่มสาระการเรียนรู้/.test(mt.tail.approvers[0].role), 'ยังไม่เคยเลือก: วิธีสอนติ๊กทั้ง 5 วิธี · ผู้ให้ความเห็นเริ่มต้น 4 ตำแหน่ง (ผอ. มีช่องอนุญาต/ควรปรับปรุง)');
+    const mt2 = R('syModel')(course, loaded.struct, { ...loaded.saved, methods: ['lecture'], plan: { media: '1. หนังสือเรียน\n2. Internet' } }, loaded.desc);
+    ok(mt2.tail.methods.filter(x => x.on).map(x => x.k).join() === 'lecture' && J(mt2.tail.resources) === J(['หนังสือเรียน', 'Internet']) && mt2.tail.resourcesAuto === true, 'ข้อ 18 ว่าง = ใช้สื่อ/แหล่งเรียนรู้จากข้อ 14 (ตัดเลขนำหน้า) · ข้อ 17 ใช้ตามที่เลือก');
+    const mt3 = R('syModel')(course, loaded.struct, { ...loaded.saved, resources: 'ของฉัน', books: '1. A\n2. B', rules: 'x\ny', approvers: [{ role: 'ผู้อำนวยการ', name: 'ดร.ก', approve: true }] }, loaded.desc);
+    ok(J(mt3.tail.resources) === J(['ของฉัน']) && mt3.tail.resourcesAuto === false && J(mt3.tail.books) === J(['A', 'B']) && J(mt3.tail.rules) === J(['x', 'y']) && mt3.tail.approvers.length === 1, 'ข้อ 18–21 ที่กรอกเอง: ใช้ค่าของครู · ผู้ให้ความเห็นตามที่เก็บ');
+
+    const dt = body(R(`sySheetBodyHtml`)(mt3)), secT = [...dt.querySelectorAll('section')].pop();
+    ok(secT.classList.contains('pg-port') && [...secT.children].every(el => el.tagName === 'DIV'), 'กระดาษข้อ 17–21: หน้าแนวตั้งหน้าสุดท้าย · ทุกบล็อกเป็นลูกตรงของ section (docPaginate ตัดหน้าได้)');
+    ok([...secT.querySelectorAll(':scope > .sy-h')].map(e => norm(e.textContent).slice(0, 3)).join('|') === '17.|18.|19.|20.|21.' && !/^16\./.test(norm(secT.textContent)), 'หัวข้อเรียง 17 → 21');
+    ok(mt3.assess.works.length > 0 && [...dt.querySelectorAll('section .sy-h')].some(e => norm(e.textContent) === '16. รายละเอียดภาระชิ้นงาน'), 'ข้อ 16 รายละเอียดภาระชิ้นงาน มีเลขข้อกำกับ (เลขไม่ข้ามจาก 15 ไป 17)');
+    const ck = [...secT.querySelectorAll('.sy-ck span')].map(e => norm(e.textContent));
+    ok(ck.length === 5 && ck.every(t => t.startsWith('[ / ]')) && ck[0] === '[ / ] ลงมือปฏิบัติ (Practice)', 'ข้อ 17: ช่อง [ / ] ตามแบบ ติ๊กครบ 5 วิธีเมื่อยังไม่เคยเลือก');
+    const dk = body(R(`sySheetBodyHtml`)(mt2)), ck2 = [...[...dk.querySelectorAll('section')].pop().querySelectorAll('.sy-ck span')].map(e => norm(e.textContent));
+    ok(ck2.filter(t => t.startsWith('[ / ]')).length === 1 && ck2.filter(t => !t.startsWith('[ / ]')).length === 4 && ck2.find(t => t.startsWith('[ / ]')) === '[ / ] แบบบรรยาย', 'ข้อ 17: วิธีที่ไม่ได้เลือก = ช่องว่าง');
+    const li = [...secT.querySelectorAll('.sy-li')].map(e => norm(e.textContent));
+    ok(li.join('|') === '1.ของฉัน|1.A|2.B|1.x|2.y', 'ข้อ 18/19/21: รายการเลขข้อ (ใส่เลขให้เอง)');
+    ok(secT.querySelectorAll('.sy-oi').length === mt3.cover.count && /^20\./.test(norm(secT.querySelectorAll(':scope > .sy-h')[3].textContent)), 'ข้อ 20: ตัวชี้วัดดึงจากคำอธิบายรายวิชา ครบทุกข้อ');
+    const sigs = [...secT.querySelectorAll(':scope > .sy-ap')].map(e => norm(e.textContent));
+    ok(sigs.length === 2 && /ครูประจำวิชา/.test(sigs[0]) && /ความเห็นของผู้อำนวยการ/.test(sigs[1]) && /ดร\.ก/.test(sigs[1]) && /อนุญาตให้ใช้สอนได้.*ควรปรับปรุง/.test(sigs[1]), 'ลงชื่อ: ครูประจำวิชา + ผู้ให้ความเห็นแต่ละคนเป็นก้อนเดียว (ผอ. มีช่องอนุญาต/ควรปรับปรุง)');
+    const blank = body(R(`sySheetBodyHtml`)(R('syModel')(course, loaded.struct, { ...loaded.saved, resources: '', approvers: [] }, loaded.desc))), tb = [...blank.querySelectorAll('section')].pop();
+    ok(tb.querySelectorAll(':scope > .sy-ap').length === 1 && /…{10,}/.test(norm(tb.textContent)), 'ช่องว่างพิมพ์เป็นจุดไข่ปลา · ไม่มีผู้ให้ความเห็น = เหลือแต่ลงชื่อครู');
+  }
+
+  { // ข้อ 17–21 ในฟอร์ม: ส่วนที่ 6–7 → syCollect
+    const form = d.querySelector('#sy-form');
+    ok(!!$('sy-res') && !!$('sy-books') && !!$('sy-rules') && !!$('sy-mt-other') && form.querySelectorAll('.sy-mt').length === 5 && form.querySelectorAll('.sy-mt:checked').length === 5 && form.querySelectorAll('.sy-apr').length === 4, 'ส่วนที่ 6–7: ช่องข้อ 17–21 + ติ๊กวิธีสอนครบ 5 + ผู้ให้ความเห็นเริ่มต้น 4 แถว');
+    form.querySelector('.sy-mt[data-k="demo"]').checked = false; form.querySelector('.sy-mt[data-k="coop"]').checked = false;
+    $('sy-mt-other').value = 'ทัศนศึกษา'; $('sy-res').value = '1. หนังสือ\n2. Internet'; $('sy-books').value = 'คู่มือ สสวท.';
+    form.querySelector('.sy-apr-add').click();
+    const rows = [...form.querySelectorAll('.sy-apr')], last = rows[rows.length - 1];
+    ok(rows.length === 5 && R('syIsDirty()') === true, 'เพิ่มผู้ให้ความเห็น: แถวใหม่ + ตั้งธงยังไม่บันทึก');
+    last.querySelector('.sy-apr-role').value = 'หัวหน้างานคอมพิวเตอร์'; last.querySelector('.sy-apr-name').value = 'นายสมชาย'; rows[0].querySelector('.sy-apr-del').click();
+    form.querySelector('#sy-rules-sample').click();
+    const cl = R('syCollect')(form);
+    ok(J(cl.methods) === J(['practice', 'lecture', 'group']) && cl.methodsOther === 'ทัศนศึกษา' && cl.resources === '1. หนังสือ\n2. Internet' && cl.books === 'คู่มือ สสวท.', 'syCollect: วิธีสอนที่ติ๊ก · วิธีอื่น · สื่อ · หนังสือ');
+    ok(cl.rules.split('\n').length === 7 && cl.approvers.length === 4 && cl.approvers[3].role === 'หัวหน้างานคอมพิวเตอร์' && cl.approvers[3].name === 'นายสมชาย' && cl.approvers[2].approve === true, 'ข้อตกลงตัวอย่าง 7 ข้อ (กดซ้ำไม่เพิ่มซ้ำ) · ผู้ให้ความเห็น: ลบแถวแรกแล้วเหลือ 4 · เรียงตามที่เห็นในฟอร์ม');
+    form.querySelector('#sy-rules-sample').click();
+    ok(R('syCollect')(form).rules.split('\n').length === 7, 'กด “ใส่ข้อตกลงตัวอย่าง” ซ้ำ = ไม่เพิ่มซ้ำ');
+    for (let i = 0; i < 12; i++) form.querySelector('.sy-apr-add').click();
+    ok(form.querySelectorAll('.sy-apr').length === 8, 'เพิ่มผู้ให้ความเห็นได้สูงสุด 8 คน');
+    form.querySelectorAll('.sy-mt').forEach(c => { c.checked = true; }); $('sy-mt-other').value = ''; $('sy-res').value = ''; $('sy-books').value = ''; $('sy-rules').value = '';
     form.dispatchEvent(new w.Event('input')); R('syDiscard()');
   }
 
