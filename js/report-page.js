@@ -202,6 +202,10 @@ async function renderReportPage() {
           ${terms.length > 1 ? `<option value="__all__" ${currentTerm === '__all__' ? 'selected' : ''}>ทุกภาคเรียน</option>` : ''}
         </select>
       </div>
+      <div class="toolbar-left rp-jump" role="group" aria-label="ไปยังโซน">
+        <button type="button" class="btn btn-ghost btn-sm rp-jump-btn" data-zone="rp-zone-scores">${icon('report')} คะแนน</button>
+        <button type="button" class="btn btn-ghost btn-sm rp-jump-btn" data-zone="rp-zone-docs">${icon('clip')} เอกสาร</button>
+      </div>
     </div>
     <div id="report-page-body"></div>`;
 
@@ -217,21 +221,38 @@ async function renderReportPage() {
         .map(sc => ({ section: { id: sc.sectionId, room: sc.room }, studentCount: sc.studentCount, progress: sc.progress })),
     }));
     body.innerHTML = `
-      <section class="report-section">
-        <h2 class="section-title">สรุปผลการเรียน</h2>
-        <div id="grade-summary-body">${buildGradeSummaryHtml(list, '__all__')}</div>
-        <details class="gs-details">
-          <summary>สถิติเกรดรายวิชา (กราฟ)</summary>
-          <div id="grade-stats-body">${buildGradeStatsBodyHtml(list, '__all__')}</div>
-        </details>
+      <section class="rp-zone rp-zone-scores" id="rp-zone-scores" aria-labelledby="rp-zone-scores-t">
+        <header class="rp-zone-head">
+          <span class="rp-zone-icon">${icon('report')}</span>
+          <div>
+            <h2 class="rp-zone-title" id="rp-zone-scores-t">โซนคะแนน</h2>
+            <p class="rp-zone-sub">สรุปเกรด สถิติ และส่งออกคะแนนรายห้อง</p>
+          </div>
+        </header>
+        <section class="report-section">
+          <h3 class="section-title">สรุปผลการเรียน</h3>
+          <div id="grade-summary-body">${buildGradeSummaryHtml(list, '__all__')}</div>
+          <details class="gs-details">
+            <summary>สถิติเกรดรายวิชา (กราฟ)</summary>
+            <div id="grade-stats-body">${buildGradeStatsBodyHtml(list, '__all__')}</div>
+          </details>
+        </section>
+        <section class="report-section">
+          <h3 class="section-title">ส่งออกข้อมูลรายห้อง</h3>
+          ${reportPageBodyHtml(cards)}
+        </section>
       </section>
-      <section class="report-section">
-        <h2 class="section-title">เอกสารที่ต้องส่งในภาคเรียนนี้</h2>
-        <div id="report-docs-body"></div>
-      </section>
-      <section class="report-section">
-        <h2 class="section-title">ส่งออกข้อมูลรายห้อง</h2>
-        ${reportPageBodyHtml(cards)}
+      <section class="rp-zone rp-zone-docs" id="rp-zone-docs" aria-labelledby="rp-zone-docs-t">
+        <header class="rp-zone-head">
+          <span class="rp-zone-icon">${icon('clip')}</span>
+          <div>
+            <h2 class="rp-zone-title" id="rp-zone-docs-t">โซนเอกสาร</h2>
+            <p class="rp-zone-sub">เอกสารที่ต้องส่งในภาคเรียนนี้ · ดูตัวอย่างก่อนพิมพ์หรือเปิดไปแก้ไข</p>
+          </div>
+        </header>
+        <section class="report-section">
+          <div id="report-docs-body"></div>
+        </section>
       </section>`;
     wireGradeSummaryRows();
     wireGradeRoomFilters(list);
@@ -305,6 +326,13 @@ async function renderReportPage() {
     }
     navigate(ds.route);
   }
+
+  // ปุ่มลัดไปยังโซนคะแนน/เอกสาร
+  view.querySelector('.rp-jump').addEventListener('click', (e) => {
+    const btn = e.target.closest('.rp-jump-btn');
+    const zone = btn && document.getElementById(btn.dataset.zone);
+    if (zone) zone.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
+  });
 
   body.addEventListener('click', (e) => {
     const prev = e.target.closest('.rp-doc-preview');
