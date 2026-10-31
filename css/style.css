@@ -1037,6 +1037,27 @@ table.sheet tbody tr:nth-child(even) td.grp-sub-total { background: var(--col-co
 .report-room-meta { font-size: 12.5px; font-style: normal; color: var(--ink-soft); }
 .report-room-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .rp-item { cursor: pointer; }
+/* เอกสารที่ต้องส่ง: แถบสรุป + การ์ดกริด (แถบสีซ้ายตามสถานะ) */
+.rp-summary { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; padding: 16px 20px; margin-bottom: 12px; border-radius: var(--radius-m); background: var(--card-glass); box-shadow: inset 0 0 0 1px var(--border); }
+.rp-summary-text { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; min-width: 0; }
+.rp-summary-num { font-family: var(--font-head); font-size: 34px; font-weight: 700; line-height: 1; color: var(--ink); }
+.rp-summary-num small { font-size: 17px; font-weight: 600; color: var(--ink-soft); }
+.rp-summary-label { font-weight: 700; font-size: 15px; color: var(--ink); }
+.rp-summary-sub { font-size: 13px; color: var(--ink-soft); }
+.rp-summary-bar { flex: 1 1 200px; min-width: 160px; --c: var(--success); }
+.rp-doc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
+.rp-doc { --st: var(--border); position: relative; display: flex; flex-direction: column; gap: 6px; padding: 14px 16px 14px 20px; border-radius: var(--radius-m); background: var(--card-glass); box-shadow: inset 0 0 0 1px var(--border); overflow: hidden; transition: background .15s ease, box-shadow .15s ease; }
+.rp-doc::before { content: ''; position: absolute; inset: 0 auto 0 0; width: 5px; background: var(--st); }
+.rp-doc.is-ok { --st: var(--success); }
+.rp-doc.is-draft { --st: var(--warning); }
+.rp-doc:hover { background: var(--card-glass-hover); box-shadow: inset 0 0 0 1px var(--st); }
+.rp-doc-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.rp-doc-name { font-weight: 700; font-size: 15.5px; line-height: 1.35; color: var(--ink); min-width: 0; overflow-wrap: anywhere; }
+.rp-doc-head .badge { flex-shrink: 0; white-space: nowrap; }
+.rp-doc-meta { font-size: 12.5px; color: var(--ink-soft); }
+.rp-doc-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: auto; padding-top: 8px; }
+.rp-doc-actions .btn { flex: 1 1 auto; justify-content: center; }
+@media (max-width: 640px) { .rp-doc-grid { grid-template-columns: minmax(0, 1fr); } }
 .report-room-empty { font-size: 12.5px; color: var(--ink-soft); }
 @media (max-width: 640px) { .report-room-actions { width: 100%; } .report-room-actions .btn { flex: 1; } }
 

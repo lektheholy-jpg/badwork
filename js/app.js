@@ -445,7 +445,7 @@ function initBgCustom(view, onChange) {
 // ---------- เกี่ยวกับ (บนสุดของหน้าตั้งค่า): เวอร์ชันเว็บ · ผู้สร้าง ----------
 // version รูปแบบ v<รุ่นใหญ่>.<ฟีเจอร์>.<วันเวลา> เช่น v1.15.26OC201912 — **ห้ามแก้มือ**
 //   npm run build:version (รวมใน npm run build) เขียนให้ทั้งตรงนี้และ VERSION ใน sw.js · รายละเอียดดู tools/version.js
-const APP_INFO = { version: 'v1.15.26OC312322', creator: 'lektheholy', email: 'lektheholy@gmail.com' };
+const APP_INFO = { version: 'v1.15.26OC312332', creator: 'lektheholy', email: 'lektheholy@gmail.com' };
 
 function aboutHtml() {
   const a = APP_INFO;

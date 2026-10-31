@@ -103,27 +103,41 @@ function reportDocRows({ year, sem }, data) {
   return rows;
 }
 
+const RP_STATE_TONE = { submitted: 'is-ok', done: 'is-ok', draft: 'is-draft', none: 'is-none', unknown: 'is-none' };
+
 function reportDocsHtml(rows) {
   const finished = rows.filter(r => r.state === 'submitted' || r.state === 'done').length;
-  const list = rows.map(r => {
+  const drafts = rows.filter(r => r.state === 'draft').length;
+  const todo = rows.length - finished - drafts;
+  const pct = rows.length ? Math.round(finished / rows.length * 100) : 0;
+  const cards = rows.map(r => {
     const [cls, label] = RP_STATE_BADGE[r.state] || RP_STATE_BADGE.unknown;
-    const open = r.state === 'none' ? 'เริ่มทำ' : 'เปิด';
     const noDoc = r.state === 'none'; // ยังไม่มีเอกสาร → ไม่มีอะไรให้ดูตัวอย่าง
     const attrs = `data-route="${escapeHtml(r.route)}" data-tab="${escapeHtml(r.tab)}" data-sys="${escapeHtml(r.sys)}" data-tpl="${escapeHtml(r.tplId || '')}"`;
     return `
-      <div class="report-room-row rp-item" ${attrs}>
-        <div class="report-room-info">
-          <span class="report-room-name">${escapeHtml(r.name)}</span>
-          <span class="report-room-meta">${escapeHtml(r.meta)}</span>
-        </div>
-        <div class="report-room-actions">
+      <article class="rp-doc rp-item ${RP_STATE_TONE[r.state] || 'is-none'}" ${attrs}>
+        <div class="rp-doc-head">
+          <span class="rp-doc-name">${escapeHtml(r.name)}</span>
           <span class="badge ${cls}">${label}</span>
-          ${r.preview ? `<button type="button" class="btn btn-ghost btn-sm rp-doc-preview" ${attrs} data-preview="${escapeHtml(r.preview)}" data-doc="${escapeHtml(r.docId || '')}"${noDoc ? ' disabled title="ยังไม่มีเอกสารให้ดูตัวอย่าง"' : ''}>ตัวอย่างก่อนพิมพ์</button>` : ''}
-          <button type="button" class="btn btn-ghost btn-sm rp-doc-open" ${attrs}>${open}</button>
         </div>
-      </div>`;
+        <div class="rp-doc-meta">${escapeHtml(r.meta)}</div>
+        <div class="rp-doc-actions">
+          ${r.preview ? `<button type="button" class="btn btn-ghost btn-sm rp-doc-preview" ${attrs} data-preview="${escapeHtml(r.preview)}" data-doc="${escapeHtml(r.docId || '')}"${noDoc ? ' disabled title="ยังไม่มีเอกสารให้ดูตัวอย่าง"' : ''}>ตัวอย่างก่อนพิมพ์</button>` : ''}
+          <button type="button" class="btn ${noDoc ? 'btn-primary' : 'btn-ghost'} btn-sm rp-doc-open" ${attrs}>${noDoc ? 'เริ่มทำ' : 'เปิด'}</button>
+        </div>
+      </article>`;
   }).join('');
-  return `<div class="u-note u-mb-12">ทำแล้ว/ส่งแล้ว ${finished} จาก ${rows.length} รายการ · ดึงสถานะจากเอกสารในระบบ (ร่าง = ยังไม่เปลี่ยนสถานะเป็น "ส่งแล้ว")</div><div class="report-room-list">${list}</div>`;
+  return `
+    <div class="rp-summary">
+      <div class="rp-summary-text">
+        <span class="rp-summary-num">${finished}<small>/${rows.length}</small></span>
+        <span class="rp-summary-label">ทำแล้ว/ส่งแล้ว ${finished} จาก ${rows.length} รายการ</span>
+        <span class="rp-summary-sub">ร่าง ${drafts} · ยังไม่ได้ทำ ${todo}</span>
+      </div>
+      <div class="progress-bar rp-summary-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><div class="fill" style="--p:${pct}%"></div></div>
+    </div>
+    <div class="u-note u-mb-12">ดึงสถานะจากเอกสารในระบบ (ร่าง = ยังไม่เปลี่ยนสถานะเป็น "ส่งแล้ว") · กดที่การ์ดเพื่อเปิดหน้าแก้ไข</div>
+    <div class="rp-doc-grid">${cards}</div>`;
 }
 
 // อ่านเอกสารของภาคเรียนนั้นจาก Firestore · แต่ละแหล่งอ่านพลาดได้โดยไม่ล้มทั้งส่วน (ได้ null = "ตรวจสถานะไม่ได้")

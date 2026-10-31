@@ -13,6 +13,7 @@ const code = [
   /function reportFiscalYear\(year, sem\) \{\n[\s\S]*?\n\}\n/,
   /function reportDocState\(docs\) \{\n[\s\S]*?\n\}\n/,
   /const RP_STATE_BADGE = \{\n[\s\S]*?\n\};\n/,
+  /const RP_STATE_TONE = \{[^\n]*\};\n/,
   /function reportDocRows\([\s\S]*?\n\}\n/,
   /function reportDocsHtml\(rows\) \{\n[\s\S]*?\n\}\n/,
 ].map(grab).join('\n');
@@ -53,10 +54,10 @@ ok(!rows3.some(r => r.name.includes('PA')) && rows3.length === 4, 'ภาคฤ�
 
 console.log('reportDocsHtml');
 const html = ctx.reportDocsHtml(rows);
-ok(html.includes('ทำแล้ว/ส่งแล้ว 2 จาก 8 รายการ'), 'สรุปจำนวนที่ทำแล้ว/ส่งแล้ว (Syllabus ทำแล้ว 1 + ID-Plan ส่งแล้ว 1)', html.slice(0, 120));
-ok((html.match(/class="report-room-row rp-item"/g) || []).length === 8, 'หนึ่งแถวต่อหนึ่งรายการ');
+ok(html.includes('ทำแล้ว/ส่งแล้ว 2 จาก 8 รายการ') && html.includes('--p:25%'), 'สรุปจำนวนที่ทำแล้ว/ส่งแล้ว (Syllabus ทำแล้ว 1 + ID-Plan ส่งแล้ว 1)', html.slice(0, 120));
+ok((html.match(/class="rp-doc rp-item /g) || []).length === 8, 'หนึ่งแถวต่อหนึ่งรายการ');
 ok(html.includes('badge-success') && html.includes('badge-grade-mid') && html.includes('badge-neutral'), 'ใช้คลาส badge ที่มีอยู่ใน style.css แล้ว (ไม่เพิ่ม CSS)');
-ok(html.includes('data-tab="sar"') && html.includes('data-sys="idp"') && html.includes('>เริ่มทำ<') && html.includes('>เปิด<'), 'ปุ่มเปิด/เริ่มทำ พร้อมแท็บปลายทาง');
+ok(html.includes('data-tab="sar"') && html.includes('data-sys="idp"') && html.includes('>เริ่มทำ</button>') && html.includes('>เปิด</button>'), 'ปุ่มเปิด/เริ่มทำ พร้อมแท็บปลายทาง');
 ok((html.match(/rp-doc-preview/g) || []).length === 8 && html.includes('>ตัวอย่างก่อนพิมพ์<'), 'ทุกแถวมีปุ่ม \"ตัวอย่างก่อนพิมพ์\"');
 ok(/data-preview="sarprev"[^>]*data-doc=""/.test(html) && /data-sys="pa"[^>]*data-preview="rptprev"/.test(html), 'ปุ่มตัวอย่างชี้แท็บตัวอย่างของแต่ละระบบ (SAR → sarprev · รายงานผล PA → rptprev)');
 ok((html.match(/rp-doc-preview[^>]*disabled/g) || []).length === 3, 'แถวที่ยังไม่ได้ทำ (ไม่มีเอกสาร) ปุ่มตัวอย่างกดไม่ได้', (html.match(/rp-doc-preview[^>]*disabled/g) || []).length);
