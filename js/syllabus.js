@@ -948,37 +948,31 @@ const syAssessFormHtml = (m) => (m.assess.items.length || m.assess.exams.length)
 // ข้อ 17–21: วิธีสอน (ติ๊กได้หลายวิธี) · สื่อ · หนังสืออ่านประกอบ · ข้อตกลง (1 บรรทัด = 1 ข้อ ระบบใส่เลขให้) · ข้อ 20 ดึงจากคำอธิบายรายวิชา อ่านอย่างเดียว
 function syTailFormHtml(m, data) {
   const e = escapeHtml, t = m.tail, planMedia = (data.plan && data.plan.media) || '';
+  const sub = (hd, body) => `<div class="doc-subsec"><div class="doc-subsec-hd">${hd}</div>${body}</div>`; // หัวข้อย่อย + ช่องกรอก เหมือนฟอร์ม SAR/PA (.doc-subsec)
   return `<div class="u-note u-mb-12">ข้อ 17–21 พิมพ์ต่อท้ายเอกสารหลังข้อ 16 · ข้อความหลายข้อให้ขึ้นบรรทัดใหม่ (ระบบใส่เลขข้อให้เอง) · ช่องที่เว้นว่างจะพิมพ์เป็นจุดไข่ปลาให้เขียนเพิ่มด้วยมือ</div>
-  <div class="field sy-mt-box"><label>17. วิธีการจัดการเรียนการสอน (เลือกได้มากกว่า 1 วิธี)</label>
-    <div class="sy-mt-list">${t.methods.map(x => `<label class="sy-mt-l"><input type="checkbox" class="sy-mt" data-k="${x.k}"${x.on ? ' checked' : ''}> ${e(x.label)}</label>`).join('')}</div>
-    <input id="sy-mt-other" class="input-sm" type="text" maxlength="${SY_MAX.mother}" placeholder="วิธีอื่น ๆ (ถ้ามี)" value="${e(data.methodsOther || '')}" aria-label="วิธีการสอนอื่น ๆ">
-  </div>
-  <div class="field"><label for="sy-res">18. สื่อ / แหล่งเรียนรู้</label>
-    <textarea id="sy-res" class="input-sm" rows="3" maxlength="${SY_MAX.res}" placeholder="${e(planMedia ? 'ว่าง = ใช้ตามที่กรอกในข้อ 14: ' + planMedia.replace(/\s*\r?\n\s*/g, ' · ') : 'เช่น แหล่งข้อมูลบนเครือข่ายอินเทอร์เน็ต (ขึ้นบรรทัดใหม่ = ข้อใหม่)')}">${e(data.resources || '')}</textarea>
-  </div>
-  <div class="field"><label for="sy-books">19. รายชื่อหนังสืออ่านประกอบ</label>
-    <textarea id="sy-books" class="input-sm" rows="3" maxlength="${SY_MAX.books}" placeholder="เช่น คู่มือรายวิชาพื้นฐานวิทยาศาสตร์ เทคโนโลยี (วิทยาการคำนวณ) สสวท.">${e(data.books || '')}</textarea>
-  </div>
-  <div class="field"><label>20. มาตรฐานการเรียนรู้/ตัวชี้วัด (จุดประสงค์การเรียนรู้)</label>
-    <div class="sy-pl-ro">${m.cover.count ? `ดึงจากคำอธิบายรายวิชาอัตโนมัติ ${m.cover.count} ตัวชี้วัด (แก้ที่แท็บ “คำอธิบายรายวิชา”)` : 'ยังไม่มีตัวชี้วัดในคำอธิบายรายวิชา — เพิ่มที่แท็บ “คำอธิบายรายวิชา” แล้วจะแสดงในข้อนี้เอง'}</div>
-  </div>
-  <div class="field"><label for="sy-rules">21. ข้อตกลงในการเรียนรายวิชา</label>
-    <textarea id="sy-rules" class="input-sm" rows="5" maxlength="${SY_MAX.rules}" placeholder="เช่น ห้ามนำอาหารเข้าห้องคอม (ขึ้นบรรทัดใหม่ = ข้อใหม่)">${e(data.rules || '')}</textarea>
-    <button type="button" class="btn btn-ghost btn-sm u-mt-4" id="sy-rules-sample">ใส่ข้อตกลงตัวอย่าง</button>
-  </div>`;
+  ${sub('17. วิธีการจัดการเรียนการสอน <span class="doc-sec-note">(เลือกได้มากกว่า 1 วิธี)</span>', `<div class="doc-checks doc-checks-auto">${t.methods.map(x => `<label class="doc-check"><input type="checkbox" class="sy-mt" data-k="${x.k}"${x.on ? ' checked' : ''}> ${e(x.label)}</label>`).join('')}</div>
+    <div class="field u-mt-12"><label for="sy-mt-other">อื่น ๆ (ระบุ)</label><input id="sy-mt-other" class="input-sm" type="text" maxlength="${SY_MAX.mother}" placeholder="ระบุวิธีอื่น ๆ (ถ้ามี)" value="${e(data.methodsOther || '')}"></div>`)}
+  ${sub('18. สื่อ / แหล่งเรียนรู้', `<div class="field"><textarea id="sy-res" class="input-sm" rows="3" maxlength="${SY_MAX.res}" aria-label="สื่อ / แหล่งเรียนรู้" placeholder="${e(planMedia ? 'ว่าง = ใช้ตามที่กรอกในข้อ 14: ' + planMedia.replace(/\s*\r?\n\s*/g, ' · ') : 'เช่น แหล่งข้อมูลบนเครือข่ายอินเทอร์เน็ต (ขึ้นบรรทัดใหม่ = ข้อใหม่)')}">${e(data.resources || '')}</textarea></div>`)}
+  ${sub('19. รายชื่อหนังสืออ่านประกอบ', `<div class="field"><textarea id="sy-books" class="input-sm" rows="3" maxlength="${SY_MAX.books}" aria-label="รายชื่อหนังสืออ่านประกอบ" placeholder="เช่น คู่มือรายวิชาพื้นฐานวิทยาศาสตร์ เทคโนโลยี (วิทยาการคำนวณ) สสวท.">${e(data.books || '')}</textarea></div>`)}
+  ${sub('20. มาตรฐานการเรียนรู้/ตัวชี้วัด (จุดประสงค์การเรียนรู้)', `<div class="u-note">${m.cover.count ? `ดึงจากคำอธิบายรายวิชาอัตโนมัติ ${m.cover.count} ตัวชี้วัด (แก้ที่แท็บ “คำอธิบายรายวิชา”)` : 'ยังไม่มีตัวชี้วัดในคำอธิบายรายวิชา — เพิ่มที่แท็บ “คำอธิบายรายวิชา” แล้วจะแสดงในข้อนี้เอง'}</div>`)}
+  ${sub('21. ข้อตกลงในการเรียนรายวิชา', `<div class="field"><textarea id="sy-rules" class="input-sm" rows="5" maxlength="${SY_MAX.rules}" aria-label="ข้อตกลงในการเรียนรายวิชา" placeholder="เช่น ห้ามนำอาหารเข้าห้องคอม (ขึ้นบรรทัดใหม่ = ข้อใหม่)">${e(data.rules || '')}</textarea></div>
+    <button type="button" class="btn btn-ghost btn-sm" id="sy-rules-sample">ใส่ข้อตกลงตัวอย่าง</button>`)}`;
 }
 function syApproverRowHtml(r = {}) {
   const e = escapeHtml;
   return `<div class="doc-lrow sy-apr">
     <input class="input-sm sy-apr-role" type="text" maxlength="${SY_MAX.role}" placeholder="ตำแหน่ง เช่น ผู้อำนวยการโรงเรียน" value="${e(r.role || '')}" aria-label="ตำแหน่งผู้ให้ความเห็น">
     <input class="input-sm sy-apr-name" type="text" maxlength="${SY_MAX.aname}" placeholder="ชื่อ-สกุล (ว่าง = เว้นจุดไข่ปลา)" value="${e(r.name || '')}" aria-label="ชื่อผู้ให้ความเห็น">
-    <label class="sy-apr-ok-l"><input type="checkbox" class="sy-apr-ok"${r.approve ? ' checked' : ''}> มีช่องอนุญาต/ควรปรับปรุง</label>
+    <label class="doc-check" title="มีช่อง “อนุญาตให้ใช้สอนได้ / ควรปรับปรุง” ใต้ความเห็น"><input type="checkbox" class="sy-apr-ok"${r.approve ? ' checked' : ''}> ช่องอนุญาต</label>
     <button type="button" class="btn btn-danger-ghost btn-sm doc-l-del sy-apr-del" title="ลบแถว" aria-label="ลบแถว">${DOC_ICO_DEL}</button>
   </div>`;
 }
 const syApproversFormHtml = (m) => `<div class="u-note u-mb-12">ช่องลงชื่อครูประจำวิชาใช้ชื่อจากข้อมูลส่วนตัวอัตโนมัติ · ด้านล่างคือผู้ให้ความเห็นต่อจากครู (พิมพ์เรียงตามลำดับ) — เพิ่ม ลบ หรือเปลี่ยนตำแหน่ง/ชื่อได้ เช่น เพิ่มหัวหน้างานของวิชา</div>
-  <div class="doc-lrows sy-aprs">${m.tail.approvers.map(syApproverRowHtml).join('')}</div>
-  <button type="button" class="btn btn-ghost btn-sm doc-l-add sy-apr-add">${DOC_ICO_ADD} เพิ่มผู้ให้ความเห็น</button>`;
+  <div class="doc-lblock sy-aprs">
+    <div class="doc-lhead" aria-hidden="true"><span>ตำแหน่ง</span><span>ชื่อ-สกุล</span><span>อนุญาต/ปรับปรุง</span><span></span></div>
+    <div class="doc-lrows sy-apr-rows">${m.tail.approvers.map(syApproverRowHtml).join('')}</div>
+    <button type="button" class="btn btn-ghost btn-sm doc-l-add sy-apr-add">${DOC_ICO_ADD} เพิ่มผู้ให้ความเห็น</button>
+  </div>`;
 
 // ข้อมูลรายวิชา ข้อ 1–10 ของหน้าแรก (อ่านอย่างเดียว ดึงอัตโนมัติ) — วาดใหม่ทุกครั้งที่ค่าในฟอร์มเปลี่ยน
 function syCoverGridHtml(m) {
@@ -1177,7 +1171,7 @@ function syShowForm(container) {
   form.addEventListener('click', (e) => { // ผู้ให้ความเห็น (เพิ่ม/ลบแถว) · ข้อตกลงตัวอย่าง
     const add = e.target.closest('.sy-apr-add'), del = e.target.closest('.sy-apr-del'), sample = e.target.closest('#sy-rules-sample');
     if (add) {
-      const box = form.querySelector('.sy-aprs');
+      const box = form.querySelector('.sy-apr-rows');
       if (box.children.length >= SY_MAX.apr) { showToast(`เพิ่มผู้ให้ความเห็นได้สูงสุด ${SY_MAX.apr} คน`); return; }
       box.insertAdjacentHTML('beforeend', syApproverRowHtml());
       box.lastElementChild.querySelector('.sy-apr-role').focus();
