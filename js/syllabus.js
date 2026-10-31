@@ -327,11 +327,16 @@ async function sySave(container, doc) {
 // ---------------------------------------------------------------- ตัวอย่างก่อนพิมพ์ / พิมพ์
 // เอกสาร A4 แนวตั้ง ขอบ 15 มม. — ตารางกว้างจึงใช้ขอบแคบ · SY1_CSS = สไตล์ของ "กระดาษ" (ตัวอย่าง + หน้าต่างพิมพ์) ไม่ใช่สไตล์ของหน้าเว็บ — ธรรมเนียมเดียวกับ CD1_CSS
 // 1 หน่วย = 1 แถวของตาราง (สาระย่อย+ชั่วโมงเป็นกริดซ้อนในเซลล์ ไม่ใช้ rowspan) — docPaginate ตัดตารางทีละแถวและซ้ำหัวตารางทุกแผ่น หน่วยจึงไม่ถูกตัดกลาง
-const SY_SHEET = { port: { w: 210, h: 297, pad: [15, 15, 15, 15], label: 'A4 แนวตั้ง' } }; // mm [บน, ขวา, ล่าง, ซ้าย] — ต้องตรงกับ SY_PAGE
-const SY_PAGE = '@page{size:A4 portrait;margin:15mm}html,body{margin:0;background:#fff}';
+// หน้าข้อมูลรายวิชา/ตารางหน่วย = A4 แนวตั้ง (.pg-port) · ข้อ 13 วิเคราะห์ตัวชี้วัด = A4 แนวนอนตามแบบ (.pg-land) — named page ให้ตรงกับ SY_SHEET
+const SY_SHEET = {
+  port: { w: 210, h: 297, pad: [15, 15, 15, 15], label: 'A4 แนวตั้ง' }, // mm [บน, ขวา, ล่าง, ซ้าย] — ต้องตรงกับ @page sy-port
+  land: { w: 297, h: 210, pad: [15, 15, 15, 15], label: 'A4 แนวนอน' },  // ต้องตรงกับ @page sy-land
+};
+const SY_PAGE = '@page{size:A4 portrait;margin:15mm}@page sy-port{size:A4 portrait;margin:15mm}@page sy-land{size:A4 landscape;margin:15mm}html,body{margin:0;background:#fff}';
+const syKind = (section) => (section.classList.contains('pg-land') ? 'land' : 'port');
 const SY_TG = (SY_COLS[3] / (SY_COLS[3] + SY_COLS[4]) * 100).toFixed(3); // สัดส่วนช่องสาระ : ช่องเวลา ในเซลล์รวมของแถวหน่วย — ให้เส้นตรงกับคอลัมน์ของหัวตาราง
 
-const SY_ACOLS = [5, 14, 22, 24, 17, 6, 6, 6]; // ข้อ 13: ที่ · รหัส · ตัวชี้วัด · สาระแกนกลาง · คำสำคัญ · K · P · A (%)
+const SY_ACOLS = [5, 10, 21, 27, 19, 6, 6, 6]; // ข้อ 13: ที่ · รหัส · ตัวชี้วัด · สาระแกนกลาง · คำสำคัญ · K · P · A (%)
 const SY_AHEAD = [['ที่'], ['รหัส'], ['ตัวชี้วัด/', 'ผลการเรียนรู้'], ['สาระแกนกลาง'], ['คำสำคัญ']];
 
 // หัวตาราง: ในแต่ละช่อง 1 สมาชิก = 1 บรรทัด และแต่ละบรรทัดไม่ถูกตัดกลางคำ (.sy-hl) — เรียงตาม SY_COLS
@@ -340,6 +345,8 @@ const SY_HEAD = [['หน่วย', 'ที่'], ['ชื่อหน่วย
 const SY1_CSS = `
 .sy1{background:#fff;color:#000;font-family:'TH SarabunPSK','TH Sarabun PSK','THSarabunPSK','TH Sarabun New','THSarabunNew','PA Sarabun','Noto Sans Thai',Tahoma,sans-serif;font-size:16pt;line-height:1.28}
 .sy1 *{box-sizing:border-box}
+.sy1 .pg-port{page:sy-port}
+.sy1 .pg-land{page:sy-land}
 .sy1 .sy-title{text-align:center;font-weight:700;font-size:18pt;margin-bottom:.3em;overflow-wrap:anywhere}
 .sy1 .sy-l{display:flex;justify-content:space-between;gap:1em;font-weight:700;padding:0 1mm;overflow-wrap:anywhere}
 .sy1 .sy-l>span:last-child{text-align:right}
@@ -357,7 +364,6 @@ const SY1_CSS = `
 .sy1 .sy-tt{padding:.1em .3em;overflow-wrap:anywhere}
 .sy1 .sy-th{padding:.1em .3em;text-align:center}
 .sy1 tr.sy-sum td{font-weight:700;text-align:center}
-.sy1 td.sy-ai{font-size:15pt}
 .sy1 section+section{break-before:page;page-break-before:always}
 .sy1 .sy-ct{text-align:center;font-size:18pt;line-height:1.4;overflow-wrap:anywhere}
 .sy1 .sy-rule{border-top:.75pt solid #000;margin:.4em 0 .5em}
@@ -448,7 +454,7 @@ function syAnalysisSectionHtml(m) {
   if (!a || !a.rows.length) return '';
   const hl = (h) => h.map(l => `<span class="sy-hl">${l}</span>`).join('<br>');
   const row = (r) => `<tr class="sy-ar"><td class="sy-c">${r.n}</td><td class="sy-c">${e(r.code)}</td><td>${syLines(r.text)}</td><td>${syLines(r.core)}</td><td>${syLines(r.keywords)}</td><td class="sy-c">${e(r.k)}</td><td class="sy-c">${e(r.p)}</td><td class="sy-c">${e(r.a)}</td></tr>`;
-  return `<section class="pg-port">
+  return `<section class="pg-land">
   <div class="sy-h">13. วิเคราะห์มาตรฐานตัวชี้วัด หรือผลการเรียนรู้</div>
   <table>
     <colgroup>${SY_ACOLS.map(w => `<col style="--w:${w}%">`).join('')}</colgroup>
@@ -497,7 +503,7 @@ function syShowPreview(container, m, fromDraft, onEdit) {
   const body = sySheetBodyHtml(m);
   docRenderSheets(SY_PREVIEW_SYS, 'syllprev', container, null, { // ไม่รอ — แถบแสดงไปก่อน กระดาษตามมา
     html: () => docSheetsHtml(SY1_CSS, `<div class="sy1">${body}</div>`),
-    specs: SY_SHEET, bodyClass: 'sy1', keep: '.sy-title, .sy-h, .sy-sg', kindOf: () => 'port',
+    specs: SY_SHEET, bodyClass: 'sy1', keep: '.sy-title, .sy-h, .sy-sg', kindOf: syKind,
   }).catch(err => console.error('syShowPreview:', err));
 }
 

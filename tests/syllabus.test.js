@@ -121,7 +121,7 @@ const DESC = { type: 'พื้นฐาน', area: 'วิทยาศาสต
   ok(m.units.map(u => u.hours).join() === '2,4,2,4,8' && m.units[4].topics.length === 4, 'ชั่วโมงต่อหน่วย 2,4,2,4,8');
 
   const doc = body(R(`sySheetBodyHtml`)(m));
-  ok(doc.querySelectorAll('section.pg-port').length === 3 && doc.querySelector('.sy-title').textContent === 'โครงสร้างรายวิชาพื้นฐานวิทยาศาสตร์และเทคโนโลยี', 'กระดาษ: 3 section (หน้าข้อมูลรายวิชา + ตารางหน่วย + ข้อ 13 วิเคราะห์ตัวชี้วัด) · หัวเรื่อง "โครงสร้างรายวิชา" + ประเภท + กลุ่มสาระ');
+  ok(doc.querySelectorAll('section.pg-port').length === 2 && doc.querySelectorAll('section.pg-land').length === 1 && doc.querySelector('.sy-title').textContent === 'โครงสร้างรายวิชาพื้นฐานวิทยาศาสตร์และเทคโนโลยี', 'กระดาษ: 3 section (แนวตั้ง: หน้าข้อมูลรายวิชา + ตารางหน่วย · แนวนอน: ข้อ 13 วิเคราะห์ตัวชี้วัด) · หัวเรื่อง "โครงสร้างรายวิชา" + ประเภท + กลุ่มสาระ');
   const hl = [...doc.querySelectorAll('.sy-l')].map(e => norm(e.textContent));
   ok(hl[0] === 'เทคโนโลยี (วิทยาการคำนวณ 2) ว22183 กลุ่มสาระการเรียนรู้วิทยาศาสตร์และเทคโนโลยี', 'บรรทัดที่ 2: ชื่อวิชา รหัส · กลุ่มสาระการเรียนรู้…');
   ok(hl[1] === 'ชั้นมัธยมศึกษาปีที่ 2 เวลา 20 ชั่วโมง จำนวน 0.5 หน่วยกิต', 'บรรทัดที่ 3: ชั้น… เวลา 20 ชั่วโมง จำนวน 0.5 หน่วยกิต');
@@ -166,8 +166,8 @@ const DESC = { type: 'พื้นฐาน', area: 'วิทยาศาสต
     ok(an.k === 40 && an.p === 20 && an.a === 5 && ma.warnings.some(w => /K \+ P \+ A/.test(w) && /65/.test(w)), 'รวม K/P/A = ผลบวกของแถว · K+P+A ไม่ครบ 100 → เตือน');
     const dup = R('syAnalysisModel')({ indicators: [{ code: 'ว 1 ม.1/1', text: 'x' }, { code: 'ว 1 ม.1/1', text: 'y' }, { code: '', text: '' }] }, []);
     ok(dup.rows.length === 2 && dup.rows[0].key !== dup.rows[1].key, 'รหัสซ้ำ: ได้ key ไม่ซ้ำ (ไม่ทิ้งแถว) · แถวว่างทั้งรหัสและข้อความถูกข้าม');
-    const ad = body(R(`sySheetBodyHtml`)(ma)), secs13 = [...ad.querySelectorAll('section.pg-port')], s13 = secs13[2];
-    ok(secs13.length === 3 && norm(s13.querySelector('.sy-h').textContent) === '13. วิเคราะห์มาตรฐานตัวชี้วัด หรือผลการเรียนรู้' && [...s13.children].every(el => el.tagName === 'DIV' || el.tagName === 'TABLE'), 'กระดาษข้อ 13: หน้าที่ 3 · หัวข้อ \"13. วิเคราะห์มาตรฐานตัวชี้วัด หรือผลการเรียนรู้\" · ลูกตรงเป็นหัวข้อ/ตาราง (docPaginate ตัดได้)');
+    const ad = body(R(`sySheetBodyHtml`)(ma)), secs13 = [...ad.querySelectorAll('section')], s13 = secs13[2];
+    ok(secs13.length === 3 && s13.classList.contains('pg-land') && norm(s13.querySelector('.sy-h').textContent) === '13. วิเคราะห์มาตรฐานตัวชี้วัด หรือผลการเรียนรู้' && [...s13.children].every(el => el.tagName === 'DIV' || el.tagName === 'TABLE'), 'กระดาษข้อ 13: หน้าที่ 3 · หัวข้อ \"13. วิเคราะห์มาตรฐานตัวชี้วัด หรือผลการเรียนรู้\" · ลูกตรงเป็นหัวข้อ/ตาราง (docPaginate ตัดได้)');
     const hr = [...s13.querySelectorAll('thead tr')].map(r => [...r.children].map(c => norm(c.textContent)).join('|'));
     ok(hr.length === 2 && hr[0] === 'ที่|รหัส|ตัวชี้วัด/ผลการเรียนรู้|สาระแกนกลาง|คำสำคัญ|เกณฑ์การประเมินผลการเรียนรู้ของผู้เรียน' && hr[1] === 'K|P|A' && s13.querySelector('thead th[colspan="3"]'), 'หัวตารางข้อ 13 2 แถว: ที่ · รหัส · ตัวชี้วัด · สาระแกนกลาง · คำสำคัญ · เกณฑ์การประเมินฯ คร่อม K P A');
     const cols = [...s13.querySelectorAll('col')].map(c => parseFloat(c.getAttribute('style').replace(/[^\d.]/g, '')));
@@ -177,7 +177,7 @@ const DESC = { type: 'พื้นฐาน', area: 'วิทยาศาสต
     const tot = [...s13.querySelector('tbody tr.sy-sum').children];
     ok(norm(tot[0].textContent) === 'รวม' && tot[0].colSpan === 5 && J(tot.slice(1).map(c => norm(c.textContent))) === J(['40', '20', '5']), 'แถวรวมอยู่ใน tbody: รวม · K 40 · P 20 · A 5');
     const none = body(R(`sySheetBodyHtml`)(R('syModel')(course, loaded.struct, loaded.saved, { ...loaded.desc, indicators: [] })));
-    ok(none.querySelectorAll('section.pg-port').length === 2 && !/วิเคราะห์มาตรฐานตัวชี้วัด/.test(none.body.textContent), 'ไม่มีตัวชี้วัดในคำอธิบายรายวิชา → ไม่มีหน้าข้อ 13');
+    ok(none.querySelectorAll('section').length === 2 && !none.querySelector('section.pg-land') && !/วิเคราะห์มาตรฐานตัวชี้วัด/.test(none.body.textContent), 'ไม่มีตัวชี้วัดในคำอธิบายรายวิชา → ไม่มีหน้าข้อ 13');
   }
 
   // ---------------- ตารางตามโครงสร้างจริง: เปลี่ยนชื่อ · ลบ · เพิ่มหน่วย · นอกหน่วย ----------------
@@ -230,7 +230,7 @@ const DESC = { type: 'พื้นฐาน', area: 'วิทยาศาสต
   const mo = R(`syOutcomes`)({ standards: [{ code: 'ว 4.1', text: 'ก' }, { code: 'ว4.2', text: 'ข' }, { code: 'ว 9', text: 'ไม่มีตัวชี้วัด' }], indicators: [{ code: 'ว 4.1 ม.1/1', text: 'a' }, { code: 'ว. 4.2 ม.1/1', text: 'b' }, { code: 'ว 4.1 ม.1/2', text: 'c' }, { code: 'ไม่มีรูปแบบ', text: 'd' }, { code: '', text: '' }] });
   ok(mo.count === 4 && mo.groups.length === 4 && mo.groups[0].items.map(i => i.n).join() === '1,3' && mo.groups[1].head === 'ว4.2 ข' && mo.groups[2].items.length === 0 && mo.groups[3].items[0].text === 'd', 'หลายมาตรฐาน: "ว4.2" = "ว. 4.2" จัดกลุ่มเดียวกัน · มาตรฐานไม่มีตัวชี้วัดเป็นหัวว่าง · เลขต่อเนื่องทุกกลุ่ม · แถวว่างถูกทิ้ง');
   const cvDoc = body(R(`sySheetBodyHtml`)(cvm));
-  const secs = [...cvDoc.querySelectorAll('section.pg-port')];
+  const secs = [...cvDoc.querySelectorAll('section')];
   ok(secs.length === 3 && !!secs[0].querySelector('.sy-ct') && !!secs[1].querySelector('.sy-title') && !!secs[2].querySelector('.sy-h') && [...secs[0].children].every(el => el.tagName === 'DIV'), 'กระดาษ: หน้าแรก = ข้อมูลรายวิชา · ถัดไป = ตารางหน่วย · แล้วข้อ 13 · ทุกบล็อกเป็นลูกตรงของ section (docPaginate ตัดหน้าได้)');
   const ct = [...secs[0].querySelectorAll('.sy-ct')].map(e => norm(e.textContent));
   ok(ct[0] === 'หลักสูตรรายวิชา (Course Syllabus)' && ct[1] === 'โรงเรียนหนองกี่พิทยาคม', 'หัวเรื่อง 2 บรรทัด: หลักสูตรรายวิชา (Course Syllabus) / ชื่อโรงเรียน');
@@ -503,8 +503,12 @@ const DESC = { type: 'พื้นฐาน', area: 'วิทยาศาสต
   // ---------------- แผ่นกระดาษ: ตัดหน้าด้วยโครงกลาง ----------------
   const many = { ...m, units: Array.from({ length: 14 }, (_, i) => ({ ...m.units[4], n: i + 1, id: 'x' + i })) };
   const paged = new JSDOM(R(`docSheetsHtml`)(R('SY1_CSS'), '<div class="sy1">' + R(`sySheetBodyHtml`)(many) + '</div>')).window.document;
-  const pages = R(`(d => docPaginate(d, { specs: SY_SHEET, bodyClass: 'sy1', keep: '.sy-title, .sy-h, .sy-sg', kindOf: () => 'port' }))`)(paged);
+  const pages = R(`(d => docPaginate(d, { specs: SY_SHEET, bodyClass: 'sy1', keep: '.sy-title, .sy-h, .sy-sg', kindOf: s => (s.classList.contains('pg-land') ? 'land' : 'port') }))`)(paged);
   ok(pages >= 1 && paged.querySelector('.doc-sheet-body.sy1 table') && /210|297/.test(paged.querySelector('.doc-sheet').getAttribute('style')) && /15mm 15mm 15mm 15mm/.test(paged.querySelector('.doc-sheet').getAttribute('style')), 'โครงกลางตัดหน้าได้: แผ่น A4 ขอบ 15 มม. ตรงกับ @page');
+  const landSheets = [...paged.querySelectorAll('#doc-paper .doc-sheet.is-land')], portSheets = [...paged.querySelectorAll('#doc-paper .doc-sheet.is-port')];
+  ok(landSheets.length >= 1 && landSheets.every(e => !!e.querySelector('tr.sy-ar') || !!e.querySelector('table')) && landSheets.some(e => /วิเคราะห์มาตรฐานตัวชี้วัด/.test(e.textContent)) && /297mm 210mm|297mm/.test(landSheets[0].getAttribute('style')) && portSheets.length >= 2 && portSheets.every(e => !e.querySelector('tr.sy-ar')), 'ข้อ 13 วางบนแผ่น A4 แนวนอน (297×210) · หน้าข้อมูลรายวิชา/ตารางหน่วยอยู่แผ่นแนวตั้ง');
+  const named = R('SY_PAGE'), paperCss = R('SY1_CSS');
+  ok(/@page sy-land\{size:A4 landscape;margin:15mm\}/.test(named) && /@page sy-port\{size:A4 portrait/.test(named) && /\.sy1 \.pg-land\{page:sy-land\}/.test(paperCss) && /\.sy1 \.pg-port\{page:sy-port\}/.test(paperCss), 'พิมพ์: named page sy-port (แนวตั้ง) / sy-land (แนวนอน) ตรงกับ SY_SHEET');
   const placed = [...paged.querySelectorAll('#doc-paper tr.sy-u')]; // ต้นฉบับ #doc-src ยังอยู่ใน DOM (ซ่อน) จึงนับเฉพาะที่วางลงแผ่นกระดาษ
   ok(placed.length === 14 && placed.every(r => r.children.length === 5) && paged.querySelectorAll('#doc-paper thead').length === pages - 1, 'วางลงแผ่นแล้วทุกหน่วยครบ แถวหน่วยไม่ถูกฉีก (1 หน่วย = 1 แถว) · หัวตารางซ้ำทุกแผ่นที่เป็นตาราง (แผ่นแรกเป็นหน้าข้อมูลรายวิชา ไม่มีตาราง · jsdom ไม่มีเลย์เอาต์ จึงตรวจโครงสร้าง ไม่ใช่จุดตัดหน้า)');
 
