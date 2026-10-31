@@ -34,35 +34,37 @@ ok(ctx.reportDocState([{ status: 'draft' }, { status: 'submitted' }]) === 'submi
 
 console.log('reportDocRows');
 const data = {
-  idp: [{ status: 'submitted' }], sar: [], tra: [{ status: 'draft' }, { status: 'draft' }], car: null,
+  idp: [{ status: 'submitted' }], sar: [], car: null,
   paAgr: [{ status: 'draft' }], paRpt: [],
   syllabus: [{ course: { code: 'ว21101', name: 'วิทยาการคำนวณ' }, state: 'done' }, { course: { code: '', name: 'ชุมนุม' }, state: 'none' }],
 };
 const rows = ctx.reportDocRows({ year: '2569', sem: '1' }, data);
 const by = n => rows.find(r => r.name.includes(n));
-ok(rows.length === 8, 'วิชา 2 + SAR + ID-Plan + PA + รายงานผล PA + แผนการอบรม + วิจัย = 8 แถว', rows.length);
+ok(rows.length === 7, 'วิชา 2 + SAR + ID-Plan + PA + รายงานผล PA + วิจัย = 7 แถว (ไม่มีแผนการอบรม — เป็นแค่ template)', rows.length);
+ok(!rows.some(r => r.name.includes('แผนการอบรม') || r.sys === 'tra'), 'ไม่แสดงแผนการอบรมในรายการเอกสารที่ต้องส่ง');
 ok(by('ว21101').state === 'done' && by('ว21101').route === 'structure-page', 'Syllabus รายวิชา: ทำแล้ว · เปิดหน้าโครงสร้างวิชา');
 ok(by('ชุมนุม').name === 'Course Syllabus · ชุมนุม' && by('ชุมนุม').state === 'none', 'วิชาไม่มีรหัส: ไม่มีช่องว่างเกิน');
 ok(by('SAR').state === 'none' && by('SAR').tab === 'sar' && by('SAR').sys === 'idp' && by('SAR').meta === 'ภาคเรียนที่ 1/2569', 'SAR: ยังไม่ได้ทำ · เปิดแท็บ sar ของระบบ idp');
 ok(by('ID-Plan').state === 'submitted' && by('ID-Plan').meta === 'ปีการศึกษา 2569', 'ID-Plan: ส่งแล้ว · ผูกกับปีการศึกษา');
 ok(by('Personal Agreement').meta === 'ปีงบประมาณ 2569' && by('Personal Agreement').state === 'draft', 'PA: ผูกกับปีงบประมาณ · ร่าง');
 ok(by('รายงานผล PA').tab === 'rpt' && by('รายงานผล PA').sys === 'pa', 'รายงานผล PA: เปิดแท็บ rpt ของระบบ pa');
-ok(by('แผนการอบรม').meta === 'ภาคเรียนที่ 1/2569 · 2 ฉบับ', 'หลายฉบับในภาคเดียว → บอกจำนวนฉบับ', by('แผนการอบรม').meta);
+const multi = ctx.reportDocRows({ year: '2569', sem: '1' }, { ...data, car: [{ status: 'draft' }, { status: 'draft' }] });
+ok(multi.find(r => r.name.includes('วิจัย')).meta === 'ภาคเรียนที่ 1/2569 · 2 ฉบับ', 'หลายฉบับในภาคเดียว → บอกจำนวนฉบับ');
 ok(by('วิจัย').state === 'unknown', 'อ่านไม่สำเร็จ → ตรวจสถานะไม่ได้ (ไม่ถือว่ายังไม่ได้ทำ)');
 const rows3 = ctx.reportDocRows({ year: '2569', sem: '3' }, { ...data, syllabus: [] });
-ok(!rows3.some(r => r.name.includes('PA')) && rows3.length === 4, 'ภาคฤดูร้อน/ภาคอื่น: ไม่มีแถว PA (ปีงบไม่ชัด)', rows3.length);
+ok(!rows3.some(r => r.name.includes('PA')) && rows3.length === 3, 'ภาคฤดูร้อน/ภาคอื่น: ไม่มีแถว PA (ปีงบไม่ชัด)', rows3.length);
 
 console.log('reportDocsHtml');
 const html = ctx.reportDocsHtml(rows);
-ok(html.includes('ทำแล้ว/ส่งแล้ว 2 จาก 8 รายการ') && html.includes('--p:25%'), 'สรุปจำนวนที่ทำแล้ว/ส่งแล้ว (Syllabus ทำแล้ว 1 + ID-Plan ส่งแล้ว 1)', html.slice(0, 120));
-ok((html.match(/class="rp-doc rp-item /g) || []).length === 8, 'หนึ่งแถวต่อหนึ่งรายการ');
+ok(html.includes('ทำแล้ว/ส่งแล้ว 2 จาก 7 รายการ') && html.includes('--p:29%'), 'สรุปจำนวนที่ทำแล้ว/ส่งแล้ว (Syllabus ทำแล้ว 1 + ID-Plan ส่งแล้ว 1)', html.slice(0, 120));
+ok((html.match(/class="rp-doc rp-item /g) || []).length === 7, 'หนึ่งแถวต่อหนึ่งรายการ');
 ok(html.includes('badge-success') && html.includes('badge-grade-mid') && html.includes('badge-neutral'), 'ใช้คลาส badge ที่มีอยู่ใน style.css แล้ว (ไม่เพิ่ม CSS)');
 ok(html.includes('data-tab="sar"') && html.includes('data-sys="idp"') && html.includes('>เริ่มทำ</button>') && html.includes('>เปิด</button>'), 'ปุ่มเปิด/เริ่มทำ พร้อมแท็บปลายทาง');
-ok((html.match(/rp-doc-preview/g) || []).length === 8 && html.includes('>ตัวอย่างก่อนพิมพ์<'), 'ทุกแถวมีปุ่ม \"ตัวอย่างก่อนพิมพ์\"');
+ok((html.match(/rp-doc-preview/g) || []).length === 7 && html.includes('>ตัวอย่างก่อนพิมพ์<'), 'ทุกแถวมีปุ่ม \"ตัวอย่างก่อนพิมพ์\"');
 ok(/data-preview="sarprev"[^>]*data-doc=""/.test(html) && /data-sys="pa"[^>]*data-preview="rptprev"/.test(html), 'ปุ่มตัวอย่างชี้แท็บตัวอย่างของแต่ละระบบ (SAR → sarprev · รายงานผล PA → rptprev)');
 ok((html.match(/rp-doc-preview[^>]*disabled/g) || []).length === 3, 'แถวที่ยังไม่ได้ทำ (ไม่มีเอกสาร) ปุ่มตัวอย่างกดไม่ได้', (html.match(/rp-doc-preview[^>]*disabled/g) || []).length);
-const withIds = ctx.reportDocRows({ year: '2569', sem: '1' }, { ...data, tra: [{ id: 'a', status: 'draft' }, { id: 'b', status: 'submitted' }], syllabus: [{ course: { code: 'ว1', name: 'x', templateId: 'T9' }, state: 'done' }] });
-ok(withIds.find(r => r.name.includes('แผนการอบรม')).docId === 'b', 'หลายฉบับ → ตัวอย่างเปิดฉบับที่ส่งแล้วก่อน');
+const withIds = ctx.reportDocRows({ year: '2569', sem: '1' }, { ...data, car: [{ id: 'a', status: 'draft' }, { id: 'b', status: 'submitted' }], syllabus: [{ course: { code: 'ว1', name: 'x', templateId: 'T9' }, state: 'done' }] });
+ok(withIds.find(r => r.name.includes('วิจัย')).docId === 'b', 'หลายฉบับ → ตัวอย่างเปิดฉบับที่ส่งแล้วก่อน');
 const sy = withIds.find(r => r.name.startsWith('Course Syllabus'));
 ok(sy.tplId === 'T9' && sy.tab === 'syll' && sy.preview === 'syllprev', 'Course Syllabus: พาไปแม่แบบวิชา แท็บ syll (แก้) / syllprev (ตัวอย่าง)');
 const xss = ctx.reportDocsHtml(ctx.reportDocRows({ year: '2569', sem: '1' }, { syllabus: [{ course: { code: '<img onerror=x>', name: '"a"' }, state: 'none' }] }));

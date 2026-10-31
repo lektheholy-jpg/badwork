@@ -55,7 +55,7 @@ function reportPageBodyHtml(cards) {
 }
 
 // ---------- เอกสารที่ต้องส่งในภาคเรียน ----------
-// จับคู่เอกสารที่ครูทำไว้ในระบบ (ID-Plan · SAR · PA · แผนการอบรม · วิจัยในชั้นเรียน · Course Syllabus) กับภาคเรียนที่เลือก แล้วโชว์ว่าทำแล้วหรือยัง
+// จับคู่เอกสารที่ครูทำไว้ในระบบ (ID-Plan · SAR · PA · วิจัยในชั้นเรียน · Course Syllabus) กับภาคเรียนที่เลือก แล้วโชว์ว่าทำแล้วหรือยัง
 // ชื่อ collection อ่านจาก config ของแต่ละระบบผ่าน docSystem(id).col(kind, uid) (ไม่เขียนชื่อตรงในไฟล์นี้) · หน้านี้อ่านอย่างเดียว ไม่เขียนข้อมูล
 
 // PA เก็บเป็นปีงบประมาณ: ปีงบ N = ภาค 2/(N-1) + ภาค 1/N → ภาค 1/Y = ปีงบ Y · ภาค 2/Y = ปีงบ Y+1 (ตรงกับ paTermLabels ใน js/pa.js)
@@ -80,7 +80,7 @@ const RP_STATE_BADGE = {
   unknown: ['badge-neutral', 'ตรวจสถานะไม่ได้'],
 };
 
-// data = { idp, sar, tra, car, paAgr, paRpt: [เอกสาร] | null, syllabus: [{ course, state }] } · คืนรายการแถวที่จะวาด
+// data = { idp, sar, car, paAgr, paRpt: [เอกสาร] | null, syllabus: [{ course, state }] } · คืนรายการแถวที่จะวาด
 function reportDocRows({ year, sem }, data) {
   const termText = `ภาคเรียนที่ ${sem}/${year}`;
   const fy = reportFiscalYear(year, sem);
@@ -98,7 +98,6 @@ function reportDocRows({ year, sem }, data) {
     rows.push(doc('Personal Agreement (PA)', `ปีงบประมาณ ${fy}`, data.paAgr, 'pa-page', '', 'pa', 'report'));
     rows.push(doc('รายงานผล PA', `ปีงบประมาณ ${fy}`, data.paRpt, 'pa-page', 'rpt', 'pa', 'rptprev'));
   }
-  rows.push(doc('แผนการอบรม', termText, data.tra, 'tra-page', '', 'tra', 'preview'));
   rows.push(doc('วิจัยในชั้นเรียน', termText, data.car, 'car-page', '', 'car', 'preview'));
   return rows;
 }
@@ -155,10 +154,9 @@ async function loadReportDocStatus(key, termCourses) {
     } catch (err) { console.warn('อ่านเอกสารที่ต้องส่งไม่สำเร็จ:', sysId, kind, err); return null; }
   };
   const merge = (a, b) => (a === null && b === null ? null : [...(a || []), ...(b || [])]);
-  const [idp, sar, tra, car, paNew, paOld, paRpt, syllabus] = await Promise.all([
+  const [idp, sar, car, paNew, paOld, paRpt, syllabus] = await Promise.all([
     fetchDocs('idp', 'plans', 'year', year),
     fetchDocs('idp', 'sar', 'year', year, sameSem),
-    fetchDocs('tra', 'docs', 'year', year, sameSem),
     fetchDocs('car', 'docs', 'year', year, sameSem),
     fy ? fetchDocs('pa', 'agreements', 'fiscalYear', fy) : Promise.resolve([]),
     fetchDocs('pa', 'agreements', 'year', year, sameSem), // PA รุ่นเก่าเก็บเป็นปีการศึกษา/ภาคเรียน
@@ -168,7 +166,7 @@ async function loadReportDocStatus(key, termCourses) {
       return { course, state: sy ? (syllabusHasData(sy) ? 'done' : 'none') : 'unknown' };
     })),
   ]);
-  return { idp, sar, tra, car, paAgr: merge(paNew, paOld), paRpt, syllabus };
+  return { idp, sar, car, paAgr: merge(paNew, paOld), paRpt, syllabus };
 }
 
 async function renderReportPage() {
