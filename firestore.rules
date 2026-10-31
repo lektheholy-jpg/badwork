@@ -67,14 +67,19 @@ service cloud.firestore {
     }
 
     // โปรไฟล์ครู: มีเฉพาะฟิลด์ที่แอปเขียนจริง
+    // ตรวจเฉพาะฟิลด์ที่ถูกเขียนจริงในคำขอนี้ (สร้างใหม่ = ตรวจทั้งหมด) · กันชนเพดานจำนวนนิพจน์ต่อคำขอของ Firestore (~1,000)
+    // เพราะ validTeacherProfile/validAppearance ยาวมาก ถ้าตรวจซ้ำทุกครั้งแม้ตอนล็อกอินที่แก้แค่ 4 ฟิลด์ จะเขียนไม่ผ่านหลังเพิ่มฟิลด์
+    function touches(k) {
+      return resource == null || request.resource.data.diff(resource.data).affectedKeys().hasAny([k]);
+    }
     function validProfile() {
       let d = request.resource.data;
       return d.keys().hasOnly(['displayName', 'email', 'photoURL', 'lastLogin', 'profile', 'appearance'])
         && okStr(d.get('displayName', null), 200)
         && okStr(d.get('email', null), 320)
         && okStr(d.get('photoURL', null), 2048)
-        && validTeacherProfile(d.get('profile', null))
-        && validAppearance(d.get('appearance', null));
+        && (!touches('profile') || validTeacherProfile(d.get('profile', null)))
+        && (!touches('appearance') || validAppearance(d.get('appearance', null)));
     }
 
     // ตารางสอน (แท็บ "ตารางสอน" ในหน้าข้อมูลส่วนตัว → users/{uid}/timetable/{ปี}-{ภาค} เช่น 2569-1 · main = แบบเดิมก่อนแยกภาคเรียน) · ฟิลด์ต้องตรงกับ js/timetable.js
