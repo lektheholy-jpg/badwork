@@ -73,7 +73,7 @@
   --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23666666' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 6l4 4 4-4'/%3E%3C/svg%3E");  /* ลูกศร dropdown (สีเท่า --ink-soft) · ใช้ใน select ที่เบราว์เซอร์ยังไม่รองรับ appearance: base-select */
   --glass:      30%;    /* sidebar/tabbar/more-sheet opacity — ยิ่งน้อยยิ่งโปร่ง */
   --glass-blur: 30px;
-  --card-bf: blur(24px) saturate(1.5);  /* เอฟเฟกต์กระจกของการ์ด ใช้เมื่อ :root[data-glass="on"] (สวิตช์ในตั้งค่า) */
+  --card-bf: blur(var(--glass-blur)) saturate(1.6);  /* เอฟเฟกต์กระจกของการ์ด ใช้เมื่อ :root[data-glass="on"] (สวิตช์ในตั้งค่า) */
   --island-bg: #111111;  --island-fg: #EEEEEE;  --island-shadow: rgba(0, 0, 0, .35);  /* Dynamic Island สีกลับด้านกับธีม: ธีมสว่าง = พื้นดำ · ธีมมืด = พื้นขาว (ตัวหนังสือในแคปซูลใช้ currentColor ตาม --island-fg) */
   color-scheme: light;
 }
@@ -2115,7 +2115,8 @@ table.sheet tbody tr:nth-child(n) td.over-max { background: var(--danger-tint); 
    การ์ดส่วนใหญ่มีพื้น --card-glass โปร่งอยู่แล้ว (สี/ความโปร่งใสปรับที่ตั้งค่า) · ที่นี่เพิ่มเบลอ + เพิ่มความสดของสีที่ลอดผ่าน
    และให้ .card / .rec-card ที่พื้นทึบเป็นพื้นโปร่งเหมือนกัน · ฟอร์มเอกสาร (.doc-section ฯลฯ) อยู่ในบล็อก docs ท้ายไฟล์ */
 :root[data-glass="on"] .section-card, :root[data-glass="on"] .stat-card, :root[data-glass="on"] .chart-card, :root[data-glass="on"] .course-row,
-:root[data-glass="on"] .grade-stat-card, :root[data-glass="on"] .group-creator, :root[data-glass="on"] .struct-summary-box, :root[data-glass="on"] .report-room-list {
+:root[data-glass="on"] .grade-stat-card, :root[data-glass="on"] .group-creator, :root[data-glass="on"] .struct-summary-box, :root[data-glass="on"] .report-room-list,
+:root[data-glass="on"] .rp-zone, :root[data-glass="on"] .rp-summary, :root[data-glass="on"] .rp-doc {
   -webkit-backdrop-filter: var(--card-bf); backdrop-filter: var(--card-bf);
 }
 :root[data-glass="on"] .card, :root[data-glass="on"] .rec-card { background: var(--card-glass); -webkit-backdrop-filter: var(--card-bf); backdrop-filter: var(--card-bf); }
