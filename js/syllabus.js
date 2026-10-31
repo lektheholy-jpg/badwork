@@ -17,7 +17,7 @@
 // ==========================================================================
 
 const SY_DOC_ID = 'syllabus';   // settings/syllabus
-const SY_MAX = { area: 80, std: 200, title: 400, hours: 5, topics: 12, units: 40, core: 1000, kw: 600, inds: 100, when: 200, obj: 1500, pmedia: 400 }; // core/kw = สาระแกนกลาง/คำสำคัญต่อตัวชี้วัด (ข้อ 13) · when/obj/pmedia = ครั้งที่-วันเวลา/จุดประสงค์/สื่อ ต่อหน่วย (ข้อ 14)
+const SY_MAX = { area: 80, std: 200, title: 400, hours: 5, topics: 12, units: 40, core: 1000, kw: 600, inds: 100, when: 200, obj: 1500, pmedia: 400, aind: 200, aweek: 40, adue: 40, assess: 120 }; // core/kw = สาระแกนกลาง/คำสำคัญต่อตัวชี้วัด (ข้อ 13) · when/obj/pmedia = ครั้งที่-วันเวลา/จุดประสงค์/สื่อ ต่อหน่วย (ข้อ 14) · aind/aweek/adue = ตัวชี้วัด/สัปดาห์/กำหนดส่ง ต่อรายการคะแนน (ข้อ 15)
 const SY_CREDIT_HOURS = 40;     // 1 หน่วยกิต = 40 ชั่วโมง (0.5 = 20 · 1.5 = 60)
 const SY_COLS = [10, 18, 15, 34, 11, 12]; // ความกว้างคอลัมน์ (%) หน่วยที่ · ชื่อหน่วย · มาตรฐาน · สาระ · เวลา · น้ำหนัก
 const SY_SAVE_LABEL = 'บันทึกโครงสร้างรายวิชา';
@@ -178,8 +178,17 @@ function syNormalize(d, descArea) {
     }),
     media: syStr(pl.media, SY_MAX.pmedia).trim(), midAfter: syStr(pl.midAfter, 80).trim(), midHours: syHours(pl.midHours), finalHours: syHours(pl.finalHours),
   };
+  const seenS = new Set();
+  const assess = (Array.isArray(d.assess) ? d.assess : []).slice(0, SY_MAX.assess).map(r => ({ // ข้อ 15: ค่าที่ครูกรอกต่อรายการคะแนน (อ้าง id รายการ · '@mid'/'@final' = สอบกลางภาค/ปลายภาค)
+    id: syStr(r && r.id, 80), kind: r && (r.kind === 'quiz' || r.kind === 'work') ? r.kind : '', work: r && r.work === 'group' ? 'group' : '',
+    ind: syStr(r && r.ind, SY_MAX.aind).trim(), week: syStr(r && r.week, SY_MAX.aweek).trim(), due: syStr(r && r.due, SY_MAX.adue).trim(),
+  })).filter(r => {
+    if (!r.id || seenS.has(r.id) || !(r.kind || r.work || r.ind || r.week || r.due)) return false;
+    seenS.add(r.id);
+    return true;
+  });
   const planHas = plan.units.length || plan.media || plan.midAfter || plan.midHours || plan.finalHours;
-  return { area: syStr(d.area != null ? d.area : descArea, SY_MAX.area).trim(), ...(hw ? { hoursWeek: hw } : {}), units, analysis, ...(planHas ? { plan } : {}) }; // hoursWeek เก็บเฉพาะเมื่อครูแก้ทับ (ว่าง = คำนวณจากหน่วยกิต)
+  return { area: syStr(d.area != null ? d.area : descArea, SY_MAX.area).trim(), ...(hw ? { hoursWeek: hw } : {}), units, analysis, ...(planHas ? { plan } : {}), ...(assess.length ? { assess } : {}) }; // hoursWeek เก็บเฉพาะเมื่อครูแก้ทับ (ว่าง = คำนวณจากหน่วยกิต)
 }
 
 // หน่วย/คะแนนจากโครงสร้างคะแนน (ฟังก์ชันล้วน — ทดสอบได้) — items = เอกสารใน assessments · sd = settings/structure
@@ -200,6 +209,9 @@ function syStructFrom(items, sd) {
       id: u.id, name: u.name, weight: syRound1(collect.filter(i => i.unitId === u.id).reduce((s, i) => s + max(i), 0)),
       works: collect.filter(i => i.unitId === u.id).sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0)).map(i => String(i.name || '').trim()).filter(Boolean), // ภาระงานของหน่วย (ข้อ 14) เรียงตามโครงสร้างคะแนน
     })),
+    items: collect.map(i => ({ id: i.id, name: String(i.name || '').trim(), max: syRound1(max(i)), unitId: ids.has(i.unitId) ? i.unitId : '', order: Number(i.order) || 0 })) // รายการคะแนนเก็บทั้งหมด เรียงตามหน่วย แล้วตามลำดับในโครงสร้าง (ข้อ 15)
+      .map(i => ({ ...i, at: i.unitId ? ordered.findIndex(u => u.id === i.unitId) : ordered.length }))
+      .sort((a, b) => a.at - b.at || a.order - b.order).map(({ at, order, ...i }) => i),
     outside: syRound1(collect.filter(i => !ids.has(i.unitId)).reduce((s, i) => s + max(i), 0)),
     collect: syRound1(collect.reduce((s, i) => s + max(i), 0)),
     midterm: one('midterm'),
@@ -285,10 +297,45 @@ function syPlanModel(units, struct, plan, hoursWeek) {
       when: sv.when || '', whenAuto: span(u.hours), objectives: syNumbered(sv.objectives), media: sv.media || pl.media || '',
     });
     cum += u.hours;
-    if (i === midIdx) { rows.push({ kind: 'mid', hours: midH }); cum += midH; }
+    if (i === midIdx) { rows.push({ kind: 'mid', hours: midH, whenAuto: span(midH) }); cum += midH; }
   });
-  if (hasFinal && units.length) rows.push({ kind: 'final', hours: finH });
+  if (hasFinal && units.length) rows.push({ kind: 'final', hours: finH, whenAuto: span(finH) });
   return { rows, total: syRound1(rows.reduce((a, r) => a + (Number(r.hours) || 0), 0)), hasMid, hasFinal, midId: midIdx >= 0 ? units[midIdx].id : '' };
+}
+
+// ข้อ 15 แผนการประเมินผลการเรียน: ดึงรายการคะแนนจากโครงสร้างคะแนน · ครูกรอกเพิ่มเฉพาะที่ระบบเดาไม่ได้ (ประเภท · ตัวชี้วัด · สัปดาห์ · ลักษณะงาน · กำหนดส่ง)
+//   ค่าเริ่มต้น: ประเภท = ทดสอบย่อยถ้าชื่อขึ้นต้น “ทดสอบ”/“แบบทดสอบ” ไม่งั้นเป็นชิ้นงาน · ตัวชี้วัด = ของหน่วยที่ชิ้นงานอยู่ · สัปดาห์ = สัปดาห์สุดท้ายของหน่วยตามข้อ 14
+//   สอบกลางภาค = ตัวชี้วัดของหน่วยถึงที่สอบ · สอบปลายภาค = หน่วยที่เหลือ · ตารางที่ 1 รวมชิ้นงานเป็นแถว “ภาระงานเดี่ยว/กลุ่ม จำนวน N ชิ้น” · ตารางที่ 2 แจกแจงรายชิ้น
+const syLastNum = (t) => { const m = /(\d+)(?!.*\d)/.exec(String(t || '')); return m ? m[1] : ''; };
+const syIsQuizName = (n) => /^\s*(แบบ)?ทดสอบ|^\s*quiz/i.test(String(n || ''));
+const syStdJoin = (list) => { const seen = new Set(); list.forEach(t => String(t || '').split(/\r?\n/).forEach(x => { x = x.trim(); if (x) seen.add(x); })); return [...seen].join('\n'); };
+function syAssessModel(struct, assess, units, plan) {
+  const byId = new Map((Array.isArray(assess) ? assess : []).map(r => [r.id, r]));
+  const uById = new Map(units.map(u => [u.id, u])), prow = new Map(plan.rows.filter(r => r.kind === 'unit').map(r => [r.id, r]));
+  const items = (struct.items || []).map(it => {
+    const sv = byId.get(it.id) || {}, u = uById.get(it.unitId), pr = prow.get(it.unitId);
+    const defKind = syIsQuizName(it.name) ? 'quiz' : 'work', defInd = u ? syStdJoin([u.standard]) : '', defWeek = pr ? syLastNum(pr.whenAuto) : '';
+    return { id: it.id, name: it.name, max: it.max, kind: sv.kind || defKind, defKind, rawKind: sv.kind || '', work: sv.work === 'group' ? 'group' : 'solo',
+      ind: sv.ind || defInd, defInd, rawInd: sv.ind || '', week: sv.week || defWeek, defWeek, rawWeek: sv.week || '', due: sv.due || '' };
+  });
+  const midIdx = units.findIndex(u => u.id === plan.midId), hasSplit = plan.hasMid && midIdx >= 0 && midIdx + 1 < units.length;
+  const exam = (id, label, max, defInd, defWeek) => {
+    const sv = byId.get(id) || {};
+    return { id, label, max, ind: sv.ind || defInd, defInd, rawInd: sv.ind || '', week: sv.week || defWeek, defWeek, rawWeek: sv.week || '' };
+  };
+  const exams = [];
+  if ((struct.midterm || 0) > 0) exams.push(exam('@mid', 'สอบกลางภาค', struct.midterm, syStdJoin(units.slice(0, midIdx >= 0 ? midIdx + 1 : units.length).map(u => u.standard)), syLastNum((plan.rows.find(r => r.kind === 'mid') || {}).whenAuto)));
+  if ((struct.final || 0) > 0) exams.push(exam('@final', 'สอบปลายภาค', struct.final, syStdJoin((hasSplit ? units.slice(midIdx + 1) : units).map(u => u.standard)), syLastNum((plan.rows.find(r => r.kind === 'final') || {}).whenAuto)));
+  const quizzes = items.filter(i => i.kind === 'quiz'), works = items.filter(i => i.kind === 'work');
+  const solo = works.filter(i => i.work !== 'group'), group = works.filter(i => i.work === 'group');
+  const sum = (a) => syRound1(a.reduce((t, i) => t + i.max, 0));
+  const rows = [
+    ...quizzes.map((q, i) => ({ label: `ทดสอบย่อยครั้งที่ ${i + 1}`, ind: q.ind, week: q.week, pts: q.max })),
+    ...exams.map(x => ({ label: x.label, ind: x.ind, week: x.week, pts: x.max })),
+    ...(solo.length ? [{ label: `ภาระงานเดี่ยว จำนวน ${solo.length} ชิ้น`, ind: '', week: `1-${SY_WEEKS}`, pts: sum(solo) }] : []),
+    ...(group.length ? [{ label: `ภาระงานกลุ่ม จำนวน ${group.length} ชิ้น`, ind: '', week: `1-${SY_WEEKS}`, pts: sum(group) }] : []),
+  ];
+  return { items, exams, quizzes, works, rows, total: sum(rows.map(r => ({ max: r.pts }))), workTotal: sum(works) };
 }
 
 function syUnitTitle(name, n) {
@@ -332,6 +379,7 @@ function syModel(course, struct, saved, desc, ctx) {
   if (kpa > 0 && syRound1(kpa) !== 100) warnings.push(`คะแนน K + P + A ในข้อ 13 รวม ${syFmt(kpa)} ไม่ครบ 100`);
   m.cover = syCoverModel(c, dsc, m, { ...(ctx || {}), hoursWeek: (ctx && ctx.hoursWeek != null) ? ctx.hoursWeek : s.hoursWeek });
   m.plan = syPlanModel(units, struct, s.plan, m.cover.hoursWeek);
+  m.assess = syAssessModel(struct, s.assess, units, m.plan);
   return m;
 }
 
@@ -398,6 +446,10 @@ const SY_TG = (SY_COLS[3] / (SY_COLS[3] + SY_COLS[4]) * 100).toFixed(3); // ส�
 const SY_ACOLS = [5, 10, 21, 27, 19, 6, 6, 6]; // ข้อ 13: ที่ · รหัส · ตัวชี้วัด · สาระแกนกลาง · คำสำคัญ · K · P · A (%)
 const SY_PCOLS = [14, 9, 27, 36, 14]; // ข้อ 14: ครั้งที่/วัน/เวลา · ชั่วโมง · ตัวชี้วัด/จุดประสงค์ · สาระ/เนื้อหา/ภาระงาน · สื่อ (%)
 const SY_PHEAD = [['ครั้งที่/', 'วัน/เวลา'], ['จำนวน', 'ชั่วโมง'], ['ตัวชี้วัดหรือ', 'ผลการเรียนรู้/', 'จุดประสงค์การเรียนรู้'], ['สาระการเรียนรู้/เนื้อหาที่สอน/', 'กิจกรรมสำคัญ/ภาระงาน'], ['สื่อ/', 'แหล่งเรียนรู้']];
+const SY_QCOLS = [7, 39, 26, 14, 14]; // ข้อ 15 ตารางวิธีการประเมิน: ที่ · วิธีการประเมิน · ตัวชี้วัด · ช่วงเวลา(สัปดาห์) · คะแนน (%)
+const SY_QHEAD = [['ที่'], ['วิธีการประเมินนักเรียน'], ['ตัวชี้วัด/', 'ผลการเรียนรู้'], ['ช่วงเวลา', '(สัปดาห์)'], ['คะแนน', '(ร้อยละ)']];
+const SY_WCOLS = [7, 31, 20, 10, 16, 16]; // ข้อ 15 ตารางชิ้นงาน: ที่ · ชื่อชิ้นงาน · ตัวชี้วัด · คะแนน · ลักษณะงาน · กำหนดส่ง
+const SY_WHEAD = [['ที่'], ['ชื่อชิ้นงาน'], ['ตัวชี้วัด/', 'ผลการเรียนรู้'], ['คะแนน'], ['ลักษณะงาน'], ['กำหนดส่ง']];
 const SY_AHEAD = [['ที่'], ['รหัส'], ['ตัวชี้วัด/', 'ผลการเรียนรู้'], ['สาระแกนกลาง'], ['คำสำคัญ']];
 
 // หัวตาราง: ในแต่ละช่อง 1 สมาชิก = 1 บรรทัด และแต่ละบรรทัดไม่ถูกตัดกลางคำ (.sy-hl) — เรียงตาม SY_COLS
@@ -427,6 +479,8 @@ const SY1_CSS = `
 .sy1 tr.sy-sum td{font-weight:700;text-align:center}
 .sy1 tr.sy-pe td{text-align:center}
 .sy1 .sy-pl-l{margin-top:.15em}
+.sy1 .sy-ra{display:grid;grid-template-columns:minmax(0,1fr) 9em;padding-left:1.5em;margin:.1em 0}
+.sy1 td.sy-l2{text-align:left}
 .sy1 .sy-pl-i{display:grid;grid-template-columns:var(--nw,1.3em) minmax(0,1fr);overflow-wrap:anywhere}
 .sy1 .sy-pl-n{white-space:nowrap}
 .sy1 .sy-pl-t{min-width:0;overflow-wrap:anywhere}
@@ -510,8 +564,8 @@ function syTableSectionHtml(m) {
 </section>`;
 }
 
-// เนื้อกระดาษทั้งเอกสาร: หน้าข้อมูลรายวิชา (ตามรูปแบบหลักสูตร) ตามด้วยตารางหน่วยการเรียนรู้ ข้อ 13 วิเคราะห์ตัวชี้วัด และข้อ 14 กำหนดการจัดการเรียนรู้ — แต่ละส่วนขึ้นหน้าใหม่
-function sySheetBodyHtml(m) { return [syCoverSectionHtml(m), syTableSectionHtml(m), syAnalysisSectionHtml(m), syPlanSectionHtml(m)].filter(Boolean).join('\n'); }
+// เนื้อกระดาษทั้งเอกสาร: หน้าข้อมูลรายวิชา (ตามรูปแบบหลักสูตร) ตามด้วยตารางหน่วยการเรียนรู้ ข้อ 13 วิเคราะห์ตัวชี้วัด ข้อ 14 กำหนดการจัดการเรียนรู้ และข้อ 15 แผนการประเมินผลการเรียน — แต่ละส่วนขึ้นหน้าใหม่
+function sySheetBodyHtml(m) { return [syCoverSectionHtml(m), syTableSectionHtml(m), syAnalysisSectionHtml(m), syPlanSectionHtml(m), syAssessSectionHtml(m)].filter(Boolean).join('\n'); }
 
 // ข้อ 13 วิเคราะห์มาตรฐานตัวชี้วัด หรือผลการเรียนรู้ — ตารางต่อจากโครงสร้างรายวิชา (ไม่มีตัวชี้วัดในคำอธิบายรายวิชา = ไม่มีหน้านี้)
 //   หัว 2 แถว (เกณฑ์การประเมินฯ คร่อม K P A) — docPaginate ซ้ำ thead ทั้งก้อนทุกแผ่น · แถวรวมอยู่ใน tbody
@@ -555,6 +609,39 @@ function syPlanSectionHtml(m) {
       <tr class="sy-sum"><td>รวม</td><td>${f(pl.total)}</td><td colspan="3"></td></tr>
     </tbody>
   </table>
+</section>`;
+}
+
+// ข้อ 15 แผนการประเมินผลการเรียน (หน้าแนวตั้ง) — อัตราส่วน 2 ข้อ · ตารางวิธีการประเมิน · ตารางรายละเอียดชิ้นงาน · หมายเหตุผลการเรียน “ร” · ไม่มีรายการคะแนนเลย = ไม่มีหน้านี้
+function syAssessSectionHtml(m) {
+  const e = escapeHtml, f = syFmt, a = m.assess;
+  if (!a || !a.rows.length) return '';
+  const hl = (h) => h.map(l => `<span class="sy-hl">${l}</span>`).join('<br>');
+  const kpa = m.analysis.k + m.analysis.p + m.analysis.a;
+  const head = (cols, heads) => `<colgroup>${cols.map(w => `<col style="--w:${w}%">`).join('')}</colgroup>\n    <thead><tr>${heads.map(h => `<th>${hl(h)}</th>`).join('')}</tr></thead>`;
+  const q = (r, i) => `<tr><td class="sy-c">${i + 1}</td><td class="sy-l2">${e(r.label)}</td><td class="sy-c">${syLines(r.ind)}</td><td class="sy-c">${e(r.week)}</td><td class="sy-c">${f(r.pts)}</td></tr>`;
+  const w = (r, i) => `<tr><td class="sy-c">${i + 1}</td><td class="sy-l2">${e(r.name)}</td><td class="sy-c">${syLines(r.ind)}</td><td class="sy-c">${f(r.max)}</td><td class="sy-c">${r.work === 'group' ? 'งานกลุ่ม' : 'งานเดี่ยว'}</td><td class="sy-c">${e(r.due)}</td></tr>`;
+  return `<section class="pg-port">
+  <div class="sy-h">15. แผนการประเมินผลการเรียน</div>
+  <div class="sy-ra"><span>1. อัตราส่วนคะแนนระหว่างภาค : คะแนนปลายภาค</span> <span>= ${f(m.ratio[0])} : ${f(m.ratio[1])}</span></div>
+  ${kpa > 0 ? `<div class="sy-ra"><span>2. อัตราส่วนคะแนน K : P : A</span> <span>= ${f(m.analysis.k)} : ${f(m.analysis.p)} : ${f(m.analysis.a)}</span></div>` : ''}
+  <div class="sy-h">โดยมีรายละเอียดดังนี้</div>
+  <table>
+    ${head(SY_QCOLS, SY_QHEAD)}
+    <tbody>
+      ${a.rows.map(q).join('\n      ')}
+      <tr class="sy-sum"><td colspan="4">รวม</td><td>${f(a.total)}</td></tr>
+    </tbody>
+  </table>
+  ${a.works.length ? `<div class="sy-h">รายละเอียดภาระชิ้นงาน</div>
+  <table>
+    ${head(SY_WCOLS, SY_WHEAD)}
+    <tbody>
+      ${a.works.map(w).join('\n      ')}
+      <tr class="sy-sum"><td colspan="3">รวม</td><td>${f(a.workTotal)}</td><td colspan="2"></td></tr>
+    </tbody>
+  </table>
+  <div class="sy-p">หากนักเรียนขาดส่งชิ้นงานและมีคะแนนตลอดภาคเรียนไม่ถึง ${f(a.workTotal)} คะแนน จะได้รับผลการเรียน “ร” ในรายวิชานี้ (การกำหนดน้ำหนักคะแนนต่อภาระหรือชิ้นงาน ไม่ควรกำหนดเกินชิ้นละ 5 คะแนนสำหรับงานเดี่ยว และ 10 คะแนนสำหรับงานกลุ่ม)</div>` : ''}
 </section>`;
 }
 
@@ -730,6 +817,39 @@ function syPlanCommonHtml(m, pl) {
   </div>${exam}`;
 }
 
+// ข้อ 15: การ์ดต่อ 1 รายการคะแนน (ชื่อ/คะแนนดึงจากโครงสร้างคะแนน แก้ที่ต้นทาง) — ประเภท · ตัวชี้วัด · สัปดาห์ (ทดสอบย่อย) · ลักษณะงาน/กำหนดส่ง (ชิ้นงาน) · ช่องว่าง = ใช้ค่าที่ระบบเสนอ (แสดงเป็น placeholder)
+function syAssessCardHtml(r) {
+  const e = escapeHtml, sel = (v, cur) => (v === cur ? ' selected' : '');
+  return `<div class="pa-witem sy-as" data-id="${e(r.id)}" data-kind="${r.kind}">
+    <div class="pa-witem-h sy-unit-h"><span class="sy-unit-name">${e(r.name) || 'ไม่มีชื่อ'}</span><span class="sy-unit-w">${syFmt(r.max)} คะแนน</span></div>
+    <div class="sy-as-grid">
+      <label>ประเภท<select class="input-sm sy-as-kind"><option value=""${sel('', r.rawKind)}>อัตโนมัติ (${r.defKind === 'quiz' ? 'ทดสอบย่อย' : 'ชิ้นงาน'})</option><option value="work"${sel('work', r.rawKind)}>ชิ้นงาน</option><option value="quiz"${sel('quiz', r.rawKind)}>ทดสอบย่อย</option></select></label>
+      <label class="sy-as-q"${r.kind === 'quiz' ? '' : ' hidden'}>สัปดาห์ที่ทดสอบ<input class="input-sm sy-as-week" type="text" maxlength="${SY_MAX.aweek}" placeholder="${e(r.defWeek || 'เช่น 3')}" value="${e(r.rawWeek)}"></label>
+      <label class="sy-as-w"${r.kind === 'work' ? '' : ' hidden'}>ลักษณะงาน<select class="input-sm sy-as-work"><option value="">งานเดี่ยว</option><option value="group"${sel('group', r.work)}>งานกลุ่ม</option></select></label>
+      <label class="sy-as-w"${r.kind === 'work' ? '' : ' hidden'}>กำหนดส่ง<input class="input-sm sy-as-due" type="text" maxlength="${SY_MAX.adue}" placeholder="เช่น 14 มิ.ย. 69" value="${e(r.due)}"></label>
+    </div>
+    <div class="field"><label>ตัวชี้วัด/ผลการเรียนรู้
+      <textarea class="input-sm sy-as-ind" rows="2" maxlength="${SY_MAX.aind}" placeholder="${e(r.defInd ? 'ว่าง = ' + r.defInd.replace(/\s*\r?\n\s*/g, ' · ') : 'เช่น ว4.2 / ม.2/4')}">${e(r.rawInd)}</textarea>
+    </label></div>
+  </div>`;
+}
+// สอบกลางภาค/ปลายภาค: ตัวชี้วัด + สัปดาห์ที่สอบ
+function syAssessExamHtml(x) {
+  const e = escapeHtml;
+  return `<div class="pa-witem sy-as sy-as-x" data-id="${e(x.id)}" data-kind="exam">
+    <div class="pa-witem-h sy-unit-h"><span class="sy-unit-name">${e(x.label)}</span><span class="sy-unit-w">${syFmt(x.max)} คะแนน</span></div>
+    <div class="sy-as-grid">
+      <label>สัปดาห์ที่สอบ<input class="input-sm sy-as-week" type="text" maxlength="${SY_MAX.aweek}" placeholder="${e(x.defWeek || 'เช่น 10')}" value="${e(x.rawWeek)}"></label>
+    </div>
+    <div class="field"><label>ตัวชี้วัด/ผลการเรียนรู้
+      <textarea class="input-sm sy-as-ind" rows="2" maxlength="${SY_MAX.aind}" placeholder="${e(x.defInd ? 'ว่าง = ' + x.defInd.replace(/\s*\r?\n\s*/g, ' · ') : 'เช่น ว4.2 / ม.2/4')}">${e(x.rawInd)}</textarea>
+    </label></div>
+  </div>`;
+}
+const syAssessFormHtml = (m) => (m.assess.items.length || m.assess.exams.length)
+  ? `<div class="u-note u-mb-12">ชื่อรายการและคะแนนดึงจากแท็บโครงสร้างคะแนน (แก้ที่ต้นทาง) · อัตราส่วนระหว่างภาค:ปลายภาค และ K:P:A คำนวณจากโครงสร้างคะแนนกับส่วนที่ 3 · ตัวชี้วัดและสัปดาห์เว้นว่าง = ใช้ค่าที่ระบบเสนอจากหน่วยการเรียนรู้ (ข้อ 14) · ชื่อที่ขึ้นต้นว่า “ทดสอบ” นับเป็นทดสอบย่อย ที่เหลือเป็นชิ้นงาน — เปลี่ยนได้ที่ช่องประเภท</div>${m.assess.items.map(syAssessCardHtml).join('')}${m.assess.exams.map(syAssessExamHtml).join('')}`
+  : '<div class="empty-state">ยังไม่มีรายการคะแนนในโครงสร้างคะแนน — เพิ่มที่แท็บ “โครงสร้างคะแนน” แล้วกลับมากรอกที่นี่ (ไม่มีรายการคะแนน = ไม่พิมพ์ข้อ 15)</div>';
+
 // ข้อมูลรายวิชา ข้อ 1–10 ของหน้าแรก (อ่านอย่างเดียว ดึงอัตโนมัติ) — วาดใหม่ทุกครั้งที่ค่าในฟอร์มเปลี่ยน
 function syCoverGridHtml(m) {
   const cv = m.cover, num = (x) => (x == null ? '' : syFmt(x));
@@ -780,9 +900,15 @@ function syCollect(form) {
   const fv = (sel, back) => { const el = form.querySelector(sel); return el ? el.value : back; }; // ไม่มีช่องในฟอร์ม (เช่น ไม่มีคะแนนสอบ) = คงค่าที่บันทึกไว้
   const plan = { units: [...livePl, ...(savedPl.units || []).filter(r => !shownP.has(r.id))], media: fv('#sy-media', savedPl.media || ''),
     midAfter: fv('#sy-mid-after', savedPl.midAfter || ''), midHours: fv('#sy-mid-h', savedPl.midHours || ''), finalHours: fv('#sy-fin-h', savedPl.finalHours || '') };
+  const liveS = [...form.querySelectorAll('.sy-as')].map(el => {
+    const q = (c) => { const x = el.querySelector(c); return x ? x.value : ''; };
+    return { id: el.dataset.id, kind: q('.sy-as-kind'), work: q('.sy-as-work'), ind: q('.sy-as-ind'), week: q('.sy-as-week'), due: q('.sy-as-due') };
+  });
+  const shownS = new Set(liveS.map(r => r.id)); // รายการที่ถูกลบจากโครงสร้างคะแนนแล้ว ยังเก็บค่าไว้ (กลับมาใช้ได้ถ้าเพิ่มคืน)
+  const orphanS = ((SY.saved && SY.saved.assess) || []).filter(r => !shownS.has(r.id));
   const inStruct = new Set(SY.struct.units.map(u => u.id));
   const orphans = ((SY.saved && SY.saved.units) || []).filter(u => !inStruct.has(u.id));
-  return syNormalize({ area: form.querySelector('#sy-area').value, hoursWeek: form.querySelector('#sy-hw').value, units: [...live, ...orphans], analysis: [...liveA, ...orphanA], plan }, '');
+  return syNormalize({ area: form.querySelector('#sy-area').value, hoursWeek: form.querySelector('#sy-hw').value, units: [...live, ...orphans], analysis: [...liveA, ...orphanA], plan, assess: [...liveS, ...orphanS] }, '');
 }
 
 function syCurrent() { return SY.draft || SY.saved; }
@@ -823,7 +949,7 @@ function syShowForm(container) {
 
     <section class="doc-section">
       <h2 class="doc-sec-title">ส่วนที่ 3  วิเคราะห์มาตรฐานตัวชี้วัด (ข้อ 13)</h2>
-      ${m.analysis.rows.length ? `<div class="u-note u-mb-12">ตัวชี้วัดดึงจากคำอธิบายรายวิชา — กรอกสาระแกนกลาง คำสำคัญ และคะแนน K P A ของแต่ละตัวชี้วัด (ผลรวมแสดงในส่วนที่ 4)</div>${m.analysis.rows.map(syIndHtml).join('')}` : '<div class="empty-state">ยังไม่มีตัวชี้วัดในคำอธิบายรายวิชา — เพิ่มที่แท็บ “คำอธิบายรายวิชา” แล้วกลับมากรอกที่นี่ (ไม่มีตัวชี้วัด = ไม่พิมพ์ข้อ 13)</div>'}
+      ${m.analysis.rows.length ? `<div class="u-note u-mb-12">ตัวชี้วัดดึงจากคำอธิบายรายวิชา — กรอกสาระแกนกลาง คำสำคัญ และคะแนน K P A ของแต่ละตัวชี้วัด (ผลรวมแสดงในส่วนที่ 6)</div>${m.analysis.rows.map(syIndHtml).join('')}` : '<div class="empty-state">ยังไม่มีตัวชี้วัดในคำอธิบายรายวิชา — เพิ่มที่แท็บ “คำอธิบายรายวิชา” แล้วกลับมากรอกที่นี่ (ไม่มีตัวชี้วัด = ไม่พิมพ์ข้อ 13)</div>'}
     </section>
 
     <section class="doc-section">
@@ -832,7 +958,12 @@ function syShowForm(container) {
     </section>
 
     <section class="doc-section">
-      <h2 class="doc-sec-title">ส่วนที่ 5  สรุปและตรวจสอบ</h2>
+      <h2 class="doc-sec-title">ส่วนที่ 5  แผนการประเมินผลการเรียน (ข้อ 15)</h2>
+      <div id="sy-assess">${syAssessFormHtml(m)}</div>
+    </section>
+
+    <section class="doc-section">
+      <h2 class="doc-sec-title">ส่วนที่ 6  สรุปและตรวจสอบ</h2>
       <div id="sy-check">${syCheckHtml(m)}</div>
     </section>
 
@@ -851,6 +982,17 @@ function syShowForm(container) {
       el.querySelector('.sy-pl-h').textContent = `${syFmt(r.hours)} ชั่วโมง`;
       el.querySelector('.sy-pl-ro').innerHTML = syPlanRoHtml(r);
       if (r.whenAuto) el.querySelector('.sy-pl-when').placeholder = r.whenAuto;
+    });
+    form.querySelectorAll('.sy-as').forEach(el => { // ข้อ 15: ประเภทที่ใช้จริง (อัตโนมัติ/เลือกเอง) สลับช่องสัปดาห์ ↔ ลักษณะงาน/กำหนดส่ง · ค่าที่ระบบเสนอเป็น placeholder อัปเดตสด
+      const it = mm.assess.items.find(x => x.id === el.dataset.id), ex = mm.assess.exams.find(x => x.id === el.dataset.id), r = it || ex;
+      if (!r) return;
+      const d = it ? it.kind : 'exam';
+      el.dataset.kind = d;
+      el.querySelectorAll('.sy-as-q').forEach(x => { x.hidden = d !== 'quiz'; });
+      el.querySelectorAll('.sy-as-w').forEach(x => { x.hidden = d !== 'work'; });
+      el.querySelector('.sy-as-ind').placeholder = r.defInd ? 'ว่าง = ' + r.defInd.replace(/\s*\r?\n\s*/g, ' · ') : 'เช่น ว4.2 / ม.2/4';
+      if (it) { const ak = el.querySelector('.sy-as-kind'); ak.options[0].textContent = `อัตโนมัติ (${it.defKind === 'quiz' ? 'ทดสอบย่อย' : 'ชิ้นงาน'})`; }
+      el.querySelector('.sy-as-week').placeholder = r.defWeek || 'เช่น 3';
     });
     mm.units.forEach((u, i) => { if (unitEls[i]) unitEls[i].querySelector('.sy-unit-s').textContent = syUnitStatus(u); }); // ป้ายสถานะต่อหน่วยอัปเดตสด
   };

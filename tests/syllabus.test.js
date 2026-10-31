@@ -121,7 +121,7 @@ const DESC = { type: 'พื้นฐาน', area: 'วิทยาศาสต
   ok(m.units.map(u => u.hours).join() === '2,4,2,4,8' && m.units[4].topics.length === 4, 'ชั่วโมงต่อหน่วย 2,4,2,4,8');
 
   const doc = body(R(`sySheetBodyHtml`)(m));
-  ok(doc.querySelectorAll('section.pg-port').length === 3 && doc.querySelectorAll('section.pg-land').length === 1 && doc.querySelector('.sy-title').textContent === 'โครงสร้างรายวิชาพื้นฐานวิทยาศาสตร์และเทคโนโลยี', 'กระดาษ: 4 section (แนวตั้ง: หน้าข้อมูลรายวิชา + ตารางหน่วย + ข้อ 14 กำหนดการ · แนวนอน: ข้อ 13 วิเคราะห์ตัวชี้วัด) · หัวเรื่อง "โครงสร้างรายวิชา" + ประเภท + กลุ่มสาระ');
+  ok(doc.querySelectorAll('section.pg-port').length === 4 && doc.querySelectorAll('section.pg-land').length === 1 && doc.querySelector('.sy-title').textContent === 'โครงสร้างรายวิชาพื้นฐานวิทยาศาสตร์และเทคโนโลยี', 'กระดาษ: 5 section (แนวตั้ง: หน้าข้อมูลรายวิชา + ตารางหน่วย + ข้อ 14 กำหนดการ + ข้อ 15 แผนการประเมิน · แนวนอน: ข้อ 13 วิเคราะห์ตัวชี้วัด) · หัวเรื่อง "โครงสร้างรายวิชา" + ประเภท + กลุ่มสาระ');
   const hl = [...doc.querySelectorAll('.sy-l')].map(e => norm(e.textContent));
   ok(hl[0] === 'เทคโนโลยี (วิทยาการคำนวณ 2) ว22183 กลุ่มสาระการเรียนรู้วิทยาศาสตร์และเทคโนโลยี', 'บรรทัดที่ 2: ชื่อวิชา รหัส · กลุ่มสาระการเรียนรู้…');
   ok(hl[1] === 'ชั้นมัธยมศึกษาปีที่ 2 เวลา 20 ชั่วโมง จำนวน 0.5 หน่วยกิต', 'บรรทัดที่ 3: ชั้น… เวลา 20 ชั่วโมง จำนวน 0.5 หน่วยกิต');
@@ -167,7 +167,7 @@ const DESC = { type: 'พื้นฐาน', area: 'วิทยาศาสต
     const dup = R('syAnalysisModel')({ indicators: [{ code: 'ว 1 ม.1/1', text: 'x' }, { code: 'ว 1 ม.1/1', text: 'y' }, { code: '', text: '' }] }, []);
     ok(dup.rows.length === 2 && dup.rows[0].key !== dup.rows[1].key, 'รหัสซ้ำ: ได้ key ไม่ซ้ำ (ไม่ทิ้งแถว) · แถวว่างทั้งรหัสและข้อความถูกข้าม');
     const ad = body(R(`sySheetBodyHtml`)(ma)), secs13 = [...ad.querySelectorAll('section')], s13 = secs13[2];
-    ok(secs13.length === 4 && s13.classList.contains('pg-land') && norm(s13.querySelector('.sy-h').textContent) === '13. วิเคราะห์มาตรฐานตัวชี้วัด หรือผลการเรียนรู้' && [...s13.children].every(el => el.tagName === 'DIV' || el.tagName === 'TABLE'), 'กระดาษข้อ 13: หน้าที่ 3 · หัวข้อ \"13. วิเคราะห์มาตรฐานตัวชี้วัด หรือผลการเรียนรู้\" · ลูกตรงเป็นหัวข้อ/ตาราง (docPaginate ตัดได้)');
+    ok(secs13.length === 5 && s13.classList.contains('pg-land') && norm(s13.querySelector('.sy-h').textContent) === '13. วิเคราะห์มาตรฐานตัวชี้วัด หรือผลการเรียนรู้' && [...s13.children].every(el => el.tagName === 'DIV' || el.tagName === 'TABLE'), 'กระดาษข้อ 13: หน้าที่ 3 · หัวข้อ \"13. วิเคราะห์มาตรฐานตัวชี้วัด หรือผลการเรียนรู้\" · ลูกตรงเป็นหัวข้อ/ตาราง (docPaginate ตัดได้)');
     const hr = [...s13.querySelectorAll('thead tr')].map(r => [...r.children].map(c => norm(c.textContent)).join('|'));
     ok(hr.length === 2 && hr[0] === 'ที่|รหัส|ตัวชี้วัด/ผลการเรียนรู้|สาระแกนกลาง|คำสำคัญ|เกณฑ์การประเมินผลการเรียนรู้ของผู้เรียน' && hr[1] === 'K|P|A' && s13.querySelector('thead th[colspan="3"]'), 'หัวตารางข้อ 13 2 แถว: ที่ · รหัส · ตัวชี้วัด · สาระแกนกลาง · คำสำคัญ · เกณฑ์การประเมินฯ คร่อม K P A');
     const cols = [...s13.querySelectorAll('col')].map(c => parseFloat(c.getAttribute('style').replace(/[^\d.]/g, '')));
@@ -177,7 +177,7 @@ const DESC = { type: 'พื้นฐาน', area: 'วิทยาศาสต
     const tot = [...s13.querySelector('tbody tr.sy-sum').children];
     ok(norm(tot[0].textContent) === 'รวม' && tot[0].colSpan === 5 && J(tot.slice(1).map(c => norm(c.textContent))) === J(['40', '20', '5']), 'แถวรวมอยู่ใน tbody: รวม · K 40 · P 20 · A 5');
     const none = body(R(`sySheetBodyHtml`)(R('syModel')(course, loaded.struct, loaded.saved, { ...loaded.desc, indicators: [] })));
-    ok(none.querySelectorAll('section').length === 3 && !none.querySelector('section.pg-land') && !/วิเคราะห์มาตรฐานตัวชี้วัด/.test(none.body.textContent), 'ไม่มีตัวชี้วัดในคำอธิบายรายวิชา → ไม่มีหน้าข้อ 13');
+    ok(none.querySelectorAll('section').length === 4 && !none.querySelector('section.pg-land') && !/วิเคราะห์มาตรฐานตัวชี้วัด/.test(none.body.textContent), 'ไม่มีตัวชี้วัดในคำอธิบายรายวิชา → ไม่มีหน้าข้อ 13');
   }
 
   // ---------------- ข้อ 14 กำหนดการจัดการเรียนรู้ ----------------
@@ -206,6 +206,34 @@ const DESC = { type: 'พื้นฐาน', area: 'วิทยาศาสต
     ok(sum14[0] === 'รวม' && sum14[1] === '22' && norm(tr14[3].children[0].textContent) === 'ครั้งที่ 8-9', 'แถวรวม 22 · หน่วยที่ไม่กรอกครั้งที่ใช้ค่าที่เสนอ');
     const noUnits = body(R(`sySheetBodyHtml`)(R('syModel')(course, R(`syStructFrom([], null)`), {}, {})));
     ok(!/กำหนดการจัดการเรียนรู้/.test(noUnits.body.textContent), 'ไม่มีหน่วยในโครงสร้างคะแนน → ไม่มีหน้าข้อ 14');
+    ok(!/แผนการประเมินผลการเรียน/.test(noUnits.body.textContent), 'ไม่มีรายการคะแนนเลย → ไม่มีหน้าข้อ 15');
+  }
+
+  { // ---------------- ข้อ 15 แผนการประเมินผลการเรียน ----------------
+    const st15 = R(`syStructFrom`)([{ id: 'q', name: 'ทดสอบหน่วย 1', category: 'collect', unitId: 'u', max: 5, order: 1 }, { id: 'w', name: 'งาน', category: 'collect', unitId: 'u', max: 10, order: 0 }, { id: 'o', name: 'นอก', category: 'collect', unitId: 'ghost', max: 3, order: 0 }], { groups: [], units: [{ id: 'u', name: 'หน่วย', groupId: null }] });
+    ok(J(st15.items.map(i => i.id)) === J(['w', 'q', 'o']) && st15.items[2].unitId === '' && st15.items[0].max === 10, 'syStructFrom: items = รายการคะแนนเก็บ เรียงตามหน่วยแล้วตามลำดับ · รายการที่หน่วยไม่มีอยู่ไปท้าย (unitId ว่าง)');
+    const na = R('syNormalize')({ units: [], assess: [{ id: 'a1', kind: 'quiz', ind: ' ว1 ', week: ' 3 ' }, { id: 'a1', kind: 'work' }, { id: '', kind: 'work' }, { id: 'a2' }, { id: 'a3', kind: 'bogus', work: 'group' }, null] }, '').assess;
+    ok(na.length === 2 && na[0].ind === 'ว1' && na[0].week === '3' && na[1].id === 'a3' && na[1].kind === '' && na[1].work === 'group' && !('assess' in R('syNormalize')({ units: [] }, '')), 'normalize ข้อ 15: ตัดช่องว่าง · ทิ้ง id ซ้ำ/ไม่มี id/แถวว่าง · ประเภทที่ไม่รู้จัก = ว่าง · เอกสารเก่าไม่มีฟิลด์ assess');
+    const a15 = R('syModel')(course, loaded.struct, loaded.saved, loaded.desc).assess;
+    ok(J(a15.rows.map(r => r.label)) === J(['สอบกลางภาค', 'สอบปลายภาค', 'ภาระงานเดี่ยว จำนวน 5 ชิ้น']) && a15.total === 100 && a15.workTotal === 50 && a15.works.length === 5 && a15.quizzes.length === 0, 'ข้อ 15 ค่าเริ่มต้น: ชื่อ "งาน n" นับเป็นชิ้นงานเดี่ยว · สอบกลางภาค 20 + ปลายภาค 30 + งาน 50 = 100');
+    ok(a15.works[0].ind === 'ว4.2 / ม.2/4' && a15.exams[0].ind === 'ว4.2 / ม.2/4\nว4.2 / ม.2/1\nว4.2 / ม.2/3' && a15.exams[1].ind === 'ว4.2 / ม.2/1, ม2/2', 'ตัวชี้วัดเริ่มต้น: ชิ้นงาน = ตัวชี้วัดของหน่วย · สอบกลางภาค = หน่วยถึงที่สอบ (ไม่ซ้ำ) · สอบปลายภาค = หน่วยที่เหลือ');
+    const wk = R('syModel')(course, loaded.struct, { ...loaded.saved, plan: { midAfter: 'u2', midHours: '1', finalHours: '1' } }, loaded.desc).assess;
+    ok(wk.exams[0].week === '7', 'สัปดาห์สอบกลางภาคเริ่มต้น = ครั้งที่ที่เสนอในข้อ 14 (ชั่วโมงสะสมหลังหน่วยที่ 2 = 6 → ครั้งที่ 7)');
+    const sv15 = { ...loaded.saved, assess: [{ id: 'a1', kind: 'quiz', ind: '', week: '', due: '', work: '' }, { id: 'a2', kind: '', work: 'group', ind: 'ว9', week: '', due: '6 ก.ค. 69' }, { id: '@mid', ind: 'ว4.2 ม.2/1', week: '10' }],
+      analysis: [{ key: R('syCodeKey')('ว 4.2 ม.2/1'), core: '', keywords: '', k: '60', p: '30', a: '10' }] };
+    const m15 = R('syModel')(course, loaded.struct, sv15, loaded.desc);
+    ok(J(m15.assess.rows.map(r => r.label)) === J(['ทดสอบย่อยครั้งที่ 1', 'สอบกลางภาค', 'สอบปลายภาค', 'ภาระงานเดี่ยว จำนวน 3 ชิ้น', 'ภาระงานกลุ่ม จำนวน 1 ชิ้น']) && m15.assess.total === 100 && m15.assess.rows[0].week === '2' && m15.assess.rows[1].week === '10' && m15.assess.rows[1].ind === 'ว4.2 ม.2/1', 'ทดสอบย่อย/งานกลุ่ม: แยกแถว · ทดสอบย่อยใช้สัปดาห์สุดท้ายของหน่วยเป็นค่าเริ่มต้น · ค่าที่ครูกรอกทับค่าเริ่มต้น');
+    const d15 = body(R(`sySheetBodyHtml`)(m15)), secs15 = [...d15.querySelectorAll('section')], s15 = secs15[secs15.length - 1];
+    ok(secs15.length === 5 && s15.classList.contains('pg-port') && norm(s15.querySelector('.sy-h').textContent) === '15. แผนการประเมินผลการเรียน' && [...s15.children].every(el => el.tagName === 'DIV' || el.tagName === 'TABLE') && s15.querySelectorAll('table').length === 2, 'กระดาษข้อ 15: หน้าแนวตั้งหน้าสุดท้าย · หัวข้อ "15. แผนการประเมินผลการเรียน" · ลูกตรงเป็นหัวข้อ/ตาราง 2 ตาราง');
+    ok(J([...s15.querySelectorAll('.sy-ra')].map(e => norm(e.textContent))) === J(['1. อัตราส่วนคะแนนระหว่างภาค : คะแนนปลายภาค = 70 : 30', '2. อัตราส่วนคะแนน K : P : A = 60 : 30 : 10']), 'อัตราส่วน: ระหว่างภาค:ปลายภาค จากโครงสร้างคะแนน · K:P:A จากข้อ 13');
+    ok(!/อัตราส่วนคะแนน K : P : A/.test(body(R(`sySheetBodyHtml`)(R('syModel')(course, loaded.struct, loaded.saved, loaded.desc))).body.textContent), 'ยังไม่กรอก K/P/A ในข้อ 13 → ไม่มีบรรทัดอัตราส่วน K:P:A');
+    const [t1, t2] = [...s15.querySelectorAll('table')];
+    ok([...t1.querySelectorAll('thead th')].map(e => norm(e.textContent)).join('|') === 'ที่|วิธีการประเมินนักเรียน|ตัวชี้วัด/ผลการเรียนรู้|ช่วงเวลา(สัปดาห์)|คะแนน(ร้อยละ)' && [...t2.querySelectorAll('thead th')].map(e => norm(e.textContent)).join('|') === 'ที่|ชื่อชิ้นงาน|ตัวชี้วัด/ผลการเรียนรู้|คะแนน|ลักษณะงาน|กำหนดส่ง', 'หัวตารางข้อ 15: 5 คอลัมน์ (วิธีการประเมิน) + 6 คอลัมน์ (ชิ้นงาน) ตามแบบ');
+    const r1 = [...t1.querySelectorAll('tbody tr')], c1 = [...r1[0].children].map(c => norm(c.textContent)), sum1 = [...t1.querySelector('tr.sy-sum').children];
+    ok(r1.length === 6 && J(c1) === J(['1', 'ทดสอบย่อยครั้งที่ 1', 'ว4.2 / ม.2/4', '2', '10']) && norm(sum1[0].textContent) === 'รวม' && sum1[0].colSpan === 4 && norm(sum1[1].textContent) === '100' && norm(r1[3].children[1].textContent) === 'ภาระงานเดี่ยว จำนวน 3 ชิ้น' && norm(r1[3].children[3].textContent) === '1-20', 'ตารางวิธีการประเมิน: ทดสอบย่อย → สอบกลาง/ปลายภาค → ภาระงานเดี่ยว/กลุ่มรวมเป็นแถว (สัปดาห์ 1-20) · รวม 100');
+    const r2 = [...t2.querySelectorAll('tbody tr')], c2 = [...r2[0].children].map(c => norm(c.textContent)), sum2 = [...t2.querySelector('tr.sy-sum').children];
+    ok(r2.length === 5 && J(c2) === J(['1', 'งาน 2', 'ว9', '10', 'งานกลุ่ม', '6 ก.ค. 69']) && norm(r2[1].children[4].textContent) === 'งานเดี่ยว' && norm(sum2[1].textContent) === '40', 'ตารางชิ้นงาน: ที่ · ชื่อ · ตัวชี้วัด · คะแนน · งานเดี่ยว/กลุ่ม · กำหนดส่ง · รวม 40');
+    ok(/ไม่ถึง 40 คะแนน/.test(norm(s15.querySelector('.sy-p').textContent)) && /“ร”/.test(s15.textContent), 'หมายเหตุผลการเรียน “ร”: คะแนนรวมชิ้นงานจากโครงสร้างคะแนน');
   }
 
   // ---------------- ตารางตามโครงสร้างจริง: เปลี่ยนชื่อ · ลบ · เพิ่มหน่วย · นอกหน่วย ----------------
@@ -259,7 +287,7 @@ const DESC = { type: 'พื้นฐาน', area: 'วิทยาศาสต
   ok(mo.count === 4 && mo.groups.length === 4 && mo.groups[0].items.map(i => i.n).join() === '1,3' && mo.groups[1].head === 'ว4.2 ข' && mo.groups[2].items.length === 0 && mo.groups[3].items[0].text === 'd', 'หลายมาตรฐาน: "ว4.2" = "ว. 4.2" จัดกลุ่มเดียวกัน · มาตรฐานไม่มีตัวชี้วัดเป็นหัวว่าง · เลขต่อเนื่องทุกกลุ่ม · แถวว่างถูกทิ้ง');
   const cvDoc = body(R(`sySheetBodyHtml`)(cvm));
   const secs = [...cvDoc.querySelectorAll('section')];
-  ok(secs.length === 4 && !!secs[0].querySelector('.sy-ct') && !!secs[1].querySelector('.sy-title') && !!secs[2].querySelector('.sy-h') && !!secs[3].querySelector('.sy-h') && [...secs[0].children].every(el => el.tagName === 'DIV'), 'กระดาษ: หน้าแรก = ข้อมูลรายวิชา · ถัดไป = ตารางหน่วย · ข้อ 13 · ข้อ 14 · ทุกบล็อกเป็นลูกตรงของ section (docPaginate ตัดหน้าได้)');
+  ok(secs.length === 5 && !!secs[0].querySelector('.sy-ct') && !!secs[1].querySelector('.sy-title') && !!secs[2].querySelector('.sy-h') && !!secs[3].querySelector('.sy-h') && !!secs[4].querySelector('.sy-h') && [...secs[0].children].every(el => el.tagName === 'DIV'), 'กระดาษ: หน้าแรก = ข้อมูลรายวิชา · ถัดไป = ตารางหน่วย · ข้อ 13 · ข้อ 14 · ข้อ 15 · ทุกบล็อกเป็นลูกตรงของ section (docPaginate ตัดหน้าได้)');
   const ct = [...secs[0].querySelectorAll('.sy-ct')].map(e => norm(e.textContent));
   ok(ct[0] === 'หลักสูตรรายวิชา (Course Syllabus)' && ct[1] === 'โรงเรียนหนองกี่พิทยาคม', 'หัวเรื่อง 2 บรรทัด: หลักสูตรรายวิชา (Course Syllabus) / ชื่อโรงเรียน');
   const frows = [...secs[0].querySelectorAll('.sy-f')].map(e => norm(e.textContent));
@@ -297,7 +325,7 @@ const DESC = { type: 'พื้นฐาน', area: 'วิทยาศาสต
   ok(!!$('sy-form') && host.querySelectorAll('.sy-unit').length === 5, 'ฟอร์ม: 1 บล็อกต่อหน่วยการเรียนรู้ (5 หน่วย)');
   ok($('sy-area').value === 'วิทยาศาสตร์และเทคโนโลยี', 'กลุ่มสาระ: ยังไม่เคยกรอกในแท็บนี้ → เริ่มต้นจากคำอธิบายรายวิชา');
   ok(!!host.querySelector('form.doc-form > .doc-form-header .doc-form-meta #sy-area') && !!host.querySelector('.doc-form-header #sy-status'), 'โครงฟอร์มเหมือนฟอร์มเอกสารอื่น: .doc-form-header (ช่องกลุ่มสาระ + ป้ายสถานะ) ก่อนการ์ด .doc-section');
-  ok(host.querySelectorAll('form.doc-form > section.doc-section').length === 5 && !!host.querySelector('form.doc-form > .pa-form-footer #sy-save-btn'), 'การ์ด 5 ใบ (<section class="doc-section">) แล้วตามด้วย .pa-form-footer');
+  ok(host.querySelectorAll('form.doc-form > section.doc-section').length === 6 && !!host.querySelector('form.doc-form > .pa-form-footer #sy-save-btn'), 'การ์ด 5 ใบ (<section class="doc-section">) แล้วตามด้วย .pa-form-footer');
   ok(!$('sy-to-preview') && !$('sy-top-save') && !host.querySelector('.doc-preview-bar'), 'ฟอร์มไม่มีแถบเครื่องมือบน (ปุ่มไปตัวอย่าง/บันทึกบน) — สลับแท็บด้วยแถบแท็บของหน้า เหมือนคำอธิบายรายวิชา');
   const info = [...host.querySelectorAll('section.doc-section:first-of-type dl.pa-pf .pa-pf-item')].map(e => norm(e.textContent));
   ok(info.length === 14 && info[2] === '2 รหัสวิชาว22183' && info[3] === '3 หน่วยกิต0.5' && info[8] === '8 ประเภทวิชาพื้นฐาน' && info[10] === '9 ชั่วโมง/ภาคเรียน20' && info[11] === '10 ระดับชั้นมัธยมศึกษาปีที่ 2' && !host.querySelector('.sy-head-ro') && !!host.querySelector('.pa-pf-note #sy-edit-info'), 'ข้อมูลรายวิชาข้อ 1–10 ที่ระบบดึงให้: การ์ดเล็ก docProfileGridHtml + แถบหมายเหตุพร้อมปุ่ม "แก้ไขข้อมูลวิชา" (ไม่เขียนเป็นข้อความต่อกัน)');
@@ -351,6 +379,22 @@ const DESC = { type: 'พื้นฐาน', area: 'วิทยาศาสต
     ok(bad === $('sy-fin-h') && bad.getAttribute('aria-invalid') === 'true', 'ชั่วโมงสอบที่ไม่ใช่ตัวเลข: ถูกชี้ช่อง');
     $('sy-fin-h').value = ''; R(`syFindBadHours`)(form);
     pls[0].querySelectorAll('textarea').forEach(el => { el.value = ''; }); $('sy-media').value = ''; $('sy-mid-after').value = ''; $('sy-mid-h').value = '';
+  }
+
+  { // ข้อ 15 ในฟอร์ม: การ์ดต่อรายการคะแนน → syCollect
+    const form = d.querySelector('#sy-form'), cards = [...host.querySelectorAll('.sy-as')];
+    ok(cards.length === 7 && cards.filter(c => c.dataset.kind === 'exam').length === 2 && cards.every(c => c.classList.contains('pa-witem')) && !!$('sy-assess'), 'ส่วนที่ 5: การ์ด 5 รายการคะแนน + สอบกลางภาค/ปลายภาค (.pa-witem)');
+    form.dispatchEvent(new w.Event('input')); R('syDiscard()'); // วาดค่าที่เสนอใหม่ (ขั้นตอนก่อนหน้าเคยพิมพ์ช่องมาตรฐานค้างไว้)
+    const c0 = cards[0];
+    ok(c0.dataset.kind === 'work' && c0.querySelector('.sy-as-q').hidden === true && c0.querySelector('.sy-as-w').hidden === false && c0.querySelector('.sy-as-ind').placeholder === 'ว่าง = ว4.2 / ม.2/4', 'ชิ้นงาน: ซ่อนช่องสัปดาห์ · แสดงลักษณะงาน/กำหนดส่ง · ตัวชี้วัดที่ระบบเสนอเป็น placeholder');
+    c0.querySelector('.sy-as-kind').value = 'quiz'; c0.querySelector('.sy-as-week').value = '3';
+    cards[1].querySelector('.sy-as-work').value = 'group'; cards[1].querySelector('.sy-as-due').value = '6 ก.ค. 69'; cards[5].querySelector('.sy-as-ind').value = 'ว4.2';
+    form.dispatchEvent(new w.Event('input'));
+    ok(c0.dataset.kind === 'quiz' && c0.querySelector('.sy-as-q').hidden === false && c0.querySelector('.sy-as-w').hidden === true, 'เปลี่ยนประเภทเป็นทดสอบย่อย: สลับเป็นช่องสัปดาห์ (ซ่อนลักษณะงาน/กำหนดส่ง)');
+    const col15 = R(`syCollect`)(form).assess;
+    ok(col15.length === 3 && col15[0].id === 'a1' && col15[0].kind === 'quiz' && col15[0].week === '3' && col15[1].id === 'a2' && col15[1].work === 'group' && col15[1].due === '6 ก.ค. 69' && col15[2].id === '@mid' && col15[2].ind === 'ว4.2', 'syCollect: อ่านค่าข้อ 15 ตาม id รายการ (เก็บเฉพาะแถวที่กรอก · สอบกลางภาค = @mid)');
+    form.querySelectorAll('.sy-as select').forEach(el => { el.value = ''; }); form.querySelectorAll('.sy-as input, .sy-as textarea').forEach(el => { el.value = ''; });
+    form.dispatchEvent(new w.Event('input')); R('syDiscard()');
   }
 
   // เลือกตัวชี้วัดจากคำอธิบายรายวิชา: ทั้งหมด / ทั้งมาตรฐาน / บางข้อ → "ใส่ลงช่อง"
@@ -552,7 +596,7 @@ const DESC = { type: 'พื้นฐาน', area: 'วิทยาศาสต
   const named = R('SY_PAGE'), paperCss = R('SY1_CSS');
   ok(/@page sy-land\{size:A4 landscape;margin:15mm\}/.test(named) && /@page sy-port\{size:A4 portrait/.test(named) && /\.sy1 \.pg-land\{page:sy-land\}/.test(paperCss) && /\.sy1 \.pg-port\{page:sy-port\}/.test(paperCss), 'พิมพ์: named page sy-port (แนวตั้ง) / sy-land (แนวนอน) ตรงกับ SY_SHEET');
   const placed = [...paged.querySelectorAll('#doc-paper tr.sy-u')]; // ต้นฉบับ #doc-src ยังอยู่ใน DOM (ซ่อน) จึงนับเฉพาะที่วางลงแผ่นกระดาษ
-  ok(placed.length === 14 && placed.every(r => r.children.length === 5) && paged.querySelectorAll('#doc-paper thead').length === pages - 1, 'วางลงแผ่นแล้วทุกหน่วยครบ แถวหน่วยไม่ถูกฉีก (1 หน่วย = 1 แถว) · หัวตารางซ้ำทุกแผ่นที่เป็นตาราง (แผ่นแรกเป็นหน้าข้อมูลรายวิชา ไม่มีตาราง · jsdom ไม่มีเลย์เอาต์ จึงตรวจโครงสร้าง ไม่ใช่จุดตัดหน้า)');
+  ok(placed.length === 14 && placed.every(r => r.children.length === 5) && paged.querySelectorAll('#doc-paper thead').length === paged.querySelectorAll('#doc-paper table').length, 'วางลงแผ่นแล้วทุกหน่วยครบ แถวหน่วยไม่ถูกฉีก (1 หน่วย = 1 แถว) · ทุกตารางที่วางลงแผ่นมีหัวตาราง (ซ้ำเมื่อข้ามแผ่น · jsdom ไม่มีเลย์เอาต์ จึงตรวจโครงสร้าง ไม่ใช่จุดตัดหน้า)');
 
   // ---------------- แท็บภาพรวมของหน้าวิชา (js/courses.js) ----------------
   const cstore = new Map();
