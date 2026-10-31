@@ -54,6 +54,104 @@ function reportPageBodyHtml(cards) {
   });
 }
 
+// ---------- เอกสารที่ต้องส่งในภาคเรียน ----------
+// จับคู่เอกสารที่ครูทำไว้ในระบบ (ID-Plan · SAR · PA · แผนการอบรม · วิจัยในชั้นเรียน · Course Syllabus) กับภาคเรียนที่เลือก แล้วโชว์ว่าทำแล้วหรือยัง
+// ชื่อ collection อ่านจาก config ของแต่ละระบบผ่าน docSystem(id).col(kind, uid) (ไม่เขียนชื่อตรงในไฟล์นี้) · หน้านี้อ่านอย่างเดียว ไม่เขียนข้อมูล
+
+// PA เก็บเป็นปีงบประมาณ: ปีงบ N = ภาค 2/(N-1) + ภาค 1/N → ภาค 1/Y = ปีงบ Y · ภาค 2/Y = ปีงบ Y+1 (ตรงกับ paTermLabels ใน js/pa.js)
+function reportFiscalYear(year, sem) {
+  const y = Number(year);
+  if (!y) return null;
+  return String(sem) === '1' ? String(y) : String(sem) === '2' ? String(y + 1) : null;
+}
+
+// รวมสถานะของหลายฉบับที่ตรงภาคเดียวกัน · docs = null → อ่านไม่ได้ (unknown) · มีฉบับที่ส่งแล้ว = ส่งแล้ว · มีแต่ร่าง = ร่าง · ไม่มีเลย = none
+function reportDocState(docs) {
+  if (!docs) return 'unknown';
+  if (!docs.length) return 'none';
+  return docs.some(d => d && d.status === 'submitted') ? 'submitted' : 'draft';
+}
+
+const RP_STATE_BADGE = {
+  submitted: ['badge-success', 'ส่งแล้ว'],
+  done: ['badge-success', 'ทำแล้ว'],
+  draft: ['badge-grade-mid', 'ร่าง'],
+  none: ['badge-neutral', 'ยังไม่ได้ทำ'],
+  unknown: ['badge-neutral', 'ตรวจสถานะไม่ได้'],
+};
+
+// data = { idp, sar, tra, car, paAgr, paRpt: [เอกสาร] | null, syllabus: [{ course, state }] } · คืนรายการแถวที่จะวาด
+function reportDocRows({ year, sem }, data) {
+  const termText = `ภาคเรียนที่ ${sem}/${year}`;
+  const fy = reportFiscalYear(year, sem);
+  const doc = (name, meta, docs, route, tab, sys) => ({ name, meta: docs && docs.length > 1 ? `${meta} · ${docs.length} ฉบับ` : meta, state: reportDocState(docs), route, tab: tab || '', sys: sys || '' });
+  const rows = [
+    ...(data.syllabus || []).map(({ course, state }) => ({
+      name: `Course Syllabus · ${[course.code, course.name].filter(Boolean).join(' ')}`, meta: termText, state, route: 'structure-page', tab: '', sys: '',
+    })),
+    doc('SAR · รายงานการประเมินตนเอง', termText, data.sar, 'idp-page', 'sar', 'idp'),
+    doc('ID-Plan · แผนพัฒนาตนเอง', `ปีการศึกษา ${year}`, data.idp, 'idp-page'),
+  ];
+  if (fy) {
+    rows.push(doc('Personal Agreement (PA)', `ปีงบประมาณ ${fy}`, data.paAgr, 'pa-page'));
+    rows.push(doc('รายงานผล PA', `ปีงบประมาณ ${fy}`, data.paRpt, 'pa-page', 'rpt', 'pa'));
+  }
+  rows.push(doc('แผนการอบรม', termText, data.tra, 'tra-page'));
+  rows.push(doc('วิจัยในชั้นเรียน', termText, data.car, 'car-page'));
+  return rows;
+}
+
+function reportDocsHtml(rows) {
+  const finished = rows.filter(r => r.state === 'submitted' || r.state === 'done').length;
+  const list = rows.map(r => {
+    const [cls, label] = RP_STATE_BADGE[r.state] || RP_STATE_BADGE.unknown;
+    const open = r.state === 'none' ? 'เริ่มทำ' : 'เปิด';
+    return `
+      <div class="report-room-row">
+        <div class="report-room-info">
+          <span class="report-room-name">${escapeHtml(r.name)}</span>
+          <span class="report-room-meta">${escapeHtml(r.meta)}</span>
+        </div>
+        <div class="report-room-actions">
+          <span class="badge ${cls}">${label}</span>
+          <button type="button" class="btn btn-ghost btn-sm rp-doc-open" data-route="${escapeHtml(r.route)}" data-tab="${escapeHtml(r.tab)}" data-sys="${escapeHtml(r.sys)}">${open}</button>
+        </div>
+      </div>`;
+  }).join('');
+  return `<div class="u-note u-mb-12">ทำแล้ว/ส่งแล้ว ${finished} จาก ${rows.length} รายการ · ดึงสถานะจากเอกสารในระบบ (ร่าง = ยังไม่เปลี่ยนสถานะเป็น "ส่งแล้ว")</div><div class="report-room-list">${list}</div>`;
+}
+
+// อ่านเอกสารของภาคเรียนนั้นจาก Firestore · แต่ละแหล่งอ่านพลาดได้โดยไม่ล้มทั้งส่วน (ได้ null = "ตรวจสถานะไม่ได้")
+async function loadReportDocStatus(key, termCourses) {
+  const [year, sem] = key.split('|');
+  const uid = AppState.user.uid;
+  await loadModules(LAZY_BUNDLES.docConfigs);
+  const fy = reportFiscalYear(year, sem);
+  const sameSem = d => String(d.semester || '') === String(sem);
+  const fetchDocs = async (sysId, kind, field, value, filter) => {
+    try {
+      const snap = await docSystem(sysId).col(kind, uid).where(field, '==', value).get();
+      const arr = snap.docs.map(d => d.data());
+      return filter ? arr.filter(filter) : arr;
+    } catch (err) { console.warn('อ่านเอกสารที่ต้องส่งไม่สำเร็จ:', sysId, kind, err); return null; }
+  };
+  const merge = (a, b) => (a === null && b === null ? null : [...(a || []), ...(b || [])]);
+  const [idp, sar, tra, car, paNew, paOld, paRpt, syllabus] = await Promise.all([
+    fetchDocs('idp', 'plans', 'year', year),
+    fetchDocs('idp', 'sar', 'year', year, sameSem),
+    fetchDocs('tra', 'docs', 'year', year, sameSem),
+    fetchDocs('car', 'docs', 'year', year, sameSem),
+    fy ? fetchDocs('pa', 'agreements', 'fiscalYear', fy) : Promise.resolve([]),
+    fetchDocs('pa', 'agreements', 'year', year, sameSem), // PA รุ่นเก่าเก็บเป็นปีการศึกษา/ภาคเรียน
+    fy ? fetchDocs('pa', 'reports', 'fiscalYear', fy) : Promise.resolve([]),
+    Promise.all(termCourses.map(async course => {
+      const sy = await loadCourseSyllabus(course); // courses.js · คืน null เมื่ออ่านไม่ได้
+      return { course, state: sy ? (syllabusHasData(sy) ? 'done' : 'none') : 'unknown' };
+    })),
+  ]);
+  return { idp, sar, tra, car, paAgr: merge(paNew, paOld), paRpt, syllabus };
+}
+
 async function renderReportPage() {
   const view = document.getElementById('view');
   showLoading('cat');
@@ -109,11 +207,37 @@ async function renderReportPage() {
         </details>
       </section>
       <section class="report-section">
+        <h2 class="section-title">เอกสารที่ต้องส่งในภาคเรียนนี้</h2>
+        <div id="report-docs-body"></div>
+      </section>
+      <section class="report-section">
         <h2 class="section-title">ส่งออกข้อมูลรายห้อง</h2>
         ${reportPageBodyHtml(cards)}
       </section>`;
     wireGradeSummaryRows();
     wireGradeRoomFilters(list);
+    drawDocs();
+  }
+
+  // เอกสารที่ต้องส่ง: โหลดแยกจากตารางเกรด (ช้ากว่า) — ถ้าสลับภาคเรียนก่อนโหลดเสร็จ ผลของรอบเก่าไม่วาดทับ
+  let docsToken = 0;
+  async function drawDocs() {
+    const slot = document.getElementById('report-docs-body');
+    if (!slot) return;
+    const token = ++docsToken;
+    const [y, s] = currentTerm.split('|');
+    if (currentTerm === '__all__') { slot.innerHTML = '<div class="u-note">เลือกภาคเรียนด้านบนเพื่อดูเอกสารที่ต้องส่งของภาคนั้น</div>'; return; }
+    if (!y || !s) { slot.innerHTML = '<div class="u-note">รายวิชาในกลุ่มนี้ไม่ได้ระบุปีหรือภาคเรียน จึงจับคู่กับเอกสารไม่ได้</div>'; return; }
+    slot.innerHTML = '<div class="u-note">กำลังตรวจสถานะเอกสาร...</div>';
+    try {
+      const termCourses = courses.filter(c => termKey(c) === currentTerm);
+      const data = await loadReportDocStatus(currentTerm, termCourses);
+      if (token !== docsToken || !slot.isConnected) return;
+      slot.innerHTML = reportDocsHtml(reportDocRows({ year: y, sem: s }, data));
+    } catch (err) {
+      console.error(err);
+      if (token === docsToken && slot.isConnected) slot.innerHTML = '<div class="u-note">ตรวจสถานะเอกสารไม่สำเร็จ ลองเปลี่ยนภาคเรียนหรือรีเฟรชหน้า</div>';
+    }
   }
 
   // delegation: ผูก event ครั้งเดียวที่ container (วาดซ้ำเมื่อเปลี่ยนภาคเรียนได้โดยไม่ต้องผูกใหม่)
@@ -141,6 +265,14 @@ async function renderReportPage() {
     } finally {
       btn.disabled = false; btn.textContent = label;
     }
+  });
+
+  body.addEventListener('click', async (e) => {
+    const open = e.target.closest('.rp-doc-open');
+    if (!open) return;
+    const { route, tab, sys } = open.dataset;
+    if (tab && sys) { try { docSystem(sys).state.nextTab = tab; } catch (err) { /* ไม่มีแท็บนั้น → เปิดแท็บแรก */ } }
+    navigate(route);
   });
 
   document.getElementById('report-term').addEventListener('change', (e) => {
