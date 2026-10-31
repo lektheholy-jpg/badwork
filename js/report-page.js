@@ -111,7 +111,7 @@ function reportDocsHtml(rows) {
     const noDoc = r.state === 'none'; // ยังไม่มีเอกสาร → ไม่มีอะไรให้ดูตัวอย่าง
     const attrs = `data-route="${escapeHtml(r.route)}" data-tab="${escapeHtml(r.tab)}" data-sys="${escapeHtml(r.sys)}" data-tpl="${escapeHtml(r.tplId || '')}"`;
     return `
-      <div class="report-room-row rp-doc-row" ${attrs}>
+      <div class="report-room-row rp-item" ${attrs}>
         <div class="report-room-info">
           <span class="report-room-name">${escapeHtml(r.name)}</span>
           <span class="report-room-meta">${escapeHtml(r.meta)}</span>
@@ -297,7 +297,7 @@ async function renderReportPage() {
     if (prev) { if (!prev.disabled) openReportDoc(prev.dataset, prev.dataset.preview, prev.dataset.doc); return; }
     const open = e.target.closest('.rp-doc-open');
     if (open) { openReportDoc(open.dataset, open.dataset.tab); return; }
-    const row = e.target.closest('.rp-doc-row');
+    const row = e.target.closest('.rp-item');
     if (row && !e.target.closest('button, a')) openReportDoc(row.dataset, row.dataset.tab);
   });
 

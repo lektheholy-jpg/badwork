@@ -54,7 +54,7 @@ ok(!rows3.some(r => r.name.includes('PA')) && rows3.length === 4, 'ภาคฤ�
 console.log('reportDocsHtml');
 const html = ctx.reportDocsHtml(rows);
 ok(html.includes('ทำแล้ว/ส่งแล้ว 2 จาก 8 รายการ'), 'สรุปจำนวนที่ทำแล้ว/ส่งแล้ว (Syllabus ทำแล้ว 1 + ID-Plan ส่งแล้ว 1)', html.slice(0, 120));
-ok((html.match(/class="report-room-row rp-doc-row"/g) || []).length === 8, 'หนึ่งแถวต่อหนึ่งรายการ');
+ok((html.match(/class="report-room-row rp-item"/g) || []).length === 8, 'หนึ่งแถวต่อหนึ่งรายการ');
 ok(html.includes('badge-success') && html.includes('badge-grade-mid') && html.includes('badge-neutral'), 'ใช้คลาส badge ที่มีอยู่ใน style.css แล้ว (ไม่เพิ่ม CSS)');
 ok(html.includes('data-tab="sar"') && html.includes('data-sys="idp"') && html.includes('>เริ่มทำ<') && html.includes('>เปิด<'), 'ปุ่มเปิด/เริ่มทำ พร้อมแท็บปลายทาง');
 ok((html.match(/rp-doc-preview/g) || []).length === 8 && html.includes('>ตัวอย่างก่อนพิมพ์<'), 'ทุกแถวมีปุ่ม \"ตัวอย่างก่อนพิมพ์\"');
@@ -71,7 +71,7 @@ console.log('\nการเชื่อมต่อในหน้าราย�
 ok(/<div id="report-docs-body"><\/div>/.test(src) && /drawDocs\(\);\n/.test(src), 'มีส่วนเอกสารที่ต้องส่ง และเรียกวาดทุกครั้งที่เปลี่ยนภาคเรียน');
 ok(/loadModules\(LAZY_BUNDLES\.docConfigs\)/.test(src) && !/['"](idp_plans|idp_sar|pa_agreements|pa_reports|tra_docs|car_docs)['"]/.test(src), 'ชื่อ collection อ่านจาก config ของระบบ ไม่เขียนตรงในไฟล์');
 ok(!/\.(set|add|update|delete)\(/.test(src.slice(src.indexOf('loadReportDocStatus'))), 'ส่วนนี้อ่านอย่างเดียว ไม่เขียน Firestore');
-ok(/\.rp-doc-row/.test(src) && /closest\('button, a'\)/.test(src), 'คลิกที่แถว (ไม่ใช่ปุ่ม) → หน้าแก้ไข');
+ok(/\.rp-item/.test(src) && /closest\('button, a'\)/.test(src), 'คลิกที่แถว (ไม่ใช่ปุ่ม) → หน้าแก้ไข');
 const pkg = JSON.parse(read('package.json'));
 ok(!!pkg.scripts['test:reportdocs'], 'package.json: มีสคริปต์ test:reportdocs');
 
