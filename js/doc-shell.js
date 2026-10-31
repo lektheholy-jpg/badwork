@@ -330,7 +330,7 @@ function docProfileInfo(p) {
     name, position, subjectGroup: p.subjectGroup || '', school: p.school || '', affiliation: p.affiliation || '',
     district: p.schoolDistrict || '', province: p.schoolProvince || '', agency: p.agency || '', logo: p.logo || '', location,
     // ผู้ลงนามในเอกสาร (ชื่อเต็มตามที่กรอก — ไม่มีชื่อ = '') · Course Syllabus ฯลฯ ใช้ร่วมกัน
-    subjectHead: trim(p.subjectHead), assessmentHead: trim(p.assessmentHead), academicAsst: trim(p.academicAsst), deputyAcademic: trim(p.deputyAcademic), director: trim(p.director),
+    computerHead: trim(p.computerHead), subjectHead: trim(p.subjectHead), assessmentHead: trim(p.assessmentHead), academicAsst: trim(p.academicAsst), deputyAcademic: trim(p.deputyAcademic), director: trim(p.director),
   };
 }
 
