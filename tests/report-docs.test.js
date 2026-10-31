@@ -54,9 +54,16 @@ ok(!rows3.some(r => r.name.includes('PA')) && rows3.length === 4, 'ภาคฤ�
 console.log('reportDocsHtml');
 const html = ctx.reportDocsHtml(rows);
 ok(html.includes('ทำแล้ว/ส่งแล้ว 2 จาก 8 รายการ'), 'สรุปจำนวนที่ทำแล้ว/ส่งแล้ว (Syllabus ทำแล้ว 1 + ID-Plan ส่งแล้ว 1)', html.slice(0, 120));
-ok((html.match(/class="report-room-row"/g) || []).length === 8, 'หนึ่งแถวต่อหนึ่งรายการ');
+ok((html.match(/class="report-room-row rp-doc-row"/g) || []).length === 8, 'หนึ่งแถวต่อหนึ่งรายการ');
 ok(html.includes('badge-success') && html.includes('badge-grade-mid') && html.includes('badge-neutral'), 'ใช้คลาส badge ที่มีอยู่ใน style.css แล้ว (ไม่เพิ่ม CSS)');
 ok(html.includes('data-tab="sar"') && html.includes('data-sys="idp"') && html.includes('>เริ่มทำ<') && html.includes('>เปิด<'), 'ปุ่มเปิด/เริ่มทำ พร้อมแท็บปลายทาง');
+ok((html.match(/rp-doc-preview/g) || []).length === 8 && html.includes('>ตัวอย่างก่อนพิมพ์<'), 'ทุกแถวมีปุ่ม \"ตัวอย่างก่อนพิมพ์\"');
+ok(/data-preview="sarprev"[^>]*data-doc=""/.test(html) && /data-sys="pa"[^>]*data-preview="rptprev"/.test(html), 'ปุ่มตัวอย่างชี้แท็บตัวอย่างของแต่ละระบบ (SAR → sarprev · รายงานผล PA → rptprev)');
+ok((html.match(/rp-doc-preview[^>]*disabled/g) || []).length === 3, 'แถวที่ยังไม่ได้ทำ (ไม่มีเอกสาร) ปุ่มตัวอย่างกดไม่ได้', (html.match(/rp-doc-preview[^>]*disabled/g) || []).length);
+const withIds = ctx.reportDocRows({ year: '2569', sem: '1' }, { ...data, tra: [{ id: 'a', status: 'draft' }, { id: 'b', status: 'submitted' }], syllabus: [{ course: { code: 'ว1', name: 'x', templateId: 'T9' }, state: 'done' }] });
+ok(withIds.find(r => r.name.includes('แผนการอบรม')).docId === 'b', 'หลายฉบับ → ตัวอย่างเปิดฉบับที่ส่งแล้วก่อน');
+const sy = withIds.find(r => r.name.startsWith('Course Syllabus'));
+ok(sy.tplId === 'T9' && sy.tab === 'syll' && sy.preview === 'syllprev', 'Course Syllabus: พาไปแม่แบบวิชา แท็บ syll (แก้) / syllprev (ตัวอย่าง)');
 const xss = ctx.reportDocsHtml(ctx.reportDocRows({ year: '2569', sem: '1' }, { syllabus: [{ course: { code: '<img onerror=x>', name: '"a"' }, state: 'none' }] }));
 ok(!xss.includes('<img') && xss.includes('&lt;img'), 'ชื่อวิชาถูก escape ก่อนใส่ HTML');
 
@@ -64,6 +71,7 @@ console.log('\nการเชื่อมต่อในหน้าราย�
 ok(/<div id="report-docs-body"><\/div>/.test(src) && /drawDocs\(\);\n/.test(src), 'มีส่วนเอกสารที่ต้องส่ง และเรียกวาดทุกครั้งที่เปลี่ยนภาคเรียน');
 ok(/loadModules\(LAZY_BUNDLES\.docConfigs\)/.test(src) && !/['"](idp_plans|idp_sar|pa_agreements|pa_reports|tra_docs|car_docs)['"]/.test(src), 'ชื่อ collection อ่านจาก config ของระบบ ไม่เขียนตรงในไฟล์');
 ok(!/\.(set|add|update|delete)\(/.test(src.slice(src.indexOf('loadReportDocStatus'))), 'ส่วนนี้อ่านอย่างเดียว ไม่เขียน Firestore');
+ok(/\.rp-doc-row/.test(src) && /closest\('button, a'\)/.test(src), 'คลิกที่แถว (ไม่ใช่ปุ่ม) → หน้าแก้ไข');
 const pkg = JSON.parse(read('package.json'));
 ok(!!pkg.scripts['test:reportdocs'], 'package.json: มีสคริปต์ test:reportdocs');
 

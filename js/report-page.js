@@ -84,20 +84,22 @@ const RP_STATE_BADGE = {
 function reportDocRows({ year, sem }, data) {
   const termText = `ภาคเรียนที่ ${sem}/${year}`;
   const fy = reportFiscalYear(year, sem);
-  const doc = (name, meta, docs, route, tab, sys) => ({ name, meta: docs && docs.length > 1 ? `${meta} · ${docs.length} ฉบับ` : meta, state: reportDocState(docs), route, tab: tab || '', sys: sys || '' });
+  // preview = รหัสแท็บ "ตัวอย่าง / พิมพ์" ของระบบนั้น · docId = ฉบับที่จะเปิดดู (ฉบับที่ส่งแล้วก่อน ไม่งั้นฉบับแรก)
+  const pickId = docs => { const list = (docs || []).filter(d => d && d.id); return (list.find(d => d.status === 'submitted') || list[0] || {}).id || ''; };
+  const doc = (name, meta, docs, route, tab, sys, preview) => ({ name, meta: docs && docs.length > 1 ? `${meta} · ${docs.length} ฉบับ` : meta, state: reportDocState(docs), route, tab: tab || '', sys: sys || '', preview: preview || '', docId: pickId(docs), tplId: '' });
   const rows = [
     ...(data.syllabus || []).map(({ course, state }) => ({
-      name: `Course Syllabus · ${[course.code, course.name].filter(Boolean).join(' ')}`, meta: termText, state, route: 'structure-page', tab: '', sys: '',
+      name: `Course Syllabus · ${[course.code, course.name].filter(Boolean).join(' ')}`, meta: termText, state, route: 'structure-page', tab: 'syll', sys: '', preview: 'syllprev', docId: '', tplId: course.templateId || '',
     })),
-    doc('SAR · รายงานการประเมินตนเอง', termText, data.sar, 'idp-page', 'sar', 'idp'),
-    doc('ID-Plan · แผนพัฒนาตนเอง', `ปีการศึกษา ${year}`, data.idp, 'idp-page'),
+    doc('SAR · รายงานการประเมินตนเอง', termText, data.sar, 'idp-page', 'sar', 'idp', 'sarprev'),
+    doc('ID-Plan · แผนพัฒนาตนเอง', `ปีการศึกษา ${year}`, data.idp, 'idp-page', '', 'idp', 'preview'),
   ];
   if (fy) {
-    rows.push(doc('Personal Agreement (PA)', `ปีงบประมาณ ${fy}`, data.paAgr, 'pa-page'));
-    rows.push(doc('รายงานผล PA', `ปีงบประมาณ ${fy}`, data.paRpt, 'pa-page', 'rpt', 'pa'));
+    rows.push(doc('Personal Agreement (PA)', `ปีงบประมาณ ${fy}`, data.paAgr, 'pa-page', '', 'pa', 'report'));
+    rows.push(doc('รายงานผล PA', `ปีงบประมาณ ${fy}`, data.paRpt, 'pa-page', 'rpt', 'pa', 'rptprev'));
   }
-  rows.push(doc('แผนการอบรม', termText, data.tra, 'tra-page'));
-  rows.push(doc('วิจัยในชั้นเรียน', termText, data.car, 'car-page'));
+  rows.push(doc('แผนการอบรม', termText, data.tra, 'tra-page', '', 'tra', 'preview'));
+  rows.push(doc('วิจัยในชั้นเรียน', termText, data.car, 'car-page', '', 'car', 'preview'));
   return rows;
 }
 
@@ -106,15 +108,18 @@ function reportDocsHtml(rows) {
   const list = rows.map(r => {
     const [cls, label] = RP_STATE_BADGE[r.state] || RP_STATE_BADGE.unknown;
     const open = r.state === 'none' ? 'เริ่มทำ' : 'เปิด';
+    const noDoc = r.state === 'none'; // ยังไม่มีเอกสาร → ไม่มีอะไรให้ดูตัวอย่าง
+    const attrs = `data-route="${escapeHtml(r.route)}" data-tab="${escapeHtml(r.tab)}" data-sys="${escapeHtml(r.sys)}" data-tpl="${escapeHtml(r.tplId || '')}"`;
     return `
-      <div class="report-room-row">
+      <div class="report-room-row rp-doc-row" ${attrs}>
         <div class="report-room-info">
           <span class="report-room-name">${escapeHtml(r.name)}</span>
           <span class="report-room-meta">${escapeHtml(r.meta)}</span>
         </div>
         <div class="report-room-actions">
           <span class="badge ${cls}">${label}</span>
-          <button type="button" class="btn btn-ghost btn-sm rp-doc-open" data-route="${escapeHtml(r.route)}" data-tab="${escapeHtml(r.tab)}" data-sys="${escapeHtml(r.sys)}">${open}</button>
+          ${r.preview ? `<button type="button" class="btn btn-ghost btn-sm rp-doc-preview" ${attrs} data-preview="${escapeHtml(r.preview)}" data-doc="${escapeHtml(r.docId || '')}"${noDoc ? ' disabled title="ยังไม่มีเอกสารให้ดูตัวอย่าง"' : ''}>ตัวอย่างก่อนพิมพ์</button>` : ''}
+          <button type="button" class="btn btn-ghost btn-sm rp-doc-open" ${attrs}>${open}</button>
         </div>
       </div>`;
   }).join('');
@@ -131,7 +136,7 @@ async function loadReportDocStatus(key, termCourses) {
   const fetchDocs = async (sysId, kind, field, value, filter) => {
     try {
       const snap = await docSystem(sysId).col(kind, uid).where(field, '==', value).get();
-      const arr = snap.docs.map(d => d.data());
+      const arr = snap.docs.map(d => ({ ...d.data(), id: d.id }));
       return filter ? arr.filter(filter) : arr;
     } catch (err) { console.warn('อ่านเอกสารที่ต้องส่งไม่สำเร็จ:', sysId, kind, err); return null; }
   };
@@ -267,12 +272,33 @@ async function renderReportPage() {
     }
   });
 
-  body.addEventListener('click', async (e) => {
+  // เอกสารที่ต้องส่ง: ปุ่ม "ตัวอย่างก่อนพิมพ์" → แท็บตัวอย่าง/พิมพ์ของระบบนั้น · ปุ่ม เปิด/เริ่มทำ หรือคลิกที่แถว → หน้าแก้ไข
+  // ds = dataset ของแถว/ปุ่ม · tab = แท็บที่จะเปิด (ว่าง = แท็บแรกของระบบ) · docId = ฉบับที่ให้ตัวอย่างเปิดก่อน
+  function openReportDoc(ds, tab, docId) {
+    if (ds.sys) {
+      try {
+        const sys = docSystem(ds.sys);
+        sys.state.nextTab = tab || null;
+        if (docId) { // ตั้งฉบับที่ดูก่อน กันค้างฉบับของภาคเรียนอื่นจากครั้งก่อน
+          if (tab === 'rptprev') sys.rptState.previewId = docId;
+          else if (tab === 'sarprev') { if (typeof SAR !== 'undefined') SAR.previewId = docId; }
+          else sys.state.previewId = docId;
+        }
+      } catch (err) { /* ไม่มีแท็บนั้น → เปิดแท็บแรก */ }
+    } else if (ds.route === 'structure-page' && ds.tpl) { // Course Syllabus: ไปแม่แบบวิชานั้นเลย (ใช้ครั้งเดียว เหมือนปุ่มแก้ที่หน้าวิชา)
+      AppState.structureOpenOnce = ds.tpl;
+      AppState.structureTab = tab || 'syll';
+    }
+    navigate(ds.route);
+  }
+
+  body.addEventListener('click', (e) => {
+    const prev = e.target.closest('.rp-doc-preview');
+    if (prev) { if (!prev.disabled) openReportDoc(prev.dataset, prev.dataset.preview, prev.dataset.doc); return; }
     const open = e.target.closest('.rp-doc-open');
-    if (!open) return;
-    const { route, tab, sys } = open.dataset;
-    if (tab && sys) { try { docSystem(sys).state.nextTab = tab; } catch (err) { /* ไม่มีแท็บนั้น → เปิดแท็บแรก */ } }
-    navigate(route);
+    if (open) { openReportDoc(open.dataset, open.dataset.tab); return; }
+    const row = e.target.closest('.rp-doc-row');
+    if (row && !e.target.closest('button, a')) openReportDoc(row.dataset, row.dataset.tab);
   });
 
   document.getElementById('report-term').addEventListener('change', (e) => {
