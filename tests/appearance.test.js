@@ -11,7 +11,7 @@ const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
 // ---------- 1) theme.js ----------
 function themeEnv() {
-  const dom = new JSDOM('<!doctype html><html><head><meta name="theme-color" content="#fff"></head><body></body></html>', { url: 'https://example.test/', runScripts: 'outside-only' });
+  const dom = new JSDOM('<!doctype html><html><head><meta name="theme-color" content="#fff"></head><body></body></html>', { url: 'https://example.test/', runScripts: 'outside-only', virtualConsole: new (require('jsdom').VirtualConsole)().sendTo(console, { omitJSDOMErrors: true }) });
   const w = dom.window;
   w.matchMedia = () => ({ matches: false, addEventListener() {} });
   w.eval(read('js/theme.js'));
@@ -69,36 +69,38 @@ function themeEnv() {
 
 // ---------- 2) appearanceSync ใน auth.js ----------
 // สร้างสภาพแวดล้อมจำลอง Firebase แล้วรัน js/auth.js จริง · docs = { uid: ข้อมูลเอกสาร users/{uid} }
-async function syncEnv({ docs = {}, local = {}, failGet = false }) {
+async function syncEnv({ docs = {}, local = {}, failGet = false, failSet = null }) {
   const dom = new JSDOM(`<!doctype html><html><head><meta name="theme-color" content="#fff"></head><body>
     <button id="google-signin-btn"></button><button id="logout-btn"></button>
     <div id="login-screen"></div><div id="app" class="hidden"></div><div id="auth-loading"></div>
-    <span id="user-name"></span><span id="user-email"></span><img id="user-photo"></body></html>`, { url: 'https://example.test/', runScripts: 'outside-only' });
+    <span id="user-name"></span><span id="user-email"></span><img id="user-photo"></body></html>`, { url: 'https://example.test/', runScripts: 'outside-only', virtualConsole: new (require('jsdom').VirtualConsole)().sendTo(console, { omitJSDOMErrors: true }) });
   const w = dom.window;
   w.matchMedia = () => ({ matches: false, addEventListener() {} });
   Object.entries(local).forEach(([k, v]) => w.localStorage.setItem(k, v));
   w.eval(read('js/theme.js'));
 
-  const sets = [];
+  const sets = [], toasts = [];
   let authCb = null, renders = 0;
   w.firebase = { firestore: { FieldValue: { serverTimestamp: () => '__TS__' } } };
   w.auth = { onAuthStateChanged: (cb) => { authCb = cb; }, getRedirectResult: () => Promise.resolve(null), signInWithPopup() {}, signOut: async () => {} };
   w.googleProvider = {};
   w.db = {
-    waitForPendingWrites: () => Promise.resolve(),
+    waitForPendingWrites: () => Promise.resolve(), terminate: async () => {}, clearPersistence: async () => {},
     collection: () => ({ doc: (uid) => ({
       get: async () => { if (failGet) throw Object.assign(new Error('offline'), { code: 'unavailable' }); return { exists: uid in docs, get: (f) => (docs[uid] || {})[f] }; },
-      set: async (data, opt) => { sets.push({ uid, data, opt }); },
+      set: async (data, opt) => { if (failSet && data.appearance) throw Object.assign(new Error('denied'), { code: failSet }); sets.push({ uid, data, opt }); },
     }) }),
   };
-  w.showToast = () => {}; w.safePhotoUrl = () => ''; w.navigate = () => {}; w.closeMobileNav = () => {};
+  w.showToast = (m) => { toasts.push(m); }; w.safePhotoUrl = () => ''; w.navigate = () => {}; w.closeMobileNav = () => {};
   w.renderSettings = () => { renders++; };
   w.eval(read('js/auth.js') + '\nwindow.__AppState = AppState;');
   const login = async (uid) => {
     await authCb({ uid, displayName: 'ครู', email: uid + '@x.test', photoURL: null });
     await sleep(20);
   };
-  return { w, sets, login, renders: () => renders };
+  const logout = async () => { w.document.getElementById('logout-btn').click(); await sleep(40); };
+  const storage = () => Object.fromEntries(Object.keys(w.localStorage).map(k => [k, w.localStorage.getItem(k)]));
+  return { w, sets, toasts, login, logout, storage, renders: () => renders };
 }
 const appearanceSets = (e) => e.sets.filter(s => s.data.appearance);
 const lsOf = (e, k) => e.w.localStorage.getItem(k);
@@ -141,7 +143,7 @@ const lsOf = (e, k) => e.w.localStorage.getItem(k);
   e = await syncEnv({ docs: { u1: { appearance: { theme: 'auto', bg: 'default', look: {}, presets: '[]' } } } });
   await e.login('u1');
   e.w.setLookPref({ card: 10 }); e.w.setLookPref({ card: 20 }); e.w.setLookPref({ card: 30 });
-  ok(appearanceSets(e).length === 0 && lsOf(e, 'myscore-appearance-dirty') === '1', 'E: ยังไม่ส่งทันที และทำเครื่องหมายค้าง');
+  ok(appearanceSets(e).length === 0 && lsOf(e, 'myscore-appearance-dirty') === 'u1', 'E: ยังไม่ส่งทันที และทำเครื่องหมายค้าง');
   await sleep(1000);
   up = appearanceSets(e);
   ok(up.length === 1 && up[0].data.appearance.look.card === 30, 'E: ส่งครั้งเดียวด้วยค่าสุดท้าย', up.length);
@@ -160,6 +162,37 @@ const lsOf = (e, k) => e.w.localStorage.getItem(k);
   e.w.__AppState.currentRoute = 'settings';
   await e.login('u1');
   ok(e.renders() === 1, 'G: วาดหน้าตั้งค่าใหม่ให้ตรงกับค่าที่ซิงค์');
+
+  // H) ออกจากระบบโดยไม่ได้แก้อะไร → ห้ามส่งค่าในเครื่องไปทับคลาวด์ (เครื่องอื่นอาจเพิ่งแก้ใหม่กว่า)
+  const docH = { u1: { appearance: { theme: 'auto', bg: 'berry', look: {}, presets: '[]' } } };
+  e = await syncEnv({ docs: docH });
+  await e.login('u1');
+  docH.u1.appearance.bg = 'uigraphite'; // เครื่องอื่นแก้ค่าบนคลาวด์ระหว่างที่เครื่องนี้เปิดค้างไว้
+  await e.logout();
+  ok(appearanceSets(e).length === 0, 'H: ออกจากระบบโดยไม่ได้แก้ → ไม่เขียนทับคลาวด์', appearanceSets(e).map(x => x.data.appearance.bg));
+  // H2) แก้แล้วยังรอส่งแล้วกดออกจากระบบ → ต้องส่งก่อนออก
+  e = await syncEnv({ docs: { u1: { appearance: { theme: 'auto', bg: 'default', look: {}, presets: '[]' } } } });
+  await e.login('u1');
+  e.w.setBgPref('uimint');
+  await e.logout();
+  ok(appearanceSets(e).length === 1 && appearanceSets(e)[0].data.appearance.bg === 'uimint', 'H2: แก้ค้างอยู่แล้วออกจากระบบ → ส่งขึ้นก่อนออก');
+
+  // I) ธงค้างของบัญชีอื่นต้องไม่ถูกบัญชีนี้ใช้ต่อ (ไม่งั้นครั้งถัดไปจะส่งค่าเก่าทับค่าใหม่บนคลาวด์)
+  const docI = { uB: { appearance: { theme: 'auto', bg: 'berry', look: {}, presets: '[]' } } };
+  e = await syncEnv({ docs: docI, local: { 'myscore-bg': 'uisky', 'myscore-appearance-owner': 'uA', 'myscore-appearance-dirty': 'uA' } });
+  await e.login('uB');
+  ok(e.w.getAppearance().bg === 'berry' && lsOf(e, 'myscore-appearance-dirty') === null, 'I: เปลี่ยนบัญชี → ใช้ค่าของบัญชีใหม่ และล้างธงค้างของบัญชีเดิม');
+  docI.uB.appearance.bg = 'forest'; // เครื่องอื่นแก้ค่าของ B
+  const e2 = await syncEnv({ docs: docI, local: e.storage() }); // เปิดแอปใหม่ในเครื่องเดิม
+  await e2.login('uB');
+  ok(e2.w.getAppearance().bg === 'forest' && appearanceSets(e2).length === 0, 'I: ล็อกอินครั้งถัดไปได้ค่าล่าสุดจากคลาวด์ ไม่ถูกค่าเก่าทับ', e2.w.getAppearance().bg);
+
+  // J) เขียนขึ้นบัญชีไม่ผ่าน (rules ยังไม่ deploy) → แจ้งผู้ใช้ครั้งเดียว ไม่เงียบ
+  e = await syncEnv({ docs: { u1: { displayName: 'x' } }, failSet: 'permission-denied', local: { 'myscore-bg': 'uisky' } });
+  await e.login('u1');
+  e.w.setBgPref('uirose'); await sleep(1000); e.w.setBgPref('uisand'); await sleep(1000);
+  ok(e.toasts.filter(m => /ซิงค์หน้าตา/.test(m)).length === 1, 'J: permission-denied → แจ้งเตือนครั้งเดียว', e.toasts);
+  ok(e.w.getAppearance().bg === 'uisand', 'J: ค่ายังใช้ได้ในเครื่อง');
 
   // ---------- 3) firestore.rules ----------
   console.log('firestore.rules');

@@ -38,7 +38,10 @@ document.getElementById('google-signin-btn').addEventListener('click', async () 
 //     - ล็อกอิน: มีค่าบนคลาวด์ → ใช้ค่าบนคลาวด์ · ยังไม่มี → อัปโหลดค่าในเครื่อง (ครั้งแรกหลังเปิดฟีเจอร์นี้)
 //     - แก้ค่า: รอ 0.8 วินาทีแล้วส่งขึ้นครั้งเดียว (แถบเลื่อนปรับรัว ๆ ไม่ยิงทุกขีด)
 //     - เครื่องที่ใช้ร่วมกัน: จำ uid เจ้าของค่าในเครื่อง (OWNER) ถ้าเป็นบัญชีอื่นและยังไม่มีค่าบนคลาวด์ → กลับค่าเริ่มต้น ไม่เอาหน้าตาของคนก่อนหน้ามาใช้/อัปโหลด
-//     - DIRTY = มีการแก้ในเครื่องที่ยังไม่ยืนยันว่าขึ้นคลาวด์ (ปิดแท็บเร็ว/ออฟไลน์) → ล็อกอินครั้งต่อไปส่งค่าในเครื่องขึ้นก่อน ไม่ถูกค่าเก่าบนคลาวด์ทับ
+//     - DIRTY = uid ของบัญชีที่แก้ในเครื่องแล้วยังไม่ยืนยันว่าขึ้นคลาวด์ (ปิดแท็บเร็ว/ออฟไลน์) → ล็อกอินครั้งต่อไปของบัญชีนั้นส่งค่าในเครื่องขึ้นก่อน ไม่ถูกค่าเก่าบนคลาวด์ทับ
+//       (ค่าเก่า '1' = ของเจ้าของเครื่องปัจจุบัน · ธงของบัญชีอื่นไม่ถูกนำมาใช้ และถูกล้างตอนเปลี่ยนบัญชี)
+//     - ออกจากระบบ: ส่งเฉพาะที่ "แก้แล้วยังไม่ขึ้นคลาวด์" · ไม่แก้อะไร = ไม่เขียนทับ (เครื่องอื่นอาจเพิ่งแก้ใหม่กว่า)
+//     - เขียน/อ่านคลาวด์ถูกปฏิเสธ (permission-denied = rules ยังไม่ deploy) → แจ้งผู้ใช้ครั้งเดียวต่อรอบ ไม่เงียบ
 //   ซิงค์ไม่สำเร็จ (ออฟไลน์/rules ยังไม่ deploy) = ใช้ค่าในเครื่องต่อตามปกติ ไม่ขัดการใช้งาน
 //   หลายอุปกรณ์: ดึงค่าตอนล็อกอิน/เปิดแอป (ไม่ฟังแบบเรียลไทม์) · แก้พร้อมกันหลายเครื่อง = ครั้งที่ส่งทีหลังชนะ
 // ==========================================================================
@@ -48,7 +51,15 @@ const appearanceSync = (() => {
   const DELAY = 800;
   const lsGet = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
   const lsSet = (k, v) => { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) { /* โหมดส่วนตัว/เต็ม: ข้าม */ } };
-  let ready = false, timer = 0, version = 0;
+  let ready = false, timer = 0, version = 0, warned = false;
+  const uidNow = () => (AppState.user ? AppState.user.uid : null);
+  // มีหน้าตาที่แก้ในเครื่องและยังไม่ยืนยันว่าขึ้นคลาวด์ของบัญชีนี้หรือไม่
+  const isDirtyFor = (uid) => { const d = lsGet(DIRTY); return !!uid && (d === uid || (d === '1' && lsGet(OWNER) === uid)); };
+  function warnOnce(err) {
+    if (warned || !err || err.code !== 'permission-denied') return;
+    warned = true;
+    showToast('ซิงค์หน้าตาขึ้นบัญชีไม่สำเร็จ (สิทธิ์ถูกปฏิเสธ) ค่ายังอยู่ในเครื่องนี้ แต่จะไม่ตามไปเครื่องอื่น');
+  }
 
   function pushNow() {
     clearTimeout(timer); timer = 0;
@@ -60,13 +71,13 @@ const appearanceSync = (() => {
     }, { merge: true }).then(() => {
       // เคลียร์ DIRTY เฉพาะเมื่อไม่มีการแก้เพิ่มระหว่างรอ และยังเป็นบัญชีเดิม
       if (sent === version && AppState.user && AppState.user.uid === u.uid) lsSet(DIRTY, null);
-    }).catch(err => console.warn('ซิงค์หน้าตาขึ้นบัญชีไม่สำเร็จ (ค่ายังอยู่ในเครื่อง):', err && err.code));
+    }).catch(err => { console.warn('ซิงค์หน้าตาขึ้นบัญชีไม่สำเร็จ (ค่ายังอยู่ในเครื่อง):', err && err.code); warnOnce(err); });
   }
 
   // ผู้ใช้แก้หน้าตา (theme.js ส่งเหตุการณ์นี้ ยกเว้นตอนนำค่าจากคลาวด์มาใช้)
   document.addEventListener('myscore:appearance', () => {
     version++;
-    lsSet(DIRTY, '1');
+    lsSet(DIRTY, uidNow() || '1');
     clearTimeout(timer);
     timer = setTimeout(pushNow, DELAY);
   });
@@ -80,9 +91,9 @@ const appearanceSync = (() => {
     if (typeof setAppearance !== 'function') return;
     let snap;
     try { snap = await db.collection('users').doc(user.uid).get(); }
-    catch (err) { console.warn('อ่านหน้าตาจากบัญชีไม่สำเร็จ (ใช้ค่าในเครื่องไปก่อน):', err && err.code); return; }
+    catch (err) { console.warn('อ่านหน้าตาจากบัญชีไม่สำเร็จ (ใช้ค่าในเครื่องไปก่อน):', err && err.code); warnOnce(err); return; }
     if (!AppState.user || AppState.user.uid !== user.uid) return; // ระหว่างรอมีการออกจากระบบ/เปลี่ยนบัญชี
-    const owner = lsGet(OWNER), mine = owner === user.uid, dirty = lsGet(DIRTY) === '1';
+    const owner = lsGet(OWNER), mine = owner === user.uid, dirty = isDirtyFor(user.uid);
     const cloud = snap.exists ? snap.get('appearance') : null;
     const hasCloud = !!cloud && typeof cloud === 'object';
     let needPush = false;
@@ -92,12 +103,15 @@ const appearanceSync = (() => {
       if (AppState.currentRoute === 'settings' && typeof renderSettings === 'function') renderSettings(); // เปิดหน้าตั้งค่าค้างอยู่ → วาดใหม่ให้ตรงค่า
     } else if (mine || !owner) needPush = true;               // บัญชีนี้ยังไม่มีค่าบนคลาวด์ → อัปโหลดค่าในเครื่อง
     else resetAppearance();                                   // ค่าในเครื่องเป็นของบัญชีอื่น → เริ่มจากค่าเริ่มต้น
+    if (!mine) lsSet(DIRTY, null); // ธงค้างเป็นของบัญชีอื่น/เครื่องไม่มีเจ้าของ → ทิ้ง กันถูกนำไปส่งทับคลาวด์ของบัญชีนี้ภายหลัง
     lsSet(OWNER, user.uid);
     ready = true;
     if (needPush) pushNow();
   }
 
-  return { onLogin, flush: pushNow };
+  // ออกจากระบบ: ส่งเฉพาะที่แก้ค้างอยู่ · ห้ามส่งค่าในเครื่องที่ไม่ได้แก้ไปทับคลาวด์
+  const flush = () => ((timer || isDirtyFor(uidNow())) ? pushNow() : Promise.resolve());
+  return { onLogin, flush };
 })();
 
 // มีคะแนน/ข้อมูลที่ยังไม่ขึ้นเซิร์ฟเวอร์หรือไม่ (รอสั้น ๆ — ถ้าไม่ค้างจะเสร็จทันที)
