@@ -50,7 +50,8 @@
     "test:cdesc": "node tests/course-desc.test.js",
     "test:cdescai": "node tests/course-desc-ai.test.js",
     "test:syll": "node tests/syllabus.test.js",
-    "test:reportdocs": "node tests/report-docs.test.js"
+    "test:reportdocs": "node tests/report-docs.test.js",
+    "test:levels": "node tests/levels.test.js"
   },
   "devDependencies": {
     "csso-cli": "4.0.2",

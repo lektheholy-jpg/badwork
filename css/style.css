@@ -61,6 +61,8 @@
   --hue-pink: #E83E7A;  --hue-amber: #D98E00;   --hue-gray: #666666;  --hue-red: #E5484D; --wmix: 38%; --wmix-main: 38%; --wmix-head: 24%; --wmix-soft: 15%; --sky-shade: .08;
   --viz-blue: #0381FE;  --viz-green: #12A87A;  --viz-purple: #7B52E6;
   --viz-sky: #1A9FD0;   --viz-mint: #3FB86B;   --viz-orchid: #A25BE0;
+  --viz-red: #E5484D;   --viz-orange: #F0731F; --viz-amber: #D98E00;   /* สีระดับประถม ป.1-ป.6 (โทนอุ่น แยกจากสีมัธยม) */
+  --viz-pink: #E83E7A;  --viz-teal: #0F9F88;   --viz-indigo: #4F5BD5;
   --th-bg: #EBEEF3;  --th-ink: #1B2130;  --th-line: #C9D0DB;
   --tbl-total-bg: color-mix(in srgb, var(--primary-solid) 34%, var(--card));  --tbl-total-ink: var(--ink);  /* คอลัมน์ "รวม" ในตาราง: ฟ้าตามธีมเข้มกว่าพื้นกลุ่มคะแนน */
   --col-collect-strong: #8A919E;  --col-collect: #F7F7F8;
@@ -1305,6 +1307,8 @@ table.sheet tbody tr:last-child td { border-bottom: none; }
   --hue-pink: #FF7BA5;  --hue-amber: #FFC247;   --hue-gray: #A0ABB1;  --hue-red: #FF6B70; --wmix: 34%; --wmix-main: 34%; --wmix-head: 26%; --wmix-soft: 19%; --sky-shade: .28;
   --viz-blue: #5AA2FF;  --viz-green: #2FD1A0;  --viz-purple: #B79BFF;
   --viz-sky: #4CC3F0;   --viz-mint: #6FD98C;   --viz-orchid: #CF9BFF;
+  --viz-red: #FF6B70;   --viz-orange: #FF9A5C; --viz-amber: #FFC247;
+  --viz-pink: #FF7BA5;  --viz-teal: #2FC9AE;   --viz-indigo: #8C96FF;
   --th-bg: #2A2D38;  --th-ink: #F1F3F8;  --th-line: #444A5A;
   --tbl-total-bg: color-mix(in srgb, var(--primary-solid) 45%, var(--card));  --tbl-total-ink: var(--ink);
   --col-collect-strong: #9AA0AE;  --col-collect: #222428;
