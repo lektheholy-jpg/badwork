@@ -466,10 +466,11 @@ const SETTINGS_TABS = [['look', 'รูปแบบหน้าเว็บ'], [
 
 // พื้นหลังที่โชว์ให้เลือก — คัดจาก BG_OPTIONS (js/theme.js) ให้แต่ละช่องต่างโทนกันชัด ไม่มีสีใกล้เคียงซ้ำ
 // id อื่นใน BG_OPTIONS ยังใช้งานได้ตามเดิม (ค่าที่เคยบันทึก/ซิงค์ไว้ไม่หาย) แค่ไม่โชว์ให้เลือกใหม่
+// One UI 9 · 5 pastel / iOS 27 · 5 vivid gradient / Dark · 5 deep — ประเภทละ 5 รูปแบบ
 const BG_SHOWN = [
-  ['สว่างและนุ่ม', ['default', 'sky', 'mint', 'lemon', 'uipeach', 'uirose', 'lilac', 'uigraphite']],
-  ['ไล่สี', ['ocean', 'dusk', 'sunsetpop']],
-  ['เข้ม', ['midnight', 'forest', 'berry']]
+  ['สว่างและนุ่ม', ['ou9ice', 'ou9seafoam', 'ou9cream', 'ou9lilac', 'ou9blossom']],
+  ['ไล่สี', ['i27aura', 'i27dusk', 'i27tidal', 'i27spring', 'i27nebula']],
+  ['เข้ม', ['ou9abyss', 'ou9jungle', 'i27eclipse', 'i27ember', 'ou9steel']]
 ];
 
 function bgShownGroupsHtml() {

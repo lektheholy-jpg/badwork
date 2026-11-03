@@ -68,13 +68,31 @@
     uisand:     { t: 'grad', c: ['#f5ebd9', '#e8d4b3', '#d3b78f'], a: 135, k: 'linear' },
     uisky:      { t: 'grad', c: ['#dff0fb', '#b8dcf5', '#8fc3ee'], a: 135, k: 'linear' },
     uigraphite: { t: 'grad', c: ['#e4e6ea', '#c3c8d0', '#9aa2ae'], a: 135, k: 'linear' },
-    // เข้มและสดใส
+    // เข้มและสดใส (ชุดเก่า — ยังใช้ได้สำหรับผู้ที่บันทึกไว้)
     midnight:   { t: 'grad', c: ['#1e2a4a', '#2d3b6b', '#4b4f9a'], a: 150, k: 'linear' },
     forest:     { t: 'grad', c: ['#0f3d3a', '#1b5e43', '#4f7d2c'], a: 150, k: 'linear' },
     berry:      { t: 'grad', c: ['#5e1740', '#8f2559', '#c2417c'], a: 150, k: 'linear' },
     sunsetpop:  { t: 'grad', c: ['#ff9a8b', '#ff6a88', '#c471f5'], a: 135, k: 'linear' },
     oceandeep:  { t: 'grad', c: ['#0a3560', '#0f5a8a', '#1d7ba3'], a: 160, k: 'linear' },
-    lagoon:     { t: 'grad', c: ['#2193b0', '#6dd5ed'], a: 135, k: 'linear' }
+    lagoon:     { t: 'grad', c: ['#2193b0', '#6dd5ed'], a: 135, k: 'linear' },
+    // ── One UI 9 · สว่างและนุ่ม (Galaxy S25-era pastel, 3-stop 145°) ──────────────────
+    ou9ice:     { t: 'grad', c: ['#e4f2ff', '#b6d8f8', '#82bbe8'], a: 145, k: 'linear' },
+    ou9seafoam: { t: 'grad', c: ['#ccf4e8', '#88dfc4', '#4ac8a4'], a: 142, k: 'linear' },
+    ou9cream:   { t: 'grad', c: ['#fff0de', '#ffd4a0', '#f8b46c'], a: 142, k: 'linear' },
+    ou9lilac:   { t: 'grad', c: ['#ecdefa', '#ceb0f0', '#ac80e0'], a: 138, k: 'linear' },
+    ou9blossom: { t: 'grad', c: ['#fce6f2', '#f9bcd8', '#f48cbc'], a: 142, k: 'linear' },
+    // ── iOS 27 · ไล่สี (vibrant mesh-style multi-stop gradients) ────────────────────────
+    i27aura:    { t: 'grad', c: ['#00d4ec', '#1858e8', '#8018d8'], a: 148, k: 'linear' },
+    i27dusk:    { t: 'grad', c: ['#ffa030', '#e82870', '#a018c8'], a: 150, k: 'linear' },
+    i27tidal:   { t: 'grad', c: ['#0078c0', '#00b8d4', '#00e8c0'], a: 158, k: 'linear' },
+    i27spring:  { t: 'grad', c: ['#00c880', '#6ce030', '#d8f010'], a: 130, k: 'linear' },
+    i27nebula:  { t: 'grad', c: ['#f020e0', '#7828f8', '#2090f8'], a: 138, k: 'linear' },
+    // ── เข้ม (One UI 9 + iOS 27 dark tones) ─────────────────────────────────────────────
+    ou9abyss:   { t: 'grad', c: ['#162048', '#283870', '#4048a8'], a: 150, k: 'linear' },
+    ou9jungle:  { t: 'grad', c: ['#0a3028', '#185040', '#287820'], a: 152, k: 'linear' },
+    i27eclipse: { t: 'grad', c: ['#180848', '#300880', '#5818c0'], a: 156, k: 'linear' },
+    i27ember:   { t: 'grad', c: ['#380810', '#680820', '#a82040'], a: 150, k: 'linear' },
+    ou9steel:   { t: 'grad', c: ['#181c28', '#282e40', '#383e54'], a: 150, k: 'linear' }
   };
   var BG_IDS = ['lemon', 'sky', 'lilac', 'mint', 'ocean', 'aurora', 'sunny', 'dusk'].concat(Object.keys(PRESET_CFG));
   var PATTERNS = [['dots', 'จุด'], ['grid', 'ตาราง'], ['lines', 'เส้นบรรทัด'], ['diag', 'ทแยง'],
@@ -398,7 +416,10 @@
     oneui: [['uimint', 'มิ้นต์'], ['uipeach', 'พีช'], ['uilavender', 'ลาเวนเดอร์'], ['uirose', 'โรส'],
             ['uisage', 'เขียวเซจ'], ['uisand', 'ทราย'], ['uisky', 'ฟ้าใส'], ['uigraphite', 'เทากราไฟต์']],
     vivid: [['midnight', 'กลางคืน'], ['forest', 'ป่าลึก'], ['berry', 'เบอร์รี'], ['sunsetpop', 'พระอาทิตย์ตก'],
-            ['oceandeep', 'ทะเลลึก'], ['lagoon', 'ลากูน']]
+            ['oceandeep', 'ทะเลลึก'], ['lagoon', 'ลากูน']],
+    ou9: [['ou9ice', 'ฟ้าน้ำแข็ง'], ['ou9seafoam', 'ซีฟอม'], ['ou9cream', 'ครีมพีช'], ['ou9lilac', 'ไลแลค'], ['ou9blossom', 'บลอสซัม']],
+    ios27: [['i27aura', 'ออรา'], ['i27dusk', 'ดัสค์'], ['i27tidal', 'ไทดัล'], ['i27spring', 'สปริง'], ['i27nebula', 'เนบูลา']],
+    dark2: [['ou9abyss', 'แอบบิส'], ['ou9jungle', 'จังเกิล'], ['i27eclipse', 'อีคลิปส์'], ['i27ember', 'เอมเบอร์'], ['ou9steel', 'สตีล']]
   };
 
   // ---------- ซิงค์หน้าตาตามบัญชี Google (js/auth.js เรียกใช้) ----------
