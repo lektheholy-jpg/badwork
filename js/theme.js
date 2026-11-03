@@ -1,6 +1,6 @@
 // ==========================================================================
 // ธีม สว่าง / มืด / ตามระบบ + พื้นหลังหน้า — โหลดใน <head> ก่อนวาดหน้า เพื่อไม่ให้จอวาบขาวตอนเปิดโหมดมืด
-// พื้นหลังมี 2 แบบ: ชุดสีสำเร็จรูป (BG_OPTIONS) และ "กำหนดเอง" (สีเดียว / ไล่สี / ลาย) ที่ผู้ใช้เลือกสีได้อิสระ
+// พื้นหลังมี 2 แบบ: ชุดสำเร็จรูป (BG_OPTIONS: สี/ไล่เฉด/รูปภาพ) และ "กำหนดเอง" (สีเดียว / ไล่สี / ลาย) ที่ผู้ใช้เลือกสีได้อิสระ
 // สีตัวหนังสือที่วางบนพื้นหลังโดยตรง (ชื่อ เวรกรรม.. เมนู หัวหน้า) คำนวณใหม่ตามพื้นหลังทุกครั้ง
 // ค่าเก็บใน localStorage ก่อนเสมอ (เปิดแอปได้ทันที/ออฟไลน์) แล้ว js/auth.js ซิงค์ขึ้นบัญชี Google (getAppearance / setAppearance / เหตุการณ์ 'myscore:appearance')
 // ==========================================================================
@@ -76,7 +76,20 @@
     oceandeep:  { t: 'grad', c: ['#0a3560', '#0f5a8a', '#1d7ba3'], a: 160, k: 'linear' },
     lagoon:     { t: 'grad', c: ['#2193b0', '#6dd5ed'], a: 135, k: 'linear' }
   };
-  var BG_IDS = ['lemon', 'sky', 'lilac', 'mint', 'ocean', 'aurora', 'sunny', 'dusk'].concat(Object.keys(PRESET_CFG));
+  // พื้นหลังแบบรูปภาพ (ไฟล์ assets/bg/<id>.webp + ภาพย่อ <id>-t.webp สำหรับช่องตัวอย่าง)
+  //   c = สีเฉลี่ยของรูป บน/กลาง/ล่าง — ใช้คำนวณสีตัวหนังสือ/ความทึบการ์ดเหมือนพื้นไล่สี และเป็นพื้นสำรองระหว่างรูปยังไม่โหลด/ออฟไลน์
+  var IMG_PRESETS = {
+    imgcliff: { c: ['#d9dbe2', '#74777a', '#2c372d'] }, // ภูเขาหมอก (ภาพถ่ายเอง)
+    imgpine:  { c: ['#d0dbe6', '#aebdc9', '#436077'] }, // ป่าสนหมอก (Pexels · Lum3n)
+    imgblue:  { c: ['#1a73b7', '#4769a3', '#4d89bc'] }, // คลื่นนามธรรมสีฟ้า (Pexels · Steve)
+    imgteal:  { c: ['#318785', '#1f7c80', '#14667b'] }  // คลื่นนามธรรมเขียวน้ำทะเล (Pexels · Steve)
+  };
+  var curImg = null; // id รูปที่ใช้เป็นพื้นหลังอยู่ (null = ไม่ใช่รูป)
+  function imgUrl(file) { // ใช้ URL เต็มจากฐานของหน้า → ไม่ขึ้นกับว่า url() ใน CSS อ้างจากโฟลเดอร์ไหน
+    try { return new URL('assets/bg/' + file, document.baseURI).href; } catch (e) { return 'assets/bg/' + file; }
+  }
+  function imgThumbCss(id) { return 'url(' + imgUrl(id + '-t.webp') + ') center / cover no-repeat'; }
+  var BG_IDS = ['lemon', 'sky', 'lilac', 'mint', 'ocean', 'aurora', 'sunny', 'dusk'].concat(Object.keys(PRESET_CFG), Object.keys(IMG_PRESETS));
   var PATTERNS = [['dots', 'จุด'], ['grid', 'ตาราง'], ['lines', 'เส้นบรรทัด'], ['diag', 'ทแยง'],
                   ['mesh', 'ตาข่าย'], ['checker', 'หมากรุก'], ['zigzag', 'ซิกแซก'], ['rings', 'วงกลม']];
   var PATTERN_COVER = { dots: 0.12, grid: 0.15, lines: 0.1, diag: 0.2, mesh: 0.35, checker: 0.5, zigzag: 0.5, rings: 0.2 }; // สัดส่วนพื้นที่ที่ลายครอบ (ใช้ประมาณความสว่างเฉลี่ย)
@@ -215,7 +228,7 @@
     // พื้นทึบสวนกับธีม (พื้นมืดในโหมดสว่าง / พื้นสว่างในโหมดมืด) → การ์ดโปร่งอ่านยาก จึงเพิ่มความทึบการ์ด
     // ลายก็เพิ่มความทึบการ์ดเช่นกัน ไม่ให้ลายตัดกับตัวหนังสือในการ์ด
     var L = avgLum(curCfg, W, H), dark = root.dataset.theme === 'dark', clash = dark ? L > 0.12 : L < 0.35;
-    var alpha = clash ? 84 : (curCfg.t === 'pattern' ? 72 : 0);
+    var alpha = clash ? 84 : (curCfg.t === 'pattern' || curImg ? 72 : 0); // รูปภาพมีรายละเอียดมาก เพิ่มความทึบการ์ดเหมือนลาย
     if (!alpha) { st.removeProperty('--card-glass'); st.removeProperty('--card-glass-hover'); }
     else {
       st.setProperty('--card-glass', (dark ? 'rgb(28 28 31 / ' : 'rgb(255 255 255 / ') + alpha + '%)');
@@ -294,8 +307,15 @@
   }
   function applyBg(id) {
     var root = document.documentElement;
-    curCfg = null;
+    curCfg = null; curImg = null;
+    root.style.removeProperty('--page-img'); root.removeAttribute('data-bgimg');
     if (id === 'custom') curCfg = parseCustom(readRaw());
+    else if (IMG_PRESETS[id]) { // รูปภาพ: ชั้นรูปวาดด้วย body::before (css) · --page-bg เป็นสีไล่เฉดสำรอง
+      curImg = id;
+      curCfg = cleanCfg({ t: 'grad', c: IMG_PRESETS[id].c, a: 180, k: 'linear' });
+      root.style.setProperty('--page-img', 'url(' + imgUrl(id + '.webp') + ')');
+      root.dataset.bgimg = '1';
+    }
     else if (PRESET_CFG[id]) curCfg = cleanCfg(PRESET_CFG[id]); // ชุดไล่เฉด: ใช้ทางเดียวกับกำหนดเอง (data-bg="custom" = พื้นที่คำนวณโทนตัวหนังสือแล้ว)
     if (curCfg) { root.style.setProperty('--page-bg', bgCss(curCfg)); root.dataset.bg = 'custom'; }
     else if (id === 'default' || id === 'custom') { root.style.removeProperty('--page-bg'); root.removeAttribute('data-bg'); }
@@ -385,11 +405,12 @@
   };
   window.presetBgCss = function (bg) { // CSS พื้นหลังสำหรับช่องตัวอย่างของชุด
     if (bg && typeof bg === 'object') return bgCss(bg, 0.5);
+    if (IMG_PRESETS[bg]) return imgThumbCss(bg);
     if (PRESET_CFG[bg]) return bgCss(cleanCfg(PRESET_CFG[bg]), 0.5);
     return BG_IDS.indexOf(bg) !== -1 ? 'var(--bgp-' + bg + ')' : 'var(--bg)';
   };
   window.bgCssOf = function (cfg, scale) { cfg = cleanCfg(cfg); return cfg ? bgCss(cfg, scale) : ''; }; // สำหรับช่องตัวอย่างในหน้าตั้งค่า
-  window.bgPresetCss = function (id) { return PRESET_CFG[id] ? bgCss(cleanCfg(PRESET_CFG[id])) : ''; }; // สำหรับช่องตัวอย่างของชุดไล่เฉด
+  window.bgPresetCss = function (id) { return IMG_PRESETS[id] ? imgThumbCss(id) : PRESET_CFG[id] ? bgCss(cleanCfg(PRESET_CFG[id])) : ''; }; // สำหรับช่องตัวอย่างของชุดไล่เฉด
   window.BG_PATTERNS = PATTERNS;
   window.BG_OPTIONS = {
     solid: [['lemon', 'เหลือง'], ['sky', 'ฟ้า'], ['lilac', 'ม่วง'], ['mint', 'เขียวมิ้นต์']],
@@ -398,7 +419,8 @@
     oneui: [['uimint', 'มิ้นต์'], ['uipeach', 'พีช'], ['uilavender', 'ลาเวนเดอร์'], ['uirose', 'โรส'],
             ['uisage', 'เขียวเซจ'], ['uisand', 'ทราย'], ['uisky', 'ฟ้าใส'], ['uigraphite', 'เทากราไฟต์']],
     vivid: [['midnight', 'กลางคืน'], ['forest', 'ป่าลึก'], ['berry', 'เบอร์รี'], ['sunsetpop', 'พระอาทิตย์ตก'],
-            ['oceandeep', 'ทะเลลึก'], ['lagoon', 'ลากูน']]
+            ['oceandeep', 'ทะเลลึก'], ['lagoon', 'ลากูน']],
+    image: [['imgcliff', 'ภูเขาหมอก'], ['imgpine', 'ป่าสนหมอก'], ['imgblue', 'คลื่นสีฟ้า'], ['imgteal', 'คลื่นเขียวน้ำทะเล']]
   };
 
   // ---------- ซิงค์หน้าตาตามบัญชี Google (js/auth.js เรียกใช้) ----------

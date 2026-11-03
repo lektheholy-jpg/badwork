@@ -445,7 +445,7 @@ function initBgCustom(view, onChange) {
 // ---------- เกี่ยวกับ (บนสุดของหน้าตั้งค่า): เวอร์ชันเว็บ · ผู้สร้าง ----------
 // version รูปแบบ v<รุ่นใหญ่>.<ฟีเจอร์>.<วันเวลา> เช่น v1.15.26OC201912 — **ห้ามแก้มือ**
 //   npm run build:version (รวมใน npm run build) เขียนให้ทั้งตรงนี้และ VERSION ใน sw.js · รายละเอียดดู tools/version.js
-const APP_INFO = { version: 'v1.15.26NO031022', creator: 'lektheholy', email: 'lektheholy@gmail.com' };
+const APP_INFO = { version: 'v1.15.26NO031114', creator: 'lektheholy', email: 'lektheholy@gmail.com' };
 
 function aboutHtml() {
   const a = APP_INFO;
@@ -466,10 +466,12 @@ const SETTINGS_TABS = [['look', 'รูปแบบหน้าเว็บ'], [
 
 // พื้นหลังที่โชว์ให้เลือก — คัดจาก BG_OPTIONS (js/theme.js) ให้แต่ละช่องต่างโทนกันชัด ไม่มีสีใกล้เคียงซ้ำ
 // id อื่นใน BG_OPTIONS ยังใช้งานได้ตามเดิม (ค่าที่เคยบันทึก/ซิงค์ไว้ไม่หาย) แค่ไม่โชว์ให้เลือกใหม่
+// สีพื้นฐานมีแค่ไม่กี่ชุด เพราะผู้ใช้สร้างสี/ไล่สี/ลายเองได้อยู่แล้ว · เพิ่มกลุ่ม "รูปภาพ" (assets/bg/)
 const BG_SHOWN = [
-  ['สว่างและนุ่ม', ['default', 'sky', 'mint', 'lemon', 'uipeach', 'uirose', 'lilac', 'uigraphite']],
-  ['ไล่สี', ['ocean', 'dusk', 'sunsetpop']],
-  ['เข้ม', ['midnight', 'forest', 'berry']]
+  ['สีพื้นฐาน', ['default', 'sky', 'uipeach', 'uigraphite']],
+  ['ไล่สี', ['ocean', 'sunsetpop']],
+  ['เข้ม', ['midnight']],
+  ['รูปภาพ', ['imgcliff', 'imgpine', 'imgblue', 'imgteal']]
 ];
 
 function bgShownGroupsHtml() {
@@ -497,7 +499,7 @@ function settingsLookHtml() {
     </div>
     <div class="card card-pad set-bg">
       <h2 class="card-title">พื้นหลัง</h2>
-      <div class="u-note">เลือกชุดสำเร็จรูป หรือสร้างเองด้านล่าง ตัวหนังสือบนพื้นจะปรับสีให้อ่านชัดเอง</div>
+      <div class="u-note">เลือกสี รูปภาพ หรือสร้างพื้นหลังเองด้านล่าง ตัวหนังสือบนพื้นจะปรับสีให้อ่านชัดเอง</div>
       ${bgShownGroupsHtml()}
       <div class="u-note u-semibold u-mt-16">สร้างพื้นหลังเอง</div>
       <div class="theme-seg bg-mode u-mt-6" role="group" aria-label="ชนิดพื้นหลังที่สร้างเอง">
