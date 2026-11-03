@@ -1,9 +1,9 @@
 {
-  "version": "v1.15.26NO030929",
+  "version": "v1.15.26NO030937",
   "major": 1,
   "features": 15,
   "pages": 11,
   "docSystems": 4,
-  "stamp": "26NO030929",
-  "hash": "79d2fcc2119ba07d022d70153b02badaf9004db6a1abce03085fa9e7efa3fcf6"
+  "stamp": "26NO030937",
+  "hash": "ca46f132ea304e6c71ec8cb8439fc1e7734db2b654d9fb17c83d6a044ab1bd6b"
 }
