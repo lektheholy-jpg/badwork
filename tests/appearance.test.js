@@ -26,33 +26,6 @@ function themeEnv() {
   ['uimint', 'uipeach', 'uilavender', 'uirose', 'uisage', 'uisand', 'uisky', 'uigraphite', 'midnight', 'forest', 'berry', 'sunsetpop', 'oceandeep', 'lagoon']
     .forEach(id => ok(ids.includes(id) && !!w.bgPresetCss(id), 'ชุดสี ' + id + ' มีใน BG_OPTIONS และสร้าง CSS ได้'));
 
-  // พื้นหลังรูปภาพ: ใช้ assets/bg/<id>.webp บนชั้น body::before (--page-img) · คำนวณสีตัวหนังสือจากสีเฉลี่ยของรูป
-  ['imgcliff', 'imgpine', 'imgblue', 'imgteal'].forEach(id => {
-    ok(ids.includes(id) && /assets\/bg\/.+-t\.webp/.test(w.bgPresetCss(id)), 'รูป ' + id + ' อยู่ใน BG_OPTIONS และมีภาพย่อ');
-    ok(fs.existsSync(path.join(root, 'assets/bg/' + id + '.webp')) && fs.existsSync(path.join(root, 'assets/bg/' + id + '-t.webp')), 'ไฟล์รูป + ภาพย่อของ ' + id + ' มีอยู่จริง');
-  });
-  (function () {
-    const w4 = themeEnv(), el = w4.document.documentElement;
-    let f4 = 0; w4.document.addEventListener('myscore:appearance', () => f4++);
-    w4.setBgPref('imgcliff');
-    ok(f4 === 1 && w4.getBgPref() === 'imgcliff', 'เลือกรูปภาพ → บันทึกค่า + ส่งเหตุการณ์ 1 ครั้ง');
-    ok(el.dataset.bgimg === '1' && /assets\/bg\/imgcliff\.webp/.test(el.style.getPropertyValue('--page-img')), 'ตั้ง --page-img และ data-bgimg');
-    ok(el.dataset.bg === 'custom' && /linear-gradient/.test(el.style.getPropertyValue('--page-bg')), 'มีพื้นสีไล่เฉดสำรอง และใช้ระบบคำนวณโทนตัวหนังสือ');
-    ok(/rgb/.test(el.style.getPropertyValue('--card-glass')), 'รูปภาพเพิ่มความทึบการ์ด (--card-glass)');
-    ok(w4.getAppearance().bg === 'imgcliff', 'getAppearance เก็บเป็นชื่อรูป (ซิงค์ขึ้นบัญชีได้)');
-    w4.setBgPref('sky');
-    ok(el.dataset.bgimg === undefined && el.style.getPropertyValue('--page-img') === '', 'เปลี่ยนไปชุดอื่น → ล้าง --page-img และ data-bgimg');
-    w4.setBgPref('imgpine'); w4.resetAppearance();
-    ok(el.dataset.bgimg === undefined && w4.getBgPref() === 'default', 'resetAppearance ล้างพื้นหลังรูปภาพ');
-    const w5 = themeEnv();
-    w5.setAppearance({ theme: 'light', bg: 'imgteal', look: {}, presets: '[]' });
-    ok(w5.getBgPref() === 'imgteal' && w5.document.documentElement.dataset.bgimg === '1', 'รับค่ารูปภาพจากคลาวด์ได้');
-    w5.setAppearance({ theme: 'light', bg: 'imgfake', look: {}, presets: '[]' });
-    ok(w5.getBgPref() === 'default' && w5.document.documentElement.dataset.bgimg === undefined, 'ชื่อรูปที่ไม่รู้จักจากคลาวด์ → ค่าเริ่มต้น');
-    w4.setBgPref('imgblue'); w4.saveLookPreset('ชุดรูป');
-    ok(w4.getLookPresets()[0].bg === 'imgblue' && /assets\/bg\//.test(w4.presetBgCss('imgblue')), 'ชุดตั้งค่าของฉันจำรูปภาพได้');
-  })();
-
   let fired = 0;
   w.document.addEventListener('myscore:appearance', () => fired++);
   w.setBgPref('uimint');

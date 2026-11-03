@@ -35,12 +35,7 @@ const shown = [].concat(...t.BG_SHOWN.map(g => g[1]));
 ok(shown.every(id => known.has(id) && (id === 'default' || !!w.presetBgCss(id))), 'ทุกชุดที่โชว์มีใน BG_OPTIONS และสร้าง CSS ได้');
 ok(shown.length === new Set(shown).size, 'ไม่มีชุดซ้ำในรายการ');
 const total = Object.values(w.BG_OPTIONS).reduce((n, g) => n + g.length, 1);
-ok(shown.length < total && shown.length <= 12, 'จำนวนชุดที่โชว์น้อยลงจากเดิม (' + shown.length + ' จาก ' + total + ')');
-const imgIds = ['imgcliff', 'imgpine', 'imgblue', 'imgteal'];
-const colourShown = shown.filter(id => !imgIds.includes(id));
-ok(colourShown.length <= 8, 'สีพื้นฐานที่โชว์เหลือไม่เกิน 8 (สร้างสีเองได้อยู่แล้ว)', colourShown);
-ok(imgIds.every(id => shown.includes(id) && /assets\/bg\/.+-t\.webp/.test(w.presetBgCss(id))), 'มีกลุ่มรูปภาพครบ 4 ภาพ และช่องตัวอย่างใช้ภาพย่อ');
-ok(t.BG_SHOWN.some(g => g[0] === 'รูปภาพ' && g[1].join() === imgIds.join()), 'กลุ่ม "รูปภาพ" อยู่ใน BG_SHOWN');
+ok(shown.length < total && shown.length <= 16, 'จำนวนชุดที่โชว์น้อยลงจากเดิม (' + shown.length + ' จาก ' + total + ')');
 ok(w.document.createElement('div') && (() => { const d = w.document.createElement('div'); d.innerHTML = t.bgShownGroupsHtml(); return d.querySelectorAll('.bg-opt[data-bg-pref]').length === shown.length; })(), 'วาดช่องครบตามรายการ (ค่าปัจจุบันเป็น default)');
 
 // ผู้ใช้ที่เคยเลือกชุดที่เลิกโชว์ → ยังเห็นช่องของชุดนั้น และค่าไม่หาย

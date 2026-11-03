@@ -86,8 +86,6 @@ html, body { height: 100%; -webkit-text-size-adjust: 100%; text-size-adjust: 100
   margin: 0;
   font-family: var(--font);
   -webkit-font-smoothing: antialiased; font-size: 16px; line-height: 1.6; background: var(--page-bg); background-attachment: fixed; color: var(--ink); }
-/* พื้นหลังแบบรูปภาพ: วาดรูปบนชั้น fixed หลังเนื้อหา (ไม่ใช้ background-attachment บน body เพราะ iOS ไม่รองรับ รูปจะถูกขยายตามความสูงหน้า) · js/theme.js ตั้ง --page-img และ data-bgimg · --page-bg เป็นสีไล่เฉดสำรอง */
-:root[data-bgimg] body::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none; background: var(--page-img) center / cover no-repeat; }
 button { font-family: inherit; }
 /* หมายเหตุ: ห้ามใช้ letter-spacing ติดลบกับข้อความไทย เพราะสระ/วรรณยุกต์ที่ลอยอยู่
    เหนือ-ใต้ตัวพยัญชนะจะเยื้องออกจากตำแหน่งจนดูเหมือนตัวอักษรเพี้ยน */
