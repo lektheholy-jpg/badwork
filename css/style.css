@@ -1030,6 +1030,8 @@ table.sheet tbody tr:nth-child(even) td.grp-sub-total { background: var(--col-co
   /* หน้าที่เปิดอยู่: เหมือน .tab-item.active บนมือถือ (สีตัวหนังสือปกติ + ตัวหนา 800 + ไอคอนขนาดเดิม · พื้นแคปซูลมาจาก .nav-pill) */
   #app .sidebar .nav-item.active { color: var(--on-bg); font-weight: 800; }
   #app .sidebar .nav-item.active .nav-icon { transform: none; }
+  /* ไม่ให้หน้ายืดเด้ง (rubber-band) บนแทร็กแพด/เมาส์: พื้นหลังหน้าเป็น fixed + ไล่สี/ลาย ส่วนที่ยืดเลยขอบจึงไม่มีพื้นหลัง เห็นเป็นแถบสีขาวด้านบน */
+  html { overscroll-behavior-y: none; }
 }
 
 /* ---------- หน้ารายงาน ---------- */
