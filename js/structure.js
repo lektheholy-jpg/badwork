@@ -53,11 +53,13 @@ async function attUpload(ownerKey, file, onProgress) {
 
 // แก้ไขสื่อของรายการ (หน้าโครงสร้าง) — แก้ item.attachments ในหน่วยความจำ แล้วเรียก onChange() ให้หน้าวาดใหม่
 // ต้องกด "บันทึกโครงสร้างวิชา" จึงเขียนลง Firestore (ไฟล์ที่อัปโหลดแล้วอยู่ใน Storage ทันที)
-function openAttachmentsModal(item, ownerKey, onChange) {
+// colRef = Firestore CollectionReference ของ assessments (ถ้ามี → auto-save ทันทีเมื่อกด "เสร็จสิ้น")
+function openAttachmentsModal(item, ownerKey, onChange, colRef) {
   if (!Array.isArray(item.attachments)) item.attachments = [];
+  let dirty = false; // มีการเพิ่ม/ลบสื่อหลังจากเปิด modal ครั้งนี้
   openModal(`
     <h2>สื่อ / ใบงาน: ${escapeHtml(item.name || 'รายการ')}</h2>
-    <div class="modal-sub">แนบลิงก์ (Google Form, Drive, YouTube ฯลฯ) หรืออัปโหลดใบงาน PDF/รูป ไม่เกิน 10 MB ได้สูงสุด ${ATT_MAX_PER_ITEM} อัน — แนบเสร็จแล้วอย่าลืมกด "บันทึกโครงสร้างวิชา"</div>
+    <div class="modal-sub" id="att-hint">แนบลิงก์ (Google Form, Drive, YouTube ฯลฯ) หรืออัปโหลดใบงาน PDF/รูป ไม่เกิน 10 MB ได้สูงสุด ${ATT_MAX_PER_ITEM} อัน</div>
     <div id="att-list"></div>
     <div class="field">
       <label>เพิ่มลิงก์</label>
@@ -80,6 +82,7 @@ function openAttachmentsModal(item, ownerKey, onChange) {
     $('att-list').innerHTML = attListHtml(item.attachments, { removable: true });
     $('att-list').querySelectorAll('.att-remove').forEach(btn => btn.addEventListener('click', () => {
       item.attachments = item.attachments.filter(a => a.id !== btn.dataset.attId);
+      dirty = true;
       refresh(); if (onChange) onChange();
     }));
   };
@@ -93,6 +96,7 @@ function openAttachmentsModal(item, ownerKey, onChange) {
     a.title = $('att-link-title').value.trim() || attKind(a);
     item.attachments.push(a);
     $('att-link-title').value = ''; $('att-link-url').value = '';
+    dirty = true;
     refresh(); if (onChange) onChange();
   });
 
@@ -107,6 +111,7 @@ function openAttachmentsModal(item, ownerKey, onChange) {
       const up = await attUpload(ownerKey, file, p => { status.textContent = `กำลังอัปโหลด ${Math.round(p * 100)}%`; });
       item.attachments.push({ id: uid4(), kind: 'file', title: file.name.slice(0, 120), ...up });
       status.textContent = 'อัปโหลดแล้ว';
+      dirty = true;
       refresh(); if (onChange) onChange();
     } catch (err) {
       console.error(err);
@@ -117,7 +122,25 @@ function openAttachmentsModal(item, ownerKey, onChange) {
       e.target.disabled = false;
     }
   });
-  $('att-done').addEventListener('click', closeModal);
+
+  $('att-done').addEventListener('click', async () => {
+    // Auto-save ทันที: บันทึก attachments ของรายการนี้ลง Firestore โดยไม่ต้องกดบันทึกโครงสร้างวิชา
+    // ทำได้เฉพาะรายการที่มี id จริง (ไม่ใช่ new-*) และมีการเปลี่ยนแปลงในครั้งนี้
+    const isNew = !item.id || String(item.id).startsWith('new-');
+    if (dirty && !isNew && colRef) {
+      const doneBtn = $('att-done');
+      if (doneBtn) { doneBtn.disabled = true; doneBtn.textContent = 'กำลังบันทึก...'; }
+      try {
+        await colRef.doc(item.id).update({ attachments: cleanAttachments(item.attachments) });
+      } catch (err) {
+        console.error('Auto-save attachments failed', err);
+        showToast('บันทึกสื่อไม่สำเร็จ กรุณากด "บันทึกโครงสร้างวิชา" อีกครั้ง');
+      }
+    } else if (dirty && isNew) {
+      showToast('อย่าลืมกด "บันทึกโครงสร้างวิชา" ด้วย เพื่อเก็บรายการใหม่นี้');
+    }
+    closeModal();
+  });
 }
 
 // ที่อยู่ข้อมูลของ "วิชา" ที่กำลังแก้โครงสร้าง: แม่แบบวิชา (course.isTemplate) อยู่ที่ courseTemplates
