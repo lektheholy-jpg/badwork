@@ -222,13 +222,17 @@ async function renderStructureTab(container, course, opts = {}) {
     // ----- โหมดอ่านอย่างเดียว -----
     const attBtnHtml = (id, it) => {
       const n = (it.attachments || []).length;
-      if (ro && !n) return '';
-      if (ro && n === 1) {
-        const a = cleanAttachments(it.attachments)[0];
-        const label = a ? escapeHtml(a.title || attKind(a)) : 'ดู';
-        return `<button type="button" class="btn btn-ghost btn-sm att-btn att-btn-single" data-id="${id}" title="เปิด: ${label}">${icon('clip')} ${label}</button>`;
+      if (ro) {
+        // โหมดอ่านอย่างเดียว: ปุ่มบอกชัดว่ากดแล้วเปิดอะไร (ชื่อสื่อ + ประเภท) · ชื่อยาวตัดด้วย … ไอคอนไม่หาย
+        const list = cleanAttachments(it.attachments);
+        if (!list.length) return '';
+        if (list.length === 1) {
+          const a = list[0], t = a.title || attKind(a);
+          return `<button type="button" class="btn btn-ghost btn-sm att-btn att-btn-single" data-id="${id}" title="เปิดในแท็บใหม่: ${escapeHtml(t)} (${escapeHtml(attKind(a))})">${icon('clip')}<span class="att-label">${escapeHtml(t)}</span>${icon('external')}</button>`;
+        }
+        return `<button type="button" class="btn btn-ghost btn-sm att-btn att-btn-multi" data-id="${id}" title="ดูสื่อ/ใบงานทั้งหมด (${list.length} รายการ)">${icon('clip')}<span class="att-label">สื่อ ${list.length} รายการ</span>${icon('chevron')}</button>`;
       }
-      return `<button type="button" class="btn btn-ghost btn-sm att-btn" data-id="${id}" title="${ro ? `ดูสื่อ/ใบงาน (${n} รายการ)` : 'แนบลิงก์/ใบงาน'}">${icon('clip')} ${n || 'แนบ'}</button>`;
+      return `<button type="button" class="btn btn-ghost btn-sm att-btn" data-id="${id}" title="แนบลิงก์/ใบงาน">${icon('clip')} ${n || 'แนบ'}</button>`;
     };
     const itemRowRo = (it, idx) => `
       <tr data-type="item" data-id="${it.id}">

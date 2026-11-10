@@ -53,7 +53,7 @@ async function setup(store, opts, course) {
     escapeHtml: (s) => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])),
     icon: () => '', showLoading: () => {}, showToast: () => {}, openModal: () => {}, closeModal: () => {},
     invalidateCourseData: () => {}, offerTemplateSync: () => {}, confirm: () => true,
-    cleanAttachments: (a) => a || [], ATT_MAX_PER_ITEM: 5,
+    cleanAttachments: (a) => a || [], attKind: () => 'ลิงก์', ATT_MAX_PER_ITEM: 5,
     navigate: (r) => { w.__nav = r; }, openAttachmentsViewer: (it) => { w.__viewer = it; },
   });
   w.eval(src + '\nwindow.__render = renderStructureTab; window.__reorder = reorderFromDom;');
