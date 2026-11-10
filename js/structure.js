@@ -132,6 +132,8 @@ function openAttachmentsModal(item, ownerKey, onChange, colRef) {
       if (doneBtn) { doneBtn.disabled = true; doneBtn.textContent = 'กำลังบันทึก...'; }
       try {
         await colRef.doc(item.id).update({ attachments: cleanAttachments(item.attachments) });
+        invalidateCourseData(ownerKey); // หน้าอื่นที่แคชข้อมูลวิชาไว้ จะได้โหลดสื่อใหม่ (เหมือน saveStructure)
+        showToast('บันทึกสื่อแล้ว');
       } catch (err) {
         console.error('Auto-save attachments failed', err);
         showToast('บันทึกสื่อไม่สำเร็จ กรุณากด "บันทึกโครงสร้างวิชา" อีกครั้ง');
@@ -535,7 +537,7 @@ async function renderStructureTab(container, course, opts = {}) {
     container.querySelectorAll('.att-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const it = btn.dataset.id === 'mid' ? midterm : btn.dataset.id === 'final' ? final : collectItems.find(x => x.id === btn.dataset.id);
-        if (it) openAttachmentsModal(it, course.id, draw);
+        if (it) openAttachmentsModal(it, course.id, draw, colRef);
       });
     });
 
