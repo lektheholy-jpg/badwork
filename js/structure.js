@@ -198,7 +198,12 @@ async function renderStructureTab(container, course, opts = {}) {
     const attBtnHtml = (id, it) => {
       const n = (it.attachments || []).length;
       if (ro && !n) return '';
-      return `<button type="button" class="btn btn-ghost btn-sm att-btn" data-id="${id}" title="${ro ? 'ดูลิงก์/ใบงาน' : 'แนบลิงก์/ใบงาน'}">${icon('clip')} ${n || 'แนบ'}</button>`;
+      if (ro && n === 1) {
+        const a = cleanAttachments(it.attachments)[0];
+        const label = a ? escapeHtml(a.title || attKind(a)) : 'ดู';
+        return `<button type="button" class="btn btn-ghost btn-sm att-btn att-btn-single" data-id="${id}" title="เปิด: ${label}">${icon('clip')} ${label}</button>`;
+      }
+      return `<button type="button" class="btn btn-ghost btn-sm att-btn" data-id="${id}" title="${ro ? `ดูสื่อ/ใบงาน (${n} รายการ)` : 'แนบลิงก์/ใบงาน'}">${icon('clip')} ${n || 'แนบ'}</button>`;
     };
     const itemRowRo = (it, idx) => `
       <tr data-type="item" data-id="${it.id}">
@@ -370,7 +375,13 @@ async function renderStructureTab(container, course, opts = {}) {
       container.querySelectorAll('.att-btn').forEach(btn => {
         btn.addEventListener('click', () => {
           const it = btn.dataset.id === 'mid' ? midterm : btn.dataset.id === 'final' ? final : collectItems.find(x => x.id === btn.dataset.id);
-          if (it) openAttachmentsViewer(it);
+          if (!it) return;
+          const atts = cleanAttachments(it.attachments);
+          if (atts.length === 1) {
+            window.open(atts[0].url, '_blank', 'noopener,noreferrer');
+          } else if (atts.length > 1) {
+            openAttachmentsViewer(it);
+          }
         });
       });
       container.querySelector('#struct-ro-edit')?.addEventListener('click', () => {

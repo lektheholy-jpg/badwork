@@ -612,6 +612,8 @@ table.sheet :is(th, td).sticky-right-2 { right: 0; width: var(--r2-w); min-width
 .struct-table tr.dragging { opacity: 0.4; }
 .struct-table td.handle-col { width: 24px; color: var(--ink-soft); cursor: grab; text-align: center; }
 .struct-table td.att-col { width: 92px; white-space: nowrap; }
+.struct-table td.att-col .att-btn-single { max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--primary); border-color: var(--primary-soft, var(--primary)); }
+.struct-table td.att-col .att-btn-single:hover { background: var(--primary-soft, color-mix(in srgb, var(--primary) 10%, transparent)); }
 .struct-summary-box .att-btn { margin-top: 6px; }
 .att-btn .ico { width: 15px; height: 15px; }
 .att-chip { display: inline-flex; align-items: center; gap: 3px; margin-left: 6px; padding: 1px 7px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface-sunken); color: var(--ink-soft); font-size: 11px; font-weight: 600; cursor: pointer; vertical-align: middle; }
