@@ -2434,9 +2434,8 @@ table.tt tr.is-today td.tt-cell { background: color-mix(in srgb, var(--hue-orang
 
 /* ===== เวลาเรียน (เช็คชื่อ) ในแท็บบันทึกคะแนน — js/attendance.js · ใช้ตัวแปรสีของระบบเท่านั้น ===== */
 .ck-seg { display: inline-flex; background: var(--surface-sunken); border-radius: var(--radius-pill); padding: 4px; gap: 4px; }
-.ck-mode { display: inline-flex; background: var(--surface-sunken); border-radius: var(--radius-pill); padding: 4px; gap: 4px; margin-bottom: 14px; }
-.ck-mode-btn, .ck-seg-btn { font: inherit; font-weight: 600; font-size: 13.5px; border: 0; background: none; color: var(--ink-soft); padding: 7px 18px; border-radius: var(--radius-pill); cursor: pointer; }
-.ck-mode-btn.active, .ck-seg-btn.active { background: var(--card); color: var(--ink); box-shadow: 0 1px 3px var(--shadow-ink-sm); }
+.ck-seg-btn { font: inherit; font-weight: 600; font-size: 13.5px; border: 0; background: none; color: var(--ink-soft); padding: 7px 18px; border-radius: var(--radius-pill); cursor: pointer; }
+.ck-seg-btn.active { background: var(--card); color: var(--ink); box-shadow: 0 1px 3px var(--shadow-ink-sm); }
 .ck-tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .ck-chips { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 12px; }
 .ck-chip { flex: 0 0 auto; font: inherit; border: 1.5px solid var(--border); background: var(--card); color: var(--ink); border-radius: var(--radius-xs); padding: 6px 12px; cursor: pointer; text-align: center; line-height: 1.25; }

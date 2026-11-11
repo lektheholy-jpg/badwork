@@ -681,10 +681,11 @@ async function renderCourseShellInner() {
     { id: 'students', label: 'นักเรียน' },
     { id: 'structure', label: 'โครงสร้างคะแนน' },
     { id: 'scores', label: 'บันทึกคะแนน' },
+    { id: 'attendance', label: 'เวลาเรียน' },
     { id: 'report', label: 'รายงาน' },
   ];
   // แท็บที่ต้องผูกกับ "ห้อง" ที่เลือกอยู่ (นักเรียน/คะแนน/รายงานแยกตามห้อง)
-  const sectionScopedTabs = new Set(['students', 'scores', 'report']);
+  const sectionScopedTabs = new Set(['students', 'scores', 'attendance', 'report']);
 
   const view = document.getElementById('view');
   view.innerHTML = `
@@ -785,7 +786,13 @@ async function renderCourseShellInner() {
   if (AppState.currentTab === 'overview') { await renderCourseOverview(body, course, sections); enterBody(); }
   else if (AppState.currentTab === 'students') { await renderStudentsTab(body, course, section); enterBody(); }
   else if (AppState.currentTab === 'structure') { await renderStructureTab(body, course, { readOnly: true }); enterBody(); } // ดูอย่างเดียว — แก้ที่หน้า "ตั้งค่าโครงสร้างวิชา"
-  else if (AppState.currentTab === 'scores') { await renderScoresWithMode(body, course, section); enterBody(); }
+  else if (AppState.currentTab === 'scores') { await renderScoresTab(body, course, section); enterBody(); }
+  else if (AppState.currentTab === 'attendance') {
+    // attendance.js โหลดครั้งแรกที่เปิดแท็บนี้ — ถ้าผู้ใช้สลับแท็บก่อนโหลดเสร็จ ไม่ต้องวาดทับ
+    showLoading('cat-sm', body);
+    try { await loadModule('attendance'); } catch (err) { body.innerHTML = `<div class="card"><div class="empty-state">${escapeHtml(err.message)}</div></div>`; return; }
+    if (AppState.currentTab === 'attendance' && body.isConnected) { await renderAttendanceTab(body, course, section); enterBody(); }
+  }
   else if (AppState.currentTab === 'report') {
     // report.js โหลดครั้งแรกที่เปิดแท็บนี้ — ถ้าผู้ใช้สลับแท็บ/ออกจากหน้าก่อนโหลดเสร็จ ไม่ต้องวาดทับ
     showLoading('cat-sm', body);
@@ -934,6 +941,8 @@ function confirmDeleteSection(course, sectionId, roomLabel, onDone) {
       let backup = null;
       try { backup = await snapshotSection(secRef); } catch (e) { console.warn('สำรองห้องก่อนลบไม่สำเร็จ', e); }
       await deleteCollectionDocs(secRef.collection('scores'));
+      await deleteCollectionDocs(secRef.collection('attendance'));
+      await deleteCollectionDocs(secRef.collection('attendanceMeta'));
       await deleteCollectionDocs(secRef.collection('students'));
       await secRef.delete();
       await courseRef.update({ roomCount: firebase.firestore.FieldValue.increment(-1) });
@@ -995,6 +1004,8 @@ function confirmDeleteCourse(course, onDone) {
       for (const secDoc of sectionsSnap.docs) {
         const secRef = secDoc.ref;
         await deleteCollectionDocs(secRef.collection('scores'));
+        await deleteCollectionDocs(secRef.collection('attendance'));
+        await deleteCollectionDocs(secRef.collection('attendanceMeta'));
         await deleteCollectionDocs(secRef.collection('students'));
         await secRef.delete();
       }
