@@ -2432,6 +2432,60 @@ table.tt tr.is-today td.tt-cell { background: color-mix(in srgb, var(--hue-orang
   .cdesc-ind-row { grid-template-columns: 1fr; }
 }
 
+/* ===== เวลาเรียน (เช็คชื่อ) ในแท็บบันทึกคะแนน — js/attendance.js · ใช้ตัวแปรสีของระบบเท่านั้น ===== */
+.ck-seg { display: inline-flex; background: var(--surface-sunken); border-radius: var(--radius-pill); padding: 4px; gap: 4px; }
+.ck-mode { display: inline-flex; background: var(--surface-sunken); border-radius: var(--radius-pill); padding: 4px; gap: 4px; margin-bottom: 14px; }
+.ck-mode-btn, .ck-seg-btn { font: inherit; font-weight: 600; font-size: 13.5px; border: 0; background: none; color: var(--ink-soft); padding: 7px 18px; border-radius: var(--radius-pill); cursor: pointer; }
+.ck-mode-btn.active, .ck-seg-btn.active { background: var(--card); color: var(--ink); box-shadow: 0 1px 3px var(--shadow-ink-sm); }
+.ck-tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.ck-chips { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 12px; }
+.ck-chip { flex: 0 0 auto; font: inherit; border: 1.5px solid var(--border); background: var(--card); color: var(--ink); border-radius: var(--radius-xs); padding: 6px 12px; cursor: pointer; text-align: center; line-height: 1.25; }
+.ck-chip small { display: block; color: var(--ink-soft); font-size: 12px; }
+.ck-chip.done { border-color: var(--success); }
+.ck-chip.holiday { background: var(--surface-sunken); color: var(--ink-soft); }
+.ck-chip.active { background: var(--primary-solid); border-color: var(--primary-solid); color: var(--on-primary); }
+.ck-chip.active small { color: var(--on-primary); opacity: .85; }
+.ck-sum { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
+.ck-note { color: var(--ink-soft); font-size: 13px; flex: 1 1 240px; }
+.ck-pill { border-radius: var(--radius-pill); padding: 3px 12px; font-weight: 600; font-size: 13.5px; }
+.ck-pill.ck-p { background: var(--success-tint); color: var(--success); }
+.ck-pill.ck-a { background: var(--danger-tint); color: var(--danger); }
+.ck-pill.ck-s { background: var(--warning-tint); color: var(--warning); }
+.ck-pill.ck-l { background: var(--primary-tint); color: var(--primary-dark); }
+.ck-list { list-style: none; margin: 0; padding: 0; }
+.ck-list li { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid var(--border); }
+.ck-list li:first-child { border-top: 0; }
+.ck-no { width: 26px; text-align: right; color: var(--ink-soft); font-size: 13px; }
+.ck-name { flex: 1; min-width: 0; }
+.ck-name b { display: block; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ck-name span { font-size: 12px; color: var(--ink-soft); }
+.ck-name span.ck-low { color: var(--danger); font-weight: 700; }
+.ck-btns { display: inline-flex; border: 1.5px solid var(--border); border-radius: var(--radius-xs); overflow: hidden; }
+.ck-btn { font: inherit; font-size: 14px; border: 0; border-right: 1px solid var(--border); background: var(--card); color: var(--ink-soft); min-width: 46px; min-height: 40px; padding: 6px 10px; cursor: pointer; }
+.ck-btn:last-child { border-right: 0; }
+.ck-btn.on.ck-p { background: var(--success-tint); color: var(--success); font-weight: 700; }
+.ck-btn.on.ck-a { background: var(--danger-tint); color: var(--danger); font-weight: 700; }
+.ck-btn.on.ck-s { background: var(--warning-tint); color: var(--warning); font-weight: 700; }
+.ck-btn.on.ck-l { background: var(--primary-tint); color: var(--primary-dark); font-weight: 700; }
+.ck-btn.ghost { opacity: .55; }
+.ck-session-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; }
+.ck-sheet { border-collapse: separate; border-spacing: 0; font-size: 13px; width: max-content; min-width: 100%; }
+.ck-sheet th, .ck-sheet td { padding: 4px 6px; text-align: center; border-bottom: 1px solid var(--border); background: var(--card); white-space: nowrap; }
+.ck-sheet thead th { color: var(--ink-soft); font-weight: 600; }
+.ck-sheet .ck-mo { color: var(--ink); border-left: 1px solid var(--border); }
+.ck-sheet .ck-sticky { position: sticky; left: 0; z-index: 1; text-align: left; min-width: 190px; max-width: 190px; overflow: hidden; text-overflow: ellipsis; border-right: 1px solid var(--border); }
+.ck-sheet .ck-cell { padding: 0; }
+.ck-sheet .ck-hol { background: var(--surface-sunken); color: var(--ink-soft); }
+.ck-gcell { font: inherit; border: 0; background: none; width: 100%; min-width: 30px; height: 32px; cursor: pointer; color: var(--ink-soft); }
+.ck-gcell:hover { background: var(--surface-sunken); }
+.ck-gcell.ck-a { color: var(--danger); font-weight: 700; }
+.ck-gcell.ck-s { color: var(--warning); font-weight: 700; }
+.ck-gcell.ck-l { color: var(--primary-dark); font-weight: 700; }
+.ck-sheet .ck-pct { font-weight: 700; }
+.ck-sheet .ck-pct.low { color: var(--danger); background: var(--danger-tint); }
+.ck-legend { margin-top: 10px; color: var(--ink-soft); font-size: 12.5px; }
+@media (max-width: 600px) { .ck-list li { flex-wrap: wrap; } .ck-btns { margin-left: 36px; } }
+
 /* @bundle docs — ส่วนนี้แยกเป็น css/docs.min.css โหลดเมื่อเปิดหน้าระบบเอกสาร (PA · ID-Plan · วิจัยในชั้นเรียน · …) — กฎในนี้ต้องไม่ใช้ class ที่หน้าหลักใช้ (tools/split-css.js ตรวจให้) · วางกฎใหม่ของระบบเอกสารไว้ในบล็อกนี้ */
 /* ==========================================================================
    ผู้ช่วย AI ในฟอร์มเอกสาร (แกน js/badwork-ai.js · ใช้ร่วมทุกระบบ) — การ์ดบนสุด · แถวปุ่มใต้ช่อง · หน้าต่างตรวจทาน

@@ -427,6 +427,8 @@ async function snapshotSection(secRef) {
     id: secRef.id, data: secSnap.data(),
     students: await snapshotCollection(secRef.collection('students')),
     scores: await snapshotCollection(secRef.collection('scores')),
+    attendance: await snapshotCollection(secRef.collection('attendance')),
+    attendanceMeta: await snapshotCollection(secRef.collection('attendanceMeta')),
   };
 }
 async function restoreSection(sectionsColRef, snap) {
@@ -434,6 +436,8 @@ async function restoreSection(sectionsColRef, snap) {
   await secRef.set(snap.data);
   await restoreDocs(secRef.collection('students'), snap.students);
   await restoreDocs(secRef.collection('scores'), snap.scores);
+  await restoreDocs(secRef.collection('attendance'), snap.attendance || []);
+  await restoreDocs(secRef.collection('attendanceMeta'), snap.attendanceMeta || []);
 }
 // วิชาทั้งวิชา (ทุกห้อง + โครงสร้างคะแนน + เกณฑ์เกรด)
 async function snapshotCourse(courseRef) {
@@ -602,6 +606,7 @@ function loadXLSX() {
 // ใช้ <script> ธรรมดา (ไม่ใช่ module) จึงใช้ฟังก์ชัน/ค่าคงที่ global ร่วมกับไฟล์อื่นได้เหมือนเดิม
 // เพิ่มโมดูลใหม่: ใส่ชื่อ → path ในตารางนี้ แล้วเรียก `await loadModule('ชื่อ')` ก่อนใช้ฟังก์ชันในไฟล์นั้น
 const LAZY_MODULES = {
+  attendance: 'js/attendance.js', // เวลาเรียน (เช็คชื่อ) ในแท็บบันทึกคะแนน
   report: 'js/report.js',   // แท็บรายงานในวิชา + ส่งออก ปพ.5 / SGS / Next School
   privacy: 'js/privacy.js', // ส่งออก/ลบข้อมูลของฉัน
   tools: 'js/tools.js',     // เครื่องมือในห้องเรียน

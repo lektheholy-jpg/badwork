@@ -38,8 +38,8 @@ async function _collectAll(uid, onProgress) {
       cRef.collection('sections').get(),
     ]);
     const sections = await mapLimit(secSnap.docs, SECTION_LOAD_CONCURRENCY, async (s) => {
-      const [students, scores] = await Promise.all([plain(s.ref.collection('students')), plain(s.ref.collection('scores'))]);
-      return { id: s.id, ...s.data(), students, scores };
+      const [students, scores, attendance, attendanceMeta] = await Promise.all([plain(s.ref.collection('students')), plain(s.ref.collection('scores')), plain(s.ref.collection('attendance')), plain(s.ref.collection('attendanceMeta'))]);
+      return { id: s.id, ...s.data(), students, scores, attendance, attendanceMeta };
     });
     if (onProgress) onProgress(++coursesDone, courseSnap.docs.length);
     return { id: c.id, ...c.data(), assessments, settings, sections };
@@ -84,6 +84,8 @@ function deleteMyAccount() {
           const secSnap = await c.ref.collection('sections').get();
           for (const s of secSnap.docs) {
             await deleteCollectionDocs(s.ref.collection('scores'));
+            await deleteCollectionDocs(s.ref.collection('attendance'));
+            await deleteCollectionDocs(s.ref.collection('attendanceMeta'));
             await deleteCollectionDocs(s.ref.collection('students'));
           }
           await deleteCollectionDocs(c.ref.collection('sections'));

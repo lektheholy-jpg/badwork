@@ -180,6 +180,11 @@ service cloud.firestore {
           allow create, update: if isOwner(uid) && validDoc(500);
         }
 
+        match /sections/{sectionId}/attendance/{studentId} {
+          allow read, delete: if isOwner(uid);
+          allow create, update: if isOwner(uid) && validDoc(500);
+        }
+
         // ที่เหลือใต้รายวิชา (assessments, settings, sections, students ฯลฯ)
         match /{document=**} {
           allow read, delete: if isOwner(uid);

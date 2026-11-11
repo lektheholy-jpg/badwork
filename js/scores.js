@@ -146,6 +146,28 @@ async function renderScoresTab(container, course, section) {
   wireScoreInputs(container, course, section, students, collectItems, midItems, finalItems, scores, collectMax, maxTotal, gradeScale, groups);
 }
 
+// แท็บ "บันทึกคะแนน": สลับระหว่าง คะแนน | เวลาเรียน (เวลาเรียนโหลด js/attendance.js ตอนเปิดครั้งแรก)
+async function renderScoresWithMode(container, course, section) {
+  const mode = AppState.scoresMode === 'attendance' ? 'attendance' : 'scores';
+  container.innerHTML = `
+    <div class="ck-mode" role="group" aria-label="โหมดบันทึก">
+      <button class="ck-mode-btn ${mode === 'scores' ? 'active' : ''}" data-mode="scores">คะแนน</button>
+      <button class="ck-mode-btn ${mode === 'attendance' ? 'active' : ''}" data-mode="attendance">เวลาเรียน</button>
+    </div>
+    <div id="scores-mode-body"></div>`;
+  const body = container.querySelector('#scores-mode-body');
+  container.querySelectorAll('.ck-mode-btn').forEach(b => b.addEventListener('click', () => {
+    if (b.dataset.mode === mode) return;
+    AppState.scoresMode = b.dataset.mode;
+    renderScoresWithMode(container, course, section);
+  }));
+  if (mode === 'scores') { await renderScoresTab(body, course, section); return; }
+  showLoading('cat-sm', body);
+  try { await loadModule('attendance'); } catch (err) { body.innerHTML = `<div class="card"><div class="empty-state">${escapeHtml(err.message)}</div></div>`; return; }
+  if (!body.isConnected || AppState.scoresMode !== 'attendance') return;
+  await renderAttendanceTab(body, course, section);
+}
+
 function gradeBadgeClass(grade) {
   const val = parseFloat(grade);
   if (isNaN(val)) return 'badge-neutral';
