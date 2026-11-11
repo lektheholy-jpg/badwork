@@ -2483,6 +2483,17 @@ table.tt tr.is-today td.tt-cell { background: color-mix(in srgb, var(--hue-orang
 .ck-sheet .ck-pct { font-weight: 700; }
 .ck-sheet .ck-pct.low { color: var(--danger); background: var(--danger-tint); }
 .ck-legend { margin-top: 10px; color: var(--ink-soft); font-size: 12.5px; }
+.ck-rules { display: flex; flex-direction: column; gap: 4px; }
+.ck-rule { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 14px; border-radius: var(--radius-s); background: var(--surface-sunken); cursor: pointer; }
+.ck-rule-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ck-rule-text b { font-weight: 600; font-size: 14px; }
+.ck-rule-text small { color: var(--ink-soft); font-size: 12.5px; line-height: 1.4; }
+.ck-thr { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-soft); font-weight: 600; }
+.ck-thr input { width: 72px; font: inherit; font-size: 14px; text-align: center; padding: 8px 10px; border: 1.5px solid transparent; border-radius: var(--radius-xs); background: var(--card); color: var(--ink); }
+.ck-thr input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 4px var(--primary-tint); }
+.ck-slots { list-style: none; margin: 0 0 14px; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.ck-slots li { padding: 10px 14px; border-radius: var(--radius-xs); background: var(--primary-tint); color: var(--primary-dark); font-size: 14px; }
+.ck-tt-loading, .ck-tt-empty { color: var(--ink-soft); font-size: 14px; line-height: 1.6; padding: 14px; border-radius: var(--radius-s); background: var(--surface-sunken); }
 @media (max-width: 600px) { .ck-list li { flex-wrap: wrap; } .ck-btns { margin-left: 36px; } }
 
 /* @bundle docs — ส่วนนี้แยกเป็น css/docs.min.css โหลดเมื่อเปิดหน้าระบบเอกสาร (PA · ID-Plan · วิจัยในชั้นเรียน · …) — กฎในนี้ต้องไม่ใช้ class ที่หน้าหลักใช้ (tools/split-css.js ตรวจให้) · วางกฎใหม่ของระบบเอกสารไว้ในบล็อกนี้ */

@@ -8,6 +8,7 @@
 //   courses/{cid}/settings/attendance                      = { late:boolean, leave:boolean, thr:number }
 // ใช้ id คาบเป็นคีย์ ไม่ใช้วันที่ — เลื่อนวันเรียนแล้วข้อมูลไม่หลุด
 //
+// คาบอัตโนมัติ: อ่านตารางสอน users/{uid}/timetable/{ปี}-{ภาค} (entry.courseId = วิชานี้, day = วันในสัปดาห์) แล้วสร้างคาบทุกสัปดาห์ในช่วงวันที่เลือก
 // กติกาคำนวณ: คิดจาก "คาบที่เช็คแล้ว" (คาบเรียนที่มีบันทึกอย่างน้อย 1 คน) · สายนับเป็นมา (ตั้งได้) · ลาไม่นับเป็นมา (ตั้งได้)
 // % = มา ÷ จำนวนคาบที่เช็คแล้ว (ตรงสูตรของแบบฟอร์มรายงานการเข้าเรียน)
 // ==========================================================================
@@ -29,7 +30,58 @@ function ckFmtDate(d) {
 }
 function ckDayLabel(s) { const d = ckParseDate(s); return d ? `${d.getDate()} ${CK_MONTH[d.getMonth()]}` : '-'; }
 function ckSortSessions(list) {
-  return [...list].sort((a, b) => String(a.date).localeCompare(String(b.date)) || String(a.id).localeCompare(String(b.id)));
+  return [...list].sort((a, b) => String(a.date).localeCompare(String(b.date)) || (a.period || 0) - (b.period || 0) || String(a.id).localeCompare(String(b.id)));
+}
+const CK_DAY_NAME = { 1: 'จันทร์', 2: 'อังคาร', 3: 'พุธ', 4: 'พฤหัสบดี', 5: 'ศุกร์' };
+// เลขห้องจากป้ายชั้น เช่น "ม.2/4" → "4" (ไม่มี "/" ใช้ตัวเลขสุดท้าย)
+function ckRoomOf(label) {
+  const t = String(label == null ? '' : label).trim();
+  if (!t) return '';
+  const i = t.lastIndexOf('/');
+  const m = (i === -1 ? t : t.slice(i + 1)).match(/\d+/g);
+  return m ? m[m.length - 1] : '';
+}
+// ช่องสอนของวิชา+ห้องนี้ในตารางสอน: ผูกด้วย courseId (หรือรหัสวิชาถ้ายังไม่ผูก) · ถ้าระบุชั้น/ห้อง ต้องตรงห้องนี้
+function ckTimetableSlots(entries, course, room) {
+  const norm = (v) => String(v == null ? '' : v).replace(/\s+/g, '');
+  return (entries || []).filter(e => {
+    if (!e || e.kind === 'activity') return false;
+    const byId = e.courseId && e.courseId === course.id;
+    const byCode = !e.courseId && e.code && course.code && norm(e.code) === norm(course.code);
+    if (!byId && !byCode) return false;
+    const r = ckRoomOf(e.cls);
+    return !r || r === String(room);
+  }).map(e => ({ day: Number(e.day), period: Number(e.period) || 0, span: Math.max(1, Number(e.span) || 1) }))
+    .sort((a, b) => a.day - b.day || a.period - b.period);
+}
+// วันที่เริ่ม/สิ้นสุดภาคเรียนโดยประมาณ (ปรับได้ในหน้าต่าง): ภาค 1 = 15 พ.ค.–30 ก.ย. · ภาค 2 = 1 พ.ย.–28 ก.พ.
+function ckDefaultTermDates(course, now = new Date()) {
+  const ce = (Number(course.year) || now.getFullYear() + 543) - 543;
+  return Number(course.semester) === 2 ? { start: `${ce}-11-01`, end: `${ce + 1}-02-28` } : { start: `${ce}-05-15`, end: `${ce}-09-30` };
+}
+// สร้างคาบจากช่องในตารางสอน ทุกวันที่ตรงวันในสัปดาห์ในช่วง start–end · ข้ามวันที่ที่มีคาบอยู่แล้ว (คาบเดียวกันหรือคาบที่ยังไม่ระบุชั่วโมง)
+function ckSessionsFromTimetable(slots, start, end, existing, makeId) {
+  const d0 = ckParseDate(start), d1 = ckParseDate(end);
+  if (!d0 || !d1 || d1 < d0 || !slots.length) return [];
+  const out = [];
+  for (let d = new Date(d0), n = 0; d <= d1 && n < 400; d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1), n++) {
+    slots.filter(sl => sl.day === d.getDay()).forEach(sl => {
+      const date = ckFmtDate(d), period = sl.period + 1;
+      if (existing.some(x => x.date === date && (!x.period || x.period === period))) return;
+      out.push({ id: makeId(), date, type: 'class', period, span: sl.span });
+    });
+  }
+  return out;
+}
+async function ckLoadTimetable(uid, course) {
+  const col = db.collection('users').doc(uid).collection('timetable');
+  const y = Number(course.year), sem = Number(course.semester);
+  const keys = (y && (sem === 1 || sem === 2)) ? [`${y}-${sem}`, 'main'] : ['main'];
+  for (const key of keys) {
+    const d = await col.doc(key).get();
+    if (d.exists && Array.isArray(d.data().entries)) return { key, entries: d.data().entries, periods: d.data().periods || [] };
+  }
+  return null;
 }
 // สร้างคาบรายสัปดาห์: วันเดียวกับ startDate ทุก 7 วัน, count สัปดาห์ · ข้ามวันที่ที่มีคาบอยู่แล้ว
 function ckWeeklySessions(startDate, count, existing, makeId) {
@@ -132,7 +184,8 @@ async function renderAttendanceTab(container, course, section) {
           </div>
         </div>
         <div class="toolbar-right ck-tools">
-          <button class="btn btn-ghost btn-sm" id="ck-weekly">สร้างคาบรายสัปดาห์</button>
+          <button class="btn btn-ghost btn-sm" id="ck-tt">ดึงจากตารางสอน</button>
+          <button class="btn btn-ghost btn-sm" id="ck-weekly">สร้างรายสัปดาห์</button>
           <button class="btn btn-ghost btn-sm" id="ck-add">เพิ่มคาบ</button>
           <button class="btn btn-ghost btn-sm" id="ck-rules">กติกา</button>
           <div class="save-status" id="ck-save-status"><span class="dot"></span> บันทึกอัตโนมัติแล้ว</div>
@@ -141,14 +194,14 @@ async function renderAttendanceTab(container, course, section) {
   }
   function checkHtml() {
     if (!sessions.length) {
-      return `<div class="card"><div class="empty-state"><div class="icon">${icon('book')}</div>ยังไม่มีคาบเรียน — กด "สร้างคาบรายสัปดาห์" เพื่อสร้างทั้งเทอมในครั้งเดียว หรือ "เพิ่มคาบ" ทีละวัน</div></div>`;
+      return `<div class="card"><div class="empty-state"><div class="icon">${icon('book')}</div>ยังไม่มีคาบเรียน — กด "ดึงจากตารางสอน" เพื่อสร้างคาบทั้งเทอมตามวันที่สอนจริง หรือ "สร้างรายสัปดาห์" / "เพิ่มคาบ" ถ้าไม่ได้ใช้ตารางสอน</div></div>`;
     }
     const cur = sessions.find(s => s.id === curId) || sessions[0];
     const takenSet = new Set(taken());
     const isTaken = takenSet.has(cur.id);
     const chips = sessions.map((s, i) => {
       const n = sessions.slice(0, i + 1).filter(x => x.type !== 'holiday').length;
-      return `<button class="ck-chip ${s.id === cur.id ? 'active' : ''} ${s.type === 'holiday' ? 'holiday' : ''} ${takenSet.has(s.id) ? 'done' : ''}" data-sid="${s.id}">${s.type === 'holiday' ? 'หยุด' : 'คาบ ' + n}<small>${ckDayLabel(s.date)}</small></button>`;
+      return `<button class="ck-chip ${s.id === cur.id ? 'active' : ''} ${s.type === 'holiday' ? 'holiday' : ''} ${takenSet.has(s.id) ? 'done' : ''}" data-sid="${s.id}">${s.type === 'holiday' ? 'หยุด' : 'คาบ ' + n}<small>${ckDayLabel(s.date)}${s.period ? ' ชม.' + s.period : ''}</small></button>`;
     }).join('');
     let body;
     if (cur.type === 'holiday') {
@@ -256,13 +309,62 @@ async function renderAttendanceTab(container, course, section) {
       saveSessions(); closeModal(); draw(); showToast(`สร้าง ${add.length} คาบแล้ว`);
     });
   }
+  async function openTimetableModal() {
+    openModal(`
+      <h2>ดึงคาบจากตารางสอน</h2>
+      <div class="modal-sub">สร้างคาบเรียนทุกสัปดาห์ตามวันและคาบที่วิชานี้อยู่ในตารางสอน แล้วทำเป็นวันหยุดหรือลบทีละคาบได้ภายหลัง</div>
+      <div id="ck-tt-body" class="ck-tt-loading">กำลังอ่านตารางสอน...</div>
+      <div class="modal-actions"><button class="btn btn-ghost" id="ck-m-cancel">ยกเลิก</button><button class="btn btn-primary" id="ck-m-ok" disabled>สร้างคาบ</button></div>`);
+    document.getElementById('ck-m-cancel').addEventListener('click', closeModal);
+    const box = document.getElementById('ck-tt-body');
+    let tt;
+    try { tt = await ckLoadTimetable(uid, course); } catch (err) { console.error(err); tt = null; box.textContent = 'อ่านตารางสอนไม่สำเร็จ ลองใหม่อีกครั้ง'; return; }
+    if (!box.isConnected) return;
+    const slots = tt ? ckTimetableSlots(tt.entries, course, section.room) : [];
+    if (!slots.length) {
+      box.className = 'ck-tt-empty';
+      box.innerHTML = `ไม่พบวิชา ${escapeHtml(course.name)} ห้อง ${escapeHtml(section.room)} ในตารางสอน${tt ? '' : ' (ยังไม่มีตารางสอนของภาคเรียนนี้)'}<br>เพิ่มวิชานี้ในตารางสอน (ข้อมูลส่วนตัว → ตารางสอน) แล้วกลับมาดึงใหม่ หรือใช้ "สร้างรายสัปดาห์"`;
+      return;
+    }
+    const times = (sl) => { const a = tt.periods[sl.period], b = tt.periods[sl.period + sl.span - 1]; return a && b && a.start && b.end ? ` (${a.start}-${b.end})` : ''; };
+    const def = ckDefaultTermDates(course);
+    box.className = '';
+    box.innerHTML = `
+      <ul class="ck-slots">${slots.map(sl => `<li><b>${CK_DAY_NAME[sl.day] || ''}</b> คาบที่ ${sl.period + 1}${sl.span > 1 ? '–' + (sl.period + sl.span) : ''}${times(sl)}</li>`).join('')}</ul>
+      <div class="field-row">
+        <div class="field"><label for="ck-t-start">เปิดภาคเรียน</label><input type="date" id="ck-t-start" value="${def.start}"></div>
+        <div class="field"><label for="ck-t-end">ปิดภาคเรียน</label><input type="date" id="ck-t-end" value="${def.end}"></div>
+      </div>
+      <div class="field-hint" id="ck-t-count"></div>`;
+    const okBtn = document.getElementById('ck-m-ok');
+    const calc = () => ckSessionsFromTimetable(slots, document.getElementById('ck-t-start').value, document.getElementById('ck-t-end').value, sessions, uid4);
+    const preview = () => {
+      const n = calc().length;
+      document.getElementById('ck-t-count').textContent = n ? `จะสร้าง ${n} คาบ` : 'ไม่มีคาบใหม่ในช่วงวันที่นี้ (ตรวจวันที่เปิด-ปิดภาคเรียน)';
+      okBtn.disabled = !n;
+    };
+    ['ck-t-start', 'ck-t-end'].forEach(id => document.getElementById(id).addEventListener('change', preview));
+    preview();
+    okBtn.addEventListener('click', () => {
+      const add = calc(); if (!add.length) return;
+      sessions = ckSortSessions([...sessions, ...add]);
+      if (!curId || !sessions.some(x => x.id === curId)) curId = add[0].id;
+      saveSessions(); closeModal(); draw(); showToast(`สร้าง ${add.length} คาบจากตารางสอนแล้ว`);
+    });
+  }
   function openRulesModal() {
+    const row = (id, title, hint, on) => `
+      <label class="ck-rule" for="${id}"><span class="ck-rule-text"><b>${title}</b><small>${hint}</small></span>
+        <span class="switch"><input type="checkbox" id="${id}" role="switch" aria-label="${title}" ${on ? 'checked' : ''}><span class="switch-slider"></span></span></label>`;
     openModal(`
       <h2>กติกาการนับเวลาเรียน</h2>
-      <div class="field"><label><input type="checkbox" id="ck-r-late" ${rules.late ? 'checked' : ''}> นับ "สาย" เป็นมา</label></div>
-      <div class="field"><label><input type="checkbox" id="ck-r-leave" ${rules.leave ? 'checked' : ''}> นับ "ลา" เป็นมา</label></div>
-      <div class="field"><label>ไม่มีสิทธิ์สอบ (มส) เมื่อเวลาเรียนต่ำกว่า (%)</label><input type="number" id="ck-r-thr" min="0" max="100" value="${rules.thr}"></div>
-      <div class="field-hint">ใช้กับทุกห้องของวิชานี้</div>
+      <div class="modal-sub">ใช้กับทุกห้องของวิชานี้</div>
+      <div class="ck-rules">
+        ${row('ck-r-late', 'นับ "สาย" เป็นมา', 'เปิด: สายนับเป็นเวลาเรียน · ปิด: สายไม่นับ', rules.late)}
+        ${row('ck-r-leave', 'นับ "ลา" เป็นมา', 'เปิด: ลานับเป็นเวลาเรียน · ปิด: ลาไม่นับเป็นมา (แต่ไม่นับเป็นขาด)', rules.leave)}
+        <div class="ck-rule"><span class="ck-rule-text"><b>เกณฑ์ มส</b><small>เวลาเรียนต่ำกว่าเกณฑ์นี้จะถูกไฮไลต์</small></span>
+          <span class="ck-thr"><input type="number" id="ck-r-thr" min="0" max="100" value="${rules.thr}" aria-label="เกณฑ์ มส เป็นเปอร์เซ็นต์"><span>%</span></span></div>
+      </div>
       <div class="modal-actions"><button class="btn btn-ghost" id="ck-m-cancel">ยกเลิก</button><button class="btn btn-primary" id="ck-m-ok">บันทึก</button></div>`);
     document.getElementById('ck-m-cancel').addEventListener('click', closeModal);
     document.getElementById('ck-m-ok').addEventListener('click', () => {
@@ -295,6 +397,7 @@ async function renderAttendanceTab(container, course, section) {
     let el;
     if ((el = t.closest('.ck-seg-btn'))) { view = el.dataset.view; draw(); }
     else if (t.closest('#ck-add')) openAddModal();
+    else if (t.closest('#ck-tt')) openTimetableModal();
     else if (t.closest('#ck-weekly')) openWeeklyModal();
     else if (t.closest('#ck-rules')) openRulesModal();
     else if (t.closest('#ck-save-status') && failed) { failed = 0; renderStatus(); showToast('ลองแตะสถานะอีกครั้งเพื่อบันทึกซ้ำ'); }

@@ -9,7 +9,7 @@ const ok = (c, msg, extra) => { if (c) { pass++; console.log('  ✓', msg); } el
 
 const ctx = vm.createContext({ console });
 const src = fs.readFileSync(path.join(__dirname, '..', 'js', 'attendance.js'), 'utf8');
-vm.runInContext(src + '\n;this.T = { ckParseDate, ckFmtDate, ckDayLabel, ckSortSessions, ckWeeklySessions, ckTakenIds, ckStat, ckPct };', ctx);
+vm.runInContext(src + '\n;this.T = { ckParseDate, ckFmtDate, ckDayLabel, ckSortSessions, ckWeeklySessions, ckTakenIds, ckStat, ckPct, ckRoomOf, ckTimetableSlots, ckDefaultTermDates, ckSessionsFromTimetable };', ctx);
 const T = ctx.T;
 
 const rules = { late: true, leave: false, thr: 80 };
@@ -62,6 +62,33 @@ ok(w[1].date === '2027-01-01', 'ข้ามปีได้ถูกต้อง
 console.log('วันที่/เรียงลำดับ');
 ok(T.ckDayLabel('2026-05-22') === '22 พ.ค.' && T.ckDayLabel('xx') === '-', 'ป้ายวันที่ภาษาไทย');
 ok(T.ckSortSessions([{ id: 'b', date: '2026-06-05' }, { id: 'a', date: '2026-05-22' }]).map(s => s.id).join() === 'a,b', 'เรียงตามวันที่');
+
+console.log('ตารางสอน');
+ok(T.ckRoomOf('ม.2/4') === '4' && T.ckRoomOf('2/10') === '10' && T.ckRoomOf('') === '' && T.ckRoomOf('ม.2') === '2', 'อ่านเลขห้องจากป้ายชั้น');
+const course = { id: 'c1', code: 'ว22103', year: '2569', semester: '1' };
+const entries = [
+  { kind: 'class', day: 5, period: 2, span: 2, courseId: 'c1', cls: 'ม.2/1', code: 'ว22103' },
+  { kind: 'class', day: 2, period: 0, span: 1, courseId: 'c1', cls: 'ม.2/2' },
+  { kind: 'class', day: 3, period: 4, span: 1, code: 'ว 22103', cls: '' },
+  { kind: 'class', day: 1, period: 1, span: 1, courseId: 'other', cls: 'ม.2/1' },
+  { kind: 'activity', day: 4, period: 1, span: 1, courseId: 'c1', cls: 'ม.2/1' },
+];
+const slots = T.ckTimetableSlots(entries, course, '1');
+ok(slots.length === 2 && slots[0].day === 3 && slots[1].day === 5 && slots[1].span === 2, 'เลือกเฉพาะวิชา+ห้องนี้ (ตัดห้องอื่น วิชาอื่น กิจกรรม)', slots);
+ok(T.ckTimetableSlots(entries, course, '2').some(s => s.day === 2), 'ห้อง 2 ได้ช่องของห้อง 2');
+const d = T.ckDefaultTermDates(course); const d2 = T.ckDefaultTermDates({ year: '2569', semester: '2' });
+ok(d.start === '2026-05-15' && d.end === '2026-09-30' && d2.start === '2026-11-01' && d2.end === '2027-02-28', 'ช่วงภาคเรียนเริ่มต้น', [d, d2]);
+n = 0;
+const gen = T.ckSessionsFromTimetable([{ day: 5, period: 2, span: 2 }], '2026-05-22', '2026-09-25', [], mk);
+// PDF ตัวอย่างมี 18 คาบ เพราะไม่มี 31 ก.ค. (วันหยุด) — ตารางสอนให้ครบ 19 ศุกร์ ครูทำ 31 ก.ค. เป็นวันหยุดเอง
+ok(gen.length === 19 && gen[0].date === '2026-05-22' && gen[0].period === 3 && gen[0].span === 2 && gen[18].date === '2026-09-25', 'ทุกวันศุกร์ 22 พ.ค.–25 ก.ย. = 19 คาบ (รวม 31 ก.ค.)', [gen.length, gen[0], gen[18]]);
+ok(gen.filter(x => x.date !== '2026-07-31').length === 18, 'ตัด 31 ก.ค. ออก = 18 คาบ ตรงกับ PDF');
+const gen2 = T.ckSessionsFromTimetable([{ day: 5, period: 2, span: 1 }], '2026-05-22', '2026-06-05', [{ id: 'x', date: '2026-05-29', type: 'class', period: 3 }, { id: 'y', date: '2026-06-05', type: 'class' }], mk);
+ok(gen2.length === 1 && gen2[0].date === '2026-05-22', 'ข้ามคาบซ้ำ และวันที่ที่มีคาบยังไม่ระบุชั่วโมง', gen2);
+const two = T.ckSessionsFromTimetable([{ day: 5, period: 0, span: 1 }, { day: 5, period: 5, span: 1 }], '2026-05-22', '2026-05-22', [], mk);
+ok(two.length === 2 && two[0].period === 1 && two[1].period === 6, 'วันเดียวสอน 2 ช่วง → 2 คาบ');
+ok(T.ckSessionsFromTimetable([], '2026-05-22', '2026-09-25', [], mk).length === 0 && T.ckSessionsFromTimetable([{ day: 5, period: 0, span: 1 }], '2026-09-25', '2026-05-22', [], mk).length === 0, 'ไม่มีช่อง/ช่วงวันที่กลับด้าน → ไม่สร้าง');
+ok(T.ckSortSessions([{ id: 'b', date: '2026-05-22', period: 6 }, { id: 'a', date: '2026-05-22', period: 1 }]).map(x => x.id).join() === 'a,b', 'เรียงตามวันที่ แล้วตามคาบ');
 
 console.log(`\n${pass} ผ่าน · ${fail} ไม่ผ่าน`);
 process.exit(fail ? 1 : 0);
