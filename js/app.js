@@ -445,7 +445,7 @@ function initBgCustom(view, onChange) {
 // ---------- เกี่ยวกับ (บนสุดของหน้าตั้งค่า): เวอร์ชันเว็บ · ผู้สร้าง ----------
 // version รูปแบบ v<รุ่นใหญ่>.<ฟีเจอร์>.<วันเวลา> เช่น v1.15.26OC201912 — **ห้ามแก้มือ**
 //   npm run build:version (รวมใน npm run build) เขียนให้ทั้งตรงนี้และ VERSION ใน sw.js · รายละเอียดดู tools/version.js
-const APP_INFO = { version: 'v1.15.26NO190949', creator: 'lektheholy', email: 'lektheholy@gmail.com' };
+const APP_INFO = { version: 'v1.15.26NO191251', creator: 'lektheholy', email: 'lektheholy@gmail.com' };
 
 function aboutHtml() {
   const a = APP_INFO;
@@ -738,4 +738,33 @@ document.getElementById('sidebar-toggle')?.addEventListener('click', () => {
   initNavPill(bar, '.tab-item', 'tab-pill', { global: true });
   document.getElementById('more-scrim')?.addEventListener('click', () => setMore(false));
   setActiveNav((typeof AppState !== 'undefined' && AppState.currentRoute) || 'dashboard');
+})();
+
+// ==========================================================================
+// ตัวจับ error ทั่วแอป — บนมือถือไม่มี console ให้ดู ถ้าพังแล้วเงียบครูจะไม่รู้ว่าข้อมูลยังไม่ถูกบันทึก
+//   แสดงข้อความสั้นๆ ผ่านเกาะแจ้งเตือน (ไม่เกิน 1 ครั้ง/15 วินาที กันรัวเมื่อ error ซ้ำ) และยังเก็บลง console ตามเดิม
+// ==========================================================================
+(function installGlobalErrorCatcher() {
+  const COOLDOWN_MS = 15000;
+  let lastShown = 0;
+  const IGNORE = /ResizeObserver loop|Script error\.?$|AbortError|The user aborted a request/i;
+
+  function report(kind, err) {
+    const msg = String((err && (err.message || err.code)) || err || '');
+    console.error('[' + kind + ']', err);
+    if (IGNORE.test(msg)) return;
+    const now = Date.now();
+    if (now - lastShown < COOLDOWN_MS) return;
+    lastShown = now;
+    try {
+      showToast('เกิดข้อผิดพลาดบางอย่าง ข้อมูลล่าสุดอาจยังไม่ถูกบันทึก ลองโหลดหน้าใหม่แล้วตรวจคะแนนอีกครั้ง', 'error', 7000);
+    } catch (_) { /* ถ้าแม้แต่ toast พัง ก็ไม่ทำอะไรต่อ */ }
+  }
+
+  window.addEventListener('error', ev => {
+    // ข้าม error โหลดไฟล์/รูปที่ไม่ใช่ข้อผิดพลาดของสคริปต์ (resource error ไม่มี ev.error และมี target เป็น element)
+    if (ev.target && ev.target !== window) return;
+    report('onerror', ev.error || ev.message);
+  });
+  window.addEventListener('unhandledrejection', ev => report('unhandledrejection', ev.reason));
 })();

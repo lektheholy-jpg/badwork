@@ -32,6 +32,11 @@ function makeEnv(docs, { courses = [] } = {}) {
     navigate: r => nav.push(r), downloadCsv() {}, loadSections: async () => [],
   };
   vm.createContext(ctx);
+  // ตรึงเวลาเป็น 9 ต.ค. 2026 (= ภาค 1/2569) เพื่อให้เทสต์ไม่ผูกกับวันที่จริงของเครื่อง
+  vm.runInContext(`globalThis.Date = (function () {
+    const R = Date, FIXED = new R(2026, 9, 9, 9, 0, 0).getTime();
+    return class extends R { constructor(...a) { a.length ? super(...a) : super(FIXED); } static now() { return FIXED; } };
+  })();`, ctx);
   vm.runInContext(fs.readFileSync(path.join(__dirname, '..', 'js', 'timetable.js'), 'utf8'), ctx);
   return ctx;
 }

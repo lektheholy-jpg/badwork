@@ -184,9 +184,11 @@ function renderScoreRow(student, collectItems, midItems, finalItems, studentScor
   const grade = calcGrade(total, gradeScale);
   const searchText = `${student.no} ${student.code} ${student.firstName} ${student.lastName}`.toLowerCase();
 
+  const studentLabel = escapeHtml(`${student.firstName || ''} ${student.lastName || ''}`.trim() || student.no || '');
   const cellFor = (a) => `
     <td class="grp-${a.category === 'collect' ? 'collect' : a.category === 'midterm' ? 'mid' : 'final'}" data-assessment-id="${a.id}">
       <input class="score-input" type="text" inputmode="decimal" autocomplete="off" placeholder="–"
+             aria-label="${studentLabel} – ${escapeHtml(a.name)}"
              value="${studentScores[a.id] ?? ''}"
              data-student-id="${student.id}" data-assessment-id="${a.id}" data-max="${a.max}">
     </td>`;
