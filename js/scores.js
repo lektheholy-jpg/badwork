@@ -95,10 +95,10 @@ async function renderScoresTab(container, course, section) {
             <th rowspan="2" class="grp-collect-total">รวมเก็บ<span class="max">/${collectMax}</span></th>
           </tr>
           <tr>
-            ${collectRuns.map(r => r.items.map(a => `<th class="grp-collect">${escapeHtml(a.name)}<span class="max">/${a.max}${a.noCount ? ' · ไม่นับ' : ''}</span>${attChipHtml(a)}</th>`).join('')
+            ${collectRuns.map(r => r.items.map(a => `<th class="grp-collect th-item"><span class="th-name" title="${escapeHtml(a.name)}">${escapeHtml(a.name)}</span><span class="max">/${a.max}${a.noCount ? ' · ไม่นับ' : ''}</span>${attChipHtml(a)}</th>`).join('')
               + `<th class="grp-sub-total">รวม<span class="max">/${runMax(r)}</span></th>`).join('')}
-            ${midItems.map(a => `<th class="grp-mid">${escapeHtml(a.name)}<span class="max">/${a.max}${a.noCount ? ' · ไม่นับ' : ''}</span>${attChipHtml(a)}</th>`).join('')}
-            ${finalItems.map(a => `<th class="grp-final">${escapeHtml(a.name)}<span class="max">/${a.max}${a.noCount ? ' · ไม่นับ' : ''}</span>${attChipHtml(a)}</th>`).join('')}
+            ${midItems.map(a => `<th class="grp-mid th-item"><span class="th-name" title="${escapeHtml(a.name)}">${escapeHtml(a.name)}</span><span class="max">/${a.max}${a.noCount ? ' · ไม่นับ' : ''}</span>${attChipHtml(a)}</th>`).join('')}
+            ${finalItems.map(a => `<th class="grp-final th-item"><span class="th-name" title="${escapeHtml(a.name)}">${escapeHtml(a.name)}</span><span class="max">/${a.max}${a.noCount ? ' · ไม่นับ' : ''}</span>${attChipHtml(a)}</th>`).join('')}
           </tr>
           ` : `
           <tr>
@@ -112,10 +112,10 @@ async function renderScoresTab(container, course, section) {
             <th rowspan="2" class="sticky-right-2">เกรด</th>
           </tr>
           <tr>
-            ${collectItems.map(a => `<th class="grp-collect">${escapeHtml(a.name)}<span class="max">/${a.max}${a.noCount ? ' · ไม่นับ' : ''}</span>${attChipHtml(a)}</th>`).join('')}
+            ${collectItems.map(a => `<th class="grp-collect th-item"><span class="th-name" title="${escapeHtml(a.name)}">${escapeHtml(a.name)}</span><span class="max">/${a.max}${a.noCount ? ' · ไม่นับ' : ''}</span>${attChipHtml(a)}</th>`).join('')}
             ${collectItems.length ? `<th class="grp-collect-total">รวมเก็บ<span class="max">/${collectMax}</span></th>` : ''}
-            ${midItems.map(a => `<th class="grp-mid">${escapeHtml(a.name)}<span class="max">/${a.max}${a.noCount ? ' · ไม่นับ' : ''}</span>${attChipHtml(a)}</th>`).join('')}
-            ${finalItems.map(a => `<th class="grp-final">${escapeHtml(a.name)}<span class="max">/${a.max}${a.noCount ? ' · ไม่นับ' : ''}</span>${attChipHtml(a)}</th>`).join('')}
+            ${midItems.map(a => `<th class="grp-mid th-item"><span class="th-name" title="${escapeHtml(a.name)}">${escapeHtml(a.name)}</span><span class="max">/${a.max}${a.noCount ? ' · ไม่นับ' : ''}</span>${attChipHtml(a)}</th>`).join('')}
+            ${finalItems.map(a => `<th class="grp-final th-item"><span class="th-name" title="${escapeHtml(a.name)}">${escapeHtml(a.name)}</span><span class="max">/${a.max}${a.noCount ? ' · ไม่นับ' : ''}</span>${attChipHtml(a)}</th>`).join('')}
           </tr>
           `}
         </thead>

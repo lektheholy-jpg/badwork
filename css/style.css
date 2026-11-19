@@ -484,6 +484,15 @@ table.sheet th {
   border-bottom: 2px solid var(--th-line); text-shadow: none;
 }
 table.sheet th span.max { display: block; font-weight: 500; font-size: 10px; opacity: .8; }
+
+/* หัวคอลัมน์รายการคะแนน: ชื่อยาวขึ้นบรรทัดใหม่ได้ (สูงสุด 3 บรรทัด · ชี้เมาส์เห็นชื่อเต็ม)
+   เดิม th เป็น nowrap จึงยืดทั้งคอลัมน์ให้กว้างเท่าความยาวชื่อ ทำให้ช่องกรอกคะแนนกว้างเกินจำเป็น */
+table.sheet thead th.th-item { white-space: normal; width: 104px; min-width: 92px; max-width: 160px; height: auto; padding: 8px 6px 6px; vertical-align: bottom; }
+table.sheet th .th-name { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden; overflow-wrap: break-word; line-height: 1.3; }
+table.sheet th.th-item span.max { margin-top: 2px; }
+@media (max-width: 860px) {
+  table.sheet thead th.th-item { width: 76px; min-width: 70px; padding: 6px 3px 5px; }
+}
 table.sheet:not(.sheet-simple) thead tr:first-child th { top: 0; height: 26px; }
 table.sheet:not(.sheet-simple) thead tr:last-child th { top: 26px; height: 38px; }
 
@@ -511,12 +520,12 @@ table.sheet td.name-cell.code-cell {
 }
 
 table.sheet td input.score-input {
-  width: 100%; height: 100%;
+  display: block; width: calc(100% - 8px); margin: 0 4px; height: 100%;  /* เว้นขอบซ้ายขวาไม่ให้ติดเส้นตาราง */
   border: none; text-align: center;
   font-family: var(--font-mono); font-size: 13px; font-weight: 700;
   padding: 6px 3px;
   background: transparent;
-  -moz-appearance: textfield; border-radius: var(--radius-xs); min-height: 40px; color: var(--ink);
+  -moz-appearance: textfield; border-radius: 8px; box-shadow: inset 0 0 0 1px var(--border); /* กรอบอ่อนๆ ให้เห็นว่าเป็นช่องกรอก */ min-height: 40px; color: var(--ink);
 }
 table.sheet td input.score-input::-webkit-outer-spin-button,
 table.sheet td input.score-input::-webkit-inner-spin-button {
@@ -609,6 +618,8 @@ table.sheet :is(th, td).sticky-right-2 { right: 0; width: var(--r2-w); min-width
 .struct-table input.row-name { width: 100%; border: none; font-size: 13px; font-weight: 500; background: transparent; padding: 4px 2px; }
 .struct-table input.row-detail { width: 100%; border: none; font-size: 12.5px; color: var(--ink-soft); background: transparent; padding: 4px 2px; }
 .struct-table input.row-max { width: 70px; border: 1.5px solid var(--border); padding: 6px 8px; font-family: var(--font-mono); font-weight: 600; text-align: right; border-radius: var(--radius-xs); border-width: 1.5px; }
+.struct-table .row-nocount-wrap { display: flex; align-items: center; justify-content: flex-end; gap: 4px; margin-top: 4px; font-size: 12px; white-space: nowrap; cursor: pointer; color: var(--ink-soft); }
+.struct-table input.row-nocount { width: auto; margin: 0; }
 .struct-table tr.dragging { opacity: 0.4; }
 .struct-table td.handle-col { width: 24px; color: var(--ink-soft); cursor: grab; text-align: center; }
 .struct-table td.att-col { width: 92px; white-space: nowrap; }
@@ -1455,7 +1466,7 @@ table.sheet tbody tr:hover td, table.sheet tbody tr:hover td.total-cell.sticky-r
 table.sheet tbody tr:hover td.sticky-col-1, table.sheet tbody tr:hover td.sticky-col-2,
 table.sheet tbody tr:hover td.sticky-col-3 { background: var(--row-on); }
 table.sheet tbody td.sticky-col-1, table.sheet tbody td.sticky-col-2, table.sheet tbody td.sticky-col-3 { background: var(--card); }
-table.sheet td input.score-input:hover { background: var(--hover-wash); }
+table.sheet td input.score-input:hover { background: var(--hover-wash); box-shadow: inset 0 0 0 1px var(--ink-soft); }
 
 /* ===== วิดเจ็ตวัน/เวลา + สภาพอากาศ ===== */
 .cw-row { display: grid; grid-template-columns: 1fr; gap: clamp(10px, 1.1vw, 20px); margin-bottom: clamp(12px, 1.2vw, 22px); }

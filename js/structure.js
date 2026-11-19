@@ -256,7 +256,7 @@ async function renderStructureTab(container, course, opts = {}) {
           </select>
         </td>` : ''}
         <td class="num-col"><input class="row-max" type="number" data-id="${it.id}" value="${it.max}">
-          <label style="display:flex;align-items:center;justify-content:flex-end;gap:4px;margin-top:4px;font-size:.75rem;white-space:nowrap;cursor:pointer" title="บันทึกคะแนนได้ แต่ไม่รวมในคะแนนเก็บ/คะแนนรวม/เกรด เช่น แบบทดสอบก่อนเรียน"><input class="row-nocount" type="checkbox" data-id="${it.id}"${it.noCount ? ' checked' : ''}> ไม่นับรวม</label></td>
+          <label class="row-nocount-wrap" title="บันทึกคะแนนได้ แต่ไม่รวมในคะแนนเก็บ/คะแนนรวม/เกรด เช่น แบบทดสอบก่อนเรียน"><input class="row-nocount" type="checkbox" data-id="${it.id}"${it.noCount ? ' checked' : ''}> ไม่นับรวม</label></td>
         <td class="del-col"><button class="btn btn-danger-ghost btn-sm del-item" data-id="${it.id}">ลบ</button></td>
       </tr>`;
     const itemRow = (it, idx) => ro ? itemRowRo(it, idx) : itemRowEdit(it, idx);
