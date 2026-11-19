@@ -445,7 +445,7 @@ function initBgCustom(view, onChange) {
 // ---------- เกี่ยวกับ (บนสุดของหน้าตั้งค่า): เวอร์ชันเว็บ · ผู้สร้าง ----------
 // version รูปแบบ v<รุ่นใหญ่>.<ฟีเจอร์>.<วันเวลา> เช่น v1.15.26OC201912 — **ห้ามแก้มือ**
 //   npm run build:version (รวมใน npm run build) เขียนให้ทั้งตรงนี้และ VERSION ใน sw.js · รายละเอียดดู tools/version.js
-const APP_INFO = { version: 'v1.15.26NO191251', creator: 'lektheholy', email: 'lektheholy@gmail.com' };
+const APP_INFO = { version: 'v1.15.26NO191256', creator: 'lektheholy', email: 'lektheholy@gmail.com' };
 
 function aboutHtml() {
   const a = APP_INFO;
@@ -579,12 +579,26 @@ function settingsAboutHtml() {
         หน้าหลักส่งพิกัดโดยประมาณ (ปัดเหลือราว 1 กม.) ไปยัง Open-Meteo เพื่อแสดงสภาพอากาศ โดยไม่ส่งข้อมูลนักเรียน
         ครูควรใช้ข้อมูลนักเรียนเท่าที่จำเป็นและตามนโยบายของโรงเรียน
       </div>
+      <div class="u-note u-lh-165 u-mt-4" id="backup-note"></div>
       <div class="settings-actions">
         <button type="button" class="btn btn-ghost btn-sm" id="privacy-export-btn">ส่งออกข้อมูลของฉัน (JSON)</button>
+        <button type="button" class="btn btn-ghost btn-sm" id="privacy-import-btn">กู้คืนจากไฟล์สำรอง</button>
         <button type="button" class="btn btn-danger-ghost btn-sm" id="privacy-delete-btn">ลบบัญชีและข้อมูลทั้งหมด</button>
       </div>
     </div>
     </div>`;
+}
+
+// บรรทัดบอกวันที่สำรองข้อมูลล่าสุดของเครื่องนี้ (เก็บใน localStorage) · privacy.js เรียกซ้ำหลังส่งออกสำเร็จ
+function refreshBackupNote() {
+  const el = document.getElementById('backup-note');
+  if (!el) return;
+  let iso = null;
+  try { iso = localStorage.getItem('myscore_last_backup'); } catch (e) {}
+  const d = iso ? new Date(iso) : null;
+  el.textContent = d && !isNaN(d.getTime())
+    ? 'สำรองข้อมูลล่าสุดจากเครื่องนี้: ' + d.toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' })
+    : 'ยังไม่เคยสำรองข้อมูลจากเครื่องนี้ แนะนำให้กด "ส่งออกข้อมูลของฉัน" เก็บไฟล์ไว้เป็นระยะ โดยเฉพาะก่อนปิดภาคเรียน';
 }
 
 function bindSettingsAbout(root) {
@@ -594,7 +608,9 @@ function bindSettingsAbout(root) {
     window[fnName]();
   };
   root.querySelector('#privacy-export-btn').addEventListener('click', withPrivacy('exportMyData'));
+  root.querySelector('#privacy-import-btn').addEventListener('click', withPrivacy('importMyData'));
   root.querySelector('#privacy-delete-btn').addEventListener('click', withPrivacy('deleteMyAccount'));
+  refreshBackupNote();
   bindInstallCard(root.querySelector('#install-slot'));
 }
 

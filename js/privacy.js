@@ -47,6 +47,40 @@ async function _collectAll(uid, onProgress) {
   return out;
 }
 
+// ---------- สำรอง/กู้คืนทั้งบัญชี ----------
+// ไฟล์สำรอง = JSON จาก _collectAll + หัวไฟล์ (format/version) · Timestamp ของ Firestore เก็บเป็น { __ts: ISO } เพื่อแยกจากข้อความธรรมดา
+// (ไฟล์ส่งออกรุ่นเก่าที่ไม่มีหัวไฟล์ก็กู้คืนได้ แต่ฟิลด์เวลาจะเป็นข้อความตามที่ส่งออกไว้)
+const BACKUP_FORMAT = 'myscore-backup';
+const BACKUP_VERSION = 2;
+const BACKUP_LAST_KEY = 'myscore_last_backup';
+const BACKUP_MAX_BYTES = 50 * 1024 * 1024;
+
+function _tagTimestamps(v) {
+  if (Array.isArray(v)) return v.map(_tagTimestamps);
+  if (v && typeof v === 'object') {
+    if (typeof v.toDate === 'function') return { __ts: v.toDate().toISOString() };
+    if (v instanceof Date) return { __ts: v.toISOString() };
+    const o = {};
+    Object.keys(v).forEach(k => { o[k] = _tagTimestamps(v[k]); });
+    return o;
+  }
+  return v;
+}
+function _reviveTimestamps(v) {
+  if (Array.isArray(v)) return v.map(_reviveTimestamps);
+  if (v && typeof v === 'object') {
+    const keys = Object.keys(v);
+    if (keys.length === 1 && keys[0] === '__ts' && typeof v.__ts === 'string') {
+      const d = new Date(v.__ts);
+      if (!isNaN(d.getTime())) return firebase.firestore.Timestamp.fromDate(d);
+    }
+    const o = {};
+    keys.forEach(k => { o[k] = _reviveTimestamps(v[k]); });
+    return o;
+  }
+  return v;
+}
+
 async function exportMyData() {
   let prog = islandProgress({ label: 'กำลังรวบรวมข้อมูล...' }); // แถบวิ่งก่อน แล้วเปลี่ยนเป็นนับจริงเมื่อรู้จำนวนวิชา
   try {
@@ -54,17 +88,126 @@ async function exportMyData() {
       prog = islandProgress({ label: 'รวบรวมข้อมูล', total, unit: 'วิชา' });
       prog.update(done);
     });
-    const json = JSON.stringify(data, (k, v) => (v && typeof v.toDate === 'function' ? v.toDate().toISOString() : v), 2);
+    const file = Object.assign({ format: BACKUP_FORMAT, version: BACKUP_VERSION }, _tagTimestamps(data));
+    const json = JSON.stringify(file, null, 2);
     const url = URL.createObjectURL(new Blob([json], { type: 'application/json;charset=utf-8' }));
     const a = document.createElement('a');
     a.href = url; a.download = `ข้อมูลของฉัน-${new Date().toISOString().slice(0, 10)}.json`;
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
     URL.revokeObjectURL(url);
+    try { localStorage.setItem(BACKUP_LAST_KEY, new Date().toISOString()); } catch (e) {}
+    if (typeof refreshBackupNote === 'function') refreshBackupNote();
     prog.finish('ส่งออกข้อมูลสำเร็จ');
   } catch (err) {
     console.error(err);
     prog.fail('ส่งออกข้อมูลไม่สำเร็จ: ' + (err.message || err));
   }
+}
+
+// แถว { id, ...ฟิลด์ } จากไฟล์สำรอง → { id, data } ที่ restoreDocs เขียนกลับได้
+function _rowsToDocs(rows) {
+  return (Array.isArray(rows) ? rows : []).filter(r => r && r.id != null).map(r => {
+    const { id, ...data } = r;
+    return { id: String(id), data: _reviveTimestamps(data) };
+  });
+}
+
+// ตรวจไฟล์ก่อนแตะข้อมูลจริง · คืนสรุปจำนวนไว้ให้ผู้ใช้เห็นก่อนยืนยัน
+function _validateBackup(d) {
+  if (!d || typeof d !== 'object' || Array.isArray(d)) return { ok: false, error: 'ไฟล์นี้ไม่ใช่ไฟล์สำรองของแอป' };
+  if (d.format && d.format !== BACKUP_FORMAT) return { ok: false, error: 'ไฟล์นี้ไม่ใช่ไฟล์สำรองของแอป' };
+  if (d.version && d.version > BACKUP_VERSION) return { ok: false, error: 'ไฟล์สำรองนี้ใหม่กว่าแอปเวอร์ชันนี้ กรุณารีเฟรชแอปก่อน' };
+  if (!Array.isArray(d.courses) || !d.exportedAt) return { ok: false, error: 'ไฟล์นี้ไม่ใช่ไฟล์สำรองของแอป' };
+  let sections = 0, students = 0;
+  d.courses.forEach(c => (Array.isArray(c && c.sections) ? c.sections : []).forEach(s => { sections++; students += Array.isArray(s && s.students) ? s.students.length : 0; }));
+  return { ok: true, summary: { courses: d.courses.length, sections, students, exportedAt: d.exportedAt } };
+}
+
+// เขียนกลับด้วยรหัสเดิม: เอกสารที่รหัสตรงกันถูกเขียนทับ · เอกสารอื่นที่มีอยู่ไม่ถูกลบ · ไม่แตะโปรไฟล์/หน้าตาของบัญชีปัจจุบัน
+// วิชาที่เขียนไม่สำเร็จไม่หยุดทั้งงาน — เก็บชื่อไว้รายงานท้ายงาน
+async function _restoreBackup(uid, data, onProgress) {
+  const userRef = db.collection('users').doc(uid);
+  const docCols = await _docCollections(uid); // โหลดไม่ได้ = หยุดก่อนเขียนอะไร
+  const res = { courses: 0, sections: 0, students: 0, others: 0, failed: [] };
+  const courses = Array.isArray(data.courses) ? data.courses : [];
+  const steps = courses.length + 1;
+  let done = 0;
+  const tick = () => { if (onProgress) onProgress(++done, steps); };
+
+  for (const c of courses) {
+    const label = (c && (c.name || c.code || c.id)) || '(ไม่มีชื่อ)';
+    try {
+      if (!c || c.id == null) throw new Error('ไม่มีรหัสวิชา');
+      const { id, assessments, settings, sections, ...cdata } = c;
+      const secs = (Array.isArray(sections) ? sections : []).filter(s => s && s.id != null).map(s => {
+        const { id: sid, students, scores, attendance, attendanceMeta, ...sdata } = s;
+        return { id: String(sid), data: _reviveTimestamps(sdata), students: _rowsToDocs(students), scores: _rowsToDocs(scores), attendance: _rowsToDocs(attendance), attendanceMeta: _rowsToDocs(attendanceMeta) };
+      });
+      await restoreCourse(userRef.collection('courses').doc(String(id)), {
+        data: _reviveTimestamps(cdata), assessments: _rowsToDocs(assessments), settings: _rowsToDocs(settings), sections: secs,
+      });
+      res.courses++;
+      res.sections += secs.length;
+      secs.forEach(s => { res.students += s.students.length; });
+    } catch (err) {
+      console.error('กู้คืนวิชาไม่สำเร็จ', label, err);
+      res.failed.push(String(label));
+    }
+    tick();
+  }
+
+  const groups = [{ name: 'ตารางสอน', ref: userRef.collection('timetable'), rows: data.timetable }, { name: 'อบรม/เกียรติบัตร', ref: userRef.collection('records'), rows: data.records }]
+    .concat(docCols.map(c => ({ name: c.name, ref: c.ref, rows: data[c.name] })));
+  for (const g of groups) {
+    const docs = _rowsToDocs(g.rows);
+    if (!docs.length) continue;
+    try { await restoreDocs(g.ref, docs); res.others += docs.length; } catch (err) { console.error('กู้คืนไม่สำเร็จ', g.name, err); res.failed.push(g.name); }
+  }
+  tick();
+  return res;
+}
+
+function importMyData() {
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) { showToast('ต้องเชื่อมต่ออินเทอร์เน็ตก่อนจึงจะกู้คืนข้อมูลได้'); return; }
+  const input = document.createElement('input');
+  input.type = 'file'; input.accept = '.json,application/json'; input.hidden = true;
+  input.addEventListener('change', async () => {
+    const f = input.files && input.files[0];
+    input.remove();
+    if (!f) return;
+    if (f.size > BACKUP_MAX_BYTES) { showToast('ไฟล์ใหญ่เกินไป (เกิน 50 MB)'); return; }
+    let data;
+    try { data = JSON.parse(await f.text()); } catch (err) { showToast('อ่านไฟล์ไม่ได้ — ต้องเป็นไฟล์ .json ที่ส่งออกจากแอปนี้'); return; }
+    const check = _validateBackup(data);
+    if (!check.ok) { showToast(check.error); return; }
+    const sm = check.summary;
+    const when = new Date(sm.exportedAt);
+    const whenText = isNaN(when.getTime()) ? '' : when.toLocaleString('th-TH', { dateStyle: 'long', timeStyle: 'short' });
+    openConfirmModal({
+      title: 'กู้คืนข้อมูลจากไฟล์สำรอง?',
+      body: `ไฟล์ <b>${escapeHtml(f.name)}</b>${whenText ? ' (สำรองเมื่อ ' + escapeHtml(whenText) + ')' : ''} มี ${sm.courses} วิชา · ${sm.sections} ห้อง · ${sm.students} นักเรียน<br><br>`
+        + 'ข้อมูลที่มีรหัสเดียวกันในบัญชีนี้จะถูก<b>เขียนทับ</b>ด้วยค่าในไฟล์ ส่วนข้อมูลอื่นที่มีอยู่จะไม่ถูกลบ · ไม่รวมไฟล์ต้นฉบับในแท็บอบรม/เกียรติบัตร และไม่รวมโปรไฟล์/ธีม (ใช้ของบัญชีปัจจุบัน) · แนะนำให้กด "ส่งออกข้อมูลของฉัน" เก็บสถานะปัจจุบันไว้ก่อน',
+      confirmLabel: 'กู้คืน',
+      onConfirm: async () => {
+        let prog = islandProgress({ label: 'กำลังกู้คืนข้อมูล...' });
+        try {
+          const r = await _restoreBackup(AppState.user.uid, data, (n, total) => {
+            prog = islandProgress({ label: 'กู้คืนข้อมูล', total, unit: 'ขั้นตอน' });
+            prog.update(n);
+          });
+          if (r.failed.length) prog.fail(`กู้คืนได้ ${r.courses} วิชา แต่ไม่สำเร็จ: ${r.failed.slice(0, 3).join(', ')}${r.failed.length > 3 ? ' และอีก ' + (r.failed.length - 3) : ''}`);
+          else prog.finish(`กู้คืนสำเร็จ ${r.courses} วิชา ${r.students} นักเรียน`);
+          if (typeof invalidateCourseData === 'function') data.courses.forEach(c => { if (c && c.id != null) invalidateCourseData(String(c.id)); });
+          if (r.courses || r.others) setTimeout(() => { try { location.reload(); } catch (e) {} }, 2500); // โหลดใหม่เพื่อให้ทุกหน้าอ่านข้อมูลที่เพิ่งกู้คืน
+        } catch (err) {
+          console.error(err);
+          prog.fail('กู้คืนไม่สำเร็จ: ' + (err.message || err));
+        }
+      },
+    });
+  });
+  document.body.appendChild(input);
+  input.click();
 }
 
 function deleteMyAccount() {
