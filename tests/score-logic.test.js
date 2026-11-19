@@ -7,7 +7,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 let pass = 0, fail = 0;
 const ok = (c, msg, extra) => { if (c) { pass++; console.log('  ✓', msg); } else { fail++; console.log('  ✗', msg, extra !== undefined ? JSON.stringify(extra) : ''); } };
 
-async function makeEnv({ nStudents = 4, nAssess = 8, max = 10, seed = {} } = {}) {
+async function makeEnv({ nStudents = 4, nAssess = 8, max = 10, seed = {}, noCount = [] } = {}) {
   const dom = new JSDOM(`<!DOCTYPE html><body><div id="island"><div class="island-idle"><span class="island-idle-main"><span class="island-idle-date"></span><span class="island-idle-time"></span></span><span class="island-idle-page"><span class="pg"></span><span class="pg"></span></span></div><div class="island-body"><span class="island-icon"></span><span class="island-text"></span><button type="button" class="island-action" hidden></button></div><div class="island-bar"><i></i></div></div><div id="view"></div></body>`, { runScripts: 'outside-only', url: 'http://localhost/' });
   const w = dom.window;
   const DELETE = { __delete: true };
@@ -15,7 +15,7 @@ async function makeEnv({ nStudents = 4, nAssess = 8, max = 10, seed = {} } = {})
   const writes = [];           // log
   const students = Array.from({ length: nStudents }, (_, i) => ({ id: 's' + (i + 1), no: i + 1, code: '66' + i, firstName: 'ชื่อ' + (i + 1), lastName: 'สกุล' }));
   students.forEach(s => { store[s.id] = { ...(seed[s.id] || {}) }; });
-  const assessments = Array.from({ length: nAssess }, (_, i) => ({ id: 'a' + (i + 1), name: 'งาน' + (i + 1), max, category: 'collect', order: i }));
+  const assessments = Array.from({ length: nAssess }, (_, i) => ({ id: 'a' + (i + 1), name: 'งาน' + (i + 1), max, category: 'collect', order: i, ...(noCount.includes('a' + (i + 1)) ? { noCount: true } : {}) }));
   const env = { w, store, writes, DELETE, setBehavior: null };
   const snap = arr => ({ docs: arr.map(d => ({ id: d.id, data: () => { const { id, ...r } = d; return r; } })), empty: !arr.length, size: arr.length });
   w.firebase = { firestore: { FieldValue: { delete: () => DELETE } } };
@@ -66,6 +66,21 @@ async function makeEnv({ nStudents = 4, nAssess = 8, max = 10, seed = {} } = {})
 }
 
 (async () => {
+  console.log('\n[0] รายการ "ไม่นับรวมคะแนน" (เช่น แบบทดสอบก่อนเรียน): กรอกได้ แต่ไม่เข้าคะแนนรวม/เกรด');
+  {
+    const e = await makeEnv({ nAssess: 3, noCount: ['a1'], seed: { s2: { a1: 8, a2: 5 } } });
+    const txt = (sel) => e.cell(sel).textContent.trim();
+    ok(e.input('s1', 'a1') !== null, 'ช่องกรอกของรายการไม่นับรวมยังอยู่');
+    ok(txt('[data-total-for="s2"]') === '5' && txt('[data-collect-for="s2"]') === '5', 'ข้อมูลเดิม: คะแนนก่อนเรียน 8 ไม่ถูกบวก (รวม 5)', txt('[data-total-for="s2"]'));
+    e.type('s1', 'a1', '7');
+    ok(txt('[data-total-for="s1"]') === '0', 'กรอกก่อนเรียน 7 → รวมยังเป็น 0');
+    e.type('s1', 'a2', '4');
+    ok(txt('[data-total-for="s1"]') === '4' && txt('[data-collect-for="s1"]') === '4', 'กรอกงานปกติ 4 → รวม 4 (ไม่รวมก่อนเรียน)');
+    const maxTh = [...e.container.querySelectorAll('th')].map(t => t.textContent).join('|');
+    ok(maxTh.includes('ไม่นับ'), 'หัวคอลัมน์ติดป้าย "ไม่นับ"');
+    ok(/รวม\/20/.test(maxTh.replace(/\s+/g, '')), 'คะแนนเต็มรวมเป็น 20 (ไม่นับ 10 ของก่อนเรียน)', maxTh);
+  }
+
   console.log('\n[1] เกรดที่ขอบเกณฑ์ (ทศนิยมลอยตัว)');
   {
     const e = await makeEnv();

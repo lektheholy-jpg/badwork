@@ -29,7 +29,7 @@ function exportRoomCsv(course, section, { students, assessments, scores, gradeSc
   const header = ['เลขที่', 'รหัสนักเรียน', 'ชื่อ', 'นามสกุล', ...assessments.map(a => a.name), 'รวม', 'เกรด'];
   const rows = students.map(s => {
     const sc = scores[s.id] || {};
-    const total = roundScore(assessments.reduce((sum, a) => sum + (Number(sc[a.id]) || 0), 0));
+    const total = roundScore(assessments.filter(isCounted).reduce((sum, a) => sum + (Number(sc[a.id]) || 0), 0));
     return [s.no, s.code, s.firstName, s.lastName, ...assessments.map(a => sc[a.id] ?? ''), total, calcGrade(total, gradeScale)];
   });
   downloadCsv(`คะแนน-${course.name}-ห้อง${section.room}.csv`, [header, ...rows]);
@@ -39,11 +39,11 @@ function exportRoomCsv(course, section, { students, assessments, scores, gradeSc
 async function renderReportTab(container, course, section) {
   showLoading('cat-sm', container);
   const { students, assessments, scores, gradeScale } = await loadRoomReportData(course, section);
-  const maxTotal = assessments.reduce((s, a) => s + (Number(a.max) || 0), 0) || 100;
+  const maxTotal = assessments.filter(isCounted).reduce((s, a) => s + (Number(a.max) || 0), 0) || 100;
 
   const totals = students.map(s => {
     const sc = scores[s.id] || {};
-    return roundScore(assessments.reduce((sum, a) => sum + (Number(sc[a.id]) || 0), 0));
+    return roundScore(assessments.filter(isCounted).reduce((sum, a) => sum + (Number(sc[a.id]) || 0), 0));
   });
 
   const avg = totals.length ? (totals.reduce((a, b) => a + b, 0) / totals.length) : 0;
@@ -173,7 +173,7 @@ function classifyPp5Bucket(groupLabel) {
 // คำนวณสัดส่วนที่ทำได้จริงของแต่ละหมวด (0-1) จากคะแนนที่มีอยู่แล้วในระบบ
 function computeStudentBucketRatios(sc, assessments) {
   const byCat = { collect: { score: 0, max: 0 }, midterm: { score: 0, max: 0 }, final: { score: 0, max: 0 } };
-  assessments.forEach(a => {
+  assessments.filter(isCounted).forEach(a => {
     const cat = byCat[a.category] ? a.category : 'collect';
     byCat[cat].max += Number(a.max) || 0;
     byCat[cat].score += Number(sc[a.id]) || 0;
@@ -227,7 +227,7 @@ function openPp5ExportModal(course, section, students, assessments, scores) {
       // ตรวจสอบว่าคะแนนเต็มรวมของแต่ละหมวดใน "ระบบ" ตรงกับ "ฟอร์ม" หรือไม่
       // (ถ้าตรง → เกรดรวมจะเท่าเดิมเป๊ะ ถ้าไม่ตรง → คลาดเคลื่อนได้ตามสัดส่วน)
       const appMax = { collect: 0, midterm: 0, final: 0 };
-      assessments.forEach(a => { appMax[appMax[a.category] !== undefined ? a.category : 'collect'] += Number(a.max) || 0; });
+      assessments.filter(isCounted).forEach(a => { appMax[appMax[a.category] !== undefined ? a.category : 'collect'] += Number(a.max) || 0; });
       const formMax = { collect: 0, midterm: 0, final: 0 };
       targetCols.forEach(c => { formMax[c.bucket] += c.max; });
 
@@ -369,10 +369,10 @@ function computeNextSchoolRows(students, scores, assessments, gradeScale, opts) 
   const k = opts.decimals ? 10 : 1; // ทำงานเป็น "หน่วย" จำนวนเต็ม (1 หรือ 0.1 คะแนน) เพื่อกันเลขทศนิยมเพี้ยน
   const isMid = a => a.category === 'midterm';
   const isFinal = a => a.category === 'final';
-  const collectItems = assessments.filter(a => !isMid(a) && !isFinal(a));
+  const collectItems = assessments.filter(a => isCounted(a) && !isMid(a) && !isFinal(a));
   const midItems = assessments.filter(isMid);
   const finalItems = assessments.filter(isFinal);
-  const maxTotal = assessments.reduce((s, a) => s + (Number(a.max) || 0), 0) || 100;
+  const maxTotal = assessments.filter(isCounted).reduce((s, a) => s + (Number(a.max) || 0), 0) || 100;
 
   const useSplit = opts.mode === 'order' && collectItems.length >= 2;
   const n = Math.min(Math.max(1, Number(opts.splitN) || 1), Math.max(1, collectItems.length - 1));
@@ -388,7 +388,7 @@ function computeNextSchoolRows(students, scores, assessments, gradeScale, opts) 
 
   return students.map(s => {
     const sc = scores[s.id] || {};
-    const realTotal = assessments.reduce((sum, a) => sum + (Number(sc[a.id]) || 0), 0);
+    const realTotal = assessments.filter(isCounted).reduce((sum, a) => sum + (Number(sc[a.id]) || 0), 0);
     const realGrade = calcGrade(realTotal, gradeScale);
 
     // เลือกผลรวมใหม่ (เต็ม 100) ที่ใกล้คะแนนจริงที่สุด โดยเกรดต้องเท่าเดิม: ลองปัดปกติ → ปัดลง → ปัดขึ้น → ลดลงอีก 1 หน่วย (กรณีเลขทศนิยมลอยติดขอบเกรด)
@@ -414,10 +414,10 @@ function computeNextSchoolRows(students, scores, assessments, gradeScale, opts) 
 }
 
 function openNextSchoolModal(course, section, students, assessments, scores, gradeScale) {
-  const collectItems = assessments.filter(a => a.category !== 'midterm' && a.category !== 'final');
+  const collectItems = assessments.filter(a => isCounted(a) && a.category !== 'midterm' && a.category !== 'final');
   const canSplit = collectItems.length >= 2;
   const opts = { mode: canSplit ? 'order' : 'equal', splitN: Math.max(1, Math.ceil(collectItems.length / 2)), decimals: false };
-  const maxTotal = assessments.reduce((s, a) => s + (Number(a.max) || 0), 0) || 100;
+  const maxTotal = assessments.filter(isCounted).reduce((s, a) => s + (Number(a.max) || 0), 0) || 100;
 
   openModal(`
     <h2>แปลงคะแนน SGS</h2>
@@ -572,7 +572,7 @@ function fillNsFormValues(parts, cols, k) {
 }
 
 function openNextSchoolFormModal(course, section, students, assessments, scores, gradeScale) {
-  const collectItems = assessments.filter(a => a.category !== 'midterm' && a.category !== 'final');
+  const collectItems = assessments.filter(a => isCounted(a) && a.category !== 'midterm' && a.category !== 'final');
   const canSplit = collectItems.length >= 2;
   const opts = { mode: canSplit ? 'order' : 'equal', splitN: Math.max(1, Math.ceil(collectItems.length / 2)), decimals: false };
 

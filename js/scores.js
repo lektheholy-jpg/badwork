@@ -42,11 +42,11 @@ async function renderScoresTab(container, course, section) {
       if (items.length) collectRuns.push({ gid: g.id, name: g.name, items });
     });
   }
-  const runMax = (r) => r.items.reduce((s, a) => s + (Number(a.max) || 0), 0);
+  const runMax = (r) => r.items.filter(isCounted).reduce((s, a) => s + (Number(a.max) || 0), 0);
   const midItems = assessments.filter(a => a.category === 'midterm');
   const finalItems = assessments.filter(a => a.category === 'final');
-  const collectMax = collectItems.reduce((s, a) => s + (Number(a.max) || 0), 0);
-  const maxTotal = assessments.reduce((s, a) => s + (Number(a.max) || 0), 0);
+  const collectMax = collectItems.filter(isCounted).reduce((s, a) => s + (Number(a.max) || 0), 0);
+  const maxTotal = assessments.filter(isCounted).reduce((s, a) => s + (Number(a.max) || 0), 0);
 
   if (assessments.length === 0) {
     container.innerHTML = `<div class="card"><div class="empty-state"><div class="icon">${icon('sliders')}</div>กรุณากำหนดโครงสร้างคะแนนของวิชานี้ก่อนเริ่มบันทึกคะแนน</div></div>`;
@@ -95,10 +95,10 @@ async function renderScoresTab(container, course, section) {
             <th rowspan="2" class="grp-collect-total">รวมเก็บ<span class="max">/${collectMax}</span></th>
           </tr>
           <tr>
-            ${collectRuns.map(r => r.items.map(a => `<th class="grp-collect">${escapeHtml(a.name)}<span class="max">/${a.max}</span>${attChipHtml(a)}</th>`).join('')
+            ${collectRuns.map(r => r.items.map(a => `<th class="grp-collect">${escapeHtml(a.name)}<span class="max">/${a.max}${a.noCount ? ' · ไม่นับ' : ''}</span>${attChipHtml(a)}</th>`).join('')
               + `<th class="grp-sub-total">รวม<span class="max">/${runMax(r)}</span></th>`).join('')}
-            ${midItems.map(a => `<th class="grp-mid">${escapeHtml(a.name)}<span class="max">/${a.max}</span>${attChipHtml(a)}</th>`).join('')}
-            ${finalItems.map(a => `<th class="grp-final">${escapeHtml(a.name)}<span class="max">/${a.max}</span>${attChipHtml(a)}</th>`).join('')}
+            ${midItems.map(a => `<th class="grp-mid">${escapeHtml(a.name)}<span class="max">/${a.max}${a.noCount ? ' · ไม่นับ' : ''}</span>${attChipHtml(a)}</th>`).join('')}
+            ${finalItems.map(a => `<th class="grp-final">${escapeHtml(a.name)}<span class="max">/${a.max}${a.noCount ? ' · ไม่นับ' : ''}</span>${attChipHtml(a)}</th>`).join('')}
           </tr>
           ` : `
           <tr>
@@ -112,10 +112,10 @@ async function renderScoresTab(container, course, section) {
             <th rowspan="2" class="sticky-right-2">เกรด</th>
           </tr>
           <tr>
-            ${collectItems.map(a => `<th class="grp-collect">${escapeHtml(a.name)}<span class="max">/${a.max}</span>${attChipHtml(a)}</th>`).join('')}
+            ${collectItems.map(a => `<th class="grp-collect">${escapeHtml(a.name)}<span class="max">/${a.max}${a.noCount ? ' · ไม่นับ' : ''}</span>${attChipHtml(a)}</th>`).join('')}
             ${collectItems.length ? `<th class="grp-collect-total">รวมเก็บ<span class="max">/${collectMax}</span></th>` : ''}
-            ${midItems.map(a => `<th class="grp-mid">${escapeHtml(a.name)}<span class="max">/${a.max}</span>${attChipHtml(a)}</th>`).join('')}
-            ${finalItems.map(a => `<th class="grp-final">${escapeHtml(a.name)}<span class="max">/${a.max}</span>${attChipHtml(a)}</th>`).join('')}
+            ${midItems.map(a => `<th class="grp-mid">${escapeHtml(a.name)}<span class="max">/${a.max}${a.noCount ? ' · ไม่นับ' : ''}</span>${attChipHtml(a)}</th>`).join('')}
+            ${finalItems.map(a => `<th class="grp-final">${escapeHtml(a.name)}<span class="max">/${a.max}${a.noCount ? ' · ไม่นับ' : ''}</span>${attChipHtml(a)}</th>`).join('')}
           </tr>
           `}
         </thead>
@@ -177,9 +177,9 @@ function gradeBadgeClass(grade) {
 }
 
 function renderScoreRow(student, collectItems, midItems, finalItems, studentScores, collectMax, maxTotal, gradeScale, collectRuns) {
-  const collectSum = roundScore(collectItems.reduce((s, a) => s + (Number(studentScores[a.id]) || 0), 0));
-  const midSum = roundScore(midItems.reduce((s, a) => s + (Number(studentScores[a.id]) || 0), 0));
-  const finalSum = roundScore(finalItems.reduce((s, a) => s + (Number(studentScores[a.id]) || 0), 0));
+  const collectSum = roundScore(collectItems.filter(isCounted).reduce((s, a) => s + (Number(studentScores[a.id]) || 0), 0));
+  const midSum = roundScore(midItems.filter(isCounted).reduce((s, a) => s + (Number(studentScores[a.id]) || 0), 0));
+  const finalSum = roundScore(finalItems.filter(isCounted).reduce((s, a) => s + (Number(studentScores[a.id]) || 0), 0));
   const total = roundScore(collectSum + midSum + finalSum);
   const grade = calcGrade(total, gradeScale);
   const searchText = `${student.no} ${student.code} ${student.firstName} ${student.lastName}`.toLowerCase();
@@ -198,7 +198,7 @@ function renderScoreRow(student, collectItems, midItems, finalItems, studentScor
       <td class="name-cell sticky-col-3" title="${escapeHtml(student.firstName)} ${escapeHtml(student.lastName)}">${escapeHtml(student.firstName)} ${escapeHtml(student.lastName)}</td>
       ${collectRuns
         ? collectRuns.map(r => r.items.map(cellFor).join('')
-            + `<td class="total-cell grp-sub-total" data-group-sum="${r.gid}" data-student-id="${student.id}">${roundScore(r.items.reduce((s, a) => s + (Number(studentScores[a.id]) || 0), 0))}</td>`).join('')
+            + `<td class="total-cell grp-sub-total" data-group-sum="${r.gid}" data-student-id="${student.id}">${roundScore(r.items.filter(isCounted).reduce((s, a) => s + (Number(studentScores[a.id]) || 0), 0))}</td>`).join('')
         : collectItems.map(cellFor).join('')}
       <td class="total-cell grp-collect-total" data-collect-for="${student.id}">${collectSum}</td>
       ${midItems.map(cellFor).join('')}
@@ -378,12 +378,14 @@ function wireScoreInputs(container, course, section, students, collectItems, mid
   const groupIdSet = new Set(groups.map(g => g.id));
   const collectGroupOf = new Map(collectItems.map(a => [a.id, groupIdSet.has(a.groupId) ? a.groupId : '']));
 
+  const noCountIds = new Set([...collectItems, ...midItems, ...finalItems].filter(a => !isCounted(a)).map(a => a.id)); // ไม่นับรวม (เช่น ก่อนเรียน)
   function recalcRow(studentId) {
     const row = container.querySelector(`tr[data-student-id="${studentId}"]`);
     let collectSum = 0, total = 0;
     const groupSums = {};
     row.querySelectorAll('.score-input').forEach(inp => {
       const val = parseScore(inp.value) || 0;
+      if (noCountIds.has(inp.dataset.assessmentId)) return;
       total += val;
       if (collectGroupOf.has(inp.dataset.assessmentId)) {
         collectSum += val;

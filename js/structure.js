@@ -191,7 +191,7 @@ async function renderStructureTab(container, course, opts = {}) {
   const itemsOfUnit = (uid) => collectItems.filter(i => i.unitId === uid);
   // ลำดับแสดงผล: ยังไม่จัดหมวด → แต่ละหมวดตามลำดับหมวด · ในหมวด: งานที่ไม่อยู่หน่วยก่อน แล้วตามด้วยแต่ละหน่วยพร้อมชิ้นงาน
   const displayItems = () => [null, ...groups.map(g => g.id)].flatMap(gid => [...looseOf(gid), ...unitsOf(gid).flatMap(u => itemsOfUnit(u.id))]);
-  const sumMax = (items) => items.reduce((s, i) => s + (Number(i.max) || 0), 0);
+  const sumMax = (items) => items.filter(isCounted).reduce((s, i) => s + (Number(i.max) || 0), 0);
   const groupLabel = (g) => g.name.trim() || 'หมวดหมู่ (ยังไม่ตั้งชื่อ)';
   const unitLabel = (u) => u.name.trim() || 'หน่วยการเรียนรู้ (ยังไม่ตั้งชื่อ)';
 
@@ -237,7 +237,7 @@ async function renderStructureTab(container, course, opts = {}) {
     const itemRowRo = (it, idx) => `
       <tr data-type="item" data-id="${it.id}">
         <td>${idx + 1}</td>
-        <td${it.unitId ? ' class="in-unit"' : ''}>${escapeHtml(it.name || '—')}</td>
+        <td${it.unitId ? ' class="in-unit"' : ''}>${escapeHtml(it.name || '—')}${it.noCount ? ' <small class="muted">(ไม่นับรวมคะแนน)</small>' : ''}</td>
         <td class="muted">${escapeHtml(it.detail || '')}</td>
         <td class="att-col">${attBtnHtml(it.id, it)}</td>
         <td class="num-col">${Number(it.max) || 0}</td>
@@ -255,7 +255,8 @@ async function renderStructureTab(container, course, opts = {}) {
             ${locationOptions(it)}
           </select>
         </td>` : ''}
-        <td class="num-col"><input class="row-max" type="number" data-id="${it.id}" value="${it.max}"></td>
+        <td class="num-col"><input class="row-max" type="number" data-id="${it.id}" value="${it.max}">
+          <label style="display:flex;align-items:center;justify-content:flex-end;gap:4px;margin-top:4px;font-size:.75rem;white-space:nowrap;cursor:pointer" title="บันทึกคะแนนได้ แต่ไม่รวมในคะแนนเก็บ/คะแนนรวม/เกรด เช่น แบบทดสอบก่อนเรียน"><input class="row-nocount" type="checkbox" data-id="${it.id}"${it.noCount ? ' checked' : ''}> ไม่นับรวม</label></td>
         <td class="del-col"><button class="btn btn-danger-ghost btn-sm del-item" data-id="${it.id}">ลบ</button></td>
       </tr>`;
     const itemRow = (it, idx) => ro ? itemRowRo(it, idx) : itemRowEdit(it, idx);
@@ -558,6 +559,12 @@ async function renderStructureTab(container, course, opts = {}) {
         updateTotals();
       });
     });
+    container.querySelectorAll('.row-nocount').forEach(inp => {
+      inp.addEventListener('change', () => {
+        collectItems.find(x => x.id === inp.dataset.id).noCount = inp.checked;
+        updateTotals();
+      });
+    });
     container.querySelectorAll('.del-item').forEach(btn => {
       btn.addEventListener('click', () => {
         collectItems = collectItems.filter(x => x.id !== btn.dataset.id);
@@ -686,6 +693,7 @@ async function saveStructure(course, collectItems, groups, units, midterm, final
     write(it, {
       name: it.name || `รายการที่ ${idx + 1}`,
       max: Number(it.max) || 0,
+      noCount: it.noCount === true,
       detail: it.detail || '',
       attachments: cleanAttachments(it.attachments),
       category: 'collect',

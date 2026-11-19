@@ -52,6 +52,7 @@ async function setup(store, opts, course) {
     db, AppState: { user: { uid: 'U' } }, uid4: () => 'x' + (++n),
     escapeHtml: (s) => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])),
     icon: () => '', showLoading: () => {}, showToast: () => {}, openModal: () => {}, closeModal: () => {},
+    isCounted: (a) => !(a && a.noCount === true),
     invalidateCourseData: () => {}, offerTemplateSync: () => {}, confirm: () => true,
     cleanAttachments: (a) => a || [], attKind: () => 'ลิงก์', ATT_MAX_PER_ITEM: 5,
     navigate: (r) => { w.__nav = r; }, openAttachmentsViewer: (it) => { w.__viewer = it; },
@@ -70,6 +71,27 @@ const groupNames = (c) => [...c.querySelectorAll('input.group-name')].map(i => i
   {
     const { c } = await setup({});
     ok(JSON.stringify(groupNames(c)) === JSON.stringify(['ก่อนกลางภาค', 'หลังกลางภาค']), 'สร้างหมวด ก่อนกลางภาค / หลังกลางภาค ให้อัตโนมัติ');
+  }
+
+  console.log('ไม่นับรวมคะแนน (เช่น แบบทดสอบก่อนเรียน)');
+  {
+    const base = 'users/U/courses/C1';
+    const store = {
+      [base + '/settings/structure']: { groups: [] },
+      [base + '/assessments/pre']: { name: 'ก่อนเรียน', max: 10, category: 'collect', order: 0, groupId: null, noCount: true },
+      [base + '/assessments/a1']: { name: 'งาน 1', max: 10, category: 'collect', order: 1, groupId: null },
+    };
+    const { w, c } = await setup(store);
+    const boxes = [...c.querySelectorAll('input.row-nocount')];
+    const sumBox = () => c.querySelector('.struct-summary-box.readonly input').value;
+    ok(boxes.length === 2 && boxes[0].checked && !boxes[1].checked, 'ช่องติ๊ก "ไม่นับรวม" แสดงตามข้อมูลที่บันทึกไว้');
+    ok(sumBox() === '10', 'คะแนนเก็บรวมไม่นับงานที่ติ๊กไม่นับรวม (10 ไม่ใช่ 20)');
+    boxes[1].checked = true; boxes[1].dispatchEvent(new w.Event('change', { bubbles: true }));
+    ok(sumBox() === '0', 'ติ๊กเพิ่ม → ยอดรวมอัปเดตทันที');
+    boxes[1].checked = false; boxes[1].dispatchEvent(new w.Event('change', { bubbles: true }));
+    ok(sumBox() === '10', 'เอาติ๊กออก → ยอดกลับมานับ');
+    click(w, c.querySelector('#save-structure-btn')); await tick(); await tick();
+    ok(store[base + '/assessments/pre'].noCount === true && store[base + '/assessments/a1'].noCount === false, 'บันทึก noCount ลงเอกสารรายการคะแนน');
   }
 
   console.log('วิชาเก่าที่เคยบันทึกแล้ว (ไม่แตะข้อมูลเก่า)');

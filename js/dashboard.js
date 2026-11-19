@@ -90,7 +90,7 @@ async function loadSectionWithGrades(c, s, courseBase, ctx) {
   };
   const gradedStudents = studentsSnap.docs.map(sd => {
     const sc = scoresByStudent[sd.id] || {};
-    const total = roundScore(assessments.reduce((sum, a) => sum + (Number(sc[a.id]) || 0), 0));
+    const total = roundScore(assessments.filter(isCounted).reduce((sum, a) => sum + (Number(sc[a.id]) || 0), 0));
     const hasScore = assessmentIds.some(aid => sc[aid] !== undefined && sc[aid] !== null && sc[aid] !== '');
     return { id: sd.id, total, hasScore, grade: calcGrade(total, gradeScale) };
   });
@@ -128,7 +128,7 @@ async function loadOneCourseWithGrades(uid, courseDoc) {
   c.roomCount = sections.length;
   c.progress = sections.length > 0 ? Math.round(progressSum / sections.length) : 0;
   c.gradeScale = ctx.gradeScale;
-  c.maxTotal = assessments.reduce((sum, a) => sum + (Number(a.max) || 0), 0) || 100;
+  c.maxTotal = assessments.filter(isCounted).reduce((sum, a) => sum + (Number(a.max) || 0), 0) || 100;
   c.roomsData = secResults.map(r => r.roomData);
   return { course: c, cards: secResults.map(r => r.card) };
 }
